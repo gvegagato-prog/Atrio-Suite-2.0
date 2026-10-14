@@ -102,7 +102,8 @@ seek() {
   for i in 1 2 3 4 5 6 7 8 9 10; do
     adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
     adb shell cat /sdcard/ui.xml > "$OUT/ui.xml"
-    grep -q "text=\"$1" "$OUT/ui.xml" && return 0
+    # Visible de verdad: los nodos fuera de pantalla salen con tamaño cero
+    grep -o "text=\"$1[^>]*bounds=\"[^\"]*\"" "$OUT/ui.xml" | grep -vq '\[0,0\]\[0,0\]' && return 0
     adb shell input swipe 500 1500 500 900 400; sleep 0.8
   done
   echo "   no aparece «$1»" | tee -a "$LOG"; return 1
