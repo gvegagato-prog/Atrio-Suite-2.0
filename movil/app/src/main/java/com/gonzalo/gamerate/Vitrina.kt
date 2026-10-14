@@ -331,6 +331,12 @@ class DockItem(val icon: ImageVector, val label: String)
 
 /** Dock flotante: el destino elegido se abre en pastilla con su nombre; el resto, solo icono. */
 @Composable
+/** Espacio que hay que dejar abajo para que el dock (y la barra de navegación de Android) no tape nada. */
+@Composable
+fun dockSpace(extra: androidx.compose.ui.unit.Dp = 16.dp): androidx.compose.ui.unit.Dp =
+    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 80.dp + extra
+
+@Composable
 fun Dock(items: List<DockItem>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
     val hf = LocalHapticFeedback.current
     Box(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {

@@ -76,7 +76,7 @@ fun InicioScreen(
 ) {
     val hf = LocalHapticFeedback.current
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(bottom = 110.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(bottom = dockSpace(24.dp))
     ) {
         // Cabecera: fecha, saludo y tu nombre (doble toque: lo de tu pareja)
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp).rise(0), verticalAlignment = Alignment.CenterVertically) {

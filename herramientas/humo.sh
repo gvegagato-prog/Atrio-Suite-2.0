@@ -20,11 +20,14 @@ alive() {
 dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; adb shell cat /sdcard/ui.xml > "$OUT/ui.xml"; }
 # Toca el elemento cuyo texto o descripción coincide (o empieza por) $1. Con $2 = n, el n-ésimo que coincida exacto.
 tap() {
-  dump
-  xy=$(python3 - "$1" "$OUT/ui.xml" "${2:-1}" <<'PY'
+  local xy="" try
+  for try in 1 2; do
+    dump
+    xy=$(python3 - "$1" "$OUT/ui.xml" "${2:-1}" "$try" <<'PY'
 import sys, re
-t, f, nth = sys.argv[1], sys.argv[2], int(sys.argv[3])
+t, f, nth, attempt = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
 x = open(f, encoding='utf-8', errors='ignore').read()
+H = max([int(b) for b in re.findall(r'bounds="\[\d+,\d+\]\[\d+,(\d+)\]"', x)] or [2280])
 best = None; seen = 0
 for m in re.finditer(r'<node [^>]*>', x):
     n = m.group(0)
@@ -42,9 +45,15 @@ for m in re.finditer(r'<node [^>]*>', x):
                 if seen < nth: continue
             best = ((a[0]+a[2])//2, (a[1]+a[3])//2)
             if exact: break
-print("" if best is None else f"{best[0]} {best[1]}")
+DOCK = {"Inicio", "Juegos", "Libros", "Cine", "Diario"}
+# Lo que queda tapado por el dock o la barra de navegación: primero se sube un poco la pantalla
+low = best is not None and best[1] > H - H * 0.16 and t not in DOCK and attempt == 1
+print("" if best is None else ("BAJO" if low else f"{best[0]} {best[1]}"))
 PY
 )
+    if [ "$xy" = "BAJO" ]; then adb shell input swipe 500 1400 500 900 400; sleep 1; continue; fi
+    break
+  done
   if [ -z "$xy" ]; then echo "   no encuentro «$1»" | tee -a "$LOG"; return 1; fi
   echo "   toco «$1» en $xy" >> "$LOG"
   adb shell input tap $xy

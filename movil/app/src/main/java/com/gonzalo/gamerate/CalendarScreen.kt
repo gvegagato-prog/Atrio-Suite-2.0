@@ -108,7 +108,7 @@ fun CalendarScreen(
     val todayDay = today()
 
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = if (heading != null) 104.dp else 8.dp)
+        Modifier.fillMaxSize().statusBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = if (heading != null) dockSpace(8.dp) else 8.dp)
     ) {
         if (heading != null) BigHeader(heading) {
             if (partner != null) PartnerToggle(showPartner) { withReveal { Mode.calP = !Mode.calP } }
