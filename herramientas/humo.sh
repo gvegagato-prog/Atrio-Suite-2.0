@@ -91,7 +91,7 @@ adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; sleep 1
 step "Ajustes y tema"
 tap "Ajustes"; shot 14_ajustes; alive "ajustes"
 # El tema ya no está en Ajustes: va dentro de Estilo
-must tap "Estilo"; sleep 2
+tap "Estilo"; sleep 2
 tap "Claro"; sleep 0.25; adb exec-out screencap -p > "$OUT/15_cambio_tema.png"; shot 16_claro 2; alive "tema"
 tap "Oscuro"; shot 17_oscuro 2; alive "tema2"
 adb shell input keyevent 4; sleep 1
