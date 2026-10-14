@@ -52,6 +52,8 @@ import java.net.InetAddress
 /** Polaris en un PC (lo publica Atrio del PC en su presencia, «st»). */
 data class StreamHost(
     val on: Boolean, val running: Boolean, val name: String, val uuid: String, val app: String,
+    /** UUID de esa app en Polaris (su apps.json). */
+    val appUuid: String,
     val lan: List<String>, val macs: List<String>, val tsIp: String, val tsName: String, val tsInstalled: Boolean,
     val creds: Boolean, val allowed: Boolean
 ) {
@@ -59,6 +61,7 @@ data class StreamHost(
         private fun list(a: JSONArray?) = a?.let { x -> (0 until x.length()).map { x.optString(it) }.filter { it.isNotBlank() } } ?: emptyList()
         fun from(o: JSONObject) = StreamHost(
             o.optBoolean("on"), o.optBoolean("run"), o.optString("name"), o.optString("uuid"), o.optString("app", "Desktop").ifBlank { "Desktop" },
+            o.optString("appUuid"),
             list(o.optJSONArray("lan")), list(o.optJSONArray("mac")), o.optString("ts"), o.optString("tsn"), o.optBoolean("tsi"),
             o.optBoolean("creds"), o.optBoolean("ok", true)
         )
@@ -104,12 +107,19 @@ object Stream {
     }
 
     /** Nova directo al PC y a la aplicación de Polaris. */
-    fun launch(ctx: Context, uuid: String, name: String, app: String): Boolean {
+    fun launch(ctx: Context, uuid: String, name: String, app: String, appUuid: String = ""): Boolean {
         val pkg = nova(ctx) ?: return false
         val i = Intent().setComponent(ComponentName(pkg, TRAMPOLINE)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (uuid.isNotBlank()) i.putExtra("UUID", uuid)
         if (name.isNotBlank()) i.putExtra("Name", name)
-        i.putExtra("AppName", app.ifBlank { "Desktop" })
+        // Con el UUID de la app, Nova la abre directamente. Solo con el nombre, Nova la busca en su lista guardada
+        // de apps de ese PC, que no existe hasta abrir ese PC en Nova una vez («error parsing applist cache»).
+        // Sin UUID no se pasa la app: Nova abre la lista de apps de ese PC (y la guarda para la próxima).
+        val validUuid = appUuid.isNotBlank() && runCatching { java.util.UUID.fromString(appUuid) }.isSuccess
+        if (validUuid) {
+            i.putExtra("AppUUID", appUuid)
+            i.putExtra("AppName", app.ifBlank { "Desktop" })
+        }
         return try { ctx.startActivity(i); true } catch (e: Exception) { false }
     }
 
@@ -151,7 +161,8 @@ object Stream {
         val name = r.optString("name").ifBlank { st?.name ?: pc.name }
         // Un momento para que el juego tome la pantalla antes de conectar
         if (key != null) delay(1500)
-        return if (launch(ctx, uuid, name, r.optString("app").ifBlank { st?.app ?: "Desktop" })) null else "No se ha podido abrir Nova."
+        val appUuid = r.optString("appUuid").ifBlank { st?.appUuid ?: "" }
+        return if (launch(ctx, uuid, name, r.optString("app").ifBlank { st?.app ?: "Desktop" }, appUuid)) null else "No se ha podido abrir Nova."
     }
 
     /** Encender el PC por red (Wake-on-LAN): solo en la misma red de casa y con la opción activada en la BIOS. */

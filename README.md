@@ -121,6 +121,9 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
 64. **Camaleón** (Estilo → Fondo, encendido por defecto): al abrir una ficha, la app se tiñe con el color de su
     portada (fondo, tarjetas y el color de la nota general) y el cambio se abre en círculo desde donde tocaste.
     Al salir vuelve tu paleta.
+65. **Streaming sin «error parsing applist cache»**: Atrio del PC lee el UUID de la app de Polaris (su apps.json, o
+    su API) y el móvil se lo pasa a Nova, que así abre la app directamente sin depender de su lista guardada. Si no
+    se conoce, Nova abre la lista de apps de ese PC en vez de dar error.
 
 **Control y privacidad** (Atrio en el PC → Ajustes → Móvil)
 33. Permitir o no capturas, lanzar juegos y energía desde el móvil.

@@ -100,6 +100,31 @@ async function tailscale() {
   } catch { return { installed: true, up: false }; }
 }
 
+// UUID de la app de Polaris con ese nombre (en su apps.json): Nova la abre con él sin depender de su caché de apps
+function appUuidOf(apps, name) {
+  const want = String(name || 'Desktop').toLowerCase();
+  const a = ((apps && apps.apps) || []).find((x) => String(x.name || '').toLowerCase() === want);
+  return (a && typeof a.uuid === 'string' && a.uuid) || '';
+}
+
+function appUuidFromFile(dir, conf, name) {
+  try {
+    const f = conf.file_apps ? (path.isAbsolute(conf.file_apps) ? conf.file_apps : path.join(dir, conf.file_apps)) : path.join(dir, 'apps.json');
+    return appUuidOf(JSON.parse(fs.readFileSync(f, 'utf8')), name);
+  } catch { return ''; }
+}
+
+// Si el fichero no la tiene, se pregunta a Polaris (que además le pone UUID a las apps que no lo tengan)
+async function appUuid() {
+  if (info && info.appUuid) return info.appUuid;
+  try {
+    const r = await api('GET', '/api/apps');
+    const u = appUuidOf(r, (getCfg().app || 'Desktop'));
+    if (u && info) info.appUuid = u;
+    return u;
+  } catch { return ''; }
+}
+
 async function refresh() {
   const dir = confDir();
   const conf = readConf(path.join(dir, 'polaris.conf'));
@@ -117,6 +142,7 @@ async function refresh() {
     linux: process.platform !== 'win32',
     name: conf.sunshine_name || os.hostname(), uuid, port, web: `https://localhost:${port + 1}`,
     app: (c.app || 'Desktop'),
+    appUuid: appUuidFromFile(dir, conf, c.app || 'Desktop'),
     ...lan(),
     ts: await tailscale().catch(() => null),
     creds: !!((c.user && c.pass) || c.apiKey),
@@ -238,4 +264,4 @@ function init(opts) {
   timer = setInterval(() => refresh().catch(() => {}), 30000);
 }
 
-module.exports = { init, refresh, info: () => info, startService, pin, otp, clients, api };
+module.exports = { init, refresh, info: () => info, startService, pin, otp, clients, api, appUuid, appUuidOf };

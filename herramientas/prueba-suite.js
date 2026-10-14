@@ -68,12 +68,14 @@ async function until(fn, ms, every = 500) {
   // Polaris de mentira (streaming): instalado («polaris» en el PATH), en marcha y con su API
   const HPORT = 47300 + Math.floor(Math.random() * 400);
   const HOST_UUID = '0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0';
+  const APP_UUID = '8F4E2C1A-6B3D-4E5F-9A7B-0C1D2E3F4A5B';
   const bin = path.join(OUT, 'bin');
   fs.mkdirSync(bin, { recursive: true });
   fs.writeFileSync(path.join(bin, 'polaris'), '#!/bin/sh\nsleep 600\n', { mode: 0o755 });
   fs.mkdirSync(path.join(HOME, '.config', 'polaris'), { recursive: true });
   fs.writeFileSync(path.join(HOME, '.config', 'polaris', 'polaris.conf'), `port = ${HPORT}\nsunshine_name = PC-de-prueba\n`);
   fs.writeFileSync(path.join(HOME, '.config', 'polaris', 'polaris_state.json'), JSON.stringify({ root: { uniqueid: HOST_UUID } }));
+  fs.writeFileSync(path.join(HOME, '.config', 'polaris', 'apps.json'), JSON.stringify({ apps: [{ name: 'Steam Big Picture', uuid: '11111111-2222-3333-4444-555555555555' }, { name: 'Desktop', uuid: APP_UUID }] }));
   const fakeHost = spawn(process.execPath, [path.join(__dirname, 'fakepolaris.js'), String(HPORT), path.join(OUT, 'sun')], { stdio: 'inherit' });
   const cfgPath = path.join(HOME, '.config', 'atrio', 'config.json');
   fs.writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(fs.readFileSync(cfgPath, 'utf8')), stream: { user: 'sol', pass: 'luna' } }));
@@ -184,6 +186,7 @@ async function until(fn, ms, every = 500) {
     ok(liveSt && liveSt.uuid === HOST_UUID && liveSt.name === 'PC-de-prueba' && liveSt.creds, `Polaris visto desde el móvil: ${liveSt ? `${liveSt.name} · ${liveSt.uuid} · app ${liveSt.app}` : '-'}`);
     const stm = await send('stream', {});
     ok(stm && stm.ok && stm.uuid === HOST_UUID && stm.app === 'Desktop', `Preparar streaming: ${stm && stm.msg} (${stm && stm.name})`);
+    ok(stm && stm.appUuid === APP_UUID, `Nova recibe el UUID de la app «Desktop» de Polaris (${stm && stm.appUuid})`);
     const bad = await send('pair', { pin: '9999', name: 'Móvil de prueba' });
     ok(bad && !bad.ok, `PIN equivocado rechazado: ${bad && bad.msg}`);
     const au = await send('pair', { auto: true, name: 'Móvil de prueba' });

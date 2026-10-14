@@ -84,7 +84,7 @@ function streamPayload() {
   if (!i.installed) return { on: false, linux: !!i.linux };
   const ts = i.ts || {};
   return {
-    on: true, run: !!i.running, name: i.name || os.hostname(), uuid: i.uuid || '', app: i.app || 'Desktop',
+    on: true, run: !!i.running, name: i.name || os.hostname(), uuid: i.uuid || '', app: i.app || 'Desktop', appUuid: i.appUuid || '',
     lan: i.ips || [], mac: i.macs || [], ts: ts.up ? ts.ip : '', tsn: ts.up ? (ts.dns || '') : '', tsi: !!ts.installed,
     creds: !!i.creds, ok: (ctx.config().stream || {}).remote !== false, host: 'polaris',
   };
@@ -172,7 +172,8 @@ const HANDLERS = {
         msg = `Abriendo ${g.name}`;
       }
     }
-    return { ok: true, msg, name: i.name, uuid: i.uuid || '', app: i.app || 'Desktop' };
+    const appUuid = i.appUuid || (await host.appUuid());
+    return { ok: true, msg, name: i.name, uuid: i.uuid || '', app: i.app || 'Desktop', appUuid };
   },
   // Emparejar con Nova: con un código de un solo uso (auto: el móvil se lo pasa a Nova) o con el PIN que enseña Nova
   async pair(a, by) {
