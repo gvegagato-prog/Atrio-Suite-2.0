@@ -4,6 +4,7 @@
 //   node fb_sim.js add <usuario> <contraseña> <id> <nombre>   añade un valorado desde otro dispositivo
 //   node fb_sim.js del <usuario> <contraseña> <id>            lo borra (con su marca de borrado)
 //   node fb_sim.js pair <usuario> <contraseña> <nombre> <usuarioPareja>   crea la cuenta de la pareja y comparte
+//   node fb_sim.js book <usuario> <contraseña> <id> <título>  añade un libro «Por leer» desde otro dispositivo
 //   node fb_sim.js has <usuario> <contraseña> <texto>         ¿lo último del móvil contiene ese texto? (sale con 0 o 1)
 //   node fb_sim.js at <usuario> <contraseña> <sitio> <texto>  ¿/users/<uid>/<sitio> contiene ese texto? (la suite)
 const B = process.env.FB || 'http://127.0.0.1:9000';
@@ -54,6 +55,15 @@ async function upload(s, data, name) {
     }
     await upload(s, d, l.name);
     console.log(`${cmd} ok`);
+  } else if (cmd === 'book') {
+    const s = await login(u, p);
+    const l = await latest(s, s.localId, DEV);
+    const d = JSON.parse(l.data);
+    const id = Number(rest[0]);
+    d.bplays = (d.bplays || []).filter((b) => b.id !== id);
+    d.bplays.push({ id, name: rest[1], cover: '', hero: '', status: 0, entries: [], chapter: 0, every: 3, start: 0, end: 0, creator: 'Atrio', platform: '', pages: 3, minutes: 0, updated: Date.now() });
+    await upload(s, d, l.name);
+    console.log('book ok');
   } else if (cmd === 'at') {
     // ¿En ese sitio de la cuenta (p. ej. suite/shots) aparece ese texto? (sale con 0 o 1)
     const s = await login(u, p);

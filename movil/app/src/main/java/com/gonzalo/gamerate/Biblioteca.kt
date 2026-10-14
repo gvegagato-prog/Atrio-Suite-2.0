@@ -89,7 +89,7 @@ fun LibraryScreen(
     val grid = rememberLazyGridState()
     Box(Modifier.fillMaxSize()) {
         LazyVerticalGrid(
-            GridCells.Adaptive(150.dp), state = grid,
+            GridCells.Adaptive(when (Skin.covers) { 1 -> 185.dp; 2 -> 108.dp; else -> 150.dp }), state = grid,
             contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 130.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize().statusBarsPadding()

@@ -62,7 +62,7 @@ object AppIcon {
     fun drawableId(ctx: Context, id: String) = ctx.resources.getIdentifier("icon_$id", "mipmap", ctx.packageName)
 }
 
-private enum class StyleTab(val title: String) { Mixes("Combinaciones"), Forms("Forma"), Gauges("Notas"), Colors("Colores"), Titles("Títulos"), Text("Texto"), Size("Tamaño"), Back("Fondo"), Icon("Icono") }
+private enum class StyleTab(val title: String) { Mixes("Combinaciones"), Forms("Forma"), Gauges("Notas"), Colors("Colores"), Accent("Acento"), Titles("Títulos"), Text("Texto"), Size("Interfaz"), Back("Fondo"), Icon("Icono") }
 
 /** Nombre corto de lo elegido ahora (para la tarjeta de Ajustes). */
 fun skinSummary(): String = Skin.currentStyle()?.name
@@ -180,14 +180,54 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onLook: (Look) -> Unit =
                         item { FontRow("Atrio", "Inter, la de siempre", AtrioBody, Skin.body == "Atrio", big = false) { Skin.body = "Atrio"; save() } }
                         items(BODY_FONTS, key = { it.name }) { f -> FontRow(f.name, null, Skin.family(f.name)!!, Skin.body == f.name, big = false) { Skin.body = f.name; save() } }
                     }
-                    StyleTab.Size -> Column(Modifier.padding(16.dp)) {
+                    StyleTab.Size -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
                         Text("Tamaño del texto", fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             TEXT_SCALES.forEach { (v, n) -> SoftChip(n, Skin.textScale == v) { Skin.textScale = v; save() } }
                         }
-                        Spacer(Modifier.height(10.dp))
                         Text("Se suma al tamaño que tengas en Android. Todo se recoloca solo.", color = Muted, fontSize = 13.sp)
+                        Spacer(Modifier.height(18.dp))
+                        Text("Movimiento", fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf("Vivo", "Sobrio", "Mínimo").forEachIndexed { i, n -> SoftChip(n, Skin.motion == i) { Skin.motion = i; save() } }
+                        }
+                        Text(when (Skin.motion) {
+                            0 -> "Muelles con rebote, portadas que vuelan a la ficha y entradas en cascada."
+                            1 -> "Las mismas transiciones, más rápidas y sin rebote."
+                            else -> "Casi sin animaciones: todo aparece al momento."
+                        }, color = Muted, fontSize = 13.sp)
+                        Spacer(Modifier.height(18.dp))
+                        Text("Portadas de las bibliotecas", fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(2 to "Pequeñas (3 por fila)", 0 to "Normales", 1 to "Grandes").forEach { (v, n) -> SoftChip(n, Skin.covers == v) { Skin.covers = v; save() } }
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Text("Barra de abajo", fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            SoftChip("Con el nombre", Skin.dockLabels) { Skin.dockLabels = true; save() }
+                            SoftChip("Solo iconos", !Skin.dockLabels) { Skin.dockLabels = false; save() }
+                        }
+                    }
+                    StyleTab.Accent -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        Text("Color de acento", fontWeight = FontWeight.SemiBold)
+                        Text("El de los botones, la nota general, el progreso y los resaltados. Por defecto, el de la paleta.", color = Muted, fontSize = 13.sp)
+                        Spacer(Modifier.height(12.dp))
+                        SoftChip("El de la paleta", Skin.accent == 0L) { withReveal { Skin.accent = 0L; save() } }
+                        Spacer(Modifier.height(12.dp))
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ACCENTS.forEach { (c, n) ->
+                                val on = Skin.accent == c
+                                Box(
+                                    Modifier.size(50.dp).press { withReveal { Skin.accent = c; save() } }.clip(CircleShape).background(Color(c))
+                                        .border(if (on) 3.dp else 0.dp, if (on) Charcoal else Color.Transparent, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) { if (on) Icon(Icons.Rounded.Check, n, tint = Color.White) }
+                            }
+                        }
                     }
                     StyleTab.Icon -> IconPicker()
                 }
@@ -404,3 +444,10 @@ private fun BackgroundPicker(onLook: (Look) -> Unit) {
     Spacer(Modifier.height(6.dp))
     androidx.compose.material3.TextButton({ onLook(Look()) }) { Text("Volver al fondo por defecto", color = Muted) }
 }
+
+/** Colores de acento para elegir. */
+val ACCENTS: List<Pair<Long, String>> = listOf(
+    0xFFFF7A50 to "Coral", 0xFFE5484D to "Rojo", 0xFFFF4F9A to "Fresa", 0xFFC86BFA to "Orquídea", 0xFF8B5CF6 to "Violeta",
+    0xFF5B6CFF to "Índigo", 0xFF3E9BFF to "Azul", 0xFF22B8CF to "Turquesa", 0xFF20C997 to "Menta", 0xFF4CAF50 to "Verde",
+    0xFF94C93D to "Lima", 0xFFFFC53D to "Oro", 0xFFFF9F1C to "Naranja", 0xFFB08968 to "Café", 0xFF8D99AE to "Pizarra", 0xFFE6E1D3 to "Hueso"
+)

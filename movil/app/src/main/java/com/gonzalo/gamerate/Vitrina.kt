@@ -350,7 +350,7 @@ fun Dock(items: List<DockItem>, selected: Int, modifier: Modifier = Modifier, on
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(it.icon, it.label, tint = fg, modifier = Modifier.size(22.dp))
-                    if (on) { Spacer(Modifier.width(7.dp)); Text(it.label, color = fg, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1) }
+                    if (on && Skin.dockLabels) { Spacer(Modifier.width(7.dp)); Text(it.label, color = fg, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1) }
                 }
             }
         }

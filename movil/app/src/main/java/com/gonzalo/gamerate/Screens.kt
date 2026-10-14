@@ -345,35 +345,13 @@ fun SettingsScreen(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BackButton(onBack)
             Column {
-                Overline("Atrio")
-                Text("Ajustes", fontFamily = Display, fontSize = 26.sp, lineHeight = 30.sp)
+                Overline("Perfil")
+                Text("Ajustes", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 33.sp)
             }
         }
         Spacer(Modifier.height(18.dp))
 
-        SettingsSection("Apariencia", 100) {
-            StyleEntry(themeMode, onTheme)
-            Text("Tema claro u oscuro, combinaciones, forma, notas, colores, letras, tamaño, fondo e icono: todo está en Estilo.",
-                color = UiSoft, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
-        }
-
-        SettingsSection("Objetivos de $year", 180) {
-            Text("¿Cuántos quieres terminar este año? Verás el progreso en el menú y en Estadísticas. 0 = sin objetivo.", color = UiSoft)
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(GAMES.title, Modifier.weight(1f), fontWeight = FontWeight.Medium)
-                Stepper(goalGames, "", { onGoal(0, goalGames - 1) }, { onGoal(0, goalGames + 1) })
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(BOOKS.title, Modifier.weight(1f), fontWeight = FontWeight.Medium)
-                Stepper(goalBooks, "", { onGoal(1, goalBooks - 1) }, { onGoal(1, goalBooks + 1) })
-            }
-        }
-
-        SettingsSection("Cuenta y pareja", 260) { couple() }
-
-        SettingsSection("SteamGridDB", 340) {
+        SettingsSection("Portadas de juegos (SteamGridDB)", 120) {
             OutlinedTextField(k, { k = it }, label = { Text("API key de SteamGridDB") }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Text("Se genera en tu perfil de steamgriddb.com, en Preferencias > API. Se guarda solo en este dispositivo.", color = UiSoft, modifier = Modifier.padding(vertical = 8.dp))

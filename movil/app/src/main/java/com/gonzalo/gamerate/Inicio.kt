@@ -251,14 +251,16 @@ private fun OngoingCard(
                     if (live) { Spacer(Modifier.width(8.dp)); LiveDot() }
                 }
                 Text(p.name, color = Color.White, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 24.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                val read = if (o.kind.isBook && BookFiles.get(ctx, p.id) != null) BookFiles.progress(ctx, p.id) else null
                 val line = listOfNotNull(
-                    p.percent()?.let { "$it %" },
+                    read?.let { "${(it * 100).toInt()} % leído" } ?: p.percent()?.let { "$it %" },
                     if (o.kind.isBook && p.chapter > 0) "cap. ${p.chapter}" else null,
                     if (!o.kind.isBook && p.minutes > 0) hoursText(p.minutes) else null,
                     p.creator.ifBlank { null }
                 ).joinToString(" · ")
                 if (line.isNotBlank()) Text(line, color = Color.White.copy(alpha = 0.75f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                p.percent()?.let { pc ->
+                (read?.let { (it * 100).toInt() } ?: p.percent())?.let { pc ->
                     Spacer(Modifier.height(6.dp))
                     Box(Modifier.fillMaxWidth().height(4.dp).clip(pillShape()).background(Color.White.copy(alpha = 0.22f))) {
                         Box(Modifier.fillMaxWidth((pc / 100f).coerceIn(0.02f, 1f)).fillMaxHeight().background(ColGeneral))

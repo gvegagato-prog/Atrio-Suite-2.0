@@ -73,7 +73,7 @@ fun ProgressPanel(
     val partWord = if (kind.isTv) "episodio" else if (kind.custom) "capítulo o episodio" else "capítulo o acto"
 
     Column(
-        Modifier.fillMaxWidth().border(1.dp, Line, shape).padding(16.dp).animateContentSize()
+        Modifier.fillMaxWidth().surface(20.dp, Crudo).padding(16.dp).animateContentSize()
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -242,7 +242,7 @@ fun TtbTiles(main: Int, extra: Int, full: Int) {
             .filter { it.second > 0 }
             .forEach { (l, m) ->
                 Column(
-                    Modifier.weight(1f).border(1.dp, Line, shp(12.dp)).padding(vertical = 10.dp),
+                    Modifier.weight(1f).clip(shp(14.dp)).background(Sand).padding(vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(shortHours(m), fontFamily = Display, fontSize = 20.sp, maxLines = 1, softWrap = false,

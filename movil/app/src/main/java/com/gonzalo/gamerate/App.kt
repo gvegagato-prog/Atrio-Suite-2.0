@@ -791,7 +791,7 @@ fun App(
     fun primaryLabel(o: Ongoing): Pair<String, androidx.compose.ui.graphics.vector.ImageVector> = when {
         pcGameOf(o) != null -> "Streaming" to Icons.Rounded.Cast
         o.kind.isBook && BookFiles.get(ctx, o.play.id) != null -> "Leer" to Icons.Rounded.AutoStories
-        else -> "Apunte" to Icons.Rounded.EditNote
+        else -> "Apuntar" to Icons.Rounded.EditNote
     }
     fun primaryAction(o: Ongoing, nav: (Screen) -> Unit) {
         val g = pcGameOf(o)

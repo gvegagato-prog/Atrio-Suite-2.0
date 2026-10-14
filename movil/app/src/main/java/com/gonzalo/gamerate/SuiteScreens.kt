@@ -119,7 +119,7 @@ fun LiveCard(
         val known = Suite.pcs().maxByOrNull { it.at }
         if (known != null) {
             Row(
-                Modifier.fillMaxWidth().clip(shp(16.dp)).border(1.dp, Line, shp(16.dp))
+                Modifier.fillMaxWidth().clip(shp(16.dp)).background(Sand)
                     .clickable { onRemote() }.padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -140,7 +140,7 @@ fun LiveCard(
     val shape = shp(24.dp)
     if (g == null) {
         Row(
-            Modifier.fillMaxWidth().clip(shape).background(Crudo).border(1.dp, Line, shape).clickable { onRemote() }.padding(16.dp),
+            Modifier.fillMaxWidth().surface(20.dp, Crudo).clip(shp(20.dp)).clickable { onRemote() }.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(Modifier.size(10.dp).background(ColMusic, CircleShape))
@@ -219,7 +219,7 @@ fun SuiteIntro(title: String, text: String, onClick: () -> Unit) {
     val shape = shp(20.dp)
     Row(
         Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(LiveColor.copy(alpha = 0.18f), Color.Transparent)))
-            .border(1.dp, Line, shape).clickable { onClick() }.padding(16.dp),
+            .clickable { onClick() }.padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Rounded.Computer, null, tint = LiveColor, modifier = Modifier.size(28.dp))
@@ -474,7 +474,7 @@ fun PlaySuitePanel(
     onParts: (Boolean) -> Unit = {}
 ) {
     val shape = shp(16.dp)
-    Column(Modifier.fillMaxWidth().border(1.dp, Line, shape).padding(16.dp).animateContentSize()) {
+    Column(Modifier.fillMaxWidth().surface(20.dp, Crudo).padding(16.dp).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Overline("Valorar por partes")
@@ -512,7 +512,7 @@ fun PlaySuitePanel(
     }
     Spacer(Modifier.height(14.dp))
     val memos = p.liveMemos.sortedByDescending { it.t }
-    Column(Modifier.fillMaxWidth().border(1.dp, Line, shape).padding(16.dp).animateContentSize()) {
+    Column(Modifier.fillMaxWidth().surface(20.dp, Crudo).padding(16.dp).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Overline("Apuntes rápidos")

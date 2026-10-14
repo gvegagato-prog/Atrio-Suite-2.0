@@ -10,7 +10,31 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
-## Lo nuevo
+## Atrio 6 (móvil): cambio completo
+
+La app del móvil se ha rehecho por fuera: otra estética, otra navegación y otras animaciones. Por dentro
+conserva todo (valoraciones, opiniones, guías, estudios, duración media, abrir/cerrar/stremear juegos del PC,
+capturas, calendario, modo pareja, sincronización).
+
+- **Navegación nueva:** dock abajo con Inicio, Juegos, Libros, Cine y Diario. Perfil y ajustes, arriba a la derecha.
+- **Inicio:** «Sigue donde lo dejaste» (juegos, libros con % leído, series), el PC en directo, «¿Qué empiezo?»,
+  objetivos del año, colecciones y lo que te recomienda tu pareja.
+- **Fichas con portada grande** (la portada vuela desde la lista), datos en chips y la acción principal a mano:
+  Streaming (juegos del PC), Leer (libros con archivo) o Apuntar.
+- **Rotten Tomatoes:** nota de la crítica (Tomatómetro) y del público en la portada de cada peli y serie.
+  Se lee de la web pública de Rotten Tomatoes (no hay API abierta); se guarda 7 días.
+- **Descubrir con preguntas:** 330 preguntas de pelis/series y 320 de libros. Cada test te hace 5, 7 o 10
+  (elige tú) y devuelve muchos resultados ordenados por afinidad. Pelis/series con TMDB (clave gratuita),
+  libros con Open Library.
+- **Lector de libros:** adjunta a cada libro un **EPUB o PDF del propio móvil** (no se sube a ninguna parte).
+  Temas (papel, sepia, gris, noche, negro), brillo y luz cálida, tamaño y tipo de letra, interlineado, márgenes,
+  justificado, paginado o desplazamiento, subrayados en 4 colores y subrayado de línea, notas, marcadores,
+  índice, búsqueda en todo el libro, teclas de volumen para pasar página y recuerda por dónde ibas.
+  Basado en foliate-js y pdf.js (licencias en `assets/lector/LICENCIAS.txt`).
+- **Estilo:** tema «Vitrina» nuevo, color de acento, intensidad de las animaciones, tamaño de portadas,
+  nombres en el dock, fondo «Aurora»; todo en Perfil → Estilo.
+
+## Lo nuevo (Atrio 5)
 
 **En directo**
 1. El móvil ve al momento a qué juegas en el PC: fondo, logo, cronómetro de la partida y horas totales.

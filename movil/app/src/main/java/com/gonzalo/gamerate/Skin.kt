@@ -295,6 +295,12 @@ object Skin {
     var chameleon by mutableStateOf(true)
     /** Movimiento: 0 vivo (con muelles), 1 sobrio, 2 mínimo. */
     var motion by mutableStateOf(0)
+    /** Color de acento propio (0 = el de la paleta). */
+    var accent by mutableStateOf(0L)
+    /** Tamaño de las portadas en las bibliotecas: 0 normal, 1 grandes, 2 pequeñas. */
+    var covers by mutableStateOf(0)
+    /** Dock con el nombre del destino elegido (si no, solo iconos). */
+    var dockLabels by mutableStateOf(true)
     /** Tonos de la ficha abierta (camaleón), por encima de la paleta. */
     var override by mutableStateOf<Tones?>(null)
 
@@ -302,7 +308,7 @@ object Skin {
     var open by mutableStateOf(false)
 
     /** Tonos que se ven ahora (según el modo claro u oscuro). */
-    val tones: Tones get() = override ?: base
+    val tones: Tones get() = override ?: base.let { b -> if (accent != 0L) b.copy(general = accent) else b }
     /** Tonos de la paleta elegida, sin camaleón. */
     val base: Tones get() = if (Mode.dark) palette.dark else palette.light
 
@@ -362,11 +368,15 @@ object Skin {
         gauge = GaugeKind.entries.firstOrNull { it.name == p.getString("skin_gauge", "") }
         chameleon = p.getBoolean("skin_chameleon", true)
         motion = p.getInt("skin_motion", 0)
+        accent = p.getLong("skin_accent", 0L)
+        covers = p.getInt("skin_covers", 0)
+        dockLabels = p.getBoolean("skin_docklabels", true)
     }
 
     fun save(ctx: Context) {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
-            .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion).apply()
+            .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
+            .putLong("skin_accent", accent).putInt("skin_covers", covers).putBoolean("skin_docklabels", dockLabels).apply()
     }
 }
