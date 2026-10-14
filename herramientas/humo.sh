@@ -265,6 +265,14 @@ tap "example.com"; sleep 3
 must see "documentation examples" 10
 echo "   cerrada y reabierta, sigue en su sitio" | tee -a "$LOG"
 adb shell input keyevent 4; sleep 2
+# La ficha de «Jugando» se abre en modo lectura: los campos salen con «Editar»
+must seek "Editar"
+shot 38_ficha_lectura 1
+tap "Editar"; sleep 1
+must seek "Listo"
+shot 39_ficha_editando 1
+tap "Listo"; sleep 1
+echo "   la ficha se abre en modo lectura y se edita con «Editar»" | tee -a "$LOG"
 pkill -f lanzar-atrio || true
 
 step "Estilo: combinaciones, colores, letras e icono de la app"

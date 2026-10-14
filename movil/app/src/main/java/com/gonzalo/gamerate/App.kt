@@ -736,7 +736,7 @@ fun App(
         if (p != null) {
             val np = p.copy(cover = g.cover, hero = g.hero)
             savePlay(np)
-            screen = Screen.PlayDetail(np)
+            screen = Screen.PlayDetail(np, editing = true)
         } else {
             screen = Screen.Edit(g, s.isNew, editing = true)
         }
@@ -1050,7 +1050,7 @@ fun App(
                         } else if (s.forPlay) {
                             val np = Play(id, name, cover, "", 0, emptyList(), creator = creator, updated = now())
                             setPlays(kind, playsOf(kind) + np)
-                            screen = Screen.PlayDetail(np)
+                            screen = Screen.PlayDetail(np, editing = true)
                         } else {
                             screen = Screen.Edit(Game(id, name, cover, creator = creator), true)
                         }
@@ -1123,7 +1123,7 @@ fun App(
                     onSkip = { toEdit(s, s.game) },
                     onBack = {
                         val p = s.play
-                        screen = if (s.chain) Screen.Home else if (p != null) Screen.PlayDetail(p) else Screen.Edit(s.game, s.isNew, editing = true)
+                        screen = if (s.chain) Screen.Home else if (p != null) Screen.PlayDetail(p, editing = true) else Screen.Edit(s.game, s.isNew, editing = true)
                     },
                     search = if (kind.isBook && !s.hero) ({ q -> OpenLib.coversFor(q) }) else null,
                     translate = if (kind.isBook && !s.hero) ({ q -> TitleEn.translate(q)?.let { it.title to it.source } }) else null,
@@ -1154,7 +1154,7 @@ fun App(
                 is Screen.PlayDetail -> {
                     val live = myPlays.find { it.id == s.play.id } ?: s.play
                     PlayDetailScreen(
-                        kind = kind, partner = side, p0 = live, sessId = sessId, sessHours = store.sessionHours,
+                        kind = kind, partner = side, p0 = live, startEditing = s.editing, sessId = sessId, sessHours = store.sessionHours,
                         sessStart = store.sessionStart,
                         myReact = reacts[reactKey(kind, s.play.id)],
                         onReact = { e -> react(kind, s.play.id, e) },

@@ -101,9 +101,12 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
 58. Cada juego en curso tiene el interruptor **Valorar por partes** (móvil: en su ficha; PC: menú ⋯ de la ficha).
     Apagado (por ejemplo en Deadlock o LoL), cada partida sigue sumando horas, pero no pide nota, no avisa, no sale
     como pendiente y los capítulos o las sesiones con temporizador tampoco ofrecen valorarlas.
+60. Las fichas de **Jugando** (y de lo que estás leyendo o viendo) se abren en **modo lectura**, como los valorados:
+    estado, plataforma, horas y fechas en texto. Los campos, el progreso, la portada y «Eliminar» salen con **Editar**
+    (abajo del todo); «Listo» los vuelve a cerrar. Lo recién creado se abre ya en edición.
 
 **Arreglos**
-59. Apagar, reiniciar o suspender desde el móvil prueba varias vías (systemctl, logind, Plasma, GNOME); si algo lo
+61. Apagar, reiniciar o suspender desde el móvil prueba varias vías (systemctl, logind, Plasma, GNOME); si algo lo
     impide, el móvil te dice qué (por ejemplo, el programa que lo bloquea). La orden ya no puede repetirse al encender.
 
 **Control y privacidad** (Atrio en el PC → Ajustes → Móvil)

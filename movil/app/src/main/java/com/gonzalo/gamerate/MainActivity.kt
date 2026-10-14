@@ -48,7 +48,8 @@ sealed interface Screen {
     class Art(val game: Game, val hero: Boolean, val isNew: Boolean, val chain: Boolean, val play: Play?) : Screen
     /** editing: abrir directamente en edición (si no, las ya valoradas se abren en modo lectura). */
     class Edit(val game: Game, val isNew: Boolean, val editing: Boolean = false) : Screen
-    class PlayDetail(val play: Play) : Screen
+    /** editing: se abre ya en modo edición (recién creada, o al volver de cambiar la portada). */
+    class PlayDetail(val play: Play, val editing: Boolean = false) : Screen
     class Note(val play: Play, val entry: Entry?, val seg: Seg? = null, val part: String = "") : Screen
     /** Mando a distancia del PC (la suite con Atrio). */
     object Suite : Screen

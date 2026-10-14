@@ -12,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Timer
@@ -38,7 +40,7 @@ fun Stepper(value: Int, suffix: String, onMinus: () -> Unit, onPlus: () -> Unit)
 
 @Composable
 fun PlayDetailScreen(
-    kind: Kind, partner: PartnerSide?, p0: Play, sessId: Long, sessHours: Int, sessStart: Long,
+    kind: Kind, partner: PartnerSide?, p0: Play, startEditing: Boolean = false, sessId: Long, sessHours: Int, sessStart: Long,
     myReact: String?, onReact: (String?) -> Unit,
     onChange: (Play) -> Unit, onNote: (Play, Entry?) -> Unit,
     onStart: (Play, Int) -> Unit, onStop: () -> Unit,
@@ -70,6 +72,8 @@ fun PlayDetailScreen(
     var viewP by remember { mutableStateOf(false) }
     val partnerName = partner?.name ?: ""
     var recommend by remember { mutableStateOf(false) }
+    // Se abre en modo lectura (como los valorados): los datos se cambian con «Editar»
+    var editing by remember(p0.id, startEditing) { mutableStateOf(startEditing) }
     LaunchedEffect(viewP) { Mode.pageP = viewP }
     DisposableEffect(Unit) { onDispose { Mode.pageP = false } }
     Crossfade(viewP && partner != null, animationSpec = tween(450), label = "pareja") { pv ->
@@ -96,6 +100,22 @@ fun PlayDetailScreen(
                 Text("Toca dos veces la portada para ver la ficha de $partnerName.", color = UiSoft, fontSize = 14.sp, textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(12.dp))
+            if (!editing) {
+                // Lectura: estado, plataforma, horas, páginas y fechas, sin campos
+                val info = listOfNotNull(
+                    kind.statuses.getOrNull(p.status),
+                    p.platform.ifBlank { null },
+                    if (!kind.isBook && p.minutes > 0) hoursText(p.minutes) else null,
+                    if (kind.isBook && p.pages > 0) "${p.pages} págs." else null,
+                    if (kind.isBook && p.status == 1 && p.chapter > 0) "cap. ${p.chapter}" else null
+                ).joinToString(" · ")
+                if (info.isNotEmpty()) Text(info, color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
+                val days = listOfNotNull(
+                    if (p.start > 0L) "Inicio " + fmtDay(p.start) else null,
+                    if (p.end > 0L) "Fin " + fmtDay(p.end) else null
+                ).joinToString(" · ")
+                if (days.isNotEmpty()) Text(days, color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
+            } else
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(kind.statuses[0], p.status == 0, Charcoal) { upd(p.copy(status = 0)) }
                 Chip(kind.statuses[1], p.status == 1, Charcoal) {
@@ -111,6 +131,7 @@ fun PlayDetailScreen(
                 FichaPlayButtons(p.id, p.name, Modifier.padding(bottom = 16.dp))
                 GuidesSection(p.id, p.name)
             }
+            if (editing) {
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(p.creator, { upd(p.copy(creator = it)) },
                 label = { Text(kind.creatorWord) }, singleLine = true,
@@ -123,12 +144,19 @@ fun PlayDetailScreen(
             PlatformPicker(kind, p.platform) { upd(p.copy(platform = it)) }
             Spacer(Modifier.height(16.dp))
             DatesRow(p.start, p.end, { upd(p.copy(start = it)) }, { upd(p.copy(end = it)) })
+            }
             Spacer(Modifier.height(16.dp))
 
             if (kind.isBook) {
-                PagesField(p.pages) { upd(p.copy(pages = it)) }
-                Spacer(Modifier.height(14.dp))
-                if (p.status == 1) {
+                if (editing) {
+                    PagesField(p.pages) { upd(p.copy(pages = it)) }
+                    Spacer(Modifier.height(14.dp))
+                }
+                if (p.status == 1 && !editing) {
+                    if (due) Text("Llevas ${p.pending()} capítulos desde tu último apunte: toca apuntar.",
+                        color = ColGeneral, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                    else Text("Apuntas cada ${p.every} cap.", color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
+                } else if (p.status == 1) {
                     Text("Capítulo actual", color = UiSoft, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                     Spacer(Modifier.height(6.dp))
                     Stepper(p.chapter, "", { upd(p.copy(chapter = maxOf(0, p.chapter - 1))) }, { upd(p.copy(chapter = p.chapter + 1)) })
@@ -147,11 +175,13 @@ fun PlayDetailScreen(
                 }
             } else if (!kind.isGame) {
                 val fe = findEpisodes
-                ProgressPanel(p, kind, episodes = if (fe != null) ({ fe(p.id, p.name) }) else null, onPartDone = { onPartDone(p, it) }) { upd(it) }
+                ProgressPanel(p, kind, readOnly = !editing, episodes = if (fe != null) ({ fe(p.id, p.name) }) else null, onPartDone = { onPartDone(p, it) }) { upd(it) }
             } else {
-                ProgressPanel(p, kind, find = findTtb, onPartDone = { onPartDone(p, it) }) { upd(it) }
-                Spacer(Modifier.height(16.dp))
-                MinutesEditor(p.minutes) { upd(p.copy(minutes = it)) }
+                ProgressPanel(p, kind, readOnly = !editing, find = findTtb, onPartDone = { onPartDone(p, it) }) { upd(it) }
+                if (editing) {
+                    Spacer(Modifier.height(16.dp))
+                    MinutesEditor(p.minutes) { upd(p.copy(minutes = it)) }
+                }
                 Spacer(Modifier.height(14.dp))
                 if (p.status == 1) {
                     if (sessId == p.id) {
@@ -237,13 +267,24 @@ fun PlayDetailScreen(
 
             Spacer(Modifier.height(18.dp))
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionPill(Icons.Rounded.Image, "Portada") { onArt(p, false) }
-                if (!kind.isBook) ActionPill(Icons.Rounded.Wallpaper, "Fondo") { onArt(p, true) }
+                if (editing) ActionPill(Icons.Rounded.Image, "Portada") { onArt(p, false) }
+                if (editing && !kind.isBook) ActionPill(Icons.Rounded.Wallpaper, "Fondo") { onArt(p, true) }
                 if (kind.hasSoundtrack) SoundtrackButton(p.name)
                 if (onRecommend != null) ActionPill(Icons.Rounded.Favorite, "Recomendar") { recommend = true }
             }
-            Spacer(Modifier.height(6.dp))
-            TextButton({ onDelete(p) }) { Text("Eliminar", color = UiSoft) }
+            Spacer(Modifier.height(24.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+            Spacer(Modifier.height(16.dp))
+            // «Editar» abre los campos (estado, estudio, plataforma, fechas, progreso, horas, portada); «Listo» los cierra
+            OutlinedButton({ editing = !editing }, shape = RoundedCornerShape(50), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
+                Icon(if (editing) Icons.Rounded.Check else Icons.Rounded.Edit, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (editing) "Listo" else "Editar", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            }
+            if (editing) {
+                Spacer(Modifier.height(6.dp))
+                TextButton({ onDelete(p) }) { Text("Eliminar", color = UiSoft) }
+            }
         }
         Spacer(Modifier.navigationBarsPadding().height(16.dp))
     }
