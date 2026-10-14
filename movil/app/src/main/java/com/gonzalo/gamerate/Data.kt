@@ -401,7 +401,7 @@ fun cardsFromJson(a: JSONArray): List<Card> = (0 until a.length()).mapNotNull {
 
 /** Aspecto de la app: patrón de fondo, intensidad y color de cada zona. */
 data class Look(
-    val pattern: Int = 4, val intensity: Int = 0,
+    val pattern: Int = 5, val intensity: Int = 0,
     val menu: Int = 0xFFB0102F.toInt(), val games: Int = 0xFF6FB1E8.toInt(), val books: Int = 0xFF8BA777.toInt()
 )
 
@@ -429,12 +429,13 @@ class Store(ctx: Context) {
     var look: Look
         get() = Look(
             // Desde la 3.0 el fondo por defecto es liso; el patrón antiguo se guarda con otra clave.
-            p.getInt("look3_pattern", 4), p.getInt("look3_int", 0),
+            // Atrio 6: el fondo por defecto es la aurora (antes, liso); se guarda con otra clave
+            p.getInt("look6_pattern", 5), p.getInt("look3_int", 0),
             p.getInt("look_menu", 0xFFB0102F.toInt()), p.getInt("look_games", 0xFF6FB1E8.toInt()),
             p.getInt("look_books", 0xFF8BA777.toInt())
         )
         set(v) {
-            p.edit().putInt("look3_pattern", v.pattern).putInt("look3_int", v.intensity)
+            p.edit().putInt("look6_pattern", v.pattern).putInt("look3_int", v.intensity)
                 .putInt("look_menu", v.menu).putInt("look_games", v.games).putInt("look_books", v.books).apply()
         }
 

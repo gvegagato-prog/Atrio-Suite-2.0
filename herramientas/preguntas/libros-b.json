@@ -1,0 +1,6101 @@
+[
+ {
+  "id": "lb001",
+  "q": "Si tu próximo libro tuviera dragones, ¿cómo los quieres?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Gigantes y escupiendo fuego en una saga épica",
+    "e": {
+     "s": {
+      "dragons": 3,
+      "epic fantasy": 2
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "Pequeñitos y adorables, en plan cuento",
+    "e": {
+     "s": {
+      "dragons": 2,
+      "fairy tales": 2,
+      "juvenile fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Dragones no, pero magia a raudales",
+    "e": {
+     "s": {
+      "magic": 3,
+      "witches": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor sin escamas, gracias",
+    "e": {
+     "s": {
+      "dragons": -2,
+      "fantasy": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb002",
+  "q": "¿Qué clase de misterio te tiene en vilo hasta la última página?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Un cadáver en la biblioteca y un detective listísimo",
+    "e": {
+     "s": {
+      "detective and mystery stories": 3,
+      "detective": 2,
+      "murder": 1
+     }
+    }
+   },
+   {
+    "t": "Un policía cansado en una ciudad donde siempre llueve",
+    "e": {
+     "s": {
+      "police": 3,
+      "crime": 2
+     }
+    }
+   },
+   {
+    "t": "Un asesino en serie y una cuenta atrás",
+    "e": {
+     "s": {
+      "thriller": 3,
+      "suspense": 2,
+      "murder": 1
+     }
+    }
+   },
+   {
+    "t": "Una desaparición en un pueblo donde todos mienten",
+    "e": {
+     "s": {
+      "mystery": 3,
+      "suspense": 2,
+      "psychological fiction": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb003",
+  "q": "Ciencia ficción: ¿hacia dónde apuntas el telescopio?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Imperios galácticos y batallas entre flotas",
+    "e": {
+     "s": {
+      "space opera": 3,
+      "science fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Futuros grises donde todo salió fatal",
+    "e": {
+     "s": {
+      "dystopias": 3,
+      "science fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Neones, hackers e implantes en el cerebro",
+    "e": {
+     "s": {
+      "cyberpunk": 3,
+      "artificial intelligence": 1
+     }
+    }
+   },
+   {
+    "t": "Viajes en el tiempo y paradojas que dan dolor de cabeza",
+    "e": {
+     "s": {
+      "time travel": 3,
+      "science fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Robots con más alma que mucha gente",
+    "e": {
+     "s": {
+      "robots": 3,
+      "artificial intelligence": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb004",
+  "q": "¿Qué tipo de miedo te apetece pasar con las luces apagadas?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Fantasmas en una casa vieja que cruje",
+    "e": {
+     "s": {
+      "ghost stories": 3,
+      "gothic fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Vampiros, con capa o sin ella",
+    "e": {
+     "s": {
+      "vampires": 3,
+      "horror": 2
+     }
+    }
+   },
+   {
+    "t": "Terror puro, de dormir con la luz encendida",
+    "e": {
+     "s": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Inquietud psicológica, sin una gota de sangre",
+    "e": {
+     "s": {
+      "psychological fiction": 3,
+      "suspense": 2,
+      "horror": -1
+     }
+    }
+   },
+   {
+    "t": "Nada de miedo, que luego no pego ojo",
+    "e": {
+     "s": {
+      "horror": -3,
+      "ghost stories": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb005",
+  "q": "Una historia de amor... ¿con cuánto azúcar?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Mucho: final feliz garantizado o devuelvo el libro",
+    "e": {
+     "s": {
+      "romance": 3,
+      "love stories": 2
+     }
+    }
+   },
+   {
+    "t": "Amor trágico, de los que dejan cicatriz",
+    "e": {
+     "s": {
+      "love stories": 3,
+      "drama": 2,
+      "classic literature": 1
+     }
+    }
+   },
+   {
+    "t": "Amor de fondo, que no robe el protagonismo",
+    "e": {
+     "s": {
+      "love stories": 1,
+      "romance": -1
+     }
+    }
+   },
+   {
+    "t": "Ni una gota de romance, por favor",
+    "e": {
+     "s": {
+      "romance": -3,
+      "love stories": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb006",
+  "q": "Novela histórica, ¿a qué época te subes?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Roma, Egipto y togas",
+    "e": {
+     "s": {
+      "historical fiction": 3,
+      "history": 1,
+      "kings and rulers": 1
+     }
+    }
+   },
+   {
+    "t": "Castillos, reyes y conspiraciones medievales",
+    "e": {
+     "s": {
+      "historical fiction": 2,
+      "kings and rulers": 3
+     }
+    }
+   },
+   {
+    "t": "La Segunda Guerra Mundial",
+    "e": {
+     "s": {
+      "world war, 1939-1945": 3,
+      "war stories": 2,
+      "historical fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Barcos, corsarios y mares del siglo XVIII",
+    "e": {
+     "s": {
+      "pirates": 3,
+      "adventure stories": 2,
+      "historical fiction": 1
+     }
+    }
+   },
+   {
+    "t": "El pasado no me llama nada",
+    "e": {
+     "s": {
+      "historical fiction": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb007",
+  "q": "Para una de espías, ¿qué estilo prefieres?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Guerra Fría, gabardinas y agentes dobles",
+    "e": {
+     "s": {
+      "spy stories": 3
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Acción trepidante y explosiones en cada capítulo",
+    "e": {
+     "s": {
+      "spy stories": 2,
+      "thriller": 3,
+      "adventure stories": 1
+     }
+    }
+   },
+   {
+    "t": "Espionaje real, con documentos desclasificados",
+    "e": {
+     "s": {
+      "spy stories": 2,
+      "history": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Los espías no me dicen nada",
+    "e": {
+     "s": {
+      "spy stories": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb008",
+  "q": "¿Qué clase de fantasía te tira más?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Sagas épicas con mapa en la primera página",
+    "e": {
+     "s": {
+      "epic fantasy": 3,
+      "quests": 2
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "Brujas, hechizos y escuelas de magia",
+    "e": {
+     "s": {
+      "witches": 3,
+      "magic": 2,
+      "school stories": 1
+     }
+    }
+   },
+   {
+    "t": "Cuentos de hadas reinventados",
+    "e": {
+     "s": {
+      "fairy tales": 3,
+      "fantasy": 1
+     }
+    }
+   },
+   {
+    "t": "Dioses griegos o nórdicos convertidos en novela",
+    "e": {
+     "s": {
+      "mythology": 3,
+      "fantasy": 1
+     }
+    }
+   },
+   {
+    "t": "Realismo mágico: lo raro contado como si nada",
+    "e": {
+     "s": {
+      "magical realism": 3,
+      "latin american fiction": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb009",
+  "q": "El libro de aventuras perfecto tiene...",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Un tesoro, un mapa y un barco",
+    "e": {
+     "s": {
+      "adventure stories": 3,
+      "pirates": 2
+     }
+    }
+   },
+   {
+    "t": "Una misión imposible y un grupo de lo más dispar",
+    "e": {
+     "s": {
+      "quests": 3,
+      "friendship": 2,
+      "fantasy": 1
+     }
+    }
+   },
+   {
+    "t": "Alguien perdido intentando sobrevivir",
+    "e": {
+     "s": {
+      "survival": 3,
+      "nature": 1
+     }
+    }
+   },
+   {
+    "t": "Exploradores de verdad, sin inventarse nada",
+    "e": {
+     "s": {
+      "travel": 3,
+      "survival": 1
+     },
+     "fic": "nonfiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb010",
+  "q": "Cómics y novela gráfica: ¿cuál es tu rollo?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Superhéroes, capas y multiversos",
+    "e": {
+     "s": {
+      "superheroes": 3,
+      "comic books, strips": 2
+     }
+    }
+   },
+   {
+    "t": "Novela gráfica adulta, de las que te dejan pensando",
+    "e": {
+     "s": {
+      "graphic novels": 3,
+      "memoirs": 1
+     }
+    }
+   },
+   {
+    "t": "Tiras cómicas cortitas para reírme",
+    "e": {
+     "s": {
+      "comic books, strips": 3,
+      "humor": 2
+     }
+    }
+   },
+   {
+    "t": "Yo soy de solo texto",
+    "e": {
+     "s": {
+      "graphic novels": -3,
+      "comic books, strips": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb011",
+  "q": "¿Te apuntas a una novela de humor?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Sí, quiero reírme a carcajadas en el metro",
+    "e": {
+     "s": {
+      "humor": 3
+     }
+    }
+   },
+   {
+    "t": "Mejor sátira afilada, que muerda",
+    "e": {
+     "s": {
+      "satire": 3,
+      "politics": 1
+     }
+    }
+   },
+   {
+    "t": "Humor sutil, de sonrisa ladeada",
+    "e": {
+     "s": {
+      "humor": 2,
+      "english fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Hoy no estoy para bromas",
+    "e": {
+     "s": {
+      "humor": -2,
+      "satire": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb012",
+  "q": "True crime: ¿hasta dónde quieres meterte?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Casos reales contados como un thriller",
+    "e": {
+     "s": {
+      "true crime": 3,
+      "murder": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Me interesa más la investigación policial",
+    "e": {
+     "s": {
+      "police": 2,
+      "true crime": 2,
+      "nonfiction": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero el crimen inventado, que duermo mejor",
+    "e": {
+     "s": {
+      "true crime": -2,
+      "crime": 2,
+      "detective and mystery stories": 1
+     },
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "Nada de crímenes, gracias",
+    "e": {
+     "s": {
+      "crime": -3,
+      "murder": -3,
+      "true crime": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb013",
+  "q": "Los thrillers psicológicos te parecen...",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Mi droga: narrador poco fiable y giro final",
+    "e": {
+     "s": {
+      "psychological fiction": 3,
+      "thriller": 2,
+      "suspense": 2
+     }
+    }
+   },
+   {
+    "t": "Bien, de vez en cuando",
+    "e": {
+     "s": {
+      "suspense": 1,
+      "psychological fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Demasiada tensión para mis nervios",
+    "e": {
+     "s": {
+      "thriller": -2,
+      "suspense": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb014",
+  "q": "¿Qué tal una distopía para esta temporada?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Clásica: vigilancia, censura y miedo",
+    "e": {
+     "s": {
+      "dystopias": 3,
+      "classic literature": 1
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Juvenil, con rebelión y triángulo amoroso",
+    "e": {
+     "s": {
+      "dystopias": 2,
+      "young adult fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Prefiero utopías, que drama ya hay bastante",
+    "e": {
+     "s": {
+      "utopias": 3,
+      "dystopias": -1
+     }
+    }
+   },
+   {
+    "t": "Ni una ni otra",
+    "e": {
+     "s": {
+      "dystopias": -2,
+      "utopias": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb015",
+  "q": "Elige detective de bolsillo:",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Una ancianita observadora que todo lo sabe",
+    "e": {
+     "s": {
+      "detective and mystery stories": 3,
+      "english fiction": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Un excéntrico con lupa y violín",
+    "e": {
+     "s": {
+      "detective": 3,
+      "classic literature": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Un inspector con problemas personales y whisky",
+    "e": {
+     "s": {
+      "police": 3,
+      "crime": 2,
+      "detective": 1
+     }
+    }
+   },
+   {
+    "t": "Un aficionado que se mete donde no le llaman",
+    "e": {
+     "s": {
+      "mystery": 3,
+      "humor": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb016",
+  "q": "¿Juvenil, infantil o adulto?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Juvenil sin complejos: me encanta",
+    "e": {
+     "s": {
+      "young adult fiction": 3,
+      "coming of age": 2
+     }
+    }
+   },
+   {
+    "t": "Infantil, de los que se leen en voz alta",
+    "e": {
+     "s": {
+      "juvenile fiction": 3,
+      "fairy tales": 1
+     }
+    }
+   },
+   {
+    "t": "Adulto, por favor",
+    "e": {
+     "s": {
+      "young adult fiction": -2,
+      "juvenile fiction": -2
+     }
+    }
+   },
+   {
+    "t": "Me da igual la etiqueta",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb017",
+  "q": "Vampiros y brujas paseando por la ciudad moderna, ¿te apuntas?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "¡Sí! Cuanto más oscuro, mejor",
+    "e": {
+     "s": {
+      "vampires": 3,
+      "witches": 2,
+      "horror": 1
+     }
+    }
+   },
+   {
+    "t": "Sí, pero con chispa romántica",
+    "e": {
+     "s": {
+      "vampires": 2,
+      "witches": 1,
+      "romance": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero la magia en mundos inventados",
+    "e": {
+     "s": {
+      "epic fantasy": 2,
+      "fantasy": 2,
+      "vampires": -1
+     }
+    }
+   },
+   {
+    "t": "No, gracias",
+    "e": {
+     "s": {
+      "vampires": -3,
+      "witches": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb018",
+  "q": "Si eliges una novela bélica, ¿qué buscas en ella?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Trincheras y batallas contadas sin filtro",
+    "e": {
+     "s": {
+      "war stories": 3
+     }
+    }
+   },
+   {
+    "t": "La vida de los civiles mientras caen las bombas",
+    "e": {
+     "s": {
+      "world war, 1939-1945": 2,
+      "families": 2,
+      "historical fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Mejor un ensayo histórico sobre la guerra",
+    "e": {
+     "s": {
+      "history": 3,
+      "world war, 1939-1945": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "La guerra me deja mal cuerpo",
+    "e": {
+     "s": {
+      "war stories": -3,
+      "world war, 1939-1945": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb019",
+  "q": "¿Ciencia ficción dura, con física de verdad?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Me flipa: dame órbitas y ecuaciones",
+    "e": {
+     "s": {
+      "science fiction": 3,
+      "physics": 2,
+      "astronomy": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero la ciencia ficción más humana",
+    "e": {
+     "s": {
+      "science fiction": 2,
+      "psychological fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Me pierdo con tanta ciencia",
+    "e": {
+     "s": {
+      "physics": -2,
+      "science fiction": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb020",
+  "q": "¿Un libro con un animal como protagonista?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Un perro leal que me rompa el corazón",
+    "e": {
+     "s": {
+      "dogs": 3,
+      "animals": 2
+     }
+    }
+   },
+   {
+    "t": "Un gato misterioso y caprichoso",
+    "e": {
+     "s": {
+      "cats": 3,
+      "animals": 2
+     }
+    }
+   },
+   {
+    "t": "Fábulas con animales que hablan",
+    "e": {
+     "s": {
+      "animals": 2,
+      "fairy tales": 2,
+      "satire": 1
+     }
+    }
+   },
+   {
+    "t": "Animales salvajes en plena naturaleza",
+    "e": {
+     "s": {
+      "nature": 3,
+      "animals": 2
+     }
+    }
+   },
+   {
+    "t": "Paso de bichos",
+    "e": {
+     "s": {
+      "animals": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb021",
+  "q": "Gótico: castillos, tormentas y secretos de familia. ¿Te va?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Me encanta, cuanta más niebla mejor",
+    "e": {
+     "s": {
+      "gothic fiction": 3
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Gótico moderno, con su toque psicológico",
+    "e": {
+     "s": {
+      "gothic fiction": 2,
+      "psychological fiction": 2
+     },
+     "era": "modern"
+    }
+   },
+   {
+    "t": "Demasiado lúgubre para mí",
+    "e": {
+     "s": {
+      "gothic fiction": -2,
+      "horror": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb022",
+  "q": "¿Qué sabor de novela negra pides?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Nórdica: frío, oscuridad y crímenes horribles",
+    "e": {
+     "s": {
+      "crime": 3,
+      "police": 2,
+      "murder": 2
+     }
+    }
+   },
+   {
+    "t": "Hard-boiled americano, con sombrero y gabardina",
+    "e": {
+     "s": {
+      "crime": 2,
+      "detective": 2,
+      "american fiction": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Mediterránea, con buena mesa y calor",
+    "e": {
+     "s": {
+      "crime": 2,
+      "police": 2,
+      "cooking": 1
+     }
+    }
+   },
+   {
+    "t": "Cozy: misterio amable y sin sangre",
+    "e": {
+     "s": {
+      "mystery": 3,
+      "humor": 1,
+      "murder": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb023",
+  "q": "Si te digo «épica», piensas en...",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "La Ilíada y héroes de bronce",
+    "e": {
+     "s": {
+      "mythology": 3,
+      "classic literature": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Una saga de fantasía de mil páginas",
+    "e": {
+     "s": {
+      "epic fantasy": 3
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "Una guerra entre estrellas",
+    "e": {
+     "s": {
+      "space opera": 3
+     }
+    }
+   },
+   {
+    "t": "Una familia contada durante generaciones",
+    "e": {
+     "s": {
+      "families": 3,
+      "historical fiction": 2
+     },
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb024",
+  "q": "¿Superhéroes en una novela sin viñetas?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Sí, ¿por qué no?",
+    "e": {
+     "s": {
+      "superheroes": 3
+     }
+    }
+   },
+   {
+    "t": "Mejor en viñetas, como manda la tradición",
+    "e": {
+     "s": {
+      "superheroes": 2,
+      "comic books, strips": 3,
+      "graphic novels": 1
+     }
+    }
+   },
+   {
+    "t": "Superhéroes, cero",
+    "e": {
+     "s": {
+      "superheroes": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb025",
+  "q": "¿Una historia de deporte y superación?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Sí, me encantan las remontadas imposibles",
+    "e": {
+     "s": {
+      "sports": 3,
+      "coming of age": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor la biografía de un deportista real",
+    "e": {
+     "s": {
+      "sports": 3,
+      "biography": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Lo deportivo me aburre soberanamente",
+    "e": {
+     "s": {
+      "sports": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb026",
+  "q": "¿Un drama familiar de los que remueven por dentro?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Sí: secretos, herencias y cenas tensas",
+    "e": {
+     "s": {
+      "families": 3,
+      "family life": 2,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero historias de amistad",
+    "e": {
+     "s": {
+      "friendship": 3,
+      "families": -1
+     }
+    }
+   },
+   {
+    "t": "Algo más ligerito, por favor",
+    "e": {
+     "s": {
+      "humor": 2,
+      "families": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb027",
+  "q": "Novela de crecimiento: ¿qué edad tiene quien la protagoniza?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Un niño descubriendo el mundo",
+    "e": {
+     "s": {
+      "coming of age": 3,
+      "juvenile fiction": 1,
+      "families": 1
+     }
+    }
+   },
+   {
+    "t": "Un adolescente perdido en el instituto",
+    "e": {
+     "s": {
+      "coming of age": 3,
+      "school stories": 2,
+      "young adult fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Un veinteañero que no sabe qué hacer con su vida",
+    "e": {
+     "s": {
+      "coming of age": 2,
+      "psychological fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Ya he crecido bastante, gracias",
+    "e": {
+     "s": {
+      "coming of age": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb028",
+  "q": "Si en tu libro aparece una inteligencia artificial, será...",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "La villana que quiere dominar el mundo",
+    "e": {
+     "s": {
+      "artificial intelligence": 3,
+      "thriller": 2,
+      "science fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Una amiga entrañable con dudas existenciales",
+    "e": {
+     "s": {
+      "artificial intelligence": 2,
+      "robots": 2,
+      "philosophy": 1
+     }
+    }
+   },
+   {
+    "t": "Protagonista de un ensayo sobre nuestro futuro",
+    "e": {
+     "s": {
+      "artificial intelligence": 3,
+      "sociology": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Nada de máquinas pensantes",
+    "e": {
+     "s": {
+      "artificial intelligence": -2,
+      "robots": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb029",
+  "q": "¿Historias de supervivencia extrema?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "En una isla desierta, a lo Robinson",
+    "e": {
+     "s": {
+      "survival": 3,
+      "adventure stories": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Después del fin del mundo",
+    "e": {
+     "s": {
+      "survival": 3,
+      "dystopias": 2
+     }
+    }
+   },
+   {
+    "t": "Casos reales: montañas, naufragios, polos",
+    "e": {
+     "s": {
+      "survival": 3,
+      "travel": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Prefiero sobrevivir en mi sofá",
+    "e": {
+     "s": {
+      "survival": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb030",
+  "q": "¿Y si la historia hubiera ido de otra manera? ¿Te van las ucronías?",
+  "axis": "genre",
+  "a": [
+   {
+    "t": "Me encantan: ¿y si hubieran ganado los otros?",
+    "e": {
+     "s": {
+      "alternative history": 3,
+      "world war, 1939-1945": 1
+     }
+    }
+   },
+   {
+    "t": "Solo si hay viajes en el tiempo de por medio",
+    "e": {
+     "s": {
+      "time travel": 3,
+      "alternative history": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero la historia tal cual fue",
+    "e": {
+     "s": {
+      "alternative history": -2,
+      "history": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb031",
+  "q": "En el fondo, ¿para qué quieres este libro?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Para aprender algo nuevo",
+    "e": {
+     "s": {
+      "nonfiction": 2,
+      "science": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Para escaparme un rato de todo",
+    "e": {
+     "s": {
+      "fantasy": 2,
+      "adventure stories": 2
+     },
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "Para reírme",
+    "e": {
+     "s": {
+      "humor": 3
+     }
+    }
+   },
+   {
+    "t": "Para llorar a gusto",
+    "e": {
+     "s": {
+      "drama": 2,
+      "love stories": 2,
+      "families": 1
+     }
+    }
+   },
+   {
+    "t": "Para pensar en grande",
+    "e": {
+     "s": {
+      "philosophy": 3,
+      "essays": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb032",
+  "q": "Al cerrar el libro, quieres sentir que...",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "He aprendido algo que contaré en la próxima cena",
+    "e": {
+     "s": {
+      "history": 1,
+      "science": 1,
+      "nonfiction": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "He vivido otra vida",
+    "e": {
+     "s": {
+      "historical fiction": 1,
+      "psychological fiction": 1
+     },
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "Me he reído como hacía tiempo",
+    "e": {
+     "s": {
+      "humor": 3,
+      "satire": 1
+     }
+    }
+   },
+   {
+    "t": "Necesito un abrazo urgente",
+    "e": {
+     "s": {
+      "drama": 2,
+      "families": 2,
+      "love stories": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb033",
+  "q": "¿Buscas un libro que te eche una mano con algo concreto?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Organizarme y rendir más",
+    "e": {
+     "s": {
+      "self-help": 3,
+      "business": 1
+     }
+    }
+   },
+   {
+    "t": "Entender mi cabeza y mis emociones",
+    "e": {
+     "s": {
+      "psychology": 3,
+      "self-help": 2
+     }
+    }
+   },
+   {
+    "t": "Cocinar mejor",
+    "e": {
+     "s": {
+      "cooking": 3
+     }
+    }
+   },
+   {
+    "t": "Poner orden en mis finanzas",
+    "e": {
+     "s": {
+      "economics": 2,
+      "business": 2,
+      "self-help": 1
+     }
+    }
+   },
+   {
+    "t": "No, solo quiero una buena historia",
+    "e": {
+     "s": {
+      "self-help": -2
+     },
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb034",
+  "q": "¿Lees para desconectar del mundo o para entenderlo mejor?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Desconectar: llévame muy lejos",
+    "e": {
+     "s": {
+      "fantasy": 2,
+      "adventure stories": 2,
+      "science fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Entenderlo: quiero saber qué está pasando",
+    "e": {
+     "s": {
+      "politics": 2,
+      "sociology": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Un poco de cada",
+    "e": {
+     "s": {
+      "historical fiction": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb035",
+  "q": "¿Te gustaría que el libro te empujara a hacer algo?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Sí, a hacer la maleta",
+    "e": {
+     "s": {
+      "travel": 3
+     }
+    }
+   },
+   {
+    "t": "A meterme en la cocina",
+    "e": {
+     "s": {
+      "cooking": 3
+     }
+    }
+   },
+   {
+    "t": "A darle un giro a mi vida",
+    "e": {
+     "s": {
+      "self-help": 2,
+      "memoirs": 2,
+      "biography": 1
+     }
+    }
+   },
+   {
+    "t": "A crear: escribir, pintar, inventar",
+    "e": {
+     "s": {
+      "art": 2,
+      "essays": 1,
+      "autobiography": 1
+     }
+    }
+   },
+   {
+    "t": "No, solo quiero disfrutar",
+    "e": {
+     "s": {
+      "fiction": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb036",
+  "q": "¿Lees también para cultivarte un poquito?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Sí, quiero tachar grandes clásicos de mi lista",
+    "e": {
+     "s": {
+      "classic literature": 3
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Sí, pero con divulgación amena",
+    "e": {
+     "s": {
+      "science": 2,
+      "history": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "No, leo por puro vicio",
+    "e": {
+     "s": {
+      "classic literature": -1
+     },
+     "pop": "mainstream"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb037",
+  "q": "Si este libro fuera una terapia, sería...",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Una carcajada liberadora",
+    "e": {
+     "s": {
+      "humor": 3
+     }
+    }
+   },
+   {
+    "t": "Una buena llorera",
+    "e": {
+     "s": {
+      "drama": 3,
+      "love stories": 1
+     }
+    }
+   },
+   {
+    "t": "Una charla profunda a las tantas",
+    "e": {
+     "s": {
+      "philosophy": 2,
+      "psychology": 2
+     }
+    }
+   },
+   {
+    "t": "Un paseo por el bosque",
+    "e": {
+     "s": {
+      "nature": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb038",
+  "q": "¿Necesitas un libro que te devuelva la fe en la humanidad?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Sí: historias de bondad y amistad",
+    "e": {
+     "s": {
+      "friendship": 3,
+      "families": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor la biografía de alguien admirable",
+    "e": {
+     "s": {
+      "biography": 3
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "No, quiero asomarme a lo peor del ser humano",
+    "e": {
+     "s": {
+      "crime": 2,
+      "psychological fiction": 2,
+      "dystopias": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb039",
+  "q": "¿Es un libro para compartir con alguien?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Para un club de lectura con mucho debate",
+    "e": {
+     "s": {
+      "psychological fiction": 2,
+      "drama": 1
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Para leer con peques",
+    "e": {
+     "s": {
+      "juvenile fiction": 3,
+      "fairy tales": 2
+     }
+    }
+   },
+   {
+    "t": "Para comentar con un adolescente",
+    "e": {
+     "s": {
+      "young adult fiction": 3
+     }
+    }
+   },
+   {
+    "t": "No, este es solo para mí",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb040",
+  "q": "¿Quieres aprender sobre ti, sobre el mundo o sobre el universo?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Sobre mí: psicología y autoconocimiento",
+    "e": {
+     "s": {
+      "psychology": 3,
+      "self-help": 2
+     }
+    }
+   },
+   {
+    "t": "Sobre el mundo: historia y sociedad",
+    "e": {
+     "s": {
+      "history": 2,
+      "sociology": 2
+     }
+    }
+   },
+   {
+    "t": "Sobre el universo: ciencia pura",
+    "e": {
+     "s": {
+      "science": 2,
+      "astronomy": 2,
+      "physics": 1
+     }
+    }
+   },
+   {
+    "t": "Hoy no quiero aprender nada",
+    "e": {
+     "s": {
+      "humor": 1
+     },
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb041",
+  "q": "¿Lees para estar al día de lo que se comenta?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Sí, quiero el libro del que habla todo el mundo",
+    "e": {
+     "era": "recent",
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "No, prefiero ir a mi aire",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Quiero el libro del que se hablaba hace 30 años",
+    "e": {
+     "era": "20c",
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb042",
+  "q": "Un libro que te sirva para el trabajo:",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Liderazgo y empresa",
+    "e": {
+     "s": {
+      "business": 3
+     }
+    }
+   },
+   {
+    "t": "Economía para entender las noticias",
+    "e": {
+     "s": {
+      "economics": 3
+     }
+    }
+   },
+   {
+    "t": "Psicología para lidiar con la gente",
+    "e": {
+     "s": {
+      "psychology": 3
+     }
+    }
+   },
+   {
+    "t": "Del trabajo no quiero ni oír hablar",
+    "e": {
+     "s": {
+      "business": -3,
+      "self-help": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb043",
+  "q": "¿Quieres que el libro te ponga nostálgico?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Sí, de la infancia",
+    "e": {
+     "s": {
+      "coming of age": 3,
+      "juvenile fiction": 1
+     }
+    }
+   },
+   {
+    "t": "De un mundo que ya no existe",
+    "e": {
+     "s": {
+      "historical fiction": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "No, quiero mirar hacia el futuro",
+    "e": {
+     "s": {
+      "science fiction": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb044",
+  "q": "¿Te interesa un libro que te enseñe a pensar mejor?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Lógica y filosofía",
+    "e": {
+     "s": {
+      "philosophy": 3
+     }
+    }
+   },
+   {
+    "t": "Matemáticas que hasta divierten",
+    "e": {
+     "s": {
+      "mathematics": 3
+     }
+    }
+   },
+   {
+    "t": "Psicología de las decisiones",
+    "e": {
+     "s": {
+      "psychology": 3,
+      "economics": 1
+     }
+    }
+   },
+   {
+    "t": "Pensar ya pienso bastante, gracias",
+    "e": {
+     "s": {
+      "philosophy": -2,
+      "humor": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb045",
+  "q": "¿Para qué momento es este libro?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Vacaciones en la playa",
+    "e": {
+     "s": {
+      "thriller": 1,
+      "romance": 1
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Un domingo de lluvia bajo la manta",
+    "e": {
+     "s": {
+      "mystery": 2,
+      "gothic fiction": 1
+     }
+    }
+   },
+   {
+    "t": "El metro o el bus, a ratitos",
+    "e": {
+     "s": {
+      "short stories": 2
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Justo antes de dormir",
+    "e": {
+     "s": {
+      "humor": 1,
+      "fairy tales": 1,
+      "horror": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb046",
+  "q": "¿Quieres sentirte acompañado mientras lees?",
+  "axis": "purpose",
+  "a": [
+   {
+    "t": "Sí, con personajes que parezcan amigos",
+    "e": {
+     "s": {
+      "friendship": 3,
+      "families": 1
+     }
+    }
+   },
+   {
+    "t": "Con una voz que me hable directamente a mí",
+    "e": {
+     "s": {
+      "essays": 2,
+      "memoirs": 2
+     }
+    }
+   },
+   {
+    "t": "No, me gusta que un libro me incomode",
+    "e": {
+     "s": {
+      "psychological fiction": 2,
+      "horror": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb047",
+  "q": "¿Qué ciencia te despierta más curiosidad?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "El cosmos y las estrellas",
+    "e": {
+     "s": {
+      "astronomy": 3,
+      "science": 1
+     }
+    }
+   },
+   {
+    "t": "Física cuántica y relatividad",
+    "e": {
+     "s": {
+      "physics": 3,
+      "science": 1
+     }
+    }
+   },
+   {
+    "t": "El cuerpo humano y la medicina",
+    "e": {
+     "s": {
+      "medicine": 3
+     }
+    }
+   },
+   {
+    "t": "La mente y el cerebro",
+    "e": {
+     "s": {
+      "psychology": 3
+     }
+    }
+   },
+   {
+    "t": "La naturaleza y los animales",
+    "e": {
+     "s": {
+      "nature": 3,
+      "animals": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb048",
+  "q": "¿Un libro de historia? Elige capítulo:",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Grandes reyes y reinas",
+    "e": {
+     "s": {
+      "kings and rulers": 3,
+      "history": 2,
+      "biography": 1
+     }
+    }
+   },
+   {
+    "t": "La Segunda Guerra Mundial",
+    "e": {
+     "s": {
+      "world war, 1939-1945": 3,
+      "history": 2
+     }
+    }
+   },
+   {
+    "t": "La historia que protagonizaron las mujeres",
+    "e": {
+     "s": {
+      "women": 3,
+      "feminism": 2,
+      "history": 1
+     }
+    }
+   },
+   {
+    "t": "Cómo llegamos a saber lo que sabemos",
+    "e": {
+     "s": {
+      "science": 2,
+      "history": 2
+     }
+    }
+   },
+   {
+    "t": "La historia del arte",
+    "e": {
+     "s": {
+      "art": 3,
+      "history": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb049",
+  "q": "¿Te atrae la filosofía?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Sí, los clásicos: Platón, Séneca, Marco Aurelio",
+    "e": {
+     "s": {
+      "philosophy": 3
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Filosofía práctica para el día a día",
+    "e": {
+     "s": {
+      "philosophy": 2,
+      "self-help": 2
+     }
+    }
+   },
+   {
+    "t": "Solo si viene disfrazada de novela",
+    "e": {
+     "s": {
+      "philosophy": 2,
+      "fiction": 1
+     },
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "Me da una pereza enorme",
+    "e": {
+     "s": {
+      "philosophy": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb050",
+  "q": "Si eliges una biografía, ¿de quién es?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "De un científico genial",
+    "e": {
+     "s": {
+      "biography": 3,
+      "science": 2
+     }
+    }
+   },
+   {
+    "t": "De un músico o artista",
+    "e": {
+     "s": {
+      "biography": 2,
+      "music": 2,
+      "art": 2
+     }
+    }
+   },
+   {
+    "t": "De un político o líder histórico",
+    "e": {
+     "s": {
+      "biography": 3,
+      "politics": 2,
+      "kings and rulers": 1
+     }
+    }
+   },
+   {
+    "t": "De un deportista legendario",
+    "e": {
+     "s": {
+      "biography": 2,
+      "sports": 3
+     }
+    }
+   },
+   {
+    "t": "Prefiero memorias en primera persona",
+    "e": {
+     "s": {
+      "memoirs": 3,
+      "autobiography": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb051",
+  "q": "¿Te interesan los libros sobre mujeres y feminismo?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Sí, ensayo feminista",
+    "e": {
+     "s": {
+      "feminism": 3,
+      "essays": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Novelas protagonizadas por mujeres de armas tomar",
+    "e": {
+     "s": {
+      "women": 3,
+      "fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Biografías de mujeres que cambiaron la historia",
+    "e": {
+     "s": {
+      "women": 3,
+      "biography": 2
+     }
+    }
+   },
+   {
+    "t": "Hoy no busco eso",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb052",
+  "q": "¿La música como tema de tu próximo libro?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Biografías de músicos",
+    "e": {
+     "s": {
+      "music": 3,
+      "biography": 2
+     }
+    }
+   },
+   {
+    "t": "Novelas donde la música lo es todo",
+    "e": {
+     "s": {
+      "music": 3,
+      "fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Historia de la música, de Bach al rock",
+    "e": {
+     "s": {
+      "music": 3,
+      "history": 1
+     }
+    }
+   },
+   {
+    "t": "No especialmente",
+    "e": {
+     "s": {
+      "music": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb053",
+  "q": "¿Un libro sobre religión o espiritualidad?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Sí, historia de las religiones",
+    "e": {
+     "s": {
+      "religion": 3,
+      "history": 2
+     }
+    }
+   },
+   {
+    "t": "Espiritualidad y meditación",
+    "e": {
+     "s": {
+      "religion": 2,
+      "self-help": 2,
+      "philosophy": 1
+     }
+    }
+   },
+   {
+    "t": "Una novela con dilemas de fe",
+    "e": {
+     "s": {
+      "religion": 2,
+      "psychological fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Nada de religión",
+    "e": {
+     "s": {
+      "religion": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb054",
+  "q": "¿Qué tema de actualidad te pica más la curiosidad?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Economía y desigualdad",
+    "e": {
+     "s": {
+      "economics": 3,
+      "sociology": 2
+     }
+    }
+   },
+   {
+    "t": "Política y poder",
+    "e": {
+     "s": {
+      "politics": 3
+     }
+    }
+   },
+   {
+    "t": "Tecnología e inteligencia artificial",
+    "e": {
+     "s": {
+      "artificial intelligence": 3,
+      "science": 1
+     }
+    }
+   },
+   {
+    "t": "Clima y naturaleza",
+    "e": {
+     "s": {
+      "nature": 3,
+      "science": 2
+     }
+    }
+   },
+   {
+    "t": "La actualidad me agota",
+    "e": {
+     "s": {
+      "politics": -2,
+      "economics": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb055",
+  "q": "¿Libros de cocina... para leer, no solo para cocinar?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Sí, con recetas y buenas historias",
+    "e": {
+     "s": {
+      "cooking": 3,
+      "memoirs": 1
+     }
+    }
+   },
+   {
+    "t": "Novelas en las que se come muchísimo",
+    "e": {
+     "s": {
+      "cooking": 2,
+      "family life": 2
+     }
+    }
+   },
+   {
+    "t": "Historia de la gastronomía",
+    "e": {
+     "s": {
+      "cooking": 2,
+      "history": 2
+     }
+    }
+   },
+   {
+    "t": "Mi cocina es el microondas",
+    "e": {
+     "s": {
+      "cooking": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb056",
+  "q": "¿Literatura de viajes?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Crónicas de viajeros reales",
+    "e": {
+     "s": {
+      "travel": 3,
+      "memoirs": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Novelas que te plantan en otro país",
+    "e": {
+     "s": {
+      "travel": 2,
+      "adventure stories": 2
+     }
+    }
+   },
+   {
+    "t": "Libros para soñar con el próximo destino",
+    "e": {
+     "s": {
+      "travel": 3,
+      "nature": 1
+     }
+    }
+   },
+   {
+    "t": "Yo viajo a mundos inventados",
+    "e": {
+     "s": {
+      "fantasy": 2,
+      "travel": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb057",
+  "q": "¿Te interesa el arte?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Vidas de pintores atormentados",
+    "e": {
+     "s": {
+      "art": 3,
+      "biography": 2
+     }
+    }
+   },
+   {
+    "t": "Ensayos sobre arte y belleza",
+    "e": {
+     "s": {
+      "art": 3,
+      "essays": 2
+     }
+    }
+   },
+   {
+    "t": "Una novela sobre un cuadro misterioso",
+    "e": {
+     "s": {
+      "art": 2,
+      "mystery": 2
+     }
+    }
+   },
+   {
+    "t": "El arte me deja frío",
+    "e": {
+     "s": {
+      "art": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb058",
+  "q": "¿Matemáticas en un libro? ¿En serio?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Sí, divulgación matemática que engancha",
+    "e": {
+     "s": {
+      "mathematics": 3,
+      "science": 1
+     }
+    }
+   },
+   {
+    "t": "Novelas con genios de los números",
+    "e": {
+     "s": {
+      "mathematics": 2,
+      "fiction": 1,
+      "biography": 1
+     }
+    }
+   },
+   {
+    "t": "Ni de broma",
+    "e": {
+     "s": {
+      "mathematics": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb059",
+  "q": "¿Sobre qué gran tema humano quieres que vaya?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "La amistad",
+    "e": {
+     "s": {
+      "friendship": 3
+     }
+    }
+   },
+   {
+    "t": "La familia",
+    "e": {
+     "s": {
+      "families": 3,
+      "family life": 2
+     }
+    }
+   },
+   {
+    "t": "El amor",
+    "e": {
+     "s": {
+      "love stories": 3
+     }
+    }
+   },
+   {
+    "t": "La soledad y la identidad",
+    "e": {
+     "s": {
+      "psychological fiction": 3
+     }
+    }
+   },
+   {
+    "t": "El poder",
+    "e": {
+     "s": {
+      "politics": 2,
+      "kings and rulers": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb060",
+  "q": "¿Medicina y salud entre tapas?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Casos clínicos que parecen novelas",
+    "e": {
+     "s": {
+      "medicine": 3,
+      "psychology": 1
+     }
+    }
+   },
+   {
+    "t": "Memorias de médicos",
+    "e": {
+     "s": {
+      "medicine": 2,
+      "memoirs": 3
+     }
+    }
+   },
+   {
+    "t": "Historia de epidemias y vacunas",
+    "e": {
+     "s": {
+      "medicine": 2,
+      "history": 2
+     }
+    }
+   },
+   {
+    "t": "Mejor no, que me vuelvo hipocondríaco",
+    "e": {
+     "s": {
+      "medicine": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb061",
+  "q": "¿Qué te parece la sociología?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Me encanta entender por qué hacemos lo que hacemos",
+    "e": {
+     "s": {
+      "sociology": 3,
+      "psychology": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero historias de una sola persona",
+    "e": {
+     "s": {
+      "memoirs": 2,
+      "biography": 2
+     }
+    }
+   },
+   {
+    "t": "Me suena a apuntes de facultad",
+    "e": {
+     "s": {
+      "sociology": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb062",
+  "q": "¿Mitos y leyendas?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Mitología griega de toda la vida",
+    "e": {
+     "s": {
+      "mythology": 3,
+      "classic literature": 1
+     }
+    }
+   },
+   {
+    "t": "Leyendas nórdicas con martillos y lobos",
+    "e": {
+     "s": {
+      "mythology": 3,
+      "epic fantasy": 1
+     }
+    }
+   },
+   {
+    "t": "Cuentos populares de todo el mundo",
+    "e": {
+     "s": {
+      "fairy tales": 3
+     }
+    }
+   },
+   {
+    "t": "No es lo mío",
+    "e": {
+     "s": {
+      "mythology": -2,
+      "fairy tales": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb063",
+  "q": "¿La naturaleza como protagonista?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Sí, ensayos sobre bosques y montañas",
+    "e": {
+     "s": {
+      "nature": 3,
+      "essays": 1
+     }
+    }
+   },
+   {
+    "t": "Animales salvajes y sus costumbres",
+    "e": {
+     "s": {
+      "animals": 3,
+      "science": 1
+     }
+    }
+   },
+   {
+    "t": "Supervivencia a la intemperie",
+    "e": {
+     "s": {
+      "survival": 3,
+      "nature": 2
+     }
+    }
+   },
+   {
+    "t": "Soy más de asfalto",
+    "e": {
+     "s": {
+      "nature": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb064",
+  "q": "¿Te interesa el mundo de la empresa y el dinero?",
+  "axis": "theme",
+  "a": [
+   {
+    "t": "Historias de empresas y emprendedores",
+    "e": {
+     "s": {
+      "business": 3,
+      "biography": 1
+     }
+    }
+   },
+   {
+    "t": "Economía explicada para todos los públicos",
+    "e": {
+     "s": {
+      "economics": 3
+     }
+    }
+   },
+   {
+    "t": "Finanzas personales para no ir justo a fin de mes",
+    "e": {
+     "s": {
+      "economics": 2,
+      "self-help": 2
+     }
+    }
+   },
+   {
+    "t": "Ni un número, por favor",
+    "e": {
+     "s": {
+      "business": -3,
+      "economics": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb065",
+  "q": "¿Qué formato te apetece hoy?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Novela de toda la vida",
+    "e": {
+     "s": {
+      "fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Relatos cortos",
+    "e": {
+     "s": {
+      "short stories": 3
+     }
+    }
+   },
+   {
+    "t": "Poesía",
+    "e": {
+     "s": {
+      "poetry": 3
+     }
+    }
+   },
+   {
+    "t": "Ensayo",
+    "e": {
+     "s": {
+      "essays": 3
+     }
+    }
+   },
+   {
+    "t": "Teatro",
+    "e": {
+     "s": {
+      "plays": 3
+     }
+    }
+   },
+   {
+    "t": "Novela gráfica",
+    "e": {
+     "s": {
+      "graphic novels": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb066",
+  "q": "¿Qué relación tienes con la poesía?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "La adoro, me alimenta",
+    "e": {
+     "s": {
+      "poetry": 3
+     }
+    }
+   },
+   {
+    "t": "Algún poema suelto, en dosis pequeñas",
+    "e": {
+     "s": {
+      "poetry": 1,
+      "short stories": 1
+     }
+    }
+   },
+   {
+    "t": "Poemas no, pero prosa que suene a poema sí",
+    "e": {
+     "s": {
+      "poetry": -1,
+      "magical realism": 1,
+      "psychological fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Me aburre muchísimo",
+    "e": {
+     "s": {
+      "poetry": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb067",
+  "q": "¿Leerías una obra de teatro?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Sí, Shakespeare y compañía",
+    "e": {
+     "s": {
+      "plays": 3,
+      "drama": 2,
+      "classic literature": 1
+     }
+    }
+   },
+   {
+    "t": "Sí, teatro del siglo XX",
+    "e": {
+     "s": {
+      "plays": 3
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Prefiero verlo encima de un escenario",
+    "e": {
+     "s": {
+      "plays": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb068",
+  "q": "¿Muchas historias en un libro o una sola historia larga?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Relatos: muchas historias en un solo libro",
+    "e": {
+     "s": {
+      "short stories": 3
+     }
+    }
+   },
+   {
+    "t": "Una novela que me atrape entera",
+    "e": {
+     "s": {
+      "short stories": -2
+     },
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Una saga de varios tomos",
+    "e": {
+     "s": {
+      "epic fantasy": 1
+     },
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb069",
+  "q": "Ensayo, ¿pero de qué tipo?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Personal, casi como leer un diario",
+    "e": {
+     "s": {
+      "essays": 3,
+      "memoirs": 2
+     }
+    }
+   },
+   {
+    "t": "Filosófico y profundo",
+    "e": {
+     "s": {
+      "essays": 2,
+      "philosophy": 3
+     }
+    }
+   },
+   {
+    "t": "Sobre cultura pop y actualidad",
+    "e": {
+     "s": {
+      "essays": 2,
+      "sociology": 2
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Los ensayos me dan sueño",
+    "e": {
+     "s": {
+      "essays": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb070",
+  "q": "¿Quién te gusta que cuente la historia?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Un «yo» que me lo confiesa todo",
+    "e": {
+     "s": {
+      "psychological fiction": 2,
+      "memoirs": 1
+     }
+    }
+   },
+   {
+    "t": "Un narrador clásico que lo sabe todo",
+    "e": {
+     "s": {
+      "classic literature": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Muchas voces que se van turnando",
+    "e": {
+     "s": {
+      "families": 1,
+      "fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Me da igual quién narre",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb071",
+  "q": "¿Te gustan los libros con ilustraciones?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Mucho, quiero dibujos en cada página",
+    "e": {
+     "s": {
+      "graphic novels": 2,
+      "comic books, strips": 1,
+      "juvenile fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Me basta con letras",
+    "e": {
+     "s": {
+      "graphic novels": -1
+     }
+    }
+   },
+   {
+    "t": "Que sea un cómic directamente",
+    "e": {
+     "s": {
+      "comic books, strips": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb072",
+  "q": "¿Una antología de cuentos para leer de noche?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "De terror clásico, con velas",
+    "e": {
+     "s": {
+      "short stories": 3,
+      "horror": 2,
+      "ghost stories": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Cuentos fantásticos y raros",
+    "e": {
+     "s": {
+      "short stories": 3,
+      "fantasy": 2
+     }
+    }
+   },
+   {
+    "t": "Cuentos de amor y desamor",
+    "e": {
+     "s": {
+      "short stories": 2,
+      "love stories": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero novela",
+    "e": {
+     "s": {
+      "short stories": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb073",
+  "q": "¿Poesía épica en verso o poesía breve e intensa?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Épica en verso, como la de antes",
+    "e": {
+     "s": {
+      "poetry": 3,
+      "mythology": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Poesía contemporánea, breve y que pega fuerte",
+    "e": {
+     "s": {
+      "poetry": 3
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Ni en pintura",
+    "e": {
+     "s": {
+      "poetry": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb074",
+  "q": "¿Qué te parecen las memorias contadas en viñetas?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Me encantan, el cómic autobiográfico es lo más",
+    "e": {
+     "s": {
+      "graphic novels": 3,
+      "memoirs": 2,
+      "autobiography": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero memorias en texto",
+    "e": {
+     "s": {
+      "memoirs": 3,
+      "graphic novels": -1
+     }
+    }
+   },
+   {
+    "t": "Las memorias no me interesan",
+    "e": {
+     "s": {
+      "memoirs": -2,
+      "autobiography": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb075",
+  "q": "¿Cómo te gusta que te cuenten una historia real?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Como una novela, con escenas y diálogos",
+    "e": {
+     "s": {
+      "biography": 2,
+      "true crime": 1,
+      "historical fiction": 1
+     }
+    }
+   },
+   {
+    "t": "En un ensayo riguroso con notas al pie",
+    "e": {
+     "s": {
+      "history": 3,
+      "nonfiction": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "En primera persona, como unas memorias",
+    "e": {
+     "s": {
+      "memoirs": 3
+     }
+    }
+   },
+   {
+    "t": "En viñetas",
+    "e": {
+     "s": {
+      "graphic novels": 3,
+      "history": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb076",
+  "q": "¿Sátira y crítica social?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Sí, que se rían de los poderosos",
+    "e": {
+     "s": {
+      "satire": 3,
+      "politics": 2
+     }
+    }
+   },
+   {
+    "t": "Sátira clásica, de Swift o Quevedo",
+    "e": {
+     "s": {
+      "satire": 3,
+      "classic literature": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Prefiero humor blanco",
+    "e": {
+     "s": {
+      "satire": -1,
+      "humor": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb077",
+  "q": "¿Te van los libros que mezclan ensayo, memoria y novela?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Sí, la autoficción me chifla",
+    "e": {
+     "s": {
+      "autobiography": 2,
+      "essays": 2,
+      "fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero cada cosa en su sitio",
+    "e": {
+     "s": {
+      "fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Solo si es breve",
+    "e": {
+     "s": {
+      "essays": 1
+     },
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb078",
+  "q": "¿Cuentos de hadas para adultos?",
+  "axis": "style",
+  "a": [
+   {
+    "t": "Sí, versiones oscuras y retorcidas",
+    "e": {
+     "s": {
+      "fairy tales": 3,
+      "horror": 1,
+      "gothic fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Los originales, sin edulcorar",
+    "e": {
+     "s": {
+      "fairy tales": 3
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Fábulas con moraleja",
+    "e": {
+     "s": {
+      "fairy tales": 2,
+      "animals": 2,
+      "satire": 1
+     }
+    }
+   },
+   {
+    "t": "No, ya no tengo edad",
+    "e": {
+     "s": {
+      "fairy tales": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb079",
+  "q": "¿Clásico o novedad?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Un clásico de antes de 1950",
+    "e": {
+     "s": {
+      "classic literature": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Un clásico moderno de la segunda mitad del XX",
+    "e": {
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Algo publicado entre 2000 y 2014",
+    "e": {
+     "era": "modern"
+    }
+   },
+   {
+    "t": "Algo de los últimos años",
+    "e": {
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Me da igual la fecha",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb080",
+  "q": "¿Te apetece un gran clásico del siglo XIX?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí, una novela rusa gordísima",
+    "e": {
+     "s": {
+      "russian fiction": 3,
+      "classic literature": 2
+     },
+     "era": "classic",
+     "len": "long"
+    }
+   },
+   {
+    "t": "Sí, una inglesa de bailes y malentendidos",
+    "e": {
+     "s": {
+      "english fiction": 3,
+      "love stories": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Sí, una francesa con pasiones y revoluciones",
+    "e": {
+     "s": {
+      "french fiction": 3,
+      "classic literature": 1
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "No, que me pierdo con tanto personaje",
+    "e": {
+     "s": {
+      "classic literature": -2
+     },
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb081",
+  "q": "¿Qué antigüedad te inspira más confianza en un libro?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Que haya aguantado más de cien años",
+    "e": {
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Los grandes del siglo XX",
+    "e": {
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Lo de principios de este siglo",
+    "e": {
+     "era": "modern"
+    }
+   },
+   {
+    "t": "Lo más fresco, recién salido",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb082",
+  "q": "¿Un libro publicado este mismo año?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí, quiero estar a la última",
+    "e": {
+     "era": "recent",
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Mejor algo con unos años de reposo",
+    "e": {
+     "era": "modern"
+    }
+   },
+   {
+    "t": "Los libros nuevos me dan desconfianza",
+    "e": {
+     "era": "classic"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb083",
+  "q": "¿Te atrae el boom latinoamericano de los 60 y 70?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí: García Márquez, Cortázar, Vargas Llosa...",
+    "e": {
+     "s": {
+      "latin american fiction": 3,
+      "magical realism": 2
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Prefiero autores latinoamericanos de ahora",
+    "e": {
+     "s": {
+      "latin american fiction": 3
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "No especialmente",
+    "e": {
+     "s": {
+      "latin american fiction": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb084",
+  "q": "¿Los clásicos griegos y latinos?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí, la Odisea es mi rollo",
+    "e": {
+     "s": {
+      "mythology": 3,
+      "classic literature": 3
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Prefiero versiones modernas de esos mitos",
+    "e": {
+     "s": {
+      "mythology": 3
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Demasiado antiguos para mí",
+    "e": {
+     "s": {
+      "classic literature": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb085",
+  "q": "¿Ciencia ficción de la edad de oro, con cohetes y robots de lata?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí: Asimov, Bradbury y compañía",
+    "e": {
+     "s": {
+      "science fiction": 3,
+      "robots": 1
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Mejor ciencia ficción de ahora",
+    "e": {
+     "s": {
+      "science fiction": 3
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "La ciencia ficción no me va",
+    "e": {
+     "s": {
+      "science fiction": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb086",
+  "q": "¿Qué tal un clásico juvenil de los que todos leímos?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí, aventuras de Julio Verne o Stevenson",
+    "e": {
+     "s": {
+      "adventure stories": 3,
+      "juvenile fiction": 1
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Los juveniles de los 80 y 90",
+    "e": {
+     "s": {
+      "young adult fiction": 2,
+      "juvenile fiction": 1
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Mejor juvenil reciente",
+    "e": {
+     "s": {
+      "young adult fiction": 3
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Paso de juveniles",
+    "e": {
+     "s": {
+      "juvenile fiction": -2,
+      "young adult fiction": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb087",
+  "q": "¿Una novela de los 2000, de esas que marcaron época?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí, me encanta ese momento",
+    "e": {
+     "era": "modern",
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Prefiero algo más antiguo",
+    "e": {
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Mejor algo recentísimo",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb088",
+  "q": "Para novela negra, ¿clásica o contemporánea?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Clásica: Agatha Christie, Chandler",
+    "e": {
+     "s": {
+      "detective and mystery stories": 3
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Polis duros de los 70 a los 90",
+    "e": {
+     "s": {
+      "police": 2,
+      "crime": 2
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Thrillers de los últimos años",
+    "e": {
+     "s": {
+      "thriller": 3
+     },
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb089",
+  "q": "¿Te interesan las novelas escritas en plena posguerra?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Sí, esa literatura de heridas abiertas",
+    "e": {
+     "s": {
+      "world war, 1939-1945": 2,
+      "spanish fiction": 1,
+      "war stories": 1
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Prefiero leer sobre esa época desde hoy",
+    "e": {
+     "s": {
+      "historical fiction": 2
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Ni guerra ni posguerra",
+    "e": {
+     "s": {
+      "war stories": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb090",
+  "q": "¿Terror? ¿De qué época?",
+  "axis": "era",
+  "a": [
+   {
+    "t": "Victoriano: Drácula, Frankenstein y compañía",
+    "e": {
+     "s": {
+      "gothic fiction": 3,
+      "horror": 2,
+      "vampires": 1
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Terror ochentero, de quiosco y portada chillona",
+    "e": {
+     "s": {
+      "horror": 3
+     },
+     "era": "20c",
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Terror contemporáneo",
+    "e": {
+     "s": {
+      "horror": 3
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "De ninguna, gracias",
+    "e": {
+     "s": {
+      "horror": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb091",
+  "q": "¿Cuánto tiempo tienes para este libro?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Una tarde",
+    "e": {
+     "len": "short"
+    }
+   },
+   {
+    "t": "Un par de semanas",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Todo el verano",
+    "e": {
+     "len": "long"
+    }
+   },
+   {
+    "t": "No tengo prisa ni plazo",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb092",
+  "q": "¿Cuánto quieres que pese el libro en la mochila?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Que quepa en un bolsillo",
+    "e": {
+     "len": "short"
+    }
+   },
+   {
+    "t": "Lo normal",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Un ladrillo que sirva de pisapapeles",
+    "e": {
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb093",
+  "q": "¿Te asustan los libros de más de 500 páginas?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Para nada, cuanto más largos mejor",
+    "e": {
+     "len": "long"
+    }
+   },
+   {
+    "t": "Un poco, prefiero algo intermedio",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Sí, me agobian solo de verlos",
+    "e": {
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb094",
+  "q": "¿Saga o libro autoconclusivo?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Saga larga para vivir años en ella",
+    "e": {
+     "s": {
+      "epic fantasy": 2,
+      "fantasy": 1
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "Un libro y punto final",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Novela corta para leer del tirón",
+    "e": {
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb095",
+  "q": "¿Cuántas páginas sueles leer al día?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Unas pocas antes de caer dormido",
+    "e": {
+     "len": "short"
+    }
+   },
+   {
+    "t": "Un capítulo o dos",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Me trago cien sin pestañear",
+    "e": {
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb096",
+  "q": "¿Qué te parece la novela corta, la de cien páginas?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Me encanta: intensa y concentrada",
+    "e": {
+     "s": {
+      "psychological fiction": 1
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Me deja siempre con ganas de más",
+    "e": {
+     "len": "long"
+    }
+   },
+   {
+    "t": "Depende de la historia",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb097",
+  "q": "¿Un libro para un viaje en avión?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Vuelo corto: que acabe al aterrizar",
+    "e": {
+     "s": {
+      "thriller": 1
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Vuelo transoceánico: algo bien gordo",
+    "e": {
+     "len": "long"
+    }
+   },
+   {
+    "t": "No viajo, leo en casa",
+    "e": {
+     "len": "medium"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb098",
+  "q": "¿Capítulos cortos o largos?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Cortísimos, de dos páginas",
+    "e": {
+     "s": {
+      "thriller": 1
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Largos y pausados",
+    "e": {
+     "s": {
+      "classic literature": 1
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "Me da igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb099",
+  "q": "¿Ensayo breve o tratado completo?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Breve: cien páginas y una idea potente",
+    "e": {
+     "s": {
+      "essays": 2
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Completo y bien documentado",
+    "e": {
+     "s": {
+      "history": 2
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "Ninguno: quiero ficción",
+    "e": {
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb100",
+  "q": "¿Te importa empezar un libro que sabes que no acabarás pronto?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Me encanta tener compañía para meses",
+    "e": {
+     "len": "long"
+    }
+   },
+   {
+    "t": "Prefiero acabarlo esta semana",
+    "e": {
+     "len": "short"
+    }
+   },
+   {
+    "t": "Algo intermedio",
+    "e": {
+     "len": "medium"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb101",
+  "q": "¿Cuentos sueltos para leer a ratos?",
+  "axis": "length",
+  "a": [
+   {
+    "t": "Sí, un relato por noche",
+    "e": {
+     "s": {
+      "short stories": 3
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Prefiero una historia continua",
+    "e": {
+     "s": {
+      "short stories": -1
+     },
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Un tomazo de cuentos completos",
+    "e": {
+     "s": {
+      "short stories": 3
+     },
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb102",
+  "q": "¿Qué tradición literaria te llama hoy?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Española",
+    "e": {
+     "s": {
+      "spanish fiction": 3
+     },
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Latinoamericana",
+    "e": {
+     "s": {
+      "latin american fiction": 3
+     },
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Japonesa",
+    "e": {
+     "s": {
+      "japanese fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Rusa",
+    "e": {
+     "s": {
+      "russian fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Francesa",
+    "e": {
+     "s": {
+      "french fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Anglosajona",
+    "e": {
+     "s": {
+      "english fiction": 2,
+      "american fiction": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb103",
+  "q": "¿En qué idioma te lo vas a leer?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "En español, sin duda",
+    "e": {
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "En inglés, que quiero practicar",
+    "e": {
+     "lang": "eng"
+    }
+   },
+   {
+    "t": "Me da igual, si hay buena traducción",
+    "e": {
+     "lang": "any"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb104",
+  "q": "¿Te apetece literatura japonesa?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Sí: gatos, soledad y ciudades extrañas",
+    "e": {
+     "s": {
+      "japanese fiction": 3,
+      "cats": 1,
+      "magical realism": 1
+     }
+    }
+   },
+   {
+    "t": "Sí, pero misterio japonés",
+    "e": {
+     "s": {
+      "japanese fiction": 3,
+      "mystery": 2
+     }
+    }
+   },
+   {
+    "t": "No la conozco, sorpréndeme",
+    "e": {
+     "s": {
+      "japanese fiction": 2
+     },
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "No es lo mío",
+    "e": {
+     "s": {
+      "japanese fiction": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb105",
+  "q": "¿Un ruso para esta temporada?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Sí: almas atormentadas y dilemas morales",
+    "e": {
+     "s": {
+      "russian fiction": 3,
+      "psychological fiction": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Los rusos del siglo XX, con censura de fondo",
+    "e": {
+     "s": {
+      "russian fiction": 3,
+      "dystopias": 1
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Me intimidan un poco",
+    "e": {
+     "s": {
+      "russian fiction": -1
+     },
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb106",
+  "q": "¿Te apetece leer a autores españoles?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Sí, del Siglo de Oro a hoy",
+    "e": {
+     "s": {
+      "spanish fiction": 3
+     },
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Autores españoles actuales",
+    "e": {
+     "s": {
+      "spanish fiction": 3
+     },
+     "era": "recent",
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Novela española sobre la Guerra Civil",
+    "e": {
+     "s": {
+      "spanish fiction": 3,
+      "war stories": 2,
+      "historical fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Hoy prefiero leer de fuera",
+    "e": {
+     "s": {
+      "spanish fiction": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb107",
+  "q": "¿Literatura francesa?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Sí, existencialistas fumando en un café",
+    "e": {
+     "s": {
+      "french fiction": 3,
+      "philosophy": 2
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Grandes novelas del XIX",
+    "e": {
+     "s": {
+      "french fiction": 3,
+      "classic literature": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Novela francesa de ahora mismo",
+    "e": {
+     "s": {
+      "french fiction": 3
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Non, merci",
+    "e": {
+     "s": {
+      "french fiction": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb108",
+  "q": "¿Algo de literatura estadounidense?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "La gran novela americana",
+    "e": {
+     "s": {
+      "american fiction": 3,
+      "classic literature": 1
+     }
+    }
+   },
+   {
+    "t": "Carretera, moteles y desarraigo",
+    "e": {
+     "s": {
+      "american fiction": 3,
+      "travel": 1
+     },
+     "era": "20c"
+    }
+   },
+   {
+    "t": "Gótico sureño, con calor y secretos",
+    "e": {
+     "s": {
+      "american fiction": 2,
+      "gothic fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Ya consumo bastante cultura yanqui",
+    "e": {
+     "s": {
+      "american fiction": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb109",
+  "q": "¿Literatura británica?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Humor inglés y tazas de té",
+    "e": {
+     "s": {
+      "english fiction": 3,
+      "humor": 2
+     }
+    }
+   },
+   {
+    "t": "Misterio en la campiña inglesa",
+    "e": {
+     "s": {
+      "english fiction": 2,
+      "detective and mystery stories": 3
+     }
+    }
+   },
+   {
+    "t": "Clásicos victorianos",
+    "e": {
+     "s": {
+      "english fiction": 3,
+      "classic literature": 2
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "No especialmente",
+    "e": {
+     "s": {
+      "english fiction": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb110",
+  "q": "¿Rumbo a Latinoamérica?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Realismo mágico de toda la vida",
+    "e": {
+     "s": {
+      "latin american fiction": 3,
+      "magical realism": 3
+     },
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Nuevas voces, con terror y crudeza",
+    "e": {
+     "s": {
+      "latin american fiction": 3,
+      "horror": 2
+     },
+     "era": "recent",
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Cuentos al estilo de Borges o Cortázar",
+    "e": {
+     "s": {
+      "latin american fiction": 2,
+      "short stories": 3
+     }
+    }
+   },
+   {
+    "t": "Ahora no",
+    "e": {
+     "s": {
+      "latin american fiction": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb111",
+  "q": "¿Te importa que sea una traducción?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Prefiero autores que escriben en español",
+    "e": {
+     "s": {
+      "spanish fiction": 1,
+      "latin american fiction": 1
+     },
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Me encanta leer traducciones de todo el mundo",
+    "e": {
+     "lang": "any"
+    }
+   },
+   {
+    "t": "Lo quiero en versión original inglesa",
+    "e": {
+     "s": {
+      "english fiction": 1,
+      "american fiction": 1
+     },
+     "lang": "eng"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb112",
+  "q": "Si solo pudieras viajar a un país a través de sus libros, ¿cuál sería?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Japón",
+    "e": {
+     "s": {
+      "japanese fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Rusia",
+    "e": {
+     "s": {
+      "russian fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Francia",
+    "e": {
+     "s": {
+      "french fiction": 3
+     }
+    }
+   },
+   {
+    "t": "México o Argentina",
+    "e": {
+     "s": {
+      "latin american fiction": 3
+     },
+     "lang": "spa"
+    }
+   },
+   {
+    "t": "Estados Unidos",
+    "e": {
+     "s": {
+      "american fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Reino Unido",
+    "e": {
+     "s": {
+      "english fiction": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb113",
+  "q": "¿Quieres algo fácil de encontrar en cualquier librería de aquí?",
+  "axis": "language",
+  "a": [
+   {
+    "t": "Sí, que lo tengan en la librería del barrio",
+    "e": {
+     "lang": "spa",
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Me apaño con el inglés",
+    "e": {
+     "lang": "eng"
+    }
+   },
+   {
+    "t": "Lo que sea, ya me lo busco",
+    "e": {
+     "lang": "any"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb114",
+  "q": "¿Bestseller o joya escondida?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "El que está en todos los escaparates",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Uno que casi nadie conoce",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Uno de culto, para iniciados",
+    "e": {
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Me da igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb115",
+  "q": "¿Qué te parece leer lo que lee todo el mundo?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Me encanta, así tengo con quién comentarlo",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Me da alergia",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Solo si tiene fans muy fieles",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb116",
+  "q": "¿Cómo sueles elegir tus libros?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Por la lista de los más vendidos",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Por recomendación de un librero",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Por foros y fans entregados",
+    "e": {
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Por la portada, lo confieso",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb117",
+  "q": "¿Te gustaría descubrir a un autor antes que nadie?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Sí, me encanta presumir de eso",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "No, voy a lo seguro",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Prefiero los raros ya consagrados",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb118",
+  "q": "Para ti, un libro de culto es...",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Ciencia ficción rara que pasa de mano en mano",
+    "e": {
+     "s": {
+      "science fiction": 2,
+      "cyberpunk": 1
+     },
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Una novela beat o contracultural",
+    "e": {
+     "s": {
+      "american fiction": 2
+     },
+     "era": "20c",
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Un cómic underground",
+    "e": {
+     "s": {
+      "comic books, strips": 2,
+      "graphic novels": 1
+     },
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Los libros de culto no van conmigo",
+    "e": {
+     "pop": "mainstream"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb119",
+  "q": "¿Te fías de los premios literarios?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Sí, el Nobel y compañía son garantía",
+    "e": {
+     "s": {
+      "classic literature": 1
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Prefiero libros sin medallas",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Me fío más del boca a boca",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb120",
+  "q": "¿Libro viral de redes o libro de librería de viejo?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Viral: si lo lloran en vídeos, lo quiero",
+    "e": {
+     "s": {
+      "romance": 1,
+      "young adult fiction": 1
+     },
+     "era": "recent",
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Librería de viejo, con polvo y misterio",
+    "e": {
+     "era": "20c",
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Ni uno ni otro",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb121",
+  "q": "¿Un clásico famosísimo o un clásico olvidado?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "El famoso: quiero saber por qué lo es",
+    "e": {
+     "s": {
+      "classic literature": 2
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "El olvidado: rescatemos joyas",
+    "e": {
+     "s": {
+      "classic literature": 2
+     },
+     "era": "classic",
+     "pop": "hidden"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb122",
+  "q": "¿Te molesta que el libro tenga película o serie?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Al contrario, así luego veo la adaptación",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Prefiero los que nadie ha adaptado",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Me encanta el libro detrás de una peli de culto",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb123",
+  "q": "¿Autor debutante o firma consagrada?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "Debutante con ideas frescas",
+    "e": {
+     "era": "recent",
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Autor consagrado, apuesta segura",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Autor de culto, con pocos libros y muchos devotos",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb124",
+  "q": "¿Y si te recomiendo algo de una editorial pequeña e independiente?",
+  "axis": "popularity",
+  "a": [
+   {
+    "t": "¡Me encanta la idea!",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Si es bueno, adelante",
+    "e": {}
+   },
+   {
+    "t": "Mejor algo más conocido",
+    "e": {
+     "pop": "mainstream"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb125",
+  "q": "¿Qué ritmo de lectura te pide el cuerpo?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Page-turner: no poder soltarlo",
+    "e": {
+     "s": {
+      "thriller": 2,
+      "suspense": 2
+     }
+    }
+   },
+   {
+    "t": "Contemplativo, a sorbitos",
+    "e": {
+     "s": {
+      "psychological fiction": 1,
+      "poetry": 1,
+      "nature": 1
+     }
+    }
+   },
+   {
+    "t": "Algo intermedio",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb126",
+  "q": "¿Te gustan los giros de guion?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Cuantos más, mejor",
+    "e": {
+     "s": {
+      "thriller": 3,
+      "suspense": 2,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Con uno bueno al final me basta",
+    "e": {
+     "s": {
+      "mystery": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero historias tranquilas, sin sustos",
+    "e": {
+     "s": {
+      "thriller": -2,
+      "family life": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb127",
+  "q": "¿Quieres persecuciones y peleas o algo más tranquilo?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Persecuciones, peleas y explosiones",
+    "e": {
+     "s": {
+      "adventure stories": 2,
+      "thriller": 2,
+      "spy stories": 1
+     }
+    }
+   },
+   {
+    "t": "Algo de acción y mucho personaje",
+    "e": {
+     "s": {
+      "psychological fiction": 1,
+      "adventure stories": 1
+     }
+    }
+   },
+   {
+    "t": "Cero acción, prefiero conversaciones",
+    "e": {
+     "s": {
+      "drama": 2,
+      "thriller": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb128",
+  "q": "¿Quieres un libro que te quite el sueño por querer seguir?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Sí, necesito noches en vela",
+    "e": {
+     "s": {
+      "thriller": 3,
+      "suspense": 2
+     }
+    }
+   },
+   {
+    "t": "No, quiero algo que me relaje antes de dormir",
+    "e": {
+     "s": {
+      "thriller": -2,
+      "humor": 1,
+      "family life": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb129",
+  "q": "¿Cómo de rápido quieres que arranque la trama?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Con un muerto en la primera página",
+    "e": {
+     "s": {
+      "murder": 2,
+      "crime": 2,
+      "thriller": 2
+     }
+    }
+   },
+   {
+    "t": "A fuego lento, que se vaya cociendo",
+    "e": {
+     "s": {
+      "psychological fiction": 2,
+      "classic literature": 1
+     }
+    }
+   },
+   {
+    "t": "Que no haya casi trama, solo vida",
+    "e": {
+     "s": {
+      "family life": 2,
+      "memoirs": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb130",
+  "q": "¿Tienes paciencia con los comienzos lentos?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Sí, la recompensa merece la pena",
+    "e": {
+     "s": {
+      "classic literature": 2
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "No, me tiene que enganchar en la página uno",
+    "e": {
+     "s": {
+      "thriller": 2,
+      "suspense": 2
+     }
+    }
+   },
+   {
+    "t": "Depende de quién lo escriba",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb131",
+  "q": "Elige medio de transporte para tu lectura:",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Montaña rusa",
+    "e": {
+     "s": {
+      "thriller": 3,
+      "adventure stories": 1
+     }
+    }
+   },
+   {
+    "t": "Paseo en barca",
+    "e": {
+     "s": {
+      "nature": 1,
+      "love stories": 1,
+      "family life": 1
+     }
+    }
+   },
+   {
+    "t": "Tren de largo recorrido",
+    "e": {
+     "s": {
+      "historical fiction": 2
+     },
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb132",
+  "q": "¿Te gustan las novelas con un reloj en marcha?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Sí, el tictac me pone a mil",
+    "e": {
+     "s": {
+      "thriller": 3,
+      "spy stories": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero leer sin presiones",
+    "e": {
+     "s": {
+      "thriller": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb133",
+  "q": "¿Te apetece una lectura lenta, de subrayar frases?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Sí, de leer con lápiz en la mano",
+    "e": {
+     "s": {
+      "philosophy": 2,
+      "poetry": 1,
+      "essays": 1
+     }
+    }
+   },
+   {
+    "t": "No, quiero devorar",
+    "e": {
+     "s": {
+      "thriller": 2,
+      "adventure stories": 1
+     }
+    }
+   },
+   {
+    "t": "Un equilibrio entre las dos cosas",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb134",
+  "q": "¿Que el libro te atrape o que te acompañe?",
+  "axis": "pace",
+  "a": [
+   {
+    "t": "Que me atrape y me suelte hecho polvo",
+    "e": {
+     "s": {
+      "thriller": 3,
+      "suspense": 2
+     }
+    }
+   },
+   {
+    "t": "Que me acompañe como una manta",
+    "e": {
+     "s": {
+      "friendship": 2,
+      "family life": 2
+     }
+    }
+   },
+   {
+    "t": "Que me haga pensar, sin prisas",
+    "e": {
+     "s": {
+      "philosophy": 2,
+      "psychological fiction": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb135",
+  "q": "¿Ficción o no ficción?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Ficción, que la realidad ya la vivo a diario",
+    "e": {
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "No ficción, quiero hechos",
+    "e": {
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Lo que sea, mientras sea bueno",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb136",
+  "q": "¿Historia real o inventada?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Real, aunque parezca imposible",
+    "e": {
+     "s": {
+      "biography": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Inventada pero basada en hechos reales",
+    "e": {
+     "s": {
+      "historical fiction": 3
+     },
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "Pura invención",
+    "e": {
+     "s": {
+      "fantasy": 1
+     },
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb137",
+  "q": "¿Qué te parecen las memorias?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Me encantan: la vida real supera a la ficción",
+    "e": {
+     "s": {
+      "memoirs": 3
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Solo si son de alguien muy interesante",
+    "e": {
+     "s": {
+      "biography": 2,
+      "autobiography": 1
+     }
+    }
+   },
+   {
+    "t": "Prefiero personajes inventados",
+    "e": {
+     "s": {
+      "memoirs": -2
+     },
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb138",
+  "q": "¿Divulgación científica?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Sí, me flipa entender cómo funciona todo",
+    "e": {
+     "s": {
+      "science": 3
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Solo si se lee como una novela",
+    "e": {
+     "s": {
+      "science": 2,
+      "history": 1
+     }
+    }
+   },
+   {
+    "t": "No, prefiero novelas",
+    "e": {
+     "s": {
+      "science": -1
+     },
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb139",
+  "q": "¿Un hecho real contado con ritmo de thriller?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Sí, crónica periodística trepidante",
+    "e": {
+     "s": {
+      "true crime": 2,
+      "history": 1
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Mejor un thriller inventado",
+    "e": {
+     "s": {
+      "thriller": 3
+     },
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "Ni lo uno ni lo otro",
+    "e": {
+     "s": {
+      "thriller": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb140",
+  "q": "¿La autobiografía de alguien conocido?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Sí, de un músico",
+    "e": {
+     "s": {
+      "autobiography": 3,
+      "music": 2
+     }
+    }
+   },
+   {
+    "t": "De un científico",
+    "e": {
+     "s": {
+      "autobiography": 2,
+      "science": 2
+     }
+    }
+   },
+   {
+    "t": "De un escritor",
+    "e": {
+     "s": {
+      "autobiography": 3,
+      "essays": 1
+     }
+    }
+   },
+   {
+    "t": "No me interesa la vida de los famosos",
+    "e": {
+     "s": {
+      "autobiography": -2,
+      "biography": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb141",
+  "q": "¿Cuánta realidad quieres dentro de tu ficción?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Mucha: realismo puro",
+    "e": {
+     "s": {
+      "family life": 1,
+      "psychological fiction": 1
+     },
+     "fic": "fiction"
+    }
+   },
+   {
+    "t": "Un pellizco de magia",
+    "e": {
+     "s": {
+      "magical realism": 3
+     }
+    }
+   },
+   {
+    "t": "Nada: quiero mundos imposibles",
+    "e": {
+     "s": {
+      "fantasy": 3,
+      "science fiction": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb142",
+  "q": "¿Un ensayo que te cambie la forma de ver algo?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Sí, sobre psicología humana",
+    "e": {
+     "s": {
+      "psychology": 3
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Sobre historia",
+    "e": {
+     "s": {
+      "history": 3
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Sobre filosofía",
+    "e": {
+     "s": {
+      "philosophy": 3
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "No, quiero una historia",
+    "e": {
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb143",
+  "q": "¿Libros de autoayuda?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Sí, me vienen genial",
+    "e": {
+     "s": {
+      "self-help": 3
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Solo si tienen base científica",
+    "e": {
+     "s": {
+      "psychology": 3,
+      "science": 1
+     }
+    }
+   },
+   {
+    "t": "Ni hablar",
+    "e": {
+     "s": {
+      "self-help": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb144",
+  "q": "Si lees no ficción, ¿en qué tono?",
+  "axis": "fiction",
+  "a": [
+   {
+    "t": "Divertido y ligero",
+    "e": {
+     "s": {
+      "humor": 2,
+      "nonfiction": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Serio y riguroso",
+    "e": {
+     "s": {
+      "history": 2,
+      "science": 2
+     },
+     "fic": "nonfiction"
+    }
+   },
+   {
+    "t": "Íntimo y personal",
+    "e": {
+     "s": {
+      "memoirs": 3
+     }
+    }
+   },
+   {
+    "t": "Prefiero ficción, la verdad",
+    "e": {
+     "fic": "fiction"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb145",
+  "q": "¿Cómo quieres sentirte al pasar la última página?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Con el corazón calentito",
+    "e": {
+     "s": {
+      "friendship": 2,
+      "family life": 2,
+      "humor": 1
+     }
+    }
+   },
+   {
+    "t": "Con el corazón hecho trizas",
+    "e": {
+     "s": {
+      "drama": 3,
+      "love stories": 1
+     }
+    }
+   },
+   {
+    "t": "Con escalofríos",
+    "e": {
+     "s": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Con la cabeza echando humo",
+    "e": {
+     "s": {
+      "philosophy": 2,
+      "science fiction": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb146",
+  "q": "¿Cómo de oscuro te apetece?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Luz y optimismo",
+    "e": {
+     "s": {
+      "humor": 2,
+      "horror": -2
+     }
+    }
+   },
+   {
+    "t": "Gris, como la vida misma",
+    "e": {
+     "s": {
+      "psychological fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Negro como el carbón",
+    "e": {
+     "s": {
+      "horror": 2,
+      "crime": 2,
+      "dystopias": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb147",
+  "q": "¿Que te hagan reír o que te hagan llorar?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Reír",
+    "e": {
+     "s": {
+      "humor": 3
+     }
+    }
+   },
+   {
+    "t": "Llorar",
+    "e": {
+     "s": {
+      "drama": 3,
+      "love stories": 1
+     }
+    }
+   },
+   {
+    "t": "Las dos cosas a la vez",
+    "e": {
+     "s": {
+      "families": 2,
+      "humor": 1,
+      "drama": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb148",
+  "q": "¿Cuánta energía tienes hoy para leer?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Poca: algo ligerito",
+    "e": {
+     "s": {
+      "humor": 2,
+      "romance": 1
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Normal, ni mucha ni poca",
+    "e": {}
+   },
+   {
+    "t": "Mucha: tráeme un reto",
+    "e": {
+     "s": {
+      "classic literature": 2,
+      "philosophy": 1
+     },
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb149",
+  "q": "¿Te apetece algo tierno?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Sí, con animales y buena gente",
+    "e": {
+     "s": {
+      "animals": 2,
+      "friendship": 2
+     }
+    }
+   },
+   {
+    "t": "Tierno, pero con lágrimas",
+    "e": {
+     "s": {
+      "dogs": 1,
+      "drama": 2,
+      "families": 1
+     }
+    }
+   },
+   {
+    "t": "No, algo con colmillos",
+    "e": {
+     "s": {
+      "vampires": 2,
+      "horror": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb150",
+  "q": "¿Hoy eres más de nostalgia o de adrenalina?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Nostalgia",
+    "e": {
+     "s": {
+      "coming of age": 2,
+      "family life": 1
+     }
+    }
+   },
+   {
+    "t": "Adrenalina",
+    "e": {
+     "s": {
+      "thriller": 3,
+      "adventure stories": 2
+     }
+    }
+   },
+   {
+    "t": "Ninguna: calma total",
+    "e": {
+     "s": {
+      "nature": 2,
+      "poetry": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb151",
+  "q": "¿Te apetece un libro que te cabree un poco (para bien)?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Sí, que me indigne y me remueva",
+    "e": {
+     "s": {
+      "politics": 2,
+      "feminism": 2,
+      "sociology": 1
+     }
+    }
+   },
+   {
+    "t": "Sí, una sátira que me saque de quicio",
+    "e": {
+     "s": {
+      "satire": 3
+     }
+    }
+   },
+   {
+    "t": "No, quiero paz",
+    "e": {
+     "s": {
+      "politics": -2,
+      "humor": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb152",
+  "q": "¿Y un poco de vértigo existencial?",
+  "axis": "mood",
+  "a": [
+   {
+    "t": "Me encanta asomarme al abismo",
+    "e": {
+     "s": {
+      "philosophy": 2,
+      "dystopias": 2,
+      "horror": 1
+     }
+    }
+   },
+   {
+    "t": "Un poco, pero con esperanza",
+    "e": {
+     "s": {
+      "utopias": 1,
+      "science fiction": 1,
+      "friendship": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor no remover nada",
+    "e": {
+     "s": {
+      "humor": 2,
+      "philosophy": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb153",
+  "q": "¿Dónde quieres que pase la historia?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "En el espacio profundo",
+    "e": {
+     "s": {
+      "space opera": 3,
+      "astronomy": 1
+     }
+    }
+   },
+   {
+    "t": "En una ciudad española",
+    "e": {
+     "s": {
+      "spanish fiction": 3
+     }
+    }
+   },
+   {
+    "t": "En alta mar",
+    "e": {
+     "s": {
+      "pirates": 2,
+      "adventure stories": 2
+     }
+    }
+   },
+   {
+    "t": "En un internado",
+    "e": {
+     "s": {
+      "school stories": 3
+     }
+    }
+   },
+   {
+    "t": "En un mundo inventado",
+    "e": {
+     "s": {
+      "fantasy": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb154",
+  "q": "¿Corte real, ciudad de hoy o futuro lejano?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "Corte real con intrigas y venenos",
+    "e": {
+     "s": {
+      "kings and rulers": 3,
+      "historical fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Ciudad actual, como la mía",
+    "e": {
+     "s": {
+      "fiction": 1
+     },
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Un futuro muy lejano",
+    "e": {
+     "s": {
+      "science fiction": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb155",
+  "q": "¿Qué paisaje literario te tira más?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "Selva y pueblos húmedos",
+    "e": {
+     "s": {
+      "latin american fiction": 2,
+      "magical realism": 2
+     }
+    }
+   },
+   {
+    "t": "Estepa nevada",
+    "e": {
+     "s": {
+      "russian fiction": 3
+     }
+    }
+   },
+   {
+    "t": "Tokio de madrugada",
+    "e": {
+     "s": {
+      "japanese fiction": 3
+     }
+    }
+   },
+   {
+    "t": "París bohemio",
+    "e": {
+     "s": {
+      "french fiction": 3,
+      "art": 1
+     }
+    }
+   },
+   {
+    "t": "Campiña inglesa",
+    "e": {
+     "s": {
+      "english fiction": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb156",
+  "q": "¿Escuela de magia, instituto o universidad?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "Escuela de magia",
+    "e": {
+     "s": {
+      "magic": 3,
+      "school stories": 2,
+      "witches": 1
+     }
+    }
+   },
+   {
+    "t": "Instituto con dramas",
+    "e": {
+     "s": {
+      "school stories": 3,
+      "young adult fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Campus universitario lleno de secretos",
+    "e": {
+     "s": {
+      "school stories": 2,
+      "mystery": 2,
+      "psychological fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Ninguna, odio las aulas",
+    "e": {
+     "s": {
+      "school stories": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb157",
+  "q": "¿Una isla? ¿Qué clase de isla?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "Desierta, para sobrevivir",
+    "e": {
+     "s": {
+      "survival": 3
+     }
+    }
+   },
+   {
+    "t": "Con un tesoro enterrado",
+    "e": {
+     "s": {
+      "pirates": 3,
+      "adventure stories": 2
+     }
+    }
+   },
+   {
+    "t": "Con un asesino entre los invitados",
+    "e": {
+     "s": {
+      "murder": 3,
+      "detective and mystery stories": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero tierra firme",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "lb158",
+  "q": "¿Una nave espacial como escenario?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "Sí, con tripulación y peligros",
+    "e": {
+     "s": {
+      "space opera": 3,
+      "survival": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor una estación llena de robots",
+    "e": {
+     "s": {
+      "robots": 3,
+      "science fiction": 2
+     }
+    }
+   },
+   {
+    "t": "Mis pies, en la Tierra",
+    "e": {
+     "s": {
+      "space opera": -2,
+      "astronomy": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb159",
+  "q": "¿Campo o ciudad?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "Pueblo pequeño con secretos",
+    "e": {
+     "s": {
+      "family life": 2,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Gran ciudad caótica",
+    "e": {
+     "s": {
+      "crime": 1,
+      "cyberpunk": 1
+     }
+    }
+   },
+   {
+    "t": "Naturaleza salvaje, sin cobertura",
+    "e": {
+     "s": {
+      "nature": 3,
+      "survival": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "lb160",
+  "q": "¿Una historia en movimiento?",
+  "axis": "setting",
+  "a": [
+   {
+    "t": "Road trip por carreteras infinitas",
+    "e": {
+     "s": {
+      "travel": 3,
+      "american fiction": 1
+     }
+    }
+   },
+   {
+    "t": "Un tren por Europa con un crimen a bordo",
+    "e": {
+     "s": {
+      "travel": 2,
+      "mystery": 2
+     }
+    }
+   },
+   {
+    "t": "El viaje mítico de un héroe",
+    "e": {
+     "s": {
+      "quests": 3,
+      "mythology": 2
+     }
+    }
+   },
+   {
+    "t": "Me quedo en casa, gracias",
+    "e": {
+     "s": {
+      "family life": 2
+     }
+    }
+   }
+  ]
+ }
+]

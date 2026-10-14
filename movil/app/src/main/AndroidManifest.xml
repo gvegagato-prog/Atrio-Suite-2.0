@@ -22,6 +22,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Ronron"
         android:networkSecurityConfig="@xml/network">
+        <!-- Lector de libros (EPUB, PDF, MOBI, FB2, CBZ): el archivo se queda en el móvil -->
+        <activity
+            android:name=".ReaderActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode|density" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

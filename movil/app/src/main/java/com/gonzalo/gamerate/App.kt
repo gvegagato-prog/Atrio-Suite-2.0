@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+
 package com.gonzalo.gamerate
 
 import android.Manifest
@@ -7,6 +9,12 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -81,6 +89,12 @@ fun App(
     var sessId by remember { mutableStateOf(store.sessionId) }
     var section by remember { mutableStateOf(-1) }
     var tab by remember { mutableStateOf(0) }
+    // Atrio 6: destino del dock (0 Inicio, 1 Juegos, 2 Libros, 3 Cine, 4 Diario) y apartado de la biblioteca
+    var dest by remember { mutableStateOf(0) }
+    var segment by remember { mutableStateOf(0) }
+    var cineTv by remember { mutableStateOf(false) }
+    var diaryKind by remember { mutableStateOf(0) }
+    var wheelOpen by remember { mutableStateOf(false) }
     var partner by remember { mutableStateOf(Couple.cached(store)) }
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
     var syncTick by remember { mutableStateOf(0) }
@@ -772,6 +786,53 @@ fun App(
         }
     }
 
+    // ---- Atrio 6: botón principal de cada tarjeta de «Sigue donde lo dejaste» ----
+    fun pcGameOf(o: Ongoing): PcGame? = if (o.kind.isGame && Suite.target() != null) Guides.pcGameFor(o.play.id, o.play.name) else null
+    fun primaryLabel(o: Ongoing): Pair<String, androidx.compose.ui.graphics.vector.ImageVector> = when {
+        pcGameOf(o) != null -> "Streaming" to Icons.Rounded.Cast
+        o.kind.isBook && BookFiles.get(ctx, o.play.id) != null -> "Leer" to Icons.Rounded.AutoStories
+        else -> "Apunte" to Icons.Rounded.EditNote
+    }
+    fun primaryAction(o: Ongoing, nav: (Screen) -> Unit) {
+        val g = pcGameOf(o)
+        when {
+            g != null -> scope.launch {
+                val err = Stream.play(ctx, g.key)
+                if (err == "NOVA") say("Instala Nova para jugar en streaming (Perfil → Tu PC)") else if (err != null) say(err)
+            }
+            o.kind.isBook && BookFiles.get(ctx, o.play.id) != null -> ReaderActivity.open(ctx, o.play.id, o.play.name)
+            else -> nav(Screen.Note(o.play, null))
+        }
+    }
+
+    /** Añade a tu lista algo descubierto con las preguntas. */
+    fun quizAdd(it: QuizItem) {
+        val k = when {
+            it.domain == 1 -> BOOKS
+            it.tv -> kinds.firstOrNull { k -> k.isTv }
+            else -> kinds.firstOrNull { k -> k.isMovie }
+        } ?: run { say("No tienes la categoría para esto"); return }
+        scope.launch {
+            if (playsOf(k).any { p -> normName(p.name) == normName(it.title) } || gamesOf(k).any { g -> normName(g.name) == normName(it.title) }) {
+                say("Ya tenías ${it.title}"); return@launch
+            }
+            var id = it.id
+            var cover = it.cover
+            // Las series de Atrio van con TVmaze (episodios, creadores): se busca la misma serie allí
+            if (it.tv) {
+                try {
+                    val hits = TvMaze.search(it.original.ifBlank { it.title })
+                    val h = hits.firstOrNull { h -> normName(h.name) == normName(it.original) && (it.year.isBlank() || h.sub.startsWith(it.year)) }
+                        ?: hits.firstOrNull { h -> normName(h.name) == normName(it.title) } ?: hits.firstOrNull()
+                    if (h != null) { id = h.id; if (cover.isBlank()) cover = h.cover }
+                } catch (e: Exception) { }
+            }
+            if (playsOf(k).any { p -> p.id == id } || gamesOf(k).any { g -> g.id == id }) { say("Ya tenías ${it.title}"); return@launch }
+            setPlays(k, playsOf(k) + Play(id, it.title, cover, "", 0, emptyList(), creator = it.creator, updated = now()))
+            say("${it.title} añadido a tu lista")
+        }
+    }
+
     fun startFromWheel(p: Play) {
         savePlay(p.copy(status = 1, start = if (p.start == 0L) today() else p.start, end = 0L))
         say("¡A por ${p.name}!")
@@ -801,10 +862,28 @@ fun App(
         }
     }
 
-    BackHandler(enabled = section != -1 || screen !is Screen.Home || pv) {
+    // ---- Atrio 6: destinos del dock ----
+    fun cineKindId(): Int {
+        val ks = if (pv) partner!!.allKinds else myKinds
+        return (ks.firstOrNull { if (cineTv) it.isTv else it.isMovie } ?: ks.firstOrNull { it.isMovie || it.isTv })?.id ?: -1
+    }
+    fun go(d: Int) {
+        dest = d
+        segment = 0
+        section = when (d) { 1 -> 0; 2 -> 1; 3 -> cineKindId(); 4 -> diaryKind; else -> -1 }
+        screen = Screen.Home
+    }
+
+    BackHandler(enabled = dest != 0 || section != -1 || screen !is Screen.Home || pv) {
         val cur = screen
-        if (cur is Screen.ShotView) { screen = cur.back }
-        else if (screen !is Screen.Home) { screen = Screen.Home } else if (section != -1) { section = -1 } else togglePartner()
+        when {
+            cur is Screen.ShotView -> screen = cur.back
+            screen is Screen.Settings -> screen = Screen.Profile
+            screen !is Screen.Home -> screen = Screen.Home
+            dest != 0 -> go(0)
+            section != -1 -> section = -1
+            else -> togglePartner()
+        }
     }
 
     val look = Mode.look
@@ -818,7 +897,8 @@ fun App(
     )
     val bgColor by animateColorAsState(target, tween(500), label = "fondo")
     val bgMod = Modifier.pattern(look.pattern, bgColor, look.intensity)
-    val shown: Any = if (section == -1 && screen is Screen.Home) (if (pv) "menuP" else "menu") else screen
+    val shown: Any = if (screen is Screen.Home) "top:$dest:$section:$pv" else screen
+    val topLevel = screen is Screen.Home
 
     val touchWatcher = Modifier.pointerInput(Unit) {
         awaitPointerEventScope {
@@ -829,17 +909,31 @@ fun App(
             }
         }
     }
+    fun openPlay(k: Kind, p: Play) {
+        if (k.id != section) section = k.id
+        screen = if (pv) Screen.PartnerItem(k.id, p.id) else Screen.PlayDetail(p)
+    }
     CompositionLocalProvider(LocalContentColor provides Charcoal) {
     Box(Modifier.fillMaxSize().then(bgMod).then(touchWatcher)) {
-        // El fondo está fijo debajo; lo que cambia aparece después, con fundido y un poco de zoom.
+        androidx.compose.animation.SharedTransitionLayout {
+        val sharedScope = this
         AnimatedContent(
             targetState = shown,
             transitionSpec = {
-                // Rápido y sin esperas: la pantalla nueva entra a la vez que se va la vieja.
-                (fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.98f)) togetherWith fadeOut(tween(90))
+                val a = initialState; val b = targetState
+                if (a is String && b is String) {
+                    // Entre destinos del dock: fundido rápido con un leve desplazamiento
+                    (fadeIn(tween(Motion.ms(200))) + scaleIn(tween(Motion.ms(240)), initialScale = 0.985f)) togetherWith fadeOut(tween(Motion.ms(120)))
+                } else if (a is String) {
+                    // Abrir una ficha: entra desde abajo mientras la portada vuela
+                    (fadeIn(tween(Motion.ms(260))) + slideInVertically(tween(Motion.ms(320))) { it / 14 }) togetherWith fadeOut(tween(Motion.ms(200)))
+                } else {
+                    fadeIn(tween(Motion.ms(220))) togetherWith fadeOut(tween(Motion.ms(160)))
+                }
             },
             label = "pantallas"
         ) { s ->
+            CompositionLocalProvider(LocalShared provides sharedScope, LocalAnim provides this) {
             if (s is String) {
                 val p = partner
                 val pendingRecs = if (pv) emptyList() else p?.recs?.filter { it.id !in recsDone }?.sortedByDescending { it.time } ?: emptyList()
@@ -847,145 +941,172 @@ fun App(
                     p.games(k).map { g -> Activity(k.id, g.id, g.name, g.cover, "Valorado · ${g.general}", g.activity) } +
                         p.plays(k).map { pl -> Activity(k.id, pl.id, pl.name, pl.cover, k.statuses[pl.status.coerceIn(0, 2)], pl.activity) }
                 }.sortedByDescending { it.time }.distinctBy { it.kind to it.id }.take(12)
-                fun info(k: Kind): MenuInfo {
-                    val gs = if (pv) p!!.games(k) else gamesOf(k)
-                    val ps = if (pv) p!!.plays(k) else playsOf(k)
-                    val cover = current(ps, if (pv || !k.isGame) 0L else sessId)?.takeIf { !pv || !Photos.isLocal(it) }
-                        ?: gs.maxByOrNull { it.activity }?.cover
-                    val active = ps.count { it.status == 1 }
-                    val doneYear = gs.count { it.end > 0L && LocalDate.ofEpochDay(it.end).year == year }
-                    val goal = when {
-                        k.custom -> 0
-                        pv -> if (k.isBook) p!!.goalBooks else p!!.goalGames
-                        else -> if (k.isBook) goalB else goalG
-                    }
-                    return MenuInfo(cover, "$active ${k.statuses[1].lowercase()} · ${gs.size} ${k.doneWord.lowercase()}", doneYear, goal)
-                }
                 val sectionKinds = if (pv) p!!.allKinds else myKinds
-                MenuScreen(
-                    title = if (pv) p!!.name else store.myName.ifBlank { "Atrio" },
-                    tiles = sectionKinds.map { it to info(it) },
-                    partnerName = p?.name,
-                    recs = pendingRecs, acts = acts,
-                    readOnly = pv,
-                    hint = if (!pv && p != null && !store.knowsDoubleTap)
-                        (if (store.myName.isBlank()) "Toca dos veces el título para ver lo de ${p.name}" else "Toca dos veces tu nombre para ver lo de ${p.name}") else null,
-                    onTitleDouble = { togglePartner() },
-                    onSettings = if (pv) null else ({ screen = Screen.Settings }),
-                    onEnter = { section = it; tab = 0; screen = Screen.Home },
-                    onNewKind = if (pv) null else ({ kindNew = true }),
-                    onEditKind = if (pv) null else ({ k -> kindEdit = k }),
-                    onRecAdd = { recAdd(it) },
-                    onRecDismiss = { recDone(it) },
-                    onAct = { a -> withReveal { screen = Screen.PartnerItem(a.kind, a.id) } },
-                    top = {
-                        if (!pv && store.paired) {
-                            LiveCard(
-                                plays, onShot = { shoot { s -> if (s != null) screen = Screen.ShotView(s, Screen.Home) } }, shooting = shooting,
-                                onMemo = { g -> playFor(g)?.let { memoFor = it to null } },
-                                onOpenPlay = { p -> section = 0; screen = Screen.PlayDetail(p) },
-                                onRemote = { screen = Screen.Suite },
-                                onGuides = { guideSheet = it }
-                            )
-                            Spacer(Modifier.height(20.dp))
-                            if (pendingSegs.isNotEmpty()) {
-                                PendingParts(
-                                    pendingSegs,
-                                    onRate = { p, sg -> section = if (plays.any { it.id == p.id }) 0 else kinds.firstOrNull { k -> playsOf(k).any { it.id == p.id } }?.id ?: 1; screen = Screen.Note(p, null, sg) },
-                                    onDismiss = { _, sg -> skipped = skipped + sg.id; store.segsSkipped = skipped }
-                                )
-                                Spacer(Modifier.height(20.dp))
-                            }
-                            if (Suite.localShots.isNotEmpty() || Suite.downloading.isNotEmpty()) {
-                                ShotStrip(Suite.localShots.take(10), "Últimas capturas") { s -> screen = Screen.ShotView(s, Screen.Home) }
-                                Spacer(Modifier.height(20.dp))
-                            }
-                        } else if (!pv) {
-                            SuiteIntro(
-                                "Tu PC en el móvil",
-                                "Entra en tu cuenta (Ajustes → Cuenta y pareja) y en Atrio del PC con la misma: verás en directo a qué juegas, pedirás capturas a calidad original y valorarás cada partida."
-                            ) { screen = Screen.Settings }
-                            Spacer(Modifier.height(20.dp))
-                        }
-                    }
-                )
-            } else {
-            when (s) {
-                Screen.Home -> {
-                    // Juegos y libros tienen "Siguiente"; las categorías propias y lo de tu pareja, no.
-                    val pages = if (pv || kind.custom) 4 else 5
-                    val pager = rememberPagerState(initialPage = tab.coerceAtMost(pages - 1)) { pages }
-                    LaunchedEffect(pager) {
-                        snapshotFlow { pager.settledPage }.collect { tab = it }
-                    }
-                    LaunchedEffect(tab) {
-                        if (pager.settledPage != tab) pager.animateScrollToPage(tab)
-                    }
-                    Column(Modifier.fillMaxSize()) {
-                        Box(Modifier.weight(1f)) {
-                            // Las pestañas de al lado se preparan antes: al deslizar ya están listas.
-                            HorizontalPager(pager, Modifier.fillMaxSize(), beyondBoundsPageCount = 1) { page ->
-                                when (page) {
-                                    0 -> PlayingHome(
-                                        myPlays, kind, if (pv) 0L else sessId, { section = -1 }, if (pv) null else ({ screen = Screen.Search(true) }), side,
-                                        { startFromWheel(it) }
-                                    ) { screen = if (pv) Screen.PartnerItem(kind.id, it.id) else Screen.PlayDetail(it) }
-                                    1 -> Home(myGames, kind, { section = -1 }, if (pv) null else ({ screen = Screen.Search(false) }), side) {
-                                        screen = if (pv) Screen.PartnerItem(kind.id, it.id) else Screen.Edit(it, false)
-                                    }
-                                    // "Siguiente" pide cartas a internet: solo se monta cuando vas a esa pestaña.
-                                    4 -> if (pager.currentPage == 4 || pager.targetPage == 4) {
-                                        DeckScreen(kind, myGames, myPlays, partner, { section = -1 }, { addCard(it) }) { syncTick++ }
-                                    } else Box(Modifier.fillMaxSize())
-                                    3 -> StatsScreen(
-                                        kind, myGames, myPlays, side,
-                                        when {
-                                            kind.custom -> 0
-                                            pv -> if (kind.isBook) (partner?.goalBooks ?: 0) else (partner?.goalGames ?: 0)
-                                            else -> if (kind.isBook) goalB else goalG
-                                        },
-                                        if (kind.isBook) (partner?.goalBooks ?: 0) else (partner?.goalGames ?: 0),
-                                        onShareYear = if (pv) null else ({ y -> shareYear(kind, myGames, y) })
-                                    ) { section = -1 }
-                                    else -> CalendarScreen(kind, myGames, myPlays, side, { section = -1 }) { c ->
-                                        if (pv) {
-                                            screen = Screen.PartnerItem(kind.id, c.id)
-                                        } else if (Mode.calP && side != null) {
-                                            screen = Screen.PartnerItem(partner?.match(kind)?.id ?: kind.id, c.id)
-                                        } else if (c.isPlay) {
-                                            myPlays.find { it.id == c.id }?.let { screen = Screen.PlayDetail(it) }
-                                        } else {
-                                            myGames.find { it.id == c.id }?.let { screen = Screen.Edit(it, false) }
-                                        }
-                                    }
+                fun gs(k: Kind) = if (pv) p!!.games(k) else gamesOf(k)
+                fun ps(k: Kind) = if (pv) p!!.plays(k) else playsOf(k)
+
+                @Composable
+                fun Library(k: Kind, onBack: (() -> Unit)?) {
+                    val cine = k.isMovie || k.isTv
+                    LibraryScreen(
+                        k, myGames, myPlays, if (pv) 0L else sessId, side, pv, segment, { segment = it },
+                        onOpenPlay = { openPlay(k, it) },
+                        onOpenGame = { screen = if (pv) Screen.PartnerItem(k.id, it.id) else Screen.Edit(it, false) },
+                        onAdd = if (pv) null else ({ forPlay -> screen = Screen.Search(forPlay) }),
+                        onStats = { screen = Screen.Stats },
+                        onDiscover = when {
+                            pv -> null
+                            k.isGame -> ({ screen = Screen.Deck })
+                            k.isBook -> ({ screen = Screen.Quiz(1) })
+                            cine -> ({ screen = Screen.Quiz(2) })
+                            else -> null
+                        },
+                        onWheel = if (pv) null else ({ wheelOpen = true }),
+                        titleSwitch = if (cine) ({
+                            TitleTabs(listOf("Películas", "Series"), if (k.isTv) 1 else 0) { i -> cineTv = i == 1; section = cineKindId(); segment = 0 }
+                        }) else null,
+                        badgeFor = if (cine) ({ id, name -> RtBadgeFor(k, id, name) }) else null,
+                        onBack = onBack
+                    )
+                }
+
+                when {
+                    dest == 4 -> {
+                        val dk = if (pv) p!!.kindById(section) else myKinds.find { it.id == section } ?: GAMES
+                        CalendarScreen(dk, myGames, myPlays, side, { go(0) }, heading = "Diario", top = {
+                            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                                items(sectionKinds.size) { i ->
+                                    val k = sectionKinds[i]
+                                    SoftChip(k.title, k.id == dk.id) { diaryKind = k.id; section = k.id }
                                 }
                             }
-                        }
-                        HorizontalDivider(thickness = 1.dp, color = Line)
-                        NavigationBar(containerColor = UiPanel, tonalElevation = 0.dp) {
-                            val colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = UiTint, selectedIconColor = Charcoal, selectedTextColor = Charcoal,
-                                unselectedIconColor = UiSoft, unselectedTextColor = UiSoft
-                            )
-                            val items = listOf(
-                                (if (kind.isBook) Icons.Rounded.AutoStories else if (kind.isMovie) Icons.Rounded.Movie
-                                else if (kind.isTv) Icons.Rounded.Tv else Icons.Rounded.SportsEsports) to kind.statuses[1],
-                                Icons.Rounded.Star to "Valorados",
-                                Icons.Rounded.CalendarMonth to "Calendario",
-                                Icons.Rounded.BarChart to "Estadísticas",
-                                Icons.Rounded.Style to "Siguiente"
-                            ).take(pages)
-                            items.forEachIndexed { i, (ic, label) ->
-                                NavigationBarItem(
-                                    selected = tab == i, onClick = { tab = i },
-                                    icon = { Icon(ic, null) },
-                                    label = { Text(label, fontWeight = FontWeight.Medium, fontSize = if (label.length > 10) 10.sp else 11.sp, maxLines = 1, softWrap = false) },
-                                    colors = colors
-                                )
+                        }) { c ->
+                            if (pv) {
+                                screen = Screen.PartnerItem(dk.id, c.id)
+                            } else if (Mode.calP && side != null) {
+                                screen = Screen.PartnerItem(partner?.match(dk)?.id ?: dk.id, c.id)
+                            } else if (c.isPlay) {
+                                myPlays.find { it.id == c.id }?.let { screen = Screen.PlayDetail(it) }
+                            } else {
+                                myGames.find { it.id == c.id }?.let { screen = Screen.Edit(it, false) }
                             }
                         }
                     }
+                    dest in 1..3 && section >= 0 -> Library(kind, null)
+                    dest == 3 -> Box(Modifier.fillMaxSize().statusBarsPadding().padding(20.dp)) { Text("Aún no hay categoría de películas o series.", color = Muted) }
+                    section >= 0 -> Library(kind) { section = -1 }
+                    else -> {
+                        val ongoing = sectionKinds.flatMap { k -> ps(k).filter { it.status == 1 }.map { Ongoing(k, it) } }
+                            .sortedWith(compareByDescending<Ongoing> { !pv && it.kind.isGame && it.play.id == sessId }.thenByDescending { it.play.activity })
+                            .let { l -> if (pv) l.filter { !Photos.isLocal(it.play.cover) } else l }
+                        val collections = sectionKinds.filter { it.custom && !it.isMovie && !it.isTv }.map { k ->
+                            val g = gs(k); val pl = ps(k)
+                            CollectionInfo(k, (pl.sortedByDescending { it.activity }.map { it.cover } + g.sortedByDescending { it.activity }.map { it.cover }).filter { it.isNotBlank() }.take(3),
+                                "${pl.count { it.status == 1 }} ${k.statuses[1].lowercase()} · ${g.size} ${k.doneWord.lowercase()}")
+                        }
+                        val doneYear = { k: Kind -> gs(k).count { it.end > 0L && LocalDate.ofEpochDay(it.end).year == year } }
+                        InicioScreen(
+                            name = if (pv) p!!.name else store.myName.ifBlank { "Atrio" },
+                            readOnly = pv, partnerName = p?.name,
+                            hint = if (!pv && p != null && !store.knowsDoubleTap) "Toca a tu pareja (el gato) para ver lo suyo" else null,
+                            ongoing = ongoing, sessId = if (pv) 0L else sessId,
+                            collections = collections, recs = pendingRecs, acts = acts,
+                            goals = listOf(
+                                Triple(GAMES.title, doneYear(GAMES), if (pv) p!!.goalGames else goalG),
+                                Triple(BOOKS.title, doneYear(BOOKS), if (pv) p!!.goalBooks else goalB)
+                            ),
+                            onTitleDouble = { togglePartner() },
+                            onPartner = if (p != null) ({ togglePartner() }) else null,
+                            onProfile = if (pv) null else ({ screen = Screen.Profile }),
+                            onOpen = { o -> openPlay(o.kind, o.play) },
+                            onPrimary = { o -> primaryAction(o) { sc -> section = o.kind.id; screen = sc } },
+                            primaryLabel = { o -> primaryLabel(o) },
+                            onCollection = { k -> section = k.id; segment = 0 },
+                            onNewCollection = if (pv) null else ({ kindNew = true }),
+                            onEditCollection = if (pv) null else ({ k -> kindEdit = k }),
+                            onDiscover = if (pv) null else ({ d ->
+                                when (d) {
+                                    0 -> { dest = 1; section = 0; screen = Screen.Deck }
+                                    1 -> { dest = 2; section = 1; screen = Screen.Quiz(1) }
+                                    else -> { dest = 3; section = cineKindId(); screen = Screen.Quiz(2) }
+                                }
+                            }),
+                            onRecAdd = { recAdd(it) }, onRecDismiss = { recDone(it) },
+                            onAct = { a -> withReveal { screen = Screen.PartnerItem(a.kind, a.id) } },
+                            top = {
+                                if (!pv && store.paired) {
+                                    LiveCard(
+                                        plays, onShot = { shoot { s -> if (s != null) screen = Screen.ShotView(s, Screen.Home) } }, shooting = shooting,
+                                        onMemo = { g -> playFor(g)?.let { memoFor = it to null } },
+                                        onOpenPlay = { p -> section = 0; screen = Screen.PlayDetail(p) },
+                                        onRemote = { screen = Screen.Suite },
+                                        onGuides = { guideSheet = it }
+                                    )
+                                    Spacer(Modifier.height(16.dp))
+                                    if (pendingSegs.isNotEmpty()) {
+                                        PendingParts(
+                                            pendingSegs,
+                                            onRate = { p, sg -> section = if (plays.any { it.id == p.id }) 0 else kinds.firstOrNull { k -> playsOf(k).any { it.id == p.id } }?.id ?: 1; screen = Screen.Note(p, null, sg) },
+                                            onDismiss = { _, sg -> skipped = skipped + sg.id; store.segsSkipped = skipped }
+                                        )
+                                        Spacer(Modifier.height(16.dp))
+                                    }
+                                    if (Suite.localShots.isNotEmpty() || Suite.downloading.isNotEmpty()) {
+                                        ShotStrip(Suite.localShots.take(10), "Últimas capturas") { s -> screen = Screen.ShotView(s, Screen.Home) }
+                                        Spacer(Modifier.height(16.dp))
+                                    }
+                                } else if (!pv) {
+                                    SuiteIntro(
+                                        "Tu PC en el móvil",
+                                        "Entra en tu cuenta (Perfil → Cuenta y pareja) y en Atrio del PC con la misma: verás en directo a qué juegas, pedirás capturas a calidad original y valorarás cada partida."
+                                    ) { screen = Screen.Profile }
+                                }
+                            }
+                        )
+                    }
                 }
+            } else {
+            when (s) {
+                Screen.Stats -> StatsScreen(
+                    kind, myGames, myPlays, side,
+                    when {
+                        kind.custom -> 0
+                        pv -> if (kind.isBook) (partner?.goalBooks ?: 0) else (partner?.goalGames ?: 0)
+                        else -> if (kind.isBook) goalB else goalG
+                    },
+                    if (kind.isBook) (partner?.goalBooks ?: 0) else (partner?.goalGames ?: 0),
+                    onShareYear = if (pv) null else ({ y -> shareYear(kind, myGames, y) })
+                ) { screen = Screen.Home }
+
+                Screen.Deck -> DeckScreen(kind, myGames, myPlays, partner, { screen = Screen.Home }, { addCard(it) }) { syncTick++ }
+
+                is Screen.Quiz -> QuizScreen(
+                    s.domain, store, mine = (if (s.domain == 1) listOf(BOOKS) else myKinds.filter { it.isMovie || it.isTv })
+                        .flatMap { k -> gamesOf(k).map { it.name } + playsOf(k).map { it.name } }.toSet(),
+                    onAdd = { item -> quizAdd(item) },
+                    onBack = { screen = Screen.Home }
+                )
+
+                Screen.Profile -> ProfileScreen(
+                    store, partner,
+                    onStyle = { Skin.open = true },
+                    onSettings = { screen = Screen.Settings },
+                    onSuite = { screen = Screen.Suite },
+                    goalGames = goalG, goalBooks = goalB,
+                    onGoal = { k, v ->
+                        val nv = v.coerceIn(0, 999)
+                        store.setGoal(k, year, nv)
+                        if (k == 1) goalB = nv else goalG = nv
+                        syncTick++
+                    },
+                    couple = {
+                        CoupleSettings(store, { partner = it }) {
+                            reloadAll()
+                            undoImport = store.hasUndoImport
+                        }
+                    },
+                    onBack = { screen = Screen.Home }
+                )
 
                 Screen.Settings -> SettingsScreen(
                     key = key, look = Mode.look,
@@ -1037,7 +1158,7 @@ fun App(
                     onBookmory = { if (importing) say("Ya hay una importación en marcha") else bookmory.launch(arrayOf("application/zip", "application/x-zip-compressed", "text/plain", "application/octet-stream", "*/*")) },
                     steamKey = store.steamKey, steamUser = store.steamUser,
                     onSteam = { k, u -> steamHours(k, u) }
-                ) { screen = Screen.Home }
+                ) { screen = Screen.Profile }
 
                 is Screen.Search -> if (kind.custom && (!kind.online || s.manual)) CustomAddScreen(
                     kind, s.forPlay, onPhoto = { cb -> pickPhoto(cb) },
@@ -1274,6 +1395,28 @@ fun App(
                 else -> Unit
             }
             }
+            }
+        }
+        }
+        // Dock: solo en las pantallas principales
+        androidx.compose.animation.AnimatedVisibility(
+            topLevel, Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(Motion.bouncy()) { it } + fadeIn(), exit = slideOutVertically(tween(Motion.ms(160))) { it } + fadeOut(tween(Motion.ms(120)))
+        ) {
+            Dock(
+                listOf(
+                    DockItem(Icons.Rounded.Home, "Inicio"), DockItem(Icons.Rounded.SportsEsports, "Juegos"),
+                    DockItem(Icons.Rounded.AutoStories, "Libros"), DockItem(Icons.Rounded.Movie, "Cine"),
+                    DockItem(Icons.Rounded.CalendarMonth, "Diario")
+                ),
+                if (dest == 0 && section >= 0) 0 else dest
+            ) { go(it) }
+        }
+        if (wheelOpen) {
+            val pool = myPlays.filter { it.status == 0 }
+            val ps0 = side
+            val shared = if (ps0 == null) emptyList() else pool.filter { mine -> ps0.plays.any { it.id == mine.id && it.status == 0 } }
+            WheelDialog(pool, shared, partner?.name, kind, { p -> wheelOpen = false; startFromWheel(p) }, { p -> wheelOpen = false; screen = Screen.PlayDetail(p) }) { wheelOpen = false }
         }
 
         val pr = pendingRestore

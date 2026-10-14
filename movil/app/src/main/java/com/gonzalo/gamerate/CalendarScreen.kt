@@ -91,7 +91,7 @@ fun rangeText(c: CalItem): String {
 @Composable
 fun CalendarScreen(
     kind: Kind, games: List<Game>, plays: List<Play>, partner: PartnerSide?,
-    onMenu: () -> Unit, onOpen: (CalItem) -> Unit
+    onMenu: () -> Unit, heading: String? = null, top: @Composable () -> Unit = {}, onOpen: (CalItem) -> Unit
 ) {
     var sel by remember { mutableStateOf<Long?>(null) }
     val showPartner = Mode.calP
@@ -108,11 +108,14 @@ fun CalendarScreen(
     val todayDay = today()
 
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+        Modifier.fillMaxSize().statusBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = if (heading != null) 104.dp else 8.dp)
     ) {
-        TopBar(kind.title, onMenu, "Calendario") {
+        if (heading != null) BigHeader(heading) {
+            if (partner != null) PartnerToggle(showPartner) { withReveal { Mode.calP = !Mode.calP } }
+        } else TopBar(kind.title, onMenu, "Calendario") {
             if (partner != null) PartnerToggle(showPartner) { withReveal { Mode.calP = !Mode.calP } }
         }
+        top()
 
         // Mes: título en cursiva, año pequeño y flechas en círculos finos.
         Row(

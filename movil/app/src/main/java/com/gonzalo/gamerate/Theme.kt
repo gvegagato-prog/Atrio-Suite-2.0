@@ -76,6 +76,15 @@ val AtrioDisplay = FontFamily(
     Font(R.font.display_italic, FontWeight.Normal, FontStyle.Italic)
 )
 
+/** Letra de títulos de Atrio 6: Bricolage Grotesque (variable: grosor y anchura). */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+val VitrinaDisplay = FontFamily(
+    listOf(400, 500, 600, 700, 800).map { w ->
+        Font(R.font.bricolage, FontWeight(w), variationSettings = androidx.compose.ui.text.font.FontVariation.Settings(
+            androidx.compose.ui.text.font.FontVariation.weight(w), androidx.compose.ui.text.font.FontVariation.width(if (w >= 700) 92f else 100f)))
+    }
+)
+
 /** Letra del resto de la app: sans neutra (Inter). */
 val AtrioBody = FontFamily(
     Font(R.font.body_regular, FontWeight.Normal),

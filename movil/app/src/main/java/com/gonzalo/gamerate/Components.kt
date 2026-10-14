@@ -236,7 +236,7 @@ fun Overline(text: String, modifier: Modifier = Modifier) {
     Text(text.uppercase(), color = Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp, modifier = modifier)
 }
 
-/** Cabecera de cada pestaña: volver, sección encima del título y botones a la derecha. */
+/** Cabecera de pantalla (Atrio 6): volver, la sección pequeña encima y el título grande; botones a la derecha. */
 @Composable
 fun TopBar(back: String, onBack: () -> Unit, title: String, actions: @Composable RowScope.() -> Unit = {}) {
     Row(
@@ -244,15 +244,26 @@ fun TopBar(back: String, onBack: () -> Unit, title: String, actions: @Composable
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            Modifier.pop(onBack).size(40.dp).border(borderW.coerceIn(1.dp, 2.dp), borderC, roundShape()),
-            contentAlignment = Alignment.Center
-        ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Volver a $back", tint = Charcoal, modifier = Modifier.size(20.dp)) }
-        Column(Modifier.weight(1f).padding(start = 4.dp)) {
-            Overline(back)
-            Text(title, fontFamily = Display, fontSize = 26.sp, lineHeight = 30.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BackRound(onBack = onBack)
+        Column(Modifier.weight(1f).padding(start = 6.dp)) {
+            Text(back.uppercase(), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.3.sp, maxLines = 1)
+            Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 31.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         actions()
+    }
+}
+
+/** Título que es a la vez selector («Películas · Series»): la opción elegida en grande y en tinta. */
+@Composable
+fun TitleTabs(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        options.forEachIndexed { i, o ->
+            val on = i == selected
+            val size by animateFloatAsState(if (on) 34f else 22f, Motion.bouncy(), label = "tt")
+            val c by androidx.compose.animation.animateColorAsState(if (on) Charcoal else Muted, label = "ttc")
+            Text(o, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = size.sp, lineHeight = (size + 4).sp, color = c,
+                modifier = Modifier.press { if (!on) onSelect(i) })
+        }
     }
 }
 

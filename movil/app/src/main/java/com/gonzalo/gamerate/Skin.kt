@@ -58,6 +58,10 @@ private fun t(
 
 /** Las paletas. Las de editores conocidos usan sus colores oficiales; las de Atrio son propias. */
 val PALETTES: List<Palette> = listOf(
+    // Atrio 6: la de la app nueva. Oscura de verdad, con un coral cálido; la clara, de papel blanco roto.
+    Palette("vitrina", "Vitrina", "Atrio",
+        t(0xF5F3EF, 0xFFFFFF, 0x14151A, 0xE85A2E, 0x3E6BE0, 0x8B5CF6, 0x1F9D72, 0xC98A00, 0xD99A00, 0xECE9E3, 0xE4E0D9, 0xC9C4BB, 0x6D6A64),
+        t(0x0B0C10, 0x16181E, 0xF3F1EC, 0xFF7A50, 0x7AA2FF, 0xC59BFF, 0x5FD4A8, 0xFFC857, 0xFFC857, 0x1D2028, 0x252932, 0x3A3F4B, 0x9AA0AD)),
     Palette("atrio", "Atrio", "Atrio",
         t(0xF4F2ED, 0xFBFAF7, 0x1E1D22, 0xC4473F, 0x4E78B8, 0xBF8E34, 0x3B9273, 0x7763B8, 0xC99A22, 0xECE9E2, 0xE2DED5, 0xC9C4BA, 0x86827A),
         t(0x121214, 0x1B1B1E, 0xEDEBE6, 0xE2665D, 0x7EA3DE, 0xDDB061, 0x5EBA96, 0xA18FDF, 0xE2B947, 0x26262A, 0x303035, 0x4E4E55, 0x9D988F)),
@@ -242,6 +246,7 @@ val BODY_FONTS: List<FontChoice> = listOf(
 
 /** Combinaciones listas (paleta + letras). «Atrio» en una letra = la que viene con la app. */
 val STYLES: List<SkinStyle> = listOf(
+    SkinStyle("vitrina", "Vitrina", "Atrio 6: portadas a lo grande, letra con carácter y coral", "vitrina", "Vitrina", "Atrio", "vitrina"),
     SkinStyle("clasico", "Atrio", "El de siempre: serif cálida y texto limpio", "atrio", "Atrio", "Atrio", "clasico"),
     SkinStyle("revista", "Revista", "Portadas de papel y titulares con carácter", "papel", "Playfair Display", "Source Serif 4", "editorial"),
     SkinStyle("nocturno", "Editorial nocturno", "Serif elegante sobre azul noche", "medianoche", "DM Serif Display", "DM Sans", "editorial"),
@@ -288,6 +293,8 @@ object Skin {
     var gauge by mutableStateOf<GaugeKind?>(null)
     /** Camaleón: cada ficha se tiñe con los colores de su portada. */
     var chameleon by mutableStateOf(true)
+    /** Movimiento: 0 vivo (con muelles), 1 sobrio, 2 mínimo. */
+    var motion by mutableStateOf(0)
     /** Tonos de la ficha abierta (camaleón), por encima de la paleta. */
     var override by mutableStateOf<Tones?>(null)
 
@@ -309,6 +316,7 @@ object Skin {
     /** La familia de letra de Google Fonts por su nombre (con sus gruesos reales), o null si es la de la app. */
     fun family(name: String): FontFamily? {
         if (name == "Atrio") return null
+        if (name == "Vitrina") return VitrinaDisplay
         return cache.getOrPut(name) {
             val c = (DISPLAY_FONTS + BODY_FONTS).firstOrNull { it.name == name }
             val ws = c?.weights?.takeIf { it.isNotEmpty() } ?: intArrayOf(400, 700)
@@ -341,18 +349,24 @@ object Skin {
 
     fun load(ctx: Context) {
         val p = prefs(ctx)
-        palette = PALETTES.firstOrNull { it.id == p.getString("skin_palette", "atrio") } ?: PALETTES[0]
-        display = p.getString("skin_display", "Atrio") ?: "Atrio"
+        // Atrio 6: la primera vez, el estilo nuevo (después, lo que elijas)
+        if (!p.getBoolean("skin_v6", false)) {
+            p.edit().putBoolean("skin_v6", true).putString("skin_palette", "vitrina").putString("skin_display", "Vitrina")
+                .putString("skin_body", "Atrio").putString("skin_form", "vitrina").remove("skin_gauge").apply()
+        }
+        palette = PALETTES.firstOrNull { it.id == p.getString("skin_palette", "vitrina") } ?: PALETTES[0]
+        display = p.getString("skin_display", "Vitrina") ?: "Vitrina"
         body = p.getString("skin_body", "Atrio") ?: "Atrio"
         textScale = p.getFloat("skin_scale", 1f)
-        form = FORMS.firstOrNull { it.id == p.getString("skin_form", "clasico") } ?: FORMS[0]
+        form = FORMS.firstOrNull { it.id == p.getString("skin_form", "vitrina") } ?: FORMS[0]
         gauge = GaugeKind.entries.firstOrNull { it.name == p.getString("skin_gauge", "") }
         chameleon = p.getBoolean("skin_chameleon", true)
+        motion = p.getInt("skin_motion", 0)
     }
 
     fun save(ctx: Context) {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
-            .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).apply()
+            .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion).apply()
     }
 }

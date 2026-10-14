@@ -66,7 +66,7 @@ val Swatches: List<Pair<String, Int>> = listOf(
     "Bosque" to 0xFF2E6B4F.toInt()
 )
 
-val PatternNames = listOf("Vichy", "Lunares", "Rayas", "Cuadrícula", "Liso")
+val PatternNames = listOf("Vichy", "Lunares", "Rayas", "Cuadrícula", "Liso", "Aurora")
 val ThemeNames = listOf("Como el sistema", "Claro", "Oscuro")
 val IntensityNames = listOf("Suave", "Media", "Intensa")
 

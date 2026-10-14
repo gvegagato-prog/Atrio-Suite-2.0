@@ -1,0 +1,5 @@
+Lector de Atrio: componentes de terceros incluidos
+
+foliate-js (https://github.com/johnfactotum/foliate-js) — MIT License, Copyright (c) 2022 John Factotum. Ver foliate/LICENSE.
+PDF.js 5.5.207, versión «legacy» (https://github.com/mozilla/pdf.js) — Apache License 2.0, Mozilla Foundation.
+zip.js (vendor/zip.js) — BSD 3-Clause, Gildas Lormeau. fflate (vendor/fflate.js) — MIT, Arjun Barrett.

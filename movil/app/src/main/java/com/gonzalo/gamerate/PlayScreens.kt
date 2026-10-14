@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
@@ -82,53 +83,36 @@ fun PlayDetailScreen(
         PartnerPage(ps, p.id, kind, p.name, p.cover, p.hero, { withReveal { viewP = false } }, { withReveal { viewP = false } }, myReact, onReact)
     } else {
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
-        ArtBanner(p.hero, p.cover, p.name, true, onBack, if (partner != null) ({ withReveal { viewP = true } }) else null)
+        HeroHeader(
+            p.cover, p.hero, p.name, listOfNotNull(kind.title, p.creator.ifBlank { null }).joinToString(" · "), coverKey(kind.id, p.id), onBack,
+            actions = {
+                if (partner != null) RoundIcon(Icons.Rounded.Favorite, "Ver la ficha de $partnerName", onImage = true) { withReveal { viewP = true } }
+                RoundIcon(if (editing) Icons.Rounded.Check else Icons.Rounded.Edit, if (editing) "Listo" else "Editar", onImage = true) { editing = !editing }
+            },
+            chips = {
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    kind.statuses.getOrNull(p.status)?.let { InfoChip(it) }
+                    if (p.platform.isNotBlank()) InfoChip(p.platform, Icons.Rounded.Devices)
+                    if (!kind.isBook && p.minutes > 0) InfoChip(hoursText(p.minutes), Icons.Rounded.Schedule)
+                    if (kind.isGame && p.ttbMain > 0) InfoChip("Media ${hoursText(p.ttbMain)}", Icons.Rounded.HourglassBottom)
+                    if (kind.isBook && p.pages > 0) InfoChip("${p.pages} págs.", Icons.Rounded.AutoStories)
+                    if (kind.isBook && p.status == 1 && p.chapter > 0) InfoChip("cap. ${p.chapter}")
+                    if (p.start > 0L) InfoChip("Desde ${fmtDay(p.start)}", Icons.Rounded.Event)
+                    if (kind.isMovie || kind.isTv) RtChips(kind, p.id, p.name)
+                }
+            }
+        )
         Column(
-            Modifier.align(Alignment.CenterHorizontally).widthIn(max = 760.dp).fillMaxWidth().padding(16.dp)
-                .card(24).padding(18.dp),
+            Modifier.align(Alignment.CenterHorizontally).widthIn(max = 760.dp).fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (p.creator.isNotBlank()) Overline(p.creator, Modifier.padding(bottom = 4.dp))
-            Text(p.name, fontSize = 28.sp, lineHeight = 32.sp, fontFamily = Display, textAlign = TextAlign.Center)
+            if (kind.isBook) BookFileBar(p.id, p.name)
             val theirs = partner?.reactsToMe?.get(p.id)
             if (theirs != null) {
                 Spacer(Modifier.height(8.dp))
                 TheirReaction(partnerName, theirs)
             }
-            if (partner != null) {
-                Spacer(Modifier.height(4.dp))
-                Text("Toca dos veces la portada para ver la ficha de $partnerName.", color = UiSoft, fontSize = 14.sp, textAlign = TextAlign.Center)
-            }
-            Spacer(Modifier.height(12.dp))
-            if (!editing) {
-                // Lectura: estado, plataforma, horas, páginas y fechas, sin campos
-                val info = listOfNotNull(
-                    kind.statuses.getOrNull(p.status),
-                    p.platform.ifBlank { null },
-                    if (!kind.isBook && p.minutes > 0) hoursText(p.minutes) else null,
-                    if (kind.isBook && p.pages > 0) "${p.pages} págs." else null,
-                    if (kind.isBook && p.status == 1 && p.chapter > 0) "cap. ${p.chapter}" else null
-                ).joinToString(" · ")
-                if (info.isNotEmpty()) Text(info, color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
-                val days = listOfNotNull(
-                    if (p.start > 0L) "Inicio " + fmtDay(p.start) else null,
-                    if (p.end > 0L) "Fin " + fmtDay(p.end) else null
-                ).joinToString(" · ")
-                if (days.isNotEmpty()) Text(days, color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(6.dp))
-                TextButton({ editing = true }) {
-                    Icon(Icons.Rounded.Edit, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Editar")
-                }
-            } else {
-                TextButton({ editing = false }) {
-                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Listo")
-                }
-                Spacer(Modifier.height(4.dp))
-            }
+            Spacer(Modifier.height(4.dp))
             if (editing)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(kind.statuses[0], p.status == 0, Charcoal) { upd(p.copy(status = 0)) }

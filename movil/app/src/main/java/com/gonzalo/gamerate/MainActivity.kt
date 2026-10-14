@@ -57,6 +57,14 @@ sealed interface Screen {
     class ShotView(val shot: Shot, val back: Screen) : Screen
     /** Ficha de tu pareja abierta desde el menú o desde su calendario. */
     class PartnerItem(val kind: Int, val id: Long) : Screen
+    /** Atrio 6: perfil (estilo, pareja, objetivos, PC y ajustes). */
+    object Profile : Screen
+    /** Estadísticas de la categoría abierta. */
+    object Stats : Screen
+    /** «Siguiente»: cartas para deslizar (juegos). */
+    object Deck : Screen
+    /** Descubrir con preguntas: 1 libros, 2 pelis y series. */
+    class Quiz(val domain: Int) : Screen
 }
 
 class MainActivity : ComponentActivity() {

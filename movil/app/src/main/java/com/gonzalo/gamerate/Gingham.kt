@@ -98,6 +98,17 @@ fun Modifier.pattern(type: Int, color: Color, intensity: Int): Modifier = this.d
             while (y < size.height) { drawLine(c, Offset(0f, y), Offset(size.width, y), w); y += step }
         }
         4 -> drawRect(lerp(base, color, (0.05f * (k + 0.4f) * a).coerceAtMost(0.25f)))
+        // Aurora (Atrio 6): papel con dos luces difusas, una del color de la sección arriba y otra del acento abajo
+        5 -> {
+            drawRect(base)
+            val glow = (if (dark) 0.22f else 0.16f) * k
+            drawRect(androidx.compose.ui.graphics.Brush.radialGradient(
+                listOf(color.copy(alpha = glow), Color.Transparent),
+                center = Offset(size.width * 0.15f, -size.height * 0.05f), radius = size.maxDimension * 0.75f))
+            drawRect(androidx.compose.ui.graphics.Brush.radialGradient(
+                listOf(ColGeneral.copy(alpha = glow * 0.55f), Color.Transparent),
+                center = Offset(size.width * 1.05f, size.height * 0.85f), radius = size.maxDimension * 0.6f))
+        }
         else -> {
             drawRect(base)
             val period = 26.dp.toPx()
@@ -122,7 +133,7 @@ fun Modifier.pattern(type: Int, color: Color, intensity: Int): Modifier = this.d
  * Con el fondo liso no hace falta: solo deja el mismo espacio, sin caja.
  */
 fun Modifier.pill(radius: Int = 16, h: Int = 14, v: Int = 8): Modifier =
-    if (Mode.look.pattern == 4) this.padding(horizontal = h.dp, vertical = v.dp)
+    if (Mode.look.pattern >= 4) this.padding(horizontal = h.dp, vertical = v.dp)
     else this.background(UiPanel, shp(radius.dp)).padding(horizontal = h.dp, vertical = v.dp)
 
 /** Tarjeta sobria: superficie con línea fina. */

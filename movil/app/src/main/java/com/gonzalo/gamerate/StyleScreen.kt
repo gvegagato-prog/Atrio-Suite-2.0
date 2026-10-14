@@ -379,7 +379,7 @@ private fun BackgroundPicker(onLook: (Look) -> Unit) {
     Text("Dibujo del fondo", fontWeight = FontWeight.SemiBold)
     Spacer(Modifier.height(8.dp))
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        listOf(4, 0, 1, 2, 3).forEach { i ->
+        listOf(5, 4, 0, 1, 2, 3).forEach { i ->
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pop { onLook(look.copy(pattern = i)) }) {
                 Box(
                     Modifier.size(64.dp, 48.dp).clip(shp(12.dp))

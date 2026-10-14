@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Lector de Atrio</title>
+<link rel="stylesheet" href="lector.css">
+</head>
+<body data-theme="papel">
+<div id="libro"></div>
+
+<!-- Cargando / error -->
+<div id="carga" class="carga"><div class="gira"></div><p id="carga-txt">Abriendo el libro…</p></div>
+
+<!-- Barra de arriba -->
+<header id="arriba" class="barra oculta">
+  <button class="ico" id="b-cerrar" aria-label="Cerrar">
+    <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <div class="titulo"><b id="t-libro"></b><small id="t-cap"></small></div>
+  <button class="ico" id="b-buscar" aria-label="Buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+  <button class="ico" id="b-marca" aria-label="Marcador"><svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-4-5 4z"/></svg></button>
+</header>
+
+<!-- Barra de abajo -->
+<footer id="abajo" class="barra oculta">
+  <div class="prog">
+    <span id="p-pct">0%</span>
+    <input type="range" id="p-barra" min="0" max="1" step="0.0005" value="0">
+    <span id="p-pag"></span>
+  </div>
+  <nav class="botones">
+    <button id="b-indice"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg><span>Índice</span></button>
+    <button id="b-notas"><svg viewBox="0 0 24 24"><path d="M5 19l3.5-.8L19 7.7 16.3 5 5.8 15.5z"/></svg><span>Notas</span></button>
+    <button id="b-ajustes"><svg viewBox="0 0 24 24"><text x="3" y="18" font-size="15" font-weight="700" stroke="none" fill="currentColor">Aa</text></svg><span>Letra</span></button>
+    <button id="b-brillo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Brillo</span></button>
+  </nav>
+</footer>
+
+<!-- Botón de seleccionar texto -->
+<div id="sel" class="sel oculta">
+  <div class="colores">
+    <button data-c="amarillo" class="c amarillo" aria-label="Amarillo"></button>
+    <button data-c="verde" class="c verde" aria-label="Verde"></button>
+    <button data-c="azul" class="c azul" aria-label="Azul"></button>
+    <button data-c="rosa" class="c rosa" aria-label="Rosa"></button>
+    <button data-c="subrayado" class="c subrayado" aria-label="Subrayado"></button>
+  </div>
+  <div class="acc">
+    <button id="s-nota">Nota</button>
+    <button id="s-copiar">Copiar</button>
+    <button id="s-buscar">Buscar</button>
+    <button id="s-compartir">Compartir</button>
+    <button id="s-borrar" class="peligro oculta">Borrar</button>
+  </div>
+</div>
+
+<!-- Paneles -->
+<div id="velo" class="velo"></div>
+<section id="panel" class="panel">
+  <div class="asa"></div>
+  <div id="panel-cuerpo"></div>
+</section>
+
+<div id="aviso" class="aviso"></div>
+
+<script type="module" src="lector.js"></script>
+</body>
+</html>

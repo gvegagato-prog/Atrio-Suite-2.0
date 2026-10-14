@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
@@ -160,7 +161,30 @@ fun EditScreen(
         PartnerPage(ps, g.id, kind, g.name, g.cover, g.hero, { withReveal { viewP = false } }, { withReveal { viewP = false } }, myReact, onReact)
     } else {
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(scroll)) {
-        ArtBanner(g.hero, g.cover, g.name, true, onBack, if (partner != null) ({ withReveal { viewP = true } }) else null)
+        HeroHeader(
+            g.cover, g.hero, g.name, listOfNotNull(kind.title, g.creator.ifBlank { null }).joinToString(" · "), coverKey(kind.id, g.id), onBack,
+            actions = {
+                if (partner != null) RoundIcon(Icons.Rounded.Favorite, "Ver la ficha de $partnerName", onImage = true) { withReveal { viewP = true } }
+                RoundIcon(if (g.fav) Icons.Rounded.Star else Icons.Rounded.StarBorder, "Favorito", onImage = true, active = g.fav) {
+                    g = g.copy(fav = !g.fav); if (reading) onQuiet(g)
+                }
+            },
+            chips = {
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (!isNew) Row(Modifier.clip(pillShape()).background(ColGeneral).padding(horizontal = 12.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("${g.general}", color = Paper, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(" / 100", color = Paper.copy(alpha = 0.75f), fontSize = 11.sp)
+                    }
+                    if (g.platform.isNotBlank()) InfoChip(g.platform, Icons.Rounded.Devices)
+                    if (kind.isGame && g.minutes > 0) InfoChip(hoursText(g.minutes), Icons.Rounded.Schedule)
+                    if (kind.isGame && g.ttbMain > 0) InfoChip("Media ${hoursText(g.ttbMain)}", Icons.Rounded.HourglassBottom)
+                    if (kind.isBook && g.pages > 0) InfoChip("${g.pages} págs.", Icons.Rounded.AutoStories)
+                    if (g.end > 0L) InfoChip(fmtDay(g.end), Icons.Rounded.Event)
+                    if (kind.isMovie || kind.isTv) RtChips(kind, g.id, g.name)
+                }
+            }
+        )
+        if (kind.isBook && !isNew) Box(Modifier.padding(horizontal = 18.dp)) { BookFileBar(g.id, g.name) }
         if (reading) {
             ReadCard(g, kind, partnerName, partner?.reactsToMe?.get(g.id), ttbMsg, onExport,
                 onRecommend = if (onRecommend != null) ({ recommend = true }) else null
@@ -170,12 +194,9 @@ fun EditScreen(
             }
         } else
         Column(
-            Modifier.align(Alignment.CenterHorizontally).widthIn(max = 760.dp).fillMaxWidth().padding(16.dp)
-                .card(24).padding(18.dp),
+            Modifier.align(Alignment.CenterHorizontally).widthIn(max = 760.dp).fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (g.creator.isNotBlank()) Overline(g.creator, Modifier.padding(bottom = 4.dp))
-            Text(g.name, fontSize = 28.sp, lineHeight = 32.sp, fontFamily = Display, textAlign = TextAlign.Center)
             if (kind.crit > 1) Text("Media de criterios " + String.format(java.util.Locale("es", "ES"), "%.1f", g.avgFor(kind)), color = UiSoft, fontSize = 15.sp)
             val theirs = partner?.reactsToMe?.get(g.id)
             if (theirs != null) {
@@ -247,24 +268,15 @@ private fun ColumnScope.ReadCard(
     onExport: (Game, ExportMode) -> Unit, onRecommend: (() -> Unit)?, onEdit: () -> Unit
 ) {
     Column(
-        Modifier.align(Alignment.CenterHorizontally).widthIn(max = 760.dp).fillMaxWidth().padding(16.dp)
-            .card(24).padding(18.dp),
+        Modifier.align(Alignment.CenterHorizontally).widthIn(max = 760.dp).fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (g.creator.isNotBlank()) Overline(g.creator, Modifier.padding(bottom = 4.dp))
-        Text(g.name, fontSize = 28.sp, lineHeight = 32.sp, fontFamily = Display, textAlign = TextAlign.Center)
         val info = listOfNotNull(
             g.platform.ifBlank { null },
             if (kind.isGame && g.minutes > 0) hoursText(g.minutes) else null,
             if (kind.isBook && g.pages > 0) "${g.pages} págs." else null
         ).joinToString(" · ")
-        if (info.isNotEmpty()) Text(info, color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
-        val days = listOfNotNull(
-            if (g.start > 0L) "Inicio " + fmtDay(g.start) else null,
-            if (g.end > 0L) "Fin " + fmtDay(g.end) else null
-        ).joinToString(" · ")
-        if (days.isNotEmpty()) Text(days, color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
-        if (g.fav) Text("★ Favorito", color = Gold, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
+        if (info.isEmpty() && g.start > 0L) Text("Desde " + fmtDay(g.start), color = UiSoft, fontSize = 13.sp)
         if (theirs != null) {
             Spacer(Modifier.height(8.dp))
             TheirReaction(partnerName, theirs)

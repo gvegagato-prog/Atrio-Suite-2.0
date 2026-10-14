@@ -1,0 +1,6769 @@
+[
+ {
+  "id": "sb001",
+  "q": "¿Qué clase de miedo te apetece pasar hoy?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Casas encantadas y puertas que crujen",
+    "e": {
+     "g": {
+      "horror": 3
+     },
+     "kw": [
+      "haunted house"
+     ]
+    }
+   },
+   {
+    "t": "Monstruos y criaturas con dientes",
+    "e": {
+     "g": {
+      "horror": 2,
+      "fantasy": 1
+     },
+     "kw": [
+      "monster"
+     ]
+    }
+   },
+   {
+    "t": "Terror psicológico que se te queda dentro",
+    "e": {
+     "g": {
+      "horror": 2,
+      "thriller": 2
+     },
+     "kw": [
+      "psychological thriller"
+     ]
+    }
+   },
+   {
+    "t": "Zombis, muchos zombis",
+    "e": {
+     "g": {
+      "horror": 2,
+      "action": 1
+     },
+     "kw": [
+      "zombie"
+     ]
+    }
+   },
+   {
+    "t": "Ninguno, gracias, hoy duermo tranquilo",
+    "e": {
+     "g": {
+      "horror": -3,
+      "thriller": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb002",
+  "q": "Si tu noche fuera ciencia ficción, ¿de qué tipo sería?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Viajes en el tiempo y paradojas",
+    "e": {
+     "g": {
+      "scifi": 3
+     },
+     "kw": [
+      "time travel"
+     ]
+    }
+   },
+   {
+    "t": "Naves, planetas y espacio profundo",
+    "e": {
+     "g": {
+      "scifi": 3,
+      "adventure": 1
+     },
+     "kw": [
+      "space"
+     ]
+    }
+   },
+   {
+    "t": "Distopías que dan mucho que pensar",
+    "e": {
+     "g": {
+      "scifi": 2,
+      "drama": 1
+     },
+     "kw": [
+      "dystopia"
+     ]
+    }
+   },
+   {
+    "t": "Inteligencias artificiales con dilemas",
+    "e": {
+     "g": {
+      "scifi": 3
+     },
+     "kw": [
+      "artificial intelligence"
+     ]
+    }
+   },
+   {
+    "t": "Ciberpunk de neones y lluvia",
+    "e": {
+     "g": {
+      "scifi": 3,
+      "thriller": 1
+     },
+     "kw": [
+      "cyberpunk"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb003",
+  "q": "¿Con qué tipo de comedia te ríes de verdad?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Absurda y sin ningún sentido",
+    "e": {
+     "g": {
+      "comedy": 3
+     },
+     "kw": [
+      "parody"
+     ]
+    }
+   },
+   {
+    "t": "Humor negro que roza lo prohibido",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "crime": 1
+     },
+     "kw": [
+      "dark comedy"
+     ]
+    }
+   },
+   {
+    "t": "Sátira con mucha mala leche",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "politics": 1
+     },
+     "kw": [
+      "satire"
+     ]
+    }
+   },
+   {
+    "t": "Romántica, de las que reconfortan",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "romance": 2
+     }
+    }
+   },
+   {
+    "t": "Situaciones incómodas que dan vergüenza ajena",
+    "e": {
+     "g": {
+      "comedy": 3,
+      "drama": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb004",
+  "q": "El crimen, ¿desde qué lado te gusta mirarlo?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Desde el detective que tira del hilo",
+    "e": {
+     "g": {
+      "crime": 2,
+      "mystery": 2
+     },
+     "kw": [
+      "detective"
+     ]
+    }
+   },
+   {
+    "t": "Desde la banda que prepara el gran golpe",
+    "e": {
+     "g": {
+      "crime": 2,
+      "thriller": 1
+     },
+     "kw": [
+      "heist"
+     ]
+    }
+   },
+   {
+    "t": "Desde dentro de la familia mafiosa",
+    "e": {
+     "g": {
+      "crime": 3,
+      "drama": 1
+     },
+     "kw": [
+      "mafia"
+     ]
+    }
+   },
+   {
+    "t": "Desde la sala del juicio",
+    "e": {
+     "g": {
+      "crime": 1,
+      "drama": 2
+     },
+     "kw": [
+      "courtroom"
+     ]
+    }
+   },
+   {
+    "t": "Desde la cabeza del asesino",
+    "e": {
+     "g": {
+      "crime": 2,
+      "thriller": 2
+     },
+     "kw": [
+      "serial killer"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb005",
+  "q": "¿Qué clase de fantasía te llama?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Dragones, espadas y magia a lo grande",
+    "e": {
+     "g": {
+      "fantasy": 3,
+      "adventure": 2
+     },
+     "kw": [
+      "dragon",
+      "magic"
+     ]
+    }
+   },
+   {
+    "t": "Magia escondida en el mundo real",
+    "e": {
+     "g": {
+      "fantasy": 2,
+      "mystery": 1
+     },
+     "kw": [
+      "magic"
+     ]
+    }
+   },
+   {
+    "t": "Dioses, mitos y leyendas antiguas",
+    "e": {
+     "g": {
+      "fantasy": 2,
+      "adventure": 1
+     },
+     "kw": [
+      "mythology"
+     ]
+    }
+   },
+   {
+    "t": "Cuentos oscuros y retorcidos",
+    "e": {
+     "g": {
+      "fantasy": 2,
+      "horror": 1
+     },
+     "kw": [
+      "witch"
+     ]
+    }
+   },
+   {
+    "t": "Ninguna, hoy con los pies en la tierra",
+    "e": {
+     "g": {
+      "fantasy": -2,
+      "scifi": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb006",
+  "q": "Un thriller perfecto para ti tiene...",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una conspiración que llega hasta arriba",
+    "e": {
+     "g": {
+      "thriller": 3,
+      "politics": 1
+     },
+     "kw": [
+      "conspiracy"
+     ]
+    }
+   },
+   {
+    "t": "Espías y dobles agentes",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "action": 1
+     },
+     "kw": [
+      "spy"
+     ]
+    }
+   },
+   {
+    "t": "Un giro final que te deja sin habla",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "mystery": 2
+     }
+    }
+   },
+   {
+    "t": "Persecuciones sin tiempo para respirar",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "action": 2
+     }
+    }
+   },
+   {
+    "t": "Lo siento, los thrillers me agobian",
+    "e": {
+     "g": {
+      "thriller": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb007",
+  "q": "¿Cómo quieres la acción?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Artes marciales bien coreografiadas",
+    "e": {
+     "g": {
+      "action": 3
+     },
+     "kw": [
+      "martial arts"
+     ]
+    }
+   },
+   {
+    "t": "Superhéroes y destrucción épica",
+    "e": {
+     "g": {
+      "action": 3,
+      "scifi": 1
+     },
+     "kw": [
+      "superhero"
+     ]
+    }
+   },
+   {
+    "t": "Una venganza a tiro limpio",
+    "e": {
+     "g": {
+      "action": 3,
+      "thriller": 1
+     },
+     "kw": [
+      "revenge"
+     ]
+    }
+   },
+   {
+    "t": "Exploradores, mapas y tesoros",
+    "e": {
+     "g": {
+      "adventure": 3,
+      "action": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor sin explosiones",
+    "e": {
+     "g": {
+      "action": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb008",
+  "q": "¿Qué tal te sienta un documental?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Genial: la realidad supera a la ficción",
+    "e": {
+     "g": {
+      "documentary": 3
+     }
+    }
+   },
+   {
+    "t": "Solo si va de crímenes reales",
+    "e": {
+     "g": {
+      "documentary": 2,
+      "crime": 2
+     },
+     "kw": [
+      "true story"
+     ]
+    }
+   },
+   {
+    "t": "De naturaleza y planeta, a ser posible",
+    "e": {
+     "g": {
+      "documentary": 3
+     },
+     "kw": [
+      "nature"
+     ]
+    }
+   },
+   {
+    "t": "De música y artistas",
+    "e": {
+     "g": {
+      "documentary": 2,
+      "music": 2
+     },
+     "kw": [
+      "biography"
+     ]
+    }
+   },
+   {
+    "t": "Hoy quiero ficción pura",
+    "e": {
+     "g": {
+      "documentary": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb009",
+  "q": "¿Te apetece algo con canciones?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, que canten y bailen sin parar",
+    "e": {
+     "g": {
+      "music": 3
+     },
+     "kw": [
+      "musical"
+     ]
+    }
+   },
+   {
+    "t": "Mejor una historia sobre músicos",
+    "e": {
+     "g": {
+      "music": 2,
+      "drama": 2
+     },
+     "kw": [
+      "biography"
+     ]
+    }
+   },
+   {
+    "t": "Solo si es de animación",
+    "e": {
+     "g": {
+      "animation": 2,
+      "music": 2,
+      "family": 1
+     }
+    }
+   },
+   {
+    "t": "Ni una nota, por favor",
+    "e": {
+     "g": {
+      "music": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb010",
+  "q": "El salvaje Oeste: ¿te apuntas al duelo?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Me flipa: polvo, sol y revólveres",
+    "e": {
+     "g": {
+      "western": 3
+     }
+    }
+   },
+   {
+    "t": "Un western moderno, más sucio y crudo",
+    "e": {
+     "g": {
+      "western": 2,
+      "crime": 2,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Solo si es en clave de parodia",
+    "e": {
+     "g": {
+      "western": 1,
+      "comedy": 2
+     },
+     "kw": [
+      "parody"
+     ]
+    }
+   },
+   {
+    "t": "Paso de caballos y sombreros",
+    "e": {
+     "g": {
+      "western": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb011",
+  "q": "¿Cine de guerra? ¿Y cómo lo quieres?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Batallas épicas de la Segunda Guerra Mundial",
+    "e": {
+     "g": {
+      "war": 3,
+      "history": 1
+     },
+     "kw": [
+      "world war ii"
+     ]
+    }
+   },
+   {
+    "t": "Espionaje en plena Guerra Fría",
+    "e": {
+     "g": {
+      "war": 1,
+      "thriller": 2
+     },
+     "kw": [
+      "cold war",
+      "spy"
+     ]
+    }
+   },
+   {
+    "t": "El drama humano lejos del frente",
+    "e": {
+     "g": {
+      "war": 2,
+      "drama": 3
+     }
+    }
+   },
+   {
+    "t": "Hoy, nada de guerras",
+    "e": {
+     "g": {
+      "war": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb012",
+  "q": "¿Cuánto romance soportas en una historia?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Que el amor sea el centro de todo",
+    "e": {
+     "g": {
+      "romance": 3
+     }
+    }
+   },
+   {
+    "t": "Una subtrama bonita, sin empalagar",
+    "e": {
+     "g": {
+      "romance": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Amores imposibles y pañuelos a mano",
+    "e": {
+     "g": {
+      "romance": 3,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Cero besos, por favor",
+    "e": {
+     "g": {
+      "romance": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb013",
+  "q": "¿Animación también para mayores?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, anime de autor",
+    "e": {
+     "g": {
+      "animation": 3
+     },
+     "kw": [
+      "anime"
+     ],
+     "lang": "ja"
+    }
+   },
+   {
+    "t": "Animación gamberra para adultos",
+    "e": {
+     "g": {
+      "animation": 3,
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "Stop-motion y cosas artesanales",
+    "e": {
+     "g": {
+      "animation": 3,
+      "fantasy": 1
+     }
+    }
+   },
+   {
+    "t": "La animación, para los peques",
+    "e": {
+     "g": {
+      "animation": 1,
+      "family": 2,
+      "kids": 2
+     }
+    }
+   },
+   {
+    "t": "Hoy prefiero imagen real",
+    "e": {
+     "g": {
+      "animation": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb014",
+  "q": "¿Vampiros, brujas, fantasmas o alienígenas?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Vampiros con colmillo y elegancia",
+    "e": {
+     "g": {
+      "horror": 2,
+      "fantasy": 1
+     },
+     "kw": [
+      "vampire"
+     ]
+    }
+   },
+   {
+    "t": "Brujas y aquelarres",
+    "e": {
+     "g": {
+      "horror": 2,
+      "fantasy": 1
+     },
+     "kw": [
+      "witch"
+     ]
+    }
+   },
+   {
+    "t": "Fantasmas que no se van",
+    "e": {
+     "g": {
+      "horror": 3
+     },
+     "kw": [
+      "haunted house"
+     ]
+    }
+   },
+   {
+    "t": "Alienígenas que vienen a por nosotros",
+    "e": {
+     "g": {
+      "scifi": 2,
+      "horror": 1
+     },
+     "kw": [
+      "alien"
+     ]
+    }
+   },
+   {
+    "t": "Ninguno: que no me visiten de noche",
+    "e": {
+     "g": {
+      "horror": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb015",
+  "q": "¿Te apetece un misterio de 'quién lo hizo'?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, y pienso adivinarlo antes que nadie",
+    "e": {
+     "g": {
+      "mystery": 3,
+      "crime": 1
+     },
+     "kw": [
+      "detective"
+     ]
+    }
+   },
+   {
+    "t": "Mejor un misterio sobrenatural",
+    "e": {
+     "g": {
+      "mystery": 2,
+      "fantasy": 2
+     }
+    }
+   },
+   {
+    "t": "Un rompecabezas que me fría el cerebro",
+    "e": {
+     "g": {
+      "mystery": 2,
+      "scifi": 1
+     },
+     "kw": [
+      "time loop"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero saberlo todo desde el principio",
+    "e": {
+     "g": {
+      "mystery": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb016",
+  "q": "¿Cómo te gusta que se acabe el mundo en pantalla?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Con una plaga de zombis",
+    "e": {
+     "g": {
+      "horror": 2,
+      "action": 1
+     },
+     "kw": [
+      "zombie"
+     ]
+    }
+   },
+   {
+    "t": "Tras una catástrofe, entre ruinas",
+    "e": {
+     "g": {
+      "scifi": 2,
+      "drama": 1
+     },
+     "kw": [
+      "post-apocalyptic future",
+      "survival"
+     ]
+    }
+   },
+   {
+    "t": "Con una invasión alienígena",
+    "e": {
+     "g": {
+      "scifi": 2,
+      "action": 2
+     },
+     "kw": [
+      "alien"
+     ]
+    }
+   },
+   {
+    "t": "Con monstruos gigantes pisando ciudades",
+    "e": {
+     "g": {
+      "action": 2,
+      "scifi": 2
+     },
+     "kw": [
+      "kaiju"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero que el mundo siga en pie",
+    "e": {
+     "g": {
+      "scifi": -1,
+      "horror": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb017",
+  "q": "¿Te apetece un drama de los que dejan huella?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, quiero llorar a gusto",
+    "e": {
+     "g": {
+      "drama": 3,
+      "romance": 1
+     }
+    }
+   },
+   {
+    "t": "Drama, pero con esperanza al final",
+    "e": {
+     "g": {
+      "drama": 2,
+      "family": 1
+     }
+    }
+   },
+   {
+    "t": "Uno más cerebral, de juicios o política",
+    "e": {
+     "g": {
+      "drama": 2,
+      "politics": 1
+     },
+     "kw": [
+      "courtroom"
+     ]
+    }
+   },
+   {
+    "t": "Ahórrame el llanto, quiero reír",
+    "e": {
+     "g": {
+      "drama": -2,
+      "comedy": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb018",
+  "q": "¿Qué opinas de los realities?",
+  "axis": "genre",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Son mi placer culpable",
+    "e": {
+     "g": {
+      "reality": 3
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "De cocina sí, de convivencia no",
+    "e": {
+     "g": {
+      "reality": 2
+     },
+     "kw": [
+      "chef"
+     ],
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Prefiero docuseries serias",
+    "e": {
+     "g": {
+      "documentary": 3
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "No, gracias, quiero ficción",
+    "e": {
+     "g": {
+      "reality": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb019",
+  "q": "¿Piratas, samuráis, vaqueros o caballeros?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Piratas y abordajes",
+    "e": {
+     "g": {
+      "adventure": 3
+     },
+     "kw": [
+      "pirate"
+     ]
+    }
+   },
+   {
+    "t": "Samuráis y honor",
+    "e": {
+     "g": {
+      "action": 2,
+      "history": 1
+     },
+     "kw": [
+      "samurai"
+     ]
+    }
+   },
+   {
+    "t": "Vaqueros al atardecer",
+    "e": {
+     "g": {
+      "western": 3
+     }
+    }
+   },
+   {
+    "t": "Caballeros y castillos medievales",
+    "e": {
+     "g": {
+      "history": 2,
+      "adventure": 2
+     }
+    }
+   },
+   {
+    "t": "Ninguno de esos",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb020",
+  "q": "¿Política en pantalla?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Intrigas de despacho, pasillos y poder",
+    "e": {
+     "g": {
+      "politics": 3,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Sátira política para reírme",
+    "e": {
+     "g": {
+      "politics": 2,
+      "comedy": 2
+     },
+     "kw": [
+      "satire"
+     ]
+    }
+   },
+   {
+    "t": "Un thriller de conspiraciones",
+    "e": {
+     "g": {
+      "politics": 1,
+      "thriller": 3
+     },
+     "kw": [
+      "conspiracy"
+     ]
+    }
+   },
+   {
+    "t": "Me agota: fuera política",
+    "e": {
+     "g": {
+      "politics": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb021",
+  "q": "¿Una de historia? ¿De qué tipo?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Biopic de alguien fascinante",
+    "e": {
+     "g": {
+      "history": 2,
+      "drama": 2
+     },
+     "kw": [
+      "biography"
+     ]
+    }
+   },
+   {
+    "t": "Gran épica de época con miles de extras",
+    "e": {
+     "g": {
+      "history": 3,
+      "war": 1,
+      "adventure": 1
+     }
+    }
+   },
+   {
+    "t": "Hechos reales reconstruidos al detalle",
+    "e": {
+     "g": {
+      "history": 2
+     },
+     "kw": [
+      "true story"
+     ]
+    }
+   },
+   {
+    "t": "La historia, para el instituto",
+    "e": {
+     "g": {
+      "history": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb022",
+  "q": "Del 1 al 10, ¿cuánto quieres pasar miedo?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "1: ni una sombra",
+    "e": {
+     "g": {
+      "horror": -3,
+      "thriller": -2
+     }
+    }
+   },
+   {
+    "t": "4: algo de tensión, sin sustos",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "horror": -1
+     }
+    }
+   },
+   {
+    "t": "7: sustos, pero que pueda dormir",
+    "e": {
+     "g": {
+      "horror": 2,
+      "thriller": 1
+     }
+    }
+   },
+   {
+    "t": "10: que no me atreva a apagar la luz",
+    "e": {
+     "g": {
+      "horror": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb023",
+  "q": "Mezcla de géneros: ¿cuál te tienta más?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Terror con comedia",
+    "e": {
+     "g": {
+      "horror": 2,
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "Western con ciencia ficción",
+    "e": {
+     "g": {
+      "western": 2,
+      "scifi": 2
+     }
+    }
+   },
+   {
+    "t": "Musical con drama",
+    "e": {
+     "g": {
+      "music": 2,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Crimen con mucho humor",
+    "e": {
+     "g": {
+      "crime": 2,
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "Romance con fantasía",
+    "e": {
+     "g": {
+      "romance": 2,
+      "fantasy": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb024",
+  "q": "Superhéroes: ¿tienes hambre de capa o estás saturado?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "Con muchas ganas de capa y mallas",
+    "e": {
+     "g": {
+      "action": 3,
+      "adventure": 1
+     },
+     "kw": [
+      "superhero"
+     ]
+    }
+   },
+   {
+    "t": "Solo superhéroes raros o gamberros",
+    "e": {
+     "g": {
+      "action": 1,
+      "comedy": 2
+     },
+     "kw": [
+      "superhero"
+     ],
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Superhéroes, pero en clave de drama",
+    "e": {
+     "g": {
+      "drama": 2,
+      "action": 1
+     },
+     "kw": [
+      "superhero"
+     ]
+    }
+   },
+   {
+    "t": "Saturadísimo, otra cosa",
+    "e": {
+     "g": {
+      "fantasy": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb025",
+  "q": "¿Crimen real o crimen inventado?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "True crime documental",
+    "e": {
+     "g": {
+      "documentary": 3,
+      "crime": 2
+     },
+     "kw": [
+      "true story"
+     ]
+    }
+   },
+   {
+    "t": "Ficción basada en un caso real",
+    "e": {
+     "g": {
+      "crime": 2,
+      "drama": 1
+     },
+     "kw": [
+      "true story"
+     ]
+    }
+   },
+   {
+    "t": "Pura invención, que no me quite el sueño",
+    "e": {
+     "g": {
+      "crime": 2,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Hoy nada de crímenes",
+    "e": {
+     "g": {
+      "crime": -3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb026",
+  "q": "Peli de aventuras: ¿adónde nos vamos?",
+  "axis": "genre",
+  "for": "any",
+  "a": [
+   {
+    "t": "A una jungla con templos perdidos",
+    "e": {
+     "g": {
+      "adventure": 3,
+      "action": 1
+     }
+    }
+   },
+   {
+    "t": "A alta mar",
+    "e": {
+     "g": {
+      "adventure": 2
+     },
+     "kw": [
+      "pirate"
+     ]
+    }
+   },
+   {
+    "t": "Por carreteras secundarias sin rumbo",
+    "e": {
+     "g": {
+      "adventure": 1,
+      "comedy": 1,
+      "drama": 1
+     },
+     "kw": [
+      "road trip"
+     ]
+    }
+   },
+   {
+    "t": "A un mundo mágico",
+    "e": {
+     "g": {
+      "adventure": 2,
+      "fantasy": 3
+     }
+    }
+   },
+   {
+    "t": "Me quedo en el sofá, sin aventuras",
+    "e": {
+     "g": {
+      "adventure": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb027",
+  "q": "¿De qué época es tu cine favorito?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Clásicos en blanco y negro",
+    "e": {
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Los ochenta y los noventa",
+    "e": {
+     "era": "80s90s"
+    }
+   },
+   {
+    "t": "Los dos mil",
+    "e": {
+     "era": "2000s"
+    }
+   },
+   {
+    "t": "Lo más reciente",
+    "e": {
+     "era": "recent"
+    }
+   },
+   {
+    "t": "No tengo época favorita",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb028",
+  "q": "¿Tienes algún clásico de los que 'hay que ver' pendiente?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, tengo deberes cinéfilos atrasados",
+    "e": {
+     "era": "classic",
+     "rate": 7.5
+    }
+   },
+   {
+    "t": "Uno de los noventa que vi de crío",
+    "e": {
+     "era": "80s90s",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Prefiero algo de ahora",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb029",
+  "q": "Estás en un videoclub en 1994. ¿Qué alquilas?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una de acción con un tipo duro",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "action": 3
+     }
+    }
+   },
+   {
+    "t": "Una comedia familiar para el domingo",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "family": 2,
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "La de terror con la carátula que daba miedo",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Una de aventuras con mapa del tesoro",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "adventure": 3
+     }
+    }
+   },
+   {
+    "t": "Nunca pisé un videoclub",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb030",
+  "q": "¿Cuánta nostalgia te apetece hoy?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Mucha: llévame a mi infancia",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "family": 1
+     }
+    }
+   },
+   {
+    "t": "Un poco, de la época de los 2000",
+    "e": {
+     "era": "2000s"
+    }
+   },
+   {
+    "t": "Ninguna, quiero algo de estreno",
+    "e": {
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Mi nostalgia es de antes de nacer",
+    "e": {
+     "era": "classic"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb031",
+  "q": "¿Qué te parecen los efectos especiales de antes?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Adoro las maquetas y el látex",
+    "e": {
+     "era": "80s90s",
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Me sacan de la historia",
+    "e": {
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Ni los noto si la historia es buena",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb032",
+  "q": "¿Series de las de antes o de las de ahora?",
+  "axis": "era",
+  "for": "tv",
+  "a": [
+   {
+    "t": "De los noventa, con risas enlatadas",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "comedy": 2
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "La época dorada de los dos mil",
+    "e": {
+     "era": "2000s",
+     "g": {
+      "drama": 2
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Las de plataforma de los últimos años",
+    "e": {
+     "era": "recent",
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Me da igual el año",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb033",
+  "q": "¿Te animas con un clásico en blanco y negro, de los de antes?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Claro, me encantan",
+    "e": {
+     "era": "classic",
+     "rate": 7.5
+    }
+   },
+   {
+    "t": "Si es cine negro con detectives, sí",
+    "e": {
+     "era": "classic",
+     "g": {
+      "crime": 2,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Solo si es moderna y en b/n por estilo",
+    "e": {
+     "era": "recent",
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor en color, gracias",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb034",
+  "q": "¿Qué etapa de Hollywood te tira más?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "El glamour dorado de las grandes estrellas",
+    "e": {
+     "era": "classic",
+     "g": {
+      "romance": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "El cine crudo y rebelde de los setenta",
+    "e": {
+     "era": "classic",
+     "g": {
+      "crime": 1,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Los taquillazos de los ochenta",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "adventure": 2
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "El cine independiente de los noventa",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "comedy": 1
+     },
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "El Hollywood de hoy",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb035",
+  "q": "¿Te apetece rescatar algo de los dos mil?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Un pelotazo de cuando iba al cine con palomitas",
+    "e": {
+     "era": "2000s",
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Algo de esa década, pero rarito",
+    "e": {
+     "era": "2000s",
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Ni me acuerdo de los dos mil",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb036",
+  "q": "¿Pelis que han envejecido bien o fatal?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Las que siguen siendo una joya",
+    "e": {
+     "era": "classic",
+     "rate": 7.8
+    }
+   },
+   {
+    "t": "Las que envejecieron fatal y por eso molan",
+    "e": {
+     "era": "80s90s",
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Solo cosas nuevas, sin riesgos",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb037",
+  "q": "Neones, sintetizadores y walkmans: ¿te apuntas?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Me apunto con hombreras y todo",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "adventure": 1,
+      "scifi": 1
+     }
+    }
+   },
+   {
+    "t": "Solo si es algo actual ambientado en los 80",
+    "e": {
+     "era": "recent",
+     "g": {
+      "scifi": 1,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Paso de los ochenta",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb038",
+  "q": "Si pudieras vivir un estreno en el cine, ¿en qué año sería?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "1977, con una galaxia muy lejana",
+    "e": {
+     "era": "classic",
+     "g": {
+      "scifi": 2,
+      "adventure": 2
+     }
+    }
+   },
+   {
+    "t": "1993, con dinosaurios rugiendo",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "adventure": 2,
+      "scifi": 1
+     }
+    }
+   },
+   {
+    "t": "2001, camino de la Tierra Media",
+    "e": {
+     "era": "2000s",
+     "g": {
+      "fantasy": 3
+     }
+    }
+   },
+   {
+    "t": "Este mismo año, en primera fila",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb039",
+  "q": "¿Cómo de reciente tiene que ser lo que veas?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Estrenada hace nada",
+    "e": {
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Me vale de hace unos quince años",
+    "e": {
+     "era": "2000s"
+    }
+   },
+   {
+    "t": "El año me da exactamente igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb040",
+  "q": "Cine negro, musicales de claqué... ¿te llama el cine de antaño?",
+  "axis": "era",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, con manta y todo",
+    "e": {
+     "era": "classic",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Solo cine negro con detectives",
+    "e": {
+     "era": "classic",
+     "g": {
+      "crime": 2
+     },
+     "kw": [
+      "detective"
+     ]
+    }
+   },
+   {
+    "t": "Solo musicales de los de antes",
+    "e": {
+     "era": "classic",
+     "g": {
+      "music": 3
+     },
+     "kw": [
+      "musical"
+     ]
+    }
+   },
+   {
+    "t": "No, que me duermo",
+    "e": {
+     "era": "recent"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb041",
+  "q": "Para hoy, ¿algo que empiece y acabe o algo para engancharte varios días?",
+  "axis": "format",
+  "for": "any",
+  "a": [
+   {
+    "t": "Película: empiezo y acabo hoy",
+    "e": {
+     "type": "movie"
+    }
+   },
+   {
+    "t": "Serie, para engancharme",
+    "e": {
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Lo que mejor encaje",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb042",
+  "q": "¿Cómo te gusta ver las series?",
+  "axis": "format",
+  "for": "tv",
+  "a": [
+   {
+    "t": "En maratón, capítulo tras capítulo",
+    "e": {
+     "type": "tv",
+     "len": "long"
+    }
+   },
+   {
+    "t": "Poquito a poco, saboreándolas",
+    "e": {
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Una miniserie que se acabe pronto",
+    "e": {
+     "type": "tv",
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb043",
+  "q": "¿Capítulos que se cierran solos o una trama que no suelta?",
+  "axis": "format",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Un caso por capítulo, y a dormir",
+    "e": {
+     "type": "tv",
+     "g": {
+      "crime": 1,
+      "mystery": 1,
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Una trama que me obligue a darle a 'siguiente'",
+    "e": {
+     "type": "tv",
+     "g": {
+      "drama": 2,
+      "thriller": 1
+     }
+    }
+   },
+   {
+    "t": "Una mezcla de las dos cosas",
+    "e": {
+     "type": "tv"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb044",
+  "q": "¿Te apetece empezar algo largo o te da pereza?",
+  "axis": "format",
+  "for": "any",
+  "a": [
+   {
+    "t": "Me encanta tener serie para meses",
+    "e": {
+     "type": "tv",
+     "len": "long"
+    }
+   },
+   {
+    "t": "Una temporada y listo",
+    "e": {
+     "type": "tv",
+     "len": "short"
+    }
+   },
+   {
+    "t": "Pereza total: dame una peli",
+    "e": {
+     "type": "movie"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb045",
+  "q": "¿Te comprometes con una saga?",
+  "axis": "format",
+  "for": "movie",
+  "a": [
+   {
+    "t": "Sí, trilogía completa si hace falta",
+    "e": {
+     "type": "movie",
+     "g": {
+      "adventure": 1,
+      "fantasy": 1
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Una sola peli que se entienda sola",
+    "e": {
+     "type": "movie"
+    }
+   },
+   {
+    "t": "Si es saga, prefiero que sea serie",
+    "e": {
+     "type": "tv"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb046",
+  "q": "¿Qué tal una serie antológica, con historia nueva cada capítulo?",
+  "axis": "format",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Me encantan: cada capítulo, otro mundo",
+    "e": {
+     "type": "tv",
+     "g": {
+      "scifi": 2
+     },
+     "kw": [
+      "dystopia"
+     ]
+    }
+   },
+   {
+    "t": "Antología, pero de terror",
+    "e": {
+     "type": "tv",
+     "g": {
+      "horror": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero personajes fijos que conozca",
+    "e": {
+     "type": "tv",
+     "g": {
+      "drama": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb047",
+  "q": "¿Animación, imagen real o documental?",
+  "axis": "format",
+  "for": "any",
+  "a": [
+   {
+    "t": "Animación",
+    "e": {
+     "g": {
+      "animation": 3
+     }
+    }
+   },
+   {
+    "t": "Imagen real",
+    "e": {
+     "g": {
+      "animation": -2
+     }
+    }
+   },
+   {
+    "t": "Documental",
+    "e": {
+     "g": {
+      "documentary": 3
+     }
+    }
+   },
+   {
+    "t": "Lo que sea, sorpréndeme",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb048",
+  "q": "¿Una comedia de capítulos de veinte minutos?",
+  "axis": "format",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Sí, ligera y para picar",
+    "e": {
+     "type": "tv",
+     "g": {
+      "comedy": 3
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Mejor una dramedia de media hora",
+    "e": {
+     "type": "tv",
+     "g": {
+      "comedy": 2,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "No, quiero algo con más chicha",
+    "e": {
+     "type": "tv",
+     "g": {
+      "drama": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb049",
+  "q": "¿Te importa que la serie tenga un final cerrado?",
+  "axis": "format",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Muchísimo, odio las cancelaciones",
+    "e": {
+     "type": "tv",
+     "len": "short",
+     "rate": 7.5
+    }
+   },
+   {
+    "t": "Me da igual si engancha",
+    "e": {
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Prefiero las que duran años y años",
+    "e": {
+     "type": "tv",
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb050",
+  "q": "Esta noche: ¿espectáculo a todo volumen o capítulos tranquilos?",
+  "axis": "format",
+  "for": "any",
+  "a": [
+   {
+    "t": "Peli espectacular con el volumen a tope",
+    "e": {
+     "type": "movie",
+     "g": {
+      "action": 2,
+      "adventure": 2
+     }
+    }
+   },
+   {
+    "t": "Capítulos tranquilos en el sofá",
+    "e": {
+     "type": "tv",
+     "g": {
+      "comedy": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Ninguna preferencia",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb051",
+  "q": "¿Docuserie por entregas o documental de una sentada?",
+  "axis": "format",
+  "for": "any",
+  "a": [
+   {
+    "t": "Docuserie, que me lo cuenten por partes",
+    "e": {
+     "type": "tv",
+     "g": {
+      "documentary": 3
+     }
+    }
+   },
+   {
+    "t": "Documental de hora y media",
+    "e": {
+     "type": "movie",
+     "g": {
+      "documentary": 3
+     }
+    }
+   },
+   {
+    "t": "Ni lo uno ni lo otro",
+    "e": {
+     "g": {
+      "documentary": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb052",
+  "q": "¿Serie de animación o de imagen real?",
+  "axis": "format",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Anime de muchos episodios",
+    "e": {
+     "type": "tv",
+     "g": {
+      "animation": 3
+     },
+     "kw": [
+      "anime"
+     ],
+     "lang": "ja"
+    }
+   },
+   {
+    "t": "Animación para adultos con mala baba",
+    "e": {
+     "type": "tv",
+     "g": {
+      "animation": 3,
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "Imagen real, gracias",
+    "e": {
+     "type": "tv",
+     "g": {
+      "animation": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb053",
+  "q": "¿Cuánto tiempo tienes ahora mismo?",
+  "axis": "length",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una hora y media justita",
+    "e": {
+     "len": "short"
+    }
+   },
+   {
+    "t": "Un par de horas",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Toda la noche por delante",
+    "e": {
+     "len": "long"
+    }
+   },
+   {
+    "t": "Un ratito de veinte minutos",
+    "e": {
+     "type": "tv",
+     "len": "short",
+     "g": {
+      "comedy": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb054",
+  "q": "¿Te asustan las películas de tres horas?",
+  "axis": "length",
+  "for": "movie",
+  "a": [
+   {
+    "t": "Para nada, cuanto más épica mejor",
+    "e": {
+     "type": "movie",
+     "len": "long"
+    }
+   },
+   {
+    "t": "Si la historia lo merece, adelante",
+    "e": {
+     "len": "medium",
+     "rate": 7.5
+    }
+   },
+   {
+    "t": "Sí: que no pase de cien minutos",
+    "e": {
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb055",
+  "q": "¿Mañana madrugas?",
+  "axis": "length",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, algo cortito",
+    "e": {
+     "len": "short"
+    }
+   },
+   {
+    "t": "Un poco, pero aguanto",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Mañana es fiesta",
+    "e": {
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb056",
+  "q": "¿Cuántas temporadas estás dispuesto a ver?",
+  "axis": "length",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Una: miniserie y fuera",
+    "e": {
+     "type": "tv",
+     "len": "short"
+    }
+   },
+   {
+    "t": "Dos o tres, como mucho",
+    "e": {
+     "type": "tv",
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Las que hagan falta",
+    "e": {
+     "type": "tv",
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb057",
+  "q": "¿Ves las pelis de un tirón o a trozos?",
+  "axis": "length",
+  "for": "movie",
+  "a": [
+   {
+    "t": "De un tirón, sin pausas",
+    "e": {
+     "type": "movie",
+     "len": "medium"
+    }
+   },
+   {
+    "t": "A trozos, así que me da igual lo que dure",
+    "e": {
+     "type": "movie",
+     "len": "long"
+    }
+   },
+   {
+    "t": "Si es cortita, mejor que mejor",
+    "e": {
+     "type": "movie",
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb058",
+  "q": "Tu tarde ideal de domingo es...",
+  "axis": "length",
+  "for": "any",
+  "a": [
+   {
+    "t": "Maratón de una serie larguísima",
+    "e": {
+     "type": "tv",
+     "len": "long"
+    }
+   },
+   {
+    "t": "Una peli larga con siesta incluida",
+    "e": {
+     "type": "movie",
+     "len": "long",
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Algo corto y luego a la calle",
+    "e": {
+     "len": "short"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb059",
+  "q": "¿Cuánto aguantas sin mirar el móvil?",
+  "axis": "length",
+  "for": "any",
+  "a": [
+   {
+    "t": "Más de dos horas, soy de hierro",
+    "e": {
+     "len": "long"
+    }
+   },
+   {
+    "t": "Hora y media, con esfuerzo",
+    "e": {
+     "len": "short"
+    }
+   },
+   {
+    "t": "Diez minutos, siendo generosos",
+    "e": {
+     "type": "tv",
+     "len": "short",
+     "g": {
+      "comedy": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb060",
+  "q": "Para un viaje en tren o avión, ¿qué te descargarías?",
+  "axis": "length",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una peli que dure el trayecto",
+    "e": {
+     "type": "movie",
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Varios capítulos cortitos",
+    "e": {
+     "type": "tv",
+     "len": "short",
+     "g": {
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Una temporada entera para un vuelo eterno",
+    "e": {
+     "type": "tv",
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb061",
+  "q": "¿Una epopeya de las que se recuerdan o algo ligerito?",
+  "axis": "length",
+  "for": "any",
+  "a": [
+   {
+    "t": "Epopeya monumental",
+    "e": {
+     "len": "long",
+     "g": {
+      "adventure": 2,
+      "history": 1
+     }
+    }
+   },
+   {
+    "t": "Ligero y bien contado",
+    "e": {
+     "len": "short",
+     "g": {
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Algo intermedio",
+    "e": {
+     "len": "medium"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb062",
+  "q": "¿Cuánto tardas en quedarte frito en el sofá?",
+  "axis": "length",
+  "for": "any",
+  "a": [
+   {
+    "t": "Menos de una hora",
+    "e": {
+     "len": "short",
+     "g": {
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Aguanto unas dos horas",
+    "e": {
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Soy un ave nocturna",
+    "e": {
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb063",
+  "q": "¿Te gusta que una serie se tome su tiempo?",
+  "axis": "length",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Sí, temporadas largas con capítulos de una hora",
+    "e": {
+     "type": "tv",
+     "len": "long",
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor seis episodios intensos",
+    "e": {
+     "type": "tv",
+     "len": "short",
+     "g": {
+      "thriller": 1
+     }
+    }
+   },
+   {
+    "t": "Me da igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb064",
+  "q": "¿Una peli corta y redonda, de menos de 90 minutos?",
+  "axis": "length",
+  "for": "movie",
+  "a": [
+   {
+    "t": "Sí, de las que no les sobra ni una escena",
+    "e": {
+     "type": "movie",
+     "len": "short",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Prefiero algo con más desarrollo",
+    "e": {
+     "type": "movie",
+     "len": "medium"
+    }
+   },
+   {
+    "t": "Que dure lo que tenga que durar",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb065",
+  "q": "¿Versión original con subtítulos?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sin problema, me encanta la VO",
+    "e": {
+     "lang": "foreign"
+    }
+   },
+   {
+    "t": "Mejor algo en inglés",
+    "e": {
+     "lang": "en"
+    }
+   },
+   {
+    "t": "Mejor rodada en español",
+    "e": {
+     "lang": "es"
+    }
+   },
+   {
+    "t": "Me da igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb066",
+  "q": "¿Qué cine de fuera te tienta más ahora mismo?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Coreano",
+    "e": {
+     "lang": "ko"
+    }
+   },
+   {
+    "t": "Japonés",
+    "e": {
+     "lang": "ja"
+    }
+   },
+   {
+    "t": "Francés",
+    "e": {
+     "lang": "fr"
+    }
+   },
+   {
+    "t": "Italiano",
+    "e": {
+     "lang": "it"
+    }
+   },
+   {
+    "t": "Alemán",
+    "e": {
+     "lang": "de"
+    }
+   },
+   {
+    "t": "Indio",
+    "e": {
+     "lang": "hi"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb067",
+  "q": "¿Le das una oportunidad a algo coreano?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, sus thrillers de venganza son brutales",
+    "e": {
+     "lang": "ko",
+     "g": {
+      "thriller": 3
+     },
+     "kw": [
+      "revenge"
+     ]
+    }
+   },
+   {
+    "t": "Un k-drama romántico, por favor",
+    "e": {
+     "lang": "ko",
+     "g": {
+      "romance": 3
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Mejor terror coreano",
+    "e": {
+     "lang": "ko",
+     "g": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Aún no me ha llamado",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb068",
+  "q": "¿Qué estilo de anime te va?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Aventuras épicas de cientos de episodios",
+    "e": {
+     "lang": "ja",
+     "kw": [
+      "anime"
+     ],
+     "type": "tv",
+     "g": {
+      "animation": 3,
+      "adventure": 2
+     }
+    }
+   },
+   {
+    "t": "Pelis poéticas, mágicas y preciosas",
+    "e": {
+     "lang": "ja",
+     "kw": [
+      "anime"
+     ],
+     "type": "movie",
+     "g": {
+      "animation": 3,
+      "fantasy": 2
+     }
+    }
+   },
+   {
+    "t": "Ciencia ficción con robots gigantes",
+    "e": {
+     "lang": "ja",
+     "kw": [
+      "anime"
+     ],
+     "g": {
+      "animation": 3,
+      "scifi": 3
+     }
+    }
+   },
+   {
+    "t": "Romance de instituto",
+    "e": {
+     "lang": "ja",
+     "kw": [
+      "anime",
+      "high school"
+     ],
+     "g": {
+      "animation": 3,
+      "romance": 2
+     }
+    }
+   },
+   {
+    "t": "El anime no es lo mío",
+    "e": {
+     "g": {
+      "animation": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb069",
+  "q": "¿Te apetece algo de cine español?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una comedia patria para reír",
+    "e": {
+     "lang": "es",
+     "g": {
+      "comedy": 3
+     }
+    }
+   },
+   {
+    "t": "Un thriller de aquí con giro final",
+    "e": {
+     "lang": "es",
+     "g": {
+      "thriller": 3
+     }
+    }
+   },
+   {
+    "t": "Drama de autor",
+    "e": {
+     "lang": "es",
+     "g": {
+      "drama": 3
+     },
+     "rate": 7
+    }
+   },
+   {
+    "t": "Terror español, que se nos da bien",
+    "e": {
+     "lang": "es",
+     "g": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Hoy prefiero otra cosa",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb070",
+  "q": "¿Qué tipo de serie española te apetece?",
+  "axis": "language",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Atracos y tensión",
+    "e": {
+     "lang": "es",
+     "type": "tv",
+     "g": {
+      "crime": 2
+     },
+     "kw": [
+      "heist"
+     ]
+    }
+   },
+   {
+    "t": "Comedia costumbrista de barrio",
+    "e": {
+     "lang": "es",
+     "type": "tv",
+     "g": {
+      "comedy": 3
+     }
+    }
+   },
+   {
+    "t": "Drama de época con vestuario",
+    "e": {
+     "lang": "es",
+     "type": "tv",
+     "g": {
+      "history": 2,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero una de fuera",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb071",
+  "q": "¿Y si probamos Bollywood?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí: canciones, color y tres horas",
+    "e": {
+     "lang": "hi",
+     "g": {
+      "music": 2,
+      "romance": 1
+     },
+     "len": "long"
+    }
+   },
+   {
+    "t": "Cine indio, pero de acción",
+    "e": {
+     "lang": "hi",
+     "g": {
+      "action": 3
+     }
+    }
+   },
+   {
+    "t": "Nunca lo he probado, ¿por qué no?",
+    "e": {
+     "lang": "hi"
+    }
+   },
+   {
+    "t": "No es lo mío",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb072",
+  "q": "Un poquito de Francia: ¿qué tipo?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Comedia francesa encantadora",
+    "e": {
+     "lang": "fr",
+     "g": {
+      "comedy": 3
+     }
+    }
+   },
+   {
+    "t": "Drama intimista y muy hablado",
+    "e": {
+     "lang": "fr",
+     "g": {
+      "drama": 3
+     },
+     "rate": 7
+    }
+   },
+   {
+    "t": "Policíaco francés con estilo",
+    "e": {
+     "lang": "fr",
+     "g": {
+      "crime": 3
+     }
+    }
+   },
+   {
+    "t": "Non, merci",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb073",
+  "q": "Un poquito de Italia: ¿cuál?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Un clásico del neorrealismo",
+    "e": {
+     "lang": "it",
+     "era": "classic",
+     "g": {
+      "drama": 3
+     }
+    }
+   },
+   {
+    "t": "Spaghetti western",
+    "e": {
+     "lang": "it",
+     "g": {
+      "western": 3
+     },
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Comedia de familia ruidosa",
+    "e": {
+     "lang": "it",
+     "g": {
+      "comedy": 2,
+      "family": 1
+     }
+    }
+   },
+   {
+    "t": "Terror italiano con estilo y sangre",
+    "e": {
+     "lang": "it",
+     "g": {
+      "horror": 2,
+      "mystery": 2
+     },
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Basta così, grazie",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb074",
+  "q": "¿Te va el noir de países fríos, con nieve y crímenes?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí: nieve, silencio y un cadáver",
+    "e": {
+     "lang": "foreign",
+     "g": {
+      "crime": 3,
+      "mystery": 2
+     },
+     "kw": [
+      "detective"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero un thriller alemán",
+    "e": {
+     "lang": "de",
+     "g": {
+      "thriller": 3
+     }
+    }
+   },
+   {
+    "t": "Mejor uno de Hollywood, que lo conozco",
+    "e": {
+     "lang": "en",
+     "g": {
+      "thriller": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb075",
+  "q": "¿Te atreves con un idioma que no has oído en tu vida?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Claro, cuanto más lejano mejor",
+    "e": {
+     "lang": "foreign",
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Si está muy bien valorada, sí",
+    "e": {
+     "lang": "foreign",
+     "rate": 7.5
+    }
+   },
+   {
+    "t": "Mejor en inglés",
+    "e": {
+     "lang": "en"
+    }
+   },
+   {
+    "t": "Mejor en español",
+    "e": {
+     "lang": "es"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb076",
+  "q": "¿Te apetece algo alemán?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Drama histórico del siglo XX",
+    "e": {
+     "lang": "de",
+     "g": {
+      "history": 2,
+      "drama": 2
+     },
+     "kw": [
+      "cold war"
+     ]
+    }
+   },
+   {
+    "t": "Serie de misterio muy enrevesada",
+    "e": {
+     "lang": "de",
+     "type": "tv",
+     "g": {
+      "mystery": 3
+     },
+     "kw": [
+      "time travel"
+     ]
+    }
+   },
+   {
+    "t": "Thriller alemán frío y preciso",
+    "e": {
+     "lang": "de",
+     "g": {
+      "thriller": 3
+     }
+    }
+   },
+   {
+    "t": "Nein, danke",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb077",
+  "q": "Cine asiático: ¿por dónde empezamos?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Japón: samuráis y espíritus",
+    "e": {
+     "lang": "ja",
+     "g": {
+      "history": 1,
+      "fantasy": 1
+     },
+     "kw": [
+      "samurai"
+     ]
+    }
+   },
+   {
+    "t": "Corea: venganzas sin piedad",
+    "e": {
+     "lang": "ko",
+     "g": {
+      "thriller": 2
+     },
+     "kw": [
+      "revenge"
+     ]
+    }
+   },
+   {
+    "t": "India: épica y musical",
+    "e": {
+     "lang": "hi",
+     "g": {
+      "music": 2,
+      "action": 1
+     }
+    }
+   },
+   {
+    "t": "Hong Kong: artes marciales",
+    "e": {
+     "lang": "foreign",
+     "g": {
+      "action": 3
+     },
+     "kw": [
+      "martial arts"
+     ]
+    }
+   },
+   {
+    "t": "Animación japonesa",
+    "e": {
+     "lang": "ja",
+     "g": {
+      "animation": 3
+     },
+     "kw": [
+      "anime"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb078",
+  "q": "¿Hollywood sí o Hollywood no?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Hollywood, sin complicaciones",
+    "e": {
+     "lang": "en",
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Británica, con su flema",
+    "e": {
+     "lang": "en",
+     "g": {
+      "comedy": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Hoy, cualquier cosa menos Hollywood",
+    "e": {
+     "lang": "foreign"
+    }
+   },
+   {
+    "t": "Me da igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb079",
+  "q": "¿Te va el humor británico?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, ácido e irónico",
+    "e": {
+     "lang": "en",
+     "g": {
+      "comedy": 3
+     },
+     "kw": [
+      "dark comedy"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero sus dramas de época",
+    "e": {
+     "lang": "en",
+     "g": {
+      "history": 2,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "No le pillo la gracia",
+    "e": {
+     "g": {
+      "comedy": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb080",
+  "q": "¿Cine europeo de festival?",
+  "axis": "language",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, de los que arrasan en premios",
+    "e": {
+     "lang": "foreign",
+     "rate": 7.5,
+     "g": {
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Europeo, pero con humor",
+    "e": {
+     "lang": "foreign",
+     "g": {
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "Joyas europeas que casi nadie ha visto",
+    "e": {
+     "lang": "foreign",
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Soy más de Hollywood",
+    "e": {
+     "lang": "en"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb081",
+  "q": "¿Joya escondida o pelotazo que ha visto todo el mundo?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Joya escondida",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "El éxito del que todos hablan",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Algo de culto y rarito",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb082",
+  "q": "¿Te fastidia ser el último en ver lo que ha visto todo el mundo?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, ponme al día con lo más visto",
+    "e": {
+     "pop": "mainstream",
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Me gusta descubrir cosas que nadie conoce",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Lo mío son las rarezas con fans fieles",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb083",
+  "q": "¿Qué prefieres comentar el lunes con los compañeros?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Lo que está viendo todo el mundo",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Algo que nadie conoce y yo recomiendo",
+    "e": {
+     "pop": "hidden",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Algo tan raro que me miren mal",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb084",
+  "q": "¿Te van las pelis de culto de sesión de medianoche?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, cuanto más rara mejor",
+    "e": {
+     "pop": "cult",
+     "g": {
+      "horror": 1,
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Culto, pero de las que son obras maestras",
+    "e": {
+     "pop": "cult",
+     "rate": 7.5
+    }
+   },
+   {
+    "t": "No, prefiero lo convencional",
+    "e": {
+     "pop": "mainstream"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb085",
+  "q": "¿Un blockbuster de presupuesto gigante?",
+  "axis": "popularity",
+  "for": "movie",
+  "a": [
+   {
+    "t": "Sí, que se note cada millón",
+    "e": {
+     "type": "movie",
+     "pop": "mainstream",
+     "g": {
+      "action": 2,
+      "adventure": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero cine pequeño e independiente",
+    "e": {
+     "type": "movie",
+     "pop": "hidden",
+     "g": {
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Depende de la historia",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb086",
+  "q": "¿Te fías de lo que es tendencia?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Si es tendencia, por algo será",
+    "e": {
+     "pop": "mainstream",
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Desconfío del hype",
+    "e": {
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Me fío de lo que fue tendencia hace décadas",
+    "e": {
+     "pop": "cult",
+     "era": "80s90s"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb087",
+  "q": "¿Rescatamos una serie que pasó desapercibida?",
+  "axis": "popularity",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Sí, alguna cancelada injustamente",
+    "e": {
+     "type": "tv",
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "No, quiero la serie del momento",
+    "e": {
+     "type": "tv",
+     "pop": "mainstream",
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Una de culto de hace unos años",
+    "e": {
+     "type": "tv",
+     "pop": "cult",
+     "era": "2000s"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb088",
+  "q": "Pelis tan malas que son buenas: ¿sí o no?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Me chiflan",
+    "e": {
+     "pop": "cult",
+     "g": {
+      "comedy": 2,
+      "horror": 1
+     }
+    }
+   },
+   {
+    "t": "Solo si saben que son malas",
+    "e": {
+     "pop": "cult",
+     "g": {
+      "comedy": 2
+     },
+     "kw": [
+      "parody"
+     ]
+    }
+   },
+   {
+    "t": "No, hoy quiero calidad",
+    "e": {
+     "rate": 7
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb089",
+  "q": "¿Qué recomendación te fiarías más?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "La del algoritmo, que me conoce",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "La del cinéfilo más raro que conozco",
+    "e": {
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "La de un amigo: poco conocida pero buena",
+    "e": {
+     "pop": "hidden",
+     "rate": 7
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb090",
+  "q": "Festival de cine pequeño: ¿a qué sesión entras?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Al documental del que nadie ha oído hablar",
+    "e": {
+     "pop": "hidden",
+     "g": {
+      "documentary": 2
+     }
+    }
+   },
+   {
+    "t": "A la sesión golfa de terror",
+    "e": {
+     "pop": "cult",
+     "g": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Prefiero la gran premiere con alfombra roja",
+    "e": {
+     "pop": "mainstream"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb091",
+  "q": "¿Cuánta gente tiene que haberla visto para que te fíes?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Millones: quiero ir sobre seguro",
+    "e": {
+     "pop": "mainstream",
+     "rate": 6.5
+    }
+   },
+   {
+    "t": "Pocos, pero que la adoren",
+    "e": {
+     "pop": "hidden",
+     "rate": 7.5
+    }
+   },
+   {
+    "t": "Me fío de mi instinto",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb092",
+  "q": "¿Te gustan las pelis con frases que cita todo el mundo?",
+  "axis": "popularity",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, de las que salen en todas las cenas",
+    "e": {
+     "pop": "mainstream",
+     "era": "80s90s"
+    }
+   },
+   {
+    "t": "Mejor las que citan cuatro frikis",
+    "e": {
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Las frases me dan igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb093",
+  "q": "¿Cuánto te importan las notas?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "Mucho: solo lo mejor valorado",
+    "e": {
+     "rate": 8
+    }
+   },
+   {
+    "t": "Que esté bien valorada",
+    "e": {
+     "rate": 7
+    }
+   },
+   {
+    "t": "Me vale algo decente",
+    "e": {
+     "rate": 6
+    }
+   },
+   {
+    "t": "Las notas me dan igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb094",
+  "q": "¿Hoy toca obra maestra o placer culpable?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "Obra maestra, cine con mayúsculas",
+    "e": {
+     "rate": 8,
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Placer culpable sin remordimientos",
+    "e": {
+     "pop": "mainstream",
+     "g": {
+      "comedy": 1,
+      "action": 1
+     }
+    }
+   },
+   {
+    "t": "Algo intermedio",
+    "e": {
+     "rate": 6.5
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb095",
+  "q": "¿Te va el cine de premios?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, lo que arrasó en las galas",
+    "e": {
+     "rate": 7.5,
+     "g": {
+      "drama": 2,
+      "history": 1
+     }
+    }
+   },
+   {
+    "t": "Las que se quedaron sin premio injustamente",
+    "e": {
+     "pop": "hidden",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Los premios me dan igual",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb096",
+  "q": "¿Qué pesa más: buen guion o efectos que te dejen loco?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "El guion, por encima de todo",
+    "e": {
+     "rate": 7.5,
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Efectos que me dejen boquiabierto",
+    "e": {
+     "g": {
+      "action": 2,
+      "scifi": 2
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Un buen equilibrio",
+    "e": {
+     "rate": 7
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb097",
+  "q": "¿Cuánto riesgo asumes con la recomendación de hoy?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "Ninguno: ve a lo seguro",
+    "e": {
+     "rate": 7.5,
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Un poco, sorpréndeme",
+    "e": {
+     "rate": 6.5,
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Todo, aunque salga un desastre",
+    "e": {
+     "pop": "cult"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb098",
+  "q": "¿Una serie tiene que enganchar desde el primer capítulo?",
+  "axis": "quality",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Sí, no tengo tiempo que perder",
+    "e": {
+     "type": "tv",
+     "rate": 8
+    }
+   },
+   {
+    "t": "Le doy unos capítulos de margen",
+    "e": {
+     "type": "tv",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Me engancho a cualquier cosa",
+    "e": {
+     "type": "tv"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb099",
+  "q": "¿Te apetece cine exigente, de los que hacen pensar?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, que me deje dándole vueltas",
+    "e": {
+     "rate": 7.5,
+     "g": {
+      "drama": 2
+     },
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Un poquito, sin pasarse",
+    "e": {
+     "rate": 7
+    }
+   },
+   {
+    "t": "Hoy no, quiero desconectar",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "action": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb100",
+  "q": "¿Te pongo una de interpretaciones de premio?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, actores en estado de gracia",
+    "e": {
+     "rate": 7.5,
+     "g": {
+      "drama": 3
+     }
+    }
+   },
+   {
+    "t": "Me importan más los personajes carismáticos",
+    "e": {
+     "g": {
+      "action": 1,
+      "comedy": 1
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Ni me fijo en eso",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb101",
+  "q": "¿Te conformas con algo que 'está bien'?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "No, busco algo memorable",
+    "e": {
+     "rate": 8
+    }
+   },
+   {
+    "t": "Sí, algo que se deje ver",
+    "e": {
+     "rate": 6
+    }
+   },
+   {
+    "t": "Con que me entretenga me sobra",
+    "e": {
+     "g": {
+      "comedy": 1
+     },
+     "pop": "mainstream"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb102",
+  "q": "¿Uno de esos imprescindibles que salen en todas las listas?",
+  "axis": "quality",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, un imprescindible de toda la vida",
+    "e": {
+     "rate": 8,
+     "era": "classic"
+    }
+   },
+   {
+    "t": "Un imprescindible de los últimos años",
+    "e": {
+     "rate": 8,
+     "era": "recent"
+    }
+   },
+   {
+    "t": "Prefiero algo menos canónico",
+    "e": {
+     "pop": "hidden"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb103",
+  "q": "¿Prefieres que la historia se cueza a fuego lento o que no dé tregua?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "A fuego lento, que se cueza",
+    "e": {
+     "g": {
+      "drama": 2,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Frenética, sin tiempo para respirar",
+    "e": {
+     "g": {
+      "action": 3,
+      "thriller": 2
+     }
+    }
+   },
+   {
+    "t": "Ágil, pero con alguna pausa",
+    "e": {
+     "g": {
+      "adventure": 2,
+      "comedy": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb104",
+  "q": "¿Te gustan los silencios largos en pantalla?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, los planos contemplativos me relajan",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "pop": "hidden",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Un poco, sin pasarse",
+    "e": {
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "No, necesito diálogo o explosiones",
+    "e": {
+     "g": {
+      "action": 2,
+      "comedy": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb105",
+  "q": "Primeros diez minutos: ¿qué tiene que pasar sí o sí?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una explosión o un crimen",
+    "e": {
+     "g": {
+      "action": 2,
+      "crime": 2
+     }
+    }
+   },
+   {
+    "t": "Que me presenten bien a los personajes",
+    "e": {
+     "g": {
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Un misterio que me atrape",
+    "e": {
+     "g": {
+      "mystery": 3
+     }
+    }
+   },
+   {
+    "t": "Un buen chiste",
+    "e": {
+     "g": {
+      "comedy": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb106",
+  "q": "¿Tensión que crece poco a poco o golpes desde el principio?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Tensión lenta que me va asfixiando",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "horror": 1
+     },
+     "kw": [
+      "psychological thriller"
+     ]
+    }
+   },
+   {
+    "t": "Golpes desde el minuto uno",
+    "e": {
+     "g": {
+      "action": 2,
+      "horror": 1
+     }
+    }
+   },
+   {
+    "t": "Depende del día",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb107",
+  "q": "¿Cuántas tramas a la vez eres capaz de seguir?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una sola y clarita",
+    "e": {
+     "g": {
+      "comedy": 1,
+      "action": 1
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Varias entrelazadas",
+    "e": {
+     "g": {
+      "drama": 2,
+      "crime": 1
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Un rompecabezas con varias líneas temporales",
+    "e": {
+     "g": {
+      "mystery": 2,
+      "scifi": 2
+     },
+     "kw": [
+      "time travel"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb108",
+  "q": "¿Montaje de videoclip o planos largos?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Montaje rápido y nervioso",
+    "e": {
+     "g": {
+      "action": 3,
+      "thriller": 1
+     }
+    }
+   },
+   {
+    "t": "Planos largos que te meten dentro",
+    "e": {
+     "g": {
+      "drama": 2,
+      "war": 1
+     }
+    }
+   },
+   {
+    "t": "Lo que pida la historia",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb109",
+  "q": "¿Cuánto le das a una serie antes de abandonarla?",
+  "axis": "pace",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Si el piloto no me atrapa, fuera",
+    "e": {
+     "type": "tv",
+     "g": {
+      "thriller": 2,
+      "crime": 1
+     }
+    }
+   },
+   {
+    "t": "Le doy media temporada",
+    "e": {
+     "type": "tv",
+     "g": {
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Las mejores arrancan lentas",
+    "e": {
+     "type": "tv",
+     "g": {
+      "drama": 2
+     },
+     "rate": 7.5
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb110",
+  "q": "¿Te apetece una buena persecución?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Coches a toda velocidad",
+    "e": {
+     "g": {
+      "action": 3,
+      "crime": 1
+     }
+    }
+   },
+   {
+    "t": "Carreras por los tejados",
+    "e": {
+     "g": {
+      "action": 2,
+      "thriller": 2
+     },
+     "kw": [
+      "spy"
+     ]
+    }
+   },
+   {
+    "t": "Un juego del gato y el ratón psicológico",
+    "e": {
+     "g": {
+      "thriller": 3,
+      "crime": 1
+     },
+     "kw": [
+      "serial killer"
+     ]
+    }
+   },
+   {
+    "t": "Hoy nada de correr",
+    "e": {
+     "g": {
+      "action": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb111",
+  "q": "¿En qué modo tienes hoy el cerebro?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Turbo: tramas complejas, por favor",
+    "e": {
+     "g": {
+      "mystery": 2,
+      "scifi": 2
+     },
+     "rate": 7
+    }
+   },
+   {
+    "t": "Ahorro de energía: algo sencillito",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "family": 1
+     }
+    }
+   },
+   {
+    "t": "Piloto automático: acción sin pensar",
+    "e": {
+     "g": {
+      "action": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb112",
+  "q": "¿Cuántos giros de guion quieres?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Ninguno, déjame disfrutar",
+    "e": {
+     "g": {
+      "comedy": 1,
+      "romance": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Uno bueno al final",
+    "e": {
+     "g": {
+      "mystery": 2,
+      "thriller": 1
+     }
+    }
+   },
+   {
+    "t": "Tantos que no sepa qué es verdad",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "mystery": 2
+     },
+     "kw": [
+      "psychological thriller"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb113",
+  "q": "¿Te gusta que la historia salte en el tiempo?",
+  "axis": "pace",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, flashbacks y saltos",
+    "e": {
+     "g": {
+      "drama": 1,
+      "mystery": 2
+     }
+    }
+   },
+   {
+    "t": "Bucles temporales, todavía mejor",
+    "e": {
+     "g": {
+      "scifi": 2
+     },
+     "kw": [
+      "time loop"
+     ]
+    }
+   },
+   {
+    "t": "En orden, por favor",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb114",
+  "q": "¿Quién se va a sentar contigo a verlo?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "A solas",
+    "e": {
+     "g": {
+      "drama": 1,
+      "thriller": 1
+     }
+    }
+   },
+   {
+    "t": "En pareja",
+    "e": {
+     "g": {
+      "romance": 2,
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Con amigos",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "action": 1,
+      "horror": 1
+     }
+    }
+   },
+   {
+    "t": "En familia",
+    "e": {
+     "g": {
+      "family": 3,
+      "animation": 1
+     }
+    }
+   },
+   {
+    "t": "Con niños pequeños",
+    "e": {
+     "g": {
+      "kids": 3,
+      "animation": 2,
+      "family": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb115",
+  "q": "Primera cita en el sofá: ¿qué pones?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una comedia romántica para romper el hielo",
+    "e": {
+     "g": {
+      "romance": 2,
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "Terror, por si hay abrazos",
+    "e": {
+     "g": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Algo indie para parecer interesante",
+    "e": {
+     "pop": "hidden",
+     "g": {
+      "drama": 1,
+      "romance": 1
+     }
+    }
+   },
+   {
+    "t": "Una de acción para ir a lo seguro",
+    "e": {
+     "g": {
+      "action": 2
+     },
+     "pop": "mainstream"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb116",
+  "q": "Noche de amigos con pizza: ¿qué funciona?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Terror para gritar todos juntos",
+    "e": {
+     "g": {
+      "horror": 3,
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Comedia gamberra",
+    "e": {
+     "g": {
+      "comedy": 3
+     }
+    }
+   },
+   {
+    "t": "Una de culto para comentarla a voces",
+    "e": {
+     "pop": "cult"
+    }
+   },
+   {
+    "t": "Acción sin pensar",
+    "e": {
+     "g": {
+      "action": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb117",
+  "q": "Vienen tus padres a verla contigo. ¿Qué pones?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Un clásico que les traiga recuerdos",
+    "e": {
+     "era": "classic",
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Comedia sin escenas incómodas",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "family": 1,
+      "romance": -1
+     }
+    }
+   },
+   {
+    "t": "Un thriller que nos tenga a todos en vilo",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Un documental de naturaleza",
+    "e": {
+     "g": {
+      "documentary": 3
+     },
+     "kw": [
+      "nature"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb118",
+  "q": "¿Hay niños en el sofá? ¿De qué edad?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Peques de menos de seis años",
+    "e": {
+     "g": {
+      "kids": 3,
+      "animation": 3
+     }
+    }
+   },
+   {
+    "t": "Entre siete y doce años",
+    "e": {
+     "g": {
+      "family": 3,
+      "adventure": 2,
+      "animation": 1
+     }
+    }
+   },
+   {
+    "t": "Adolescentes",
+    "e": {
+     "g": {
+      "family": 1,
+      "comedy": 1
+     },
+     "kw": [
+      "coming of age",
+      "high school"
+     ]
+    }
+   },
+   {
+    "t": "Ni un niño a la vista",
+    "e": {
+     "g": {
+      "kids": -2,
+      "family": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb119",
+  "q": "Lo ves en solitario: ¿qué aprovechas para ver?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Eso que me da vergüenza ver con gente",
+    "e": {
+     "g": {
+      "romance": 2,
+      "music": 1
+     }
+    }
+   },
+   {
+    "t": "Algo denso que nadie más aguantaría",
+    "e": {
+     "rate": 7.5,
+     "g": {
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Terror con la luz apagada",
+    "e": {
+     "g": {
+      "horror": 3
+     }
+    }
+   },
+   {
+    "t": "Lo que me dé la gana, sin negociar",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb120",
+  "q": "¿Tu pareja y tú tenéis gustos parecidos?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Idénticos, vale cualquier cosa",
+    "e": {}
+   },
+   {
+    "t": "Opuestos: toca buscar un punto medio",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "adventure": 1
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Uno quiere llorar y el otro reír",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Uno quiere acción y el otro romance",
+    "e": {
+     "g": {
+      "action": 2,
+      "romance": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb121",
+  "q": "¿Buscas una serie para compartir con tu grupo?",
+  "axis": "company",
+  "for": "tv",
+  "a": [
+   {
+    "t": "Una para ver juntos cada semana",
+    "e": {
+     "type": "tv",
+     "g": {
+      "comedy": 2,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Una para devorar en un finde",
+    "e": {
+     "type": "tv",
+     "len": "short",
+     "g": {
+      "thriller": 2
+     }
+    }
+   },
+   {
+    "t": "Mejor una peli y a otra cosa",
+    "e": {
+     "type": "movie"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb122",
+  "q": "Si tu abuela se sienta contigo, ¿qué vemos?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Un musical de los de antes",
+    "e": {
+     "era": "classic",
+     "g": {
+      "music": 3
+     }
+    }
+   },
+   {
+    "t": "Un western de domingo",
+    "e": {
+     "era": "classic",
+     "g": {
+      "western": 3
+     }
+    }
+   },
+   {
+    "t": "Un drama de época",
+    "e": {
+     "g": {
+      "history": 2,
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Una comedia blanca",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "family": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb123",
+  "q": "Te toca ver algo con un adolescente. ¿Qué eliges?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Superhéroes, para ir a lo seguro",
+    "e": {
+     "g": {
+      "action": 2
+     },
+     "kw": [
+      "superhero"
+     ]
+    }
+   },
+   {
+    "t": "Una de instituto",
+    "e": {
+     "g": {
+      "comedy": 2
+     },
+     "kw": [
+      "high school"
+     ]
+    }
+   },
+   {
+    "t": "Algo de miedo, pero sin pasarse",
+    "e": {
+     "g": {
+      "horror": 1,
+      "mystery": 2,
+      "family": 1
+     }
+    }
+   },
+   {
+    "t": "Anime, que seguro que le gusta",
+    "e": {
+     "lang": "ja",
+     "g": {
+      "animation": 3
+     },
+     "kw": [
+      "anime"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb124",
+  "q": "¿Va a haber gente hablando durante la peli?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, así que algo fácil de seguir",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "action": 1
+     },
+     "len": "short"
+    }
+   },
+   {
+    "t": "Nadie hablará: aquí se viene a ver cine",
+    "e": {
+     "rate": 7.5,
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Lo comentaremos todo como en un directo",
+    "e": {
+     "pop": "cult",
+     "g": {
+      "comedy": 1,
+      "horror": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb125",
+  "q": "Tienes al perro en el regazo. ¿Qué ponemos?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una de perros, evidentemente",
+    "e": {
+     "g": {
+      "family": 2,
+      "adventure": 1,
+      "drama": 1
+     },
+     "kw": [
+      "dog"
+     ]
+    }
+   },
+   {
+    "t": "Algo tranquilo para no despertarle",
+    "e": {
+     "g": {
+      "drama": 1,
+      "documentary": 1
+     }
+    }
+   },
+   {
+    "t": "Tendrá que aguantar mis gritos",
+    "e": {
+     "g": {
+      "horror": 2,
+      "thriller": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb126",
+  "q": "Reunión familiar en Navidad: ¿qué ponemos en la tele?",
+  "axis": "company",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una peli navideña de manual",
+    "e": {
+     "g": {
+      "family": 3,
+      "comedy": 1
+     },
+     "kw": [
+      "christmas"
+     ]
+    }
+   },
+   {
+    "t": "Familiar, pero sin espumillón",
+    "e": {
+     "g": {
+      "family": 3,
+      "adventure": 1
+     }
+    }
+   },
+   {
+    "t": "Terror navideño a escondidas",
+    "e": {
+     "g": {
+      "horror": 2
+     },
+     "kw": [
+      "christmas"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb127",
+  "q": "¿Qué tema te remueve más por dentro?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "La justicia y la venganza",
+    "e": {
+     "g": {
+      "crime": 1,
+      "thriller": 1
+     },
+     "kw": [
+      "revenge"
+     ]
+    }
+   },
+   {
+    "t": "El amor en todas sus formas",
+    "e": {
+     "g": {
+      "romance": 3
+     }
+    }
+   },
+   {
+    "t": "La identidad: quién soy de verdad",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "coming of age"
+     ]
+    }
+   },
+   {
+    "t": "El poder y la ambición",
+    "e": {
+     "g": {
+      "politics": 1,
+      "crime": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "La familia",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "family relationships"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb128",
+  "q": "¿Te interesan las historias de tecnología que se nos va de las manos?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí: IA y robots",
+    "e": {
+     "g": {
+      "scifi": 3
+     },
+     "kw": [
+      "artificial intelligence"
+     ]
+    }
+   },
+   {
+    "t": "Redes, vigilancia y control",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "scifi": 1
+     },
+     "kw": [
+      "dystopia"
+     ]
+    }
+   },
+   {
+    "t": "Hackers y ciberataques",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "crime": 1
+     },
+     "kw": [
+      "hacker"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero dejar la tecnología fuera",
+    "e": {
+     "g": {
+      "scifi": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb129",
+  "q": "La naturaleza en pantalla, ¿cómo la quieres?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sobrevivir en un lugar salvaje",
+    "e": {
+     "g": {
+      "adventure": 2,
+      "drama": 1
+     },
+     "kw": [
+      "survival"
+     ]
+    }
+   },
+   {
+    "t": "Documentales de animales",
+    "e": {
+     "g": {
+      "documentary": 3
+     },
+     "kw": [
+      "nature"
+     ]
+    }
+   },
+   {
+    "t": "Desastres naturales a lo grande",
+    "e": {
+     "g": {
+      "action": 2,
+      "thriller": 1
+     }
+    }
+   },
+   {
+    "t": "Bestias que acechan en el bosque",
+    "e": {
+     "g": {
+      "horror": 2
+     },
+     "kw": [
+      "monster"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb130",
+  "q": "¿Te tira más una historia que pasó de verdad?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, me encanta saber que fue real",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "true story"
+     ]
+    }
+   },
+   {
+    "t": "La biografía de alguien fascinante",
+    "e": {
+     "g": {
+      "history": 1,
+      "drama": 1
+     },
+     "kw": [
+      "biography"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero ficción total",
+    "e": {
+     "g": {
+      "fantasy": 1,
+      "scifi": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb131",
+  "q": "¿Te apetece una historia sobre hacerse mayor?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, de un verano que lo cambia todo",
+    "e": {
+     "g": {
+      "drama": 2,
+      "comedy": 1
+     },
+     "kw": [
+      "coming of age"
+     ]
+    }
+   },
+   {
+    "t": "De instituto, con todo su drama",
+    "e": {
+     "g": {
+      "comedy": 2
+     },
+     "kw": [
+      "high school"
+     ]
+    }
+   },
+   {
+    "t": "Sobre crecer a los cuarenta",
+    "e": {
+     "g": {
+      "drama": 2,
+      "comedy": 2
+     }
+    }
+   },
+   {
+    "t": "Ya he crecido bastante, gracias",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb132",
+  "q": "¿Una historia de amistad? ¿Cuál?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Amigos que lo darían todo",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "friendship"
+     ]
+    }
+   },
+   {
+    "t": "Una pandilla metida en una aventura",
+    "e": {
+     "g": {
+      "adventure": 2,
+      "comedy": 2
+     },
+     "kw": [
+      "friendship"
+     ]
+    }
+   },
+   {
+    "t": "Amistad improbable entre opuestos",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "drama": 1
+     },
+     "kw": [
+      "friendship"
+     ]
+    }
+   },
+   {
+    "t": "Mejor un lobo solitario",
+    "e": {
+     "g": {
+      "action": 1,
+      "western": 1,
+      "thriller": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb133",
+  "q": "¿Qué tipo de familia quieres ver en pantalla?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una disfuncional que da mucha risa",
+    "e": {
+     "g": {
+      "comedy": 3
+     },
+     "kw": [
+      "family relationships"
+     ]
+    }
+   },
+   {
+    "t": "Una rota que intenta recomponerse",
+    "e": {
+     "g": {
+      "drama": 3
+     },
+     "kw": [
+      "family relationships"
+     ]
+    }
+   },
+   {
+    "t": "Una familia mafiosa",
+    "e": {
+     "g": {
+      "crime": 3
+     },
+     "kw": [
+      "mafia"
+     ]
+    }
+   },
+   {
+    "t": "Una saga de varias generaciones",
+    "e": {
+     "g": {
+      "drama": 2,
+      "history": 1
+     },
+     "len": "long"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb134",
+  "q": "Poder y ambición: ¿en qué terreno te interesa más?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "En la política",
+    "e": {
+     "g": {
+      "politics": 3,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "En las grandes empresas y la bolsa",
+    "e": {
+     "g": {
+      "drama": 2,
+      "crime": 1
+     }
+    }
+   },
+   {
+    "t": "En el crimen organizado",
+    "e": {
+     "g": {
+      "crime": 3
+     },
+     "kw": [
+      "mafia"
+     ]
+    }
+   },
+   {
+    "t": "En tronos y reinos",
+    "e": {
+     "g": {
+      "fantasy": 2,
+      "history": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero gente corriente",
+    "e": {
+     "g": {
+      "drama": 1,
+      "comedy": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb135",
+  "q": "¿Te apetece una venganza servida fría?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, implacable y sin perdón",
+    "e": {
+     "g": {
+      "action": 2,
+      "thriller": 2
+     },
+     "kw": [
+      "revenge"
+     ]
+    }
+   },
+   {
+    "t": "Venganza, pero con perdón al final",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "revenge"
+     ]
+    }
+   },
+   {
+    "t": "Mejor una historia de redención",
+    "e": {
+     "g": {
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Nada de rencores hoy",
+    "e": {
+     "g": {
+      "comedy": 1,
+      "family": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb136",
+  "q": "¿Qué viaje te apetece hacer sin moverte del sofá?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Un road trip por carretera",
+    "e": {
+     "g": {
+      "comedy": 1,
+      "adventure": 1
+     },
+     "kw": [
+      "road trip"
+     ]
+    }
+   },
+   {
+    "t": "Un viaje al espacio profundo",
+    "e": {
+     "g": {
+      "scifi": 3
+     },
+     "kw": [
+      "space"
+     ]
+    }
+   },
+   {
+    "t": "Un viaje en el tiempo",
+    "e": {
+     "g": {
+      "scifi": 2
+     },
+     "kw": [
+      "time travel"
+     ]
+    }
+   },
+   {
+    "t": "Un viaje interior",
+    "e": {
+     "g": {
+      "drama": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb137",
+  "q": "¿Historias de alguien que no encaja y busca su sitio?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, con protagonistas raros y entrañables",
+    "e": {
+     "g": {
+      "drama": 2,
+      "comedy": 1
+     },
+     "kw": [
+      "coming of age"
+     ]
+    }
+   },
+   {
+    "t": "Con poderes que le hacen diferente",
+    "e": {
+     "g": {
+      "fantasy": 2
+     },
+     "kw": [
+      "superhero"
+     ]
+    }
+   },
+   {
+    "t": "Sobre empezar de cero en otro país",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "lang": "foreign"
+    }
+   },
+   {
+    "t": "Prefiero protagonistas que lo tienen claro",
+    "e": {
+     "g": {
+      "action": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb138",
+  "q": "¿Una protagonista que se coma la pantalla?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, una heroína de acción",
+    "e": {
+     "g": {
+      "action": 3
+     },
+     "kw": [
+      "female protagonist"
+     ]
+    }
+   },
+   {
+    "t": "Una mujer real que lo cambió todo",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "female protagonist",
+      "biography"
+     ]
+    }
+   },
+   {
+    "t": "Una antiheroína retorcida",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "crime": 1
+     },
+     "kw": [
+      "female protagonist"
+     ]
+    }
+   },
+   {
+    "t": "Me da igual quién protagonice",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb139",
+  "q": "¿Una historia con comida de por medio?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Cocinas, chefs y mucho estrés",
+    "e": {
+     "g": {
+      "drama": 2,
+      "comedy": 1
+     },
+     "kw": [
+      "chef"
+     ]
+    }
+   },
+   {
+    "t": "Un concurso de cocina",
+    "e": {
+     "g": {
+      "reality": 3
+     },
+     "kw": [
+      "chef"
+     ],
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Romance entre fogones",
+    "e": {
+     "g": {
+      "romance": 2,
+      "comedy": 2
+     },
+     "kw": [
+      "chef"
+     ]
+    }
+   },
+   {
+    "t": "Ya he cenado, gracias",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb140",
+  "q": "Te invitan a una boda de película: ¿cómo es?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Un desastre de principio a fin",
+    "e": {
+     "g": {
+      "comedy": 3
+     },
+     "kw": [
+      "wedding"
+     ]
+    }
+   },
+   {
+    "t": "Con alguien que no debería estar allí",
+    "e": {
+     "g": {
+      "romance": 2,
+      "drama": 1
+     },
+     "kw": [
+      "wedding"
+     ]
+    }
+   },
+   {
+    "t": "Una boda de la mafia",
+    "e": {
+     "g": {
+      "crime": 2
+     },
+     "kw": [
+      "wedding",
+      "mafia"
+     ]
+    }
+   },
+   {
+    "t": "Odio las bodas",
+    "e": {
+     "g": {
+      "romance": -2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb141",
+  "q": "¿Qué deporte te emociona ver en pantalla?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Boxeo y combates",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "boxing"
+     ]
+    }
+   },
+   {
+    "t": "Fútbol",
+    "e": {
+     "g": {
+      "drama": 1,
+      "comedy": 1
+     },
+     "kw": [
+      "football (soccer)"
+     ]
+    }
+   },
+   {
+    "t": "Cualquier historia real de superación",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "true story"
+     ]
+    }
+   },
+   {
+    "t": "Los deportes me aburren",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb142",
+  "q": "Supervivencia: ¿contra qué?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Contra la naturaleza salvaje",
+    "e": {
+     "g": {
+      "adventure": 2
+     },
+     "kw": [
+      "survival"
+     ]
+    }
+   },
+   {
+    "t": "Contra otros humanos",
+    "e": {
+     "g": {
+      "thriller": 3
+     },
+     "kw": [
+      "survival"
+     ]
+    }
+   },
+   {
+    "t": "Contra criaturas",
+    "e": {
+     "g": {
+      "horror": 3
+     },
+     "kw": [
+      "survival",
+      "monster"
+     ]
+    }
+   },
+   {
+    "t": "Contra el sistema",
+    "e": {
+     "g": {
+      "scifi": 2,
+      "drama": 1
+     },
+     "kw": [
+      "dystopia"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb143",
+  "q": "¿Cómo te gusta que se haga justicia?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "En un juicio con el corazón en un puño",
+    "e": {
+     "g": {
+      "drama": 2,
+      "crime": 1
+     },
+     "kw": [
+      "courtroom"
+     ]
+    }
+   },
+   {
+    "t": "Por su propia mano",
+    "e": {
+     "g": {
+      "action": 3
+     },
+     "kw": [
+      "revenge"
+     ]
+    }
+   },
+   {
+    "t": "Gracias a un periodista incansable",
+    "e": {
+     "g": {
+      "drama": 2,
+      "thriller": 2
+     },
+     "kw": [
+      "journalism"
+     ]
+    }
+   },
+   {
+    "t": "A veces no se hace, y duele",
+    "e": {
+     "g": {
+      "drama": 3,
+      "crime": 1
+     },
+     "rate": 7
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb144",
+  "q": "¿Qué dilema moral te engancha más?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "¿Hasta dónde llegarías por tu familia?",
+    "e": {
+     "g": {
+      "crime": 2,
+      "drama": 2
+     },
+     "kw": [
+      "family relationships"
+     ]
+    }
+   },
+   {
+    "t": "¿Qué harías con un poder ilimitado?",
+    "e": {
+     "g": {
+      "scifi": 2
+     },
+     "kw": [
+      "superhero"
+     ]
+    }
+   },
+   {
+    "t": "¿Traicionarías a tu país?",
+    "e": {
+     "g": {
+      "thriller": 2
+     },
+     "kw": [
+      "spy",
+      "cold war"
+     ]
+    }
+   },
+   {
+    "t": "¿Mentirías por amor?",
+    "e": {
+     "g": {
+      "romance": 2,
+      "drama": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb145",
+  "q": "¿Ficción en el trabajo? ¿Qué trabajo?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Oficinas absurdas para reírse",
+    "e": {
+     "g": {
+      "comedy": 3
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Hospitales y urgencias",
+    "e": {
+     "g": {
+      "drama": 3
+     },
+     "type": "tv"
+    }
+   },
+   {
+    "t": "Policías y comisarías",
+    "e": {
+     "g": {
+      "crime": 3
+     }
+    }
+   },
+   {
+    "t": "Abogados y bufetes",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "courtroom"
+     ]
+    }
+   },
+   {
+    "t": "Hoy no quiero saber nada del trabajo",
+    "e": {
+     "g": {
+      "fantasy": 1,
+      "adventure": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb146",
+  "q": "¿Te apetece una historia sobre la soledad?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Alguien aislado que tiene que sobrevivir",
+    "e": {
+     "g": {
+      "drama": 2,
+      "scifi": 1
+     },
+     "kw": [
+      "survival"
+     ]
+    }
+   },
+   {
+    "t": "Soledad en mitad de la gran ciudad",
+    "e": {
+     "g": {
+      "drama": 2,
+      "romance": 1
+     }
+    }
+   },
+   {
+    "t": "Mejor historias de grupo",
+    "e": {
+     "g": {
+      "comedy": 2
+     },
+     "kw": [
+      "friendship"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb147",
+  "q": "¿Qué papel quieres que tenga la música?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Protagonista: bandas, giras y escenarios",
+    "e": {
+     "g": {
+      "music": 3,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "El biopic de una estrella",
+    "e": {
+     "g": {
+      "music": 2
+     },
+     "kw": [
+      "biography"
+     ]
+    }
+   },
+   {
+    "t": "Una banda sonora que se me pegue",
+    "e": {
+     "g": {
+      "music": 1
+     },
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Que no distraiga",
+    "e": {
+     "g": {
+      "music": -1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb148",
+  "q": "¿Te gustan los mundos paralelos?",
+  "axis": "theme",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, puertas a otros mundos",
+    "e": {
+     "g": {
+      "fantasy": 2,
+      "scifi": 1
+     },
+     "kw": [
+      "parallel world"
+     ]
+    }
+   },
+   {
+    "t": "Universos alternativos con dobles",
+    "e": {
+     "g": {
+      "scifi": 3
+     },
+     "kw": [
+      "parallel world"
+     ]
+    }
+   },
+   {
+    "t": "Sueños que se confunden con la realidad",
+    "e": {
+     "g": {
+      "mystery": 2
+     },
+     "kw": [
+      "psychological thriller"
+     ]
+    }
+   },
+   {
+    "t": "Con un mundo me basta",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb149",
+  "q": "¿Con qué energía te tiras hoy en el sofá?",
+  "axis": "mood",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sin batería, necesito mimos",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "family": 1,
+      "romance": 1
+     }
+    }
+   },
+   {
+    "t": "Con energía de sobra",
+    "e": {
+     "g": {
+      "action": 2,
+      "adventure": 2
+     }
+    }
+   },
+   {
+    "t": "Con ganas de pensar",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "rate": 7
+    }
+   },
+   {
+    "t": "Con ganas de que me sorprendan",
+    "e": {
+     "g": {
+      "mystery": 2,
+      "thriller": 1
+     },
+     "pop": "hidden"
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb150",
+  "q": "¿Cómo quieres salir de esto: más feliz, más listo o temblando?",
+  "axis": "mood",
+  "for": "any",
+  "a": [
+   {
+    "t": "Más feliz",
+    "e": {
+     "g": {
+      "comedy": 3,
+      "family": 1
+     }
+    }
+   },
+   {
+    "t": "Sabiendo algo nuevo",
+    "e": {
+     "g": {
+      "documentary": 2,
+      "history": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Temblando",
+    "e": {
+     "g": {
+      "horror": 3,
+      "thriller": 2
+     }
+    }
+   },
+   {
+    "t": "Con el corazón roto",
+    "e": {
+     "g": {
+      "drama": 3,
+      "romance": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb151",
+  "q": "Si tu día tuviera banda sonora, sonaría a...",
+  "axis": "mood",
+  "for": "any",
+  "a": [
+   {
+    "t": "Reguetón a todo trapo",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "action": 1,
+      "music": 1
+     }
+    }
+   },
+   {
+    "t": "Piano triste",
+    "e": {
+     "g": {
+      "drama": 3
+     }
+    }
+   },
+   {
+    "t": "Sintetizadores ochenteros",
+    "e": {
+     "era": "80s90s",
+     "g": {
+      "scifi": 1,
+      "action": 1
+     }
+    }
+   },
+   {
+    "t": "Violines de suspense",
+    "e": {
+     "g": {
+      "thriller": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb152",
+  "q": "¿Hoy tienes el cuerpo para llorar?",
+  "axis": "mood",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, déjame soltarlo todo",
+    "e": {
+     "g": {
+      "drama": 3,
+      "romance": 1
+     }
+    }
+   },
+   {
+    "t": "Lágrimas de risa, en todo caso",
+    "e": {
+     "g": {
+      "comedy": 3
+     }
+    }
+   },
+   {
+    "t": "Hoy no estoy para dramas",
+    "e": {
+     "g": {
+      "drama": -2,
+      "comedy": 1,
+      "adventure": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb153",
+  "q": "¿Qué te apetece sentir en el estómago?",
+  "axis": "mood",
+  "for": "any",
+  "a": [
+   {
+    "t": "Mariposas",
+    "e": {
+     "g": {
+      "romance": 3
+     }
+    }
+   },
+   {
+    "t": "Un nudo de tensión",
+    "e": {
+     "g": {
+      "thriller": 3
+     }
+    }
+   },
+   {
+    "t": "Agujetas de tanto reír",
+    "e": {
+     "g": {
+      "comedy": 3
+     }
+    }
+   },
+   {
+    "t": "Vértigo de aventura",
+    "e": {
+     "g": {
+      "adventure": 3,
+      "action": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb154",
+  "q": "¿Cómo te sientes hoy con la humanidad?",
+  "axis": "mood",
+  "for": "any",
+  "a": [
+   {
+    "t": "Optimista: quiero ver lo mejor de la gente",
+    "e": {
+     "g": {
+      "drama": 1,
+      "family": 1,
+      "comedy": 1
+     }
+    }
+   },
+   {
+    "t": "Pesimista: que una distopía me dé la razón",
+    "e": {
+     "g": {
+      "scifi": 2
+     },
+     "kw": [
+      "dystopia"
+     ]
+    }
+   },
+   {
+    "t": "Realista: gris y con matices",
+    "e": {
+     "g": {
+      "crime": 1,
+      "drama": 2
+     },
+     "rate": 7
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb155",
+  "q": "¿Te apetece sentirte diminuto ante el universo?",
+  "axis": "mood",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, épica cósmica",
+    "e": {
+     "g": {
+      "scifi": 3
+     },
+     "kw": [
+      "space"
+     ]
+    }
+   },
+   {
+    "t": "Me basta con un drama íntimo",
+    "e": {
+     "g": {
+      "drama": 2
+     }
+    }
+   },
+   {
+    "t": "Prefiero sentirme invencible",
+    "e": {
+     "g": {
+      "action": 2
+     },
+     "kw": [
+      "superhero"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb156",
+  "q": "¿Ciudad, pueblo, espacio o naturaleza?",
+  "axis": "setting",
+  "for": "any",
+  "a": [
+   {
+    "t": "Una gran ciudad que nunca duerme",
+    "e": {
+     "g": {
+      "crime": 1,
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Un pueblo pequeño lleno de secretos",
+    "e": {
+     "g": {
+      "mystery": 2
+     },
+     "kw": [
+      "small town"
+     ]
+    }
+   },
+   {
+    "t": "El espacio exterior",
+    "e": {
+     "g": {
+      "scifi": 3
+     },
+     "kw": [
+      "space"
+     ]
+    }
+   },
+   {
+    "t": "La naturaleza más salvaje",
+    "e": {
+     "g": {
+      "adventure": 2
+     },
+     "kw": [
+      "survival"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb157",
+  "q": "¿En qué época quieres que transcurra la historia?",
+  "axis": "setting",
+  "for": "any",
+  "a": [
+   {
+    "t": "En el futuro",
+    "e": {
+     "g": {
+      "scifi": 3
+     }
+    }
+   },
+   {
+    "t": "En un pasado remoto",
+    "e": {
+     "g": {
+      "history": 3
+     }
+    }
+   },
+   {
+    "t": "En plena Segunda Guerra Mundial",
+    "e": {
+     "g": {
+      "war": 2
+     },
+     "kw": [
+      "world war ii"
+     ]
+    }
+   },
+   {
+    "t": "Hoy mismo",
+    "e": {
+     "g": {
+      "drama": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb158",
+  "q": "¿Mar, montaña, desierto o playa?",
+  "axis": "setting",
+  "for": "any",
+  "a": [
+   {
+    "t": "Alta mar, entre piratas y naufragios",
+    "e": {
+     "g": {
+      "adventure": 2
+     },
+     "kw": [
+      "pirate"
+     ]
+    }
+   },
+   {
+    "t": "Montaña nevada y aislamiento",
+    "e": {
+     "g": {
+      "thriller": 2
+     },
+     "kw": [
+      "survival"
+     ]
+    }
+   },
+   {
+    "t": "Un desierto infinito",
+    "e": {
+     "g": {
+      "western": 2,
+      "adventure": 1
+     }
+    }
+   },
+   {
+    "t": "Una playa en pleno verano",
+    "e": {
+     "g": {
+      "romance": 1,
+      "comedy": 2
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb159",
+  "q": "¿Mundo real o inventado?",
+  "axis": "setting",
+  "for": "any",
+  "a": [
+   {
+    "t": "Real, que me lo crea",
+    "e": {
+     "g": {
+      "drama": 2
+     },
+     "kw": [
+      "true story"
+     ]
+    }
+   },
+   {
+    "t": "Inventado, con mapas y lenguas propias",
+    "e": {
+     "g": {
+      "fantasy": 3,
+      "adventure": 1
+     }
+    }
+   },
+   {
+    "t": "El nuestro, pero un poco torcido",
+    "e": {
+     "g": {
+      "scifi": 2,
+      "mystery": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb160",
+  "q": "¿Te va una historia que pase casi entera en un solo sitio?",
+  "axis": "setting",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí: un lugar cerrado y mucha tensión",
+    "e": {
+     "g": {
+      "thriller": 3,
+      "mystery": 1
+     }
+    }
+   },
+   {
+    "t": "Una casa encantada, a poder ser",
+    "e": {
+     "g": {
+      "horror": 3
+     },
+     "kw": [
+      "haunted house"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero dar la vuelta al mundo",
+    "e": {
+     "g": {
+      "adventure": 3
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb161",
+  "q": "¿Te gusta el cine en el que cada plano parece un cuadro?",
+  "axis": "style",
+  "for": "any",
+  "a": [
+   {
+    "t": "Sí, quiero belleza en cada fotograma",
+    "e": {
+     "rate": 7.5,
+     "g": {
+      "drama": 1
+     },
+     "pop": "hidden"
+    }
+   },
+   {
+    "t": "Prefiero cámara en mano y realismo",
+    "e": {
+     "g": {
+      "drama": 2,
+      "crime": 1
+     }
+    }
+   },
+   {
+    "t": "Me da igual cómo se vea",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb162",
+  "q": "¿Qué te parece el formato de falso documental?",
+  "axis": "style",
+  "for": "any",
+  "a": [
+   {
+    "t": "Comedia en falso documental, sí",
+    "e": {
+     "g": {
+      "comedy": 3
+     },
+     "kw": [
+      "mockumentary"
+     ]
+    }
+   },
+   {
+    "t": "Terror de metraje encontrado",
+    "e": {
+     "g": {
+      "horror": 3
+     },
+     "kw": [
+      "found footage"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero una narración de toda la vida",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb163",
+  "q": "¿Qué paleta visual te apetece?",
+  "axis": "style",
+  "for": "any",
+  "a": [
+   {
+    "t": "Colorida y pop",
+    "e": {
+     "g": {
+      "comedy": 2,
+      "animation": 1
+     }
+    }
+   },
+   {
+    "t": "Oscura y sombría",
+    "e": {
+     "g": {
+      "thriller": 2,
+      "crime": 1
+     }
+    }
+   },
+   {
+    "t": "Neón nocturno",
+    "e": {
+     "g": {
+      "scifi": 2
+     },
+     "kw": [
+      "cyberpunk"
+     ]
+    }
+   },
+   {
+    "t": "Natural y luminosa",
+    "e": {
+     "g": {
+      "drama": 2,
+      "romance": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "sb164",
+  "q": "¿Te gusta que el protagonista te hable mirando a cámara?",
+  "axis": "style",
+  "for": "any",
+  "a": [
+   {
+    "t": "Me encanta que me hablen a mí",
+    "e": {
+     "g": {
+      "comedy": 2
+     },
+     "kw": [
+      "dark comedy"
+     ]
+    }
+   },
+   {
+    "t": "Prefiero que no me miren",
+    "e": {
+     "g": {
+      "drama": 1
+     }
+    }
+   },
+   {
+    "t": "Depende de lo gracioso que sea",
+    "e": {}
+   }
+  ]
+ },
+ {
+  "id": "sb165",
+  "q": "¿Directores con un estilo inconfundible?",
+  "axis": "style",
+  "for": "any",
+  "a": [
+   {
+    "t": "Me encantan los autores reconocibles",
+    "e": {
+     "pop": "cult",
+     "rate": 7
+    }
+   },
+   {
+    "t": "Prefiero un estilo invisible al servicio de la historia",
+    "e": {
+     "pop": "mainstream"
+    }
+   },
+   {
+    "t": "Ni me fijo en quién dirige",
+    "e": {}
+   }
+  ]
+ }
+]

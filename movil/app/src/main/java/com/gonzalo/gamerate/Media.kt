@@ -9,7 +9,7 @@ import java.net.URL
 import java.net.URLEncoder
 import java.time.LocalDate
 
-private fun mget(url: String, bearer: String = ""): String {
+internal fun mget(url: String, bearer: String = ""): String {
     val c = URL(url).openConnection() as HttpURLConnection
     c.setRequestProperty("User-Agent", "Atrio/4.4 (app personal; Android)")
     c.setRequestProperty("Accept", "application/json")
@@ -27,7 +27,7 @@ private fun mget(url: String, bearer: String = ""): String {
     }
 }
 
-private fun menc(s: String) = URLEncoder.encode(s.trim(), "UTF-8")
+internal fun menc(s: String) = URLEncoder.encode(s.trim(), "UTF-8")
 
 /**
  * Películas con TMDB (themoviedb.org). Necesita tu clave gratuita: vale la "Clave de la API" (v3)
