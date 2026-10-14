@@ -1,0 +1,30 @@
+== Instalar (Android 34)
+Performing Streamed Install
+Success
+== Abrir: Inicio
+Starting: Intent { cmp=com.gonzalo.gamerate/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.gonzalo.gamerate/.MainActivity
+TotalTime: 1941
+WaitTime: 1957
+Complete
+== Colección nueva desde Inicio
+   toco «Nueva colección» en 218 1770
+   toco «Nombre (p. ej. Películas)» en 466 363
+   toco «Criterio 1» en 303 714
+   toco «Criterio 2» en 307 906
+   toco «Guardar» en 805 2016
+   toco «Peliculas» en 144 1770
+   toco «Añadir» en 579 868
+   toco «Nombre» en 170 1085
+   toco «Añadir a la lista» en 540 1487
+   toco «Añadir capítulo o episodio» en 409 1750
+   no encuentro «Añadir capítulo o episodio»
+   no encuentro «Primera parte»
+== Dock: Juegos, Libros, Cine y Diario
+   toco «Inicio» en 130 2037
+   toco «Juegos» en 816 1804
+   no encuentro «Pasados»
+   no encuentro «Siguiente juego»
+FALLO: tap Siguiente juego

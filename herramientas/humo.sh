@@ -42,19 +42,22 @@ for m in re.finditer(r'<node [^>]*>', x):
             if a[2] - a[0] < 4 or a[3] - a[1] < 4: continue  # nodos sin tamaño (fuera de pantalla)
             if exact:
                 seen += 1
-                if seen < nth: continue
+                if nth and seen < nth: continue
             best = ((a[0]+a[2])//2, (a[1]+a[3])//2)
-            if exact: break
+            if exact and nth: break
 DOCK = {"Inicio", "Juegos", "Libros", "Cine", "Diario"}
 # Lo que queda tapado por el dock o la barra de navegación: primero se sube un poco la pantalla
 low = best is not None and best[1] > H - H * 0.16 and t not in DOCK and attempt == 1
 print("" if best is None else ("BAJO" if low else f"{best[0]} {best[1]}"))
 PY
 )
-    if [ "$xy" = "BAJO" ]; then adb shell input swipe 500 1400 500 900 400; sleep 1; continue; fi
+    if [ "$xy" = "BAJO" ]; then adb shell input swipe 540 1300 540 800 500; sleep 1.5; continue; fi
     break
   done
-  if [ -z "$xy" ]; then echo "   no encuentro «$1»" | tee -a "$LOG"; return 1; fi
+  if [ -z "$xy" ]; then
+    NF=$(( ${NF:-0} + 1 )); cp "$OUT/ui.xml" "$OUT/no_encuentro_$NF.xml"; adb exec-out screencap -p > "$OUT/no_encuentro_$NF.png"
+    echo "   no encuentro «$1» (no_encuentro_$NF)" | tee -a "$LOG"; return 1
+  fi
   echo "   toco «$1» en $xy" >> "$LOG"
   adb shell input tap $xy
   sleep 1.5
@@ -84,7 +87,7 @@ top() { for i in 1 2 3 4; do adb shell input swipe 500 700 500 1700 250; sleep 0
 kb() { adb shell input keyevent 4; sleep 1; }
 back() { adb shell input keyevent 4; sleep 1.5; }
 # Destino del dock (los iconos llevan su nombre como descripción)
-dock() { must tap "$1"; sleep 1.5; }
+dock() { must tap "$1" 0; sleep 1.5; }
 home() { for i in 1 2 3 4; do see "Inicio" 1 && break; back; done; dock "Inicio"; top; }
 SIM="node herramientas/fb_sim.js"
 
