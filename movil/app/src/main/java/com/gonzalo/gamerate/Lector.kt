@@ -163,6 +163,13 @@ class ReaderActivity : ComponentActivity() {
         }
         web.addJavascriptInterface(Bridge(), "Atrio")
         setContentView(web)
+        // El lector necesita un WebView reciente (se actualiza solo desde Google Play)
+        val wv = androidx.webkit.WebViewCompat.getCurrentWebViewPackage(this)
+        val major = wv?.versionName?.substringBefore('.')?.toIntOrNull() ?: 0
+        if (major in 1..99) android.widget.Toast.makeText(
+            this, "Tu WebView es antiguo (versión $major): actualiza «Android System WebView» en Google Play si el libro no se abre.",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
         web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html")
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {

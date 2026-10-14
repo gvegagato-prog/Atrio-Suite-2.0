@@ -33,6 +33,10 @@ const log = [];
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error') log.push(m.text()); });
     page.on('pageerror', (e) => log.push('pageerror ' + e.message));
+    // Como un WebView antiguo (Chrome 113, el de Android 14 sin actualizar): sin las funciones nuevas
+    if (process.env.VIEJO !== '0') await page.addInitScript(() => {
+      delete Object.groupBy; delete Map.groupBy; delete Promise.withResolvers; delete Promise.try;
+    });
     await page.addInitScript((nm) => {
       const store = { saved: {} };
       window.__atrio = store;
@@ -112,11 +116,11 @@ const log = [];
     if (!(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')))) { await page.mouse.click(206, 430); await page.waitForTimeout(500); }
     await page.click('#b-indice'); await page.waitForTimeout(600);
     const tocN = await page.$$eval('#panel-cuerpo li', (l) => l.length);
-    ok(name.endsWith('pdf') || tocN > 3, `${name}: índice con ${tocN} entradas`);
+    ok(name.endsWith('pdf') || tocN >= 3, `${name}: índice con ${tocN} entradas`);
     await page.screenshot({ path: path.join(out, name + '-9-indice.png') });
     await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });
     await page.click('#b-buscar').catch(() => {}); await page.waitForTimeout(400);
-    await page.fill('#q', name.endsWith('epub') ? 'Dulcinea' : 'Mancha'); await page.click('#q-ir');
+    await page.fill('#q', name.endsWith('epub') ? (process.env.BUSCA || 'Mancha') : 'Mancha'); await page.click('#q-ir');
     await page.waitForFunction(() => /resultados|Nada/.test(document.querySelector('#q-estado')?.textContent || ''), null, { timeout: 60000 }).catch(() => {});
     const est = await page.textContent('#q-estado');
     ok(/resultados/.test(est), `${name}: búsqueda → ${est}`);

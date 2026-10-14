@@ -65,11 +65,12 @@ PY
 type() { adb shell input text "$1"; sleep 0.8; }
 # Busca un texto bajando por la pantalla.
 seek() {
-  for i in 1 2 3 4 5 6 7 8 9 10; do
+  for i in $(seq 1 14); do
     dump
     # Visible de verdad: los nodos fuera de pantalla salen con tamaño cero
     grep -o "\(text\|content-desc\)=\"$1[^>]*bounds=\"[^\"]*\"" "$OUT/ui.xml" | grep -vq '\[0,0\]\[0,0\]' && return 0
-    adb shell input swipe 500 1500 500 900 400; sleep 0.8
+    # Despacio, para que la lista no siga deslizándose y se salte lo que busco
+    adb shell input swipe 500 1500 500 1050 1000; sleep 0.8
   done
   echo "   no aparece «$1»" | tee -a "$LOG"; return 1
 }
