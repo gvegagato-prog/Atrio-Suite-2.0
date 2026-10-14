@@ -33,6 +33,7 @@ for m in re.finditer(r'<node [^>]*>', x):
         b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n)
         if b:
             a = list(map(int, b.groups()))
+            if a[2] - a[0] < 4 or a[3] - a[1] < 4: continue  # nodos sin tamaño (fuera de pantalla)
             best = ((a[0]+a[2])//2, (a[1]+a[3])//2)
             if any(v == t for v in vals): break
 print("" if best is None else f"{best[0]} {best[1]}")
