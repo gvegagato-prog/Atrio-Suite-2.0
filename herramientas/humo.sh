@@ -28,7 +28,7 @@ import sys, re
 t, f, nth, attempt = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
 x = open(f, encoding='utf-8', errors='ignore').read()
 H = max([int(b) for b in re.findall(r'bounds="\[\d+,\d+\]\[\d+,(\d+)\]"', x)] or [2280])
-best = None; seen = 0
+best = None; seen = 0; hidden = False
 for m in re.finditer(r'<node [^>]*>', x):
     n = m.group(0)
     txt = re.search(r' text="([^"]*)"', n); d = re.search(r'content-desc="([^"]*)"', n)
@@ -39,7 +39,7 @@ for m in re.finditer(r'<node [^>]*>', x):
         b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n)
         if b:
             a = list(map(int, b.groups()))
-            if a[2] - a[0] < 4 or a[3] - a[1] < 4: continue  # nodos sin tamaño (fuera de pantalla)
+            if a[2] - a[0] < 4 or a[3] - a[1] < 4: hidden = True; continue  # nodos sin tamaño (fuera de pantalla)
             if exact:
                 seen += 1
                 if nth and seen < nth: continue
@@ -47,8 +47,8 @@ for m in re.finditer(r'<node [^>]*>', x):
             if exact and nth: break
 DOCK = {"Inicio", "Juegos", "Libros", "Cine", "Diario"}
 # Lo que queda tapado por el dock o la barra de navegación: primero se sube un poco la pantalla
-low = best is not None and best[1] > H - H * 0.16 and t not in DOCK and attempt == 1
-print("" if best is None else ("BAJO" if low else f"{best[0]} {best[1]}"))
+low = attempt == 1 and t not in DOCK and ((best is not None and best[1] > H - H * 0.16) or (best is None and hidden))
+print("BAJO" if low else ("" if best is None else f"{best[0]} {best[1]}"))
 PY
 )
     if [ "$xy" = "BAJO" ]; then adb shell input swipe 540 1300 540 800 500; sleep 1.5; continue; fi

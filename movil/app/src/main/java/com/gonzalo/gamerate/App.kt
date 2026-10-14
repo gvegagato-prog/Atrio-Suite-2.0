@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -1507,10 +1508,11 @@ fun App(
             )
         }
 
-        val inTabs = section != -1 && screen is Screen.Home
+        // Con el dock a la vista, los avisos salen por encima de él (no lo tapan)
+        val snackPad by animateDpAsState(if (topLevel) 84.dp else 12.dp, tween(Motion.ms(220)), label = "snackpad")
         SnackbarHost(
             snack,
-            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (inTabs) 88.dp else 16.dp)
+            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = snackPad)
         ) { data ->
             Snackbar(
                 data, shape = shp(18.dp),
