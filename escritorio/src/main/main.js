@@ -130,6 +130,11 @@ function sgdbOf(g) {
   const ov = config.get().overrides[g.key] || {};
   return ov.sgdbId || art.knownId(g.key) || null;
 }
+// ¿Hay algún juego abierto ahora? (entonces Atrio no se pone delante)
+function gameRunning() { return !!(tracker && tracker.state().active.length); }
+// Juegos lanzados desde el móvil para jugar en streaming
+const streamedKeys = new Set();
+
 function playState() {
   if (!tracker) return { sessions: [], active: [] };
   const st = tracker.state();
@@ -891,10 +896,17 @@ app.whenReady().then(async () => {
     onEnd: (key, counted, launchedHere) => {
       if (counted) segFromSession(key).catch(() => {});
       if (!launchedHere || !win || config.get().behavior.returnOnExit === false) return;
-      if (win.isMinimized()) win.restore();
-      win.show();
-      win.focus();
-      send('game-ended', key);
+      // Lanzado para jugar en streaming: quien juega está en el móvil; Atrio no se pone delante
+      if (streamedKeys.has(key)) { streamedKeys.delete(key); return; }
+      // Algunos juegos (Deadlock, los que se reinician al actualizar o pasan por un lanzador) desaparecen unos
+      // segundos y vuelven: Atrio solo vuelve a primer plano si de verdad no hay ningún juego abierto un rato después
+      setTimeout(() => {
+        if (!win || win.isDestroyed() || gameRunning()) return;
+        if (win.isMinimized()) win.restore();
+        win.show();
+        win.focus();
+        send('game-ended', key);
+      }, 15 * 1000);
     },
   });
   setupIpc();
@@ -912,7 +924,10 @@ app.whenReady().then(async () => {
       for (const a of st.active || []) ms += Date.now() - Math.max(a.s, d0.getTime());
       return Math.round(ms / 60000);
     }, launch: launchGame, power: doPower, rescan,
-    focus: () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } },
+    // Con un juego abierto, Atrio no le quita el foco (en streaming, un clic acabaría en Atrio en vez de en el juego)
+    focus: () => { if (win && !gameRunning()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } },
+    // Jugar en streaming: Atrio se aparta (minimizado) para que en el móvil solo se vea y se toque el juego
+    streaming: (key) => { if (!key) return; streamedKeys.add(key); if (win && !win.isDestroyed() && !process.env.ATRIO_SHOTS) win.minimize(); },
     // Una web adjuntada desde el móvil a un juego de esta biblioteca
     addLink: (key, url, name) => {
       if (!library.has(key)) throw new Error('Ese juego no está en la biblioteca de este PC');

@@ -172,6 +172,7 @@ const HANDLERS = {
         msg = `Abriendo ${g.name}`;
       }
     }
+    if (ctx.streaming) ctx.streaming(a && a.key);
     const appUuid = i.appUuid || (await host.appUuid());
     return { ok: true, msg, name: i.name, uuid: i.uuid || '', app: i.app || 'Desktop', appUuid };
   },

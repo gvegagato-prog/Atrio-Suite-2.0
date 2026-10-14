@@ -1,5 +1,7 @@
 package com.gonzalo.gamerate
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -244,7 +246,7 @@ fun PlayButtons(key: String, name: String, modifier: Modifier = Modifier, onLaun
                 if (Stream.nova(ctx) == null) { needNova = true; return@BigPlay }
                 if (pc == null) {
                     val h = any?.st
-                    if (h != null && h.macs.isNotEmpty()) waking = true
+                    if ((h != null && h.macs.isNotEmpty()) || Tuya.configured(ctx)) waking = true
                     else toast(ctx, "El PC no está conectado: enciéndelo o abre Atrio en él.")
                     return@BigPlay
                 }
@@ -258,7 +260,7 @@ fun PlayButtons(key: String, name: String, modifier: Modifier = Modifier, onLaun
         }
     }
     if (needNova) NovaDialog { needNova = false }
-    if (waking && any?.st != null) WakeDialog(any.name, any.st) { waking = false }
+    if (waking) WakeDialog(any?.name ?: "el PC", any?.st) { waking = false }
 }
 
 @Composable
@@ -275,30 +277,112 @@ fun NovaDialog(onDismiss: () -> Unit) {
     )
 }
 
+/** Encender el PC: por red (Wake-on-LAN, en casa) o con el enchufe de Tuya (estés donde estés). */
 @Composable
-fun WakeDialog(pcName: String, h: StreamHost, onDismiss: () -> Unit) {
+fun WakeDialog(pcName: String, h: StreamHost?, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var msg by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var setup by remember { mutableStateOf(false) }
+    val tuya = remember(setup) { Tuya.configured(ctx) }
+    val wol = h != null && h.macs.isNotEmpty()
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!busy) onDismiss() },
         icon = { Icon(Icons.Rounded.PowerSettingsNew, null) },
         title = { Text("¿Encender $pcName?", fontFamily = Display) },
         text = {
             Column {
-                Text("Atrio manda la señal de encendido por la red (Wake-on-LAN). Funciona con el móvil en la wifi de casa y la opción activada en la BIOS del PC.")
-                if (msg.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(msg, color = Muted, fontSize = 13.sp) }
+                if (tuya) Text("Con el enchufe: Atrio corta la corriente unos segundos y la vuelve a dar; con «Restore on AC power loss» en «Power On» en la BIOS, el PC arranca solo. Funciona también con datos. Si el PC estuviera encendido, se apagaría de golpe.")
+                else Text("Con un enchufe inteligente de Tuya (Smart Life) puedes encenderlo desde cualquier sitio. Configúralo abajo.")
+                if (wol) { Spacer(Modifier.height(8.dp)); Text("Por red (Wake-on-LAN): solo con el móvil en la wifi de casa y la opción activada en la BIOS.", color = Muted, fontSize = 13.sp) }
+                if (msg.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(msg, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
+                TextButton({ setup = true }, enabled = !busy) { Text(if (tuya) "Ajustes del enchufe" else "Configurar el enchufe (Tuya)") }
+            }
+        },
+        confirmButton = {
+            Row {
+                if (wol) TextButton({
+                    scope.launch {
+                        msg = if (Stream.wake(h!!)) "Señal enviada. Cuando arranque y se abra Atrio, vuelve a tocar «Streaming»." else "No se ha podido mandar la señal."
+                    }
+                }, enabled = !busy) { Text("Por red") }
+                if (tuya) TextButton({
+                    busy = true
+                    scope.launch {
+                        val r = Tuya.powerCycle(ctx) { msg = it }
+                        busy = false
+                        msg = r.fold({ "Corriente dada: el PC debería estar arrancando. Cuando se abra Atrio, vuelve a tocar «Streaming»." }, { it.message ?: "No se ha podido." })
+                    }
+                }, enabled = !busy) { Text(if (busy) "Un momento…" else "Con el enchufe") }
+            }
+        },
+        dismissButton = { TextButton(onDismiss, enabled = !busy) { Text("Cerrar") } },
+        shape = shp(24.dp)
+    )
+    if (setup) TuyaDialog { setup = false }
+}
+
+/** Ajustes del enchufe de Tuya (se guardan solo en este móvil). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun TuyaDialog(onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val c0 = remember { Tuya.load(ctx) }
+    var region by remember { mutableStateOf(c0.region) }
+    var host by remember { mutableStateOf(c0.host) }
+    var id by remember { mutableStateOf(c0.id) }
+    var secret by remember { mutableStateOf(c0.secret) }
+    var device by remember { mutableStateOf(c0.device) }
+    var wait by remember { mutableStateOf(c0.waitSec) }
+    var msg by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    fun save() = Tuya.save(ctx, Tuya.Cfg(region, host, id, secret, device, wait))
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        icon = { Icon(Icons.Rounded.PowerSettingsNew, null) },
+        title = { Text("Enchufe del PC (Tuya)", fontFamily = Display) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "1. En la BIOS del PC: «Restore on AC power loss» (o «AC Back», «Power On after power failure») en «Power On».\n" +
+                        "2. En iot.tuya.com crea un proyecto de «Cloud» (Smart Home, el centro de datos de tu cuenta) y enlaza tu cuenta de Smart Life o Tuya Smart (Devices → Link App Account, con el QR).\n" +
+                        "3. Copia aquí el Access ID y el Access Secret del proyecto y el Device ID del enchufe (en Devices).\n" +
+                        "La prueba gratuita de Tuya caduca cada cierto tiempo: se renueva en el proyecto (IoT Core → ampliar prueba).",
+                    fontSize = 13.sp, color = Muted
+                )
+                Spacer(Modifier.height(10.dp))
+                Text("Centro de datos", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Tuya.REGIONS.forEach { (k, v) -> SoftChip(v.first, region == k) { region = k; host = v.second } }
+                }
+                OutlinedTextField(host, { host = it.trim() }, label = { Text("Dirección de la API") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(id, { id = it.trim() }, label = { Text("Access ID") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(secret, { secret = it.trim() }, label = { Text("Access Secret") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                OutlinedTextField(device, { device = it.trim() }, label = { Text("Device ID del enchufe") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Segundos sin corriente", Modifier.weight(1f), fontSize = 14.sp)
+                    SoftChip("−", false) { wait = (wait - 2).coerceAtLeast(4) }
+                    Text("  $wait  ", fontWeight = FontWeight.Bold)
+                    SoftChip("+", false) { wait = (wait + 2).coerceAtMost(30) }
+                }
+                if (msg.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(msg, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
             }
         },
         confirmButton = {
             TextButton({
+                save(); busy = true; msg = "Preguntando a Tuya…"
                 scope.launch {
-                    msg = if (Stream.wake(h)) "Señal enviada. Cuando arranque y se abra Atrio, vuelve a tocar «Streaming»." else "No se ha podido mandar la señal."
-                    toast(ctx, msg)
+                    val r = Tuya.isOn(ctx)
+                    busy = false
+                    msg = r.fold({ if (it) "Funciona: el enchufe está dando corriente." else "Funciona: el enchufe está apagado." }, { it.message ?: "No ha funcionado." })
                 }
-            }) { Text("Encender") }
+            }, enabled = !busy && id.isNotBlank() && secret.isNotBlank() && device.isNotBlank()) { Text("Guardar y probar") }
         },
-        dismissButton = { TextButton(onDismiss) { Text("Cerrar") } },
+        dismissButton = { TextButton({ save(); onDismiss() }, enabled = !busy) { Text("Listo") } },
         shape = shp(24.dp)
     )
 }
@@ -329,6 +413,7 @@ fun StreamPanel(modifier: Modifier = Modifier) {
     var waking by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var need by remember { mutableStateOf(false) }
+    var tuyaSetup by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { while (true) { nv.value = Stream.nova(ctx); delay(4000) } }
     fun pairNow(ts: Boolean) {
         if (nv.value == null) { need = true; return }
@@ -377,8 +462,11 @@ fun StreamPanel(modifier: Modifier = Modifier) {
                 scope.launch { val err = Stream.play(ctx, null); busy = false; if (err == "NOVA") need = true else if (err != null) toast(ctx, err) }
             }, enabled = !busy) { Text("Ver el escritorio") }
             if (pc != null && h?.on == true) TextButton({ pairing = true }) { Text("Con PIN") }
-            if (pc == null && h != null && h.macs.isNotEmpty()) OutlinedButton({ waking = true }) { Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Encender ${any?.name ?: "el PC"}") }
+            TextButton({ tuyaSetup = true }) { Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Enchufe del PC") }
+            if (pc == null) OutlinedButton({ waking = true }) { Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Encender ${any?.name ?: "el PC"}") }
         }
+        Spacer(Modifier.height(12.dp))
+        QualityGuide()
         if (h != null && h.on && !h.creds) {
             Spacer(Modifier.height(8.dp))
             Text("Para emparejar desde aquí, guarda tu usuario de Polaris en Atrio del PC (Ajustes → Streaming).", color = ColGeneral, fontSize = 13.sp)
@@ -398,8 +486,9 @@ fun StreamPanel(modifier: Modifier = Modifier) {
         }
     }
     if (pairing) PairDialog(h?.creds == true) { pairing = false }
+    if (tuyaSetup) TuyaDialog { tuyaSetup = false }
     if (need) NovaDialog { need = false }
-    if (waking && any?.st != null) WakeDialog(any.name, any.st) { waking = false }
+    if (waking) WakeDialog(any?.name ?: "el PC", any?.st) { waking = false }
 }
 
 /** Emparejar a mano: Nova enseña un PIN de 4 números al tocar el PC y aquí se escribe. */
@@ -447,4 +536,49 @@ fun FichaPlayButtons(id: Long, name: String, modifier: Modifier = Modifier) {
     val libs = Suite.libs
     val g = remember(id, name, libs) { Guides.pcGameFor(id, name) } ?: return
     PlayButtons(g.key, g.name, modifier)
+}
+
+/** ¿El móvil va ahora con datos (red medida)? Es lo mismo que mira Nova para usar su bitrate de datos. */
+fun onMobileData(ctx: Context): Boolean {
+    val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
+    return cm.isActiveNetworkMetered
+}
+
+/**
+ * Calidad en casa y con datos. Nova no deja que otra app le cambie la resolución ni los FPS al abrir un juego
+ * (los saca de sus propios ajustes), pero sí tiene un bitrate aparte para redes medidas (datos), que usa solo.
+ * Aquí se enseña qué poner, con la pantalla de este móvil.
+ */
+@Composable
+private fun QualityGuide() {
+    val ctx = LocalContext.current
+    var open by remember { mutableStateOf(false) }
+    val data = remember { onMobileData(ctx) }
+    val (w, hgt, hz) = remember {
+        val dm = ctx.resources.displayMetrics
+        val disp = (ctx.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager).getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        val mode = disp?.mode
+        val ww = maxOf(mode?.physicalWidth ?: dm.widthPixels, mode?.physicalHeight ?: dm.heightPixels)
+        val hh = minOf(mode?.physicalWidth ?: dm.widthPixels, mode?.physicalHeight ?: dm.heightPixels)
+        val maxHz = disp?.supportedModes?.maxOfOrNull { it.refreshRate } ?: (mode?.refreshRate ?: 60f)
+        Triple(ww, hh, Math.round(maxHz))
+    }
+    val fps = if (hz >= 90) 90 else 60
+    Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Rounded.Wifi, null, tint = Muted, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("Calidad en casa y con datos", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(if (data) "Ahora: datos" else "Ahora: wifi", color = Muted, fontSize = 12.sp)
+    }
+    if (open) {
+        Text(
+            "Nova elige la calidad con sus propios ajustes (Atrio no puede cambiársela al abrirlo). Así queda como pides:\n" +
+                "• En casa (wifi), en Nova → Ajustes: resolución nativa ${w}×${hgt} y $fps FPS" + (if (hz < 90) " (tu pantalla llega a $hz Hz)" else "") +
+                ", bitrate alto (40–80 Mbps).\n" +
+                "• Con datos: en Nova → Ajustes → «Video bitrate on metered networks», 8–12 Mbps (unos 3,5–5,5 GB por hora). " +
+                "Nova lo usa solo cuando la red es de datos.\n" +
+                "• Bajar también a 60 FPS o a menos resolución con datos: en Nova, crea un perfil «Datos» (1080p, 60 FPS) y actívalo antes de salir de casa.",
+            color = Muted, fontSize = 13.sp
+        )
+    }
 }

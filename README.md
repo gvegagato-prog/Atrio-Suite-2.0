@@ -124,6 +124,15 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
 65. **Streaming sin «error parsing applist cache»**: Atrio del PC lee el UUID de la app de Polaris (su apps.json, o
     su API) y el móvil se lo pasa a Nova, que así abre la app directamente sin depender de su lista guardada. Si no
     se conoce, Nova abre la lista de apps de ese PC en vez de dar error.
+66. **Encender el PC con un enchufe de Tuya** (móvil → PC → Streaming → «Enchufe del PC»): con la BIOS en «Restore on
+    AC power loss → Power On», Atrio corta la corriente unos segundos y la vuelve a dar, y el PC arranca. Va por la API
+    en la nube de Tuya (proyecto gratuito en iot.tuya.com con tu cuenta de Smart Life enlazada), así que funciona
+    también con datos. Al tocar «Streaming» con el PC apagado se ofrece (y Wake-on-LAN si estás en casa).
+67. **Streaming sin que Atrio robe el foco**: al jugar en streaming desde el móvil, Atrio se minimiza y no vuelve a
+    ponerse delante al cerrar el juego; con un juego abierto, las órdenes del móvil no le quitan el foco; y al cerrar
+    un juego, Atrio espera 15 s por si vuelve (Deadlock y los que se reinician o pasan por un lanzador).
+68. **Calidad en casa y con datos** (móvil → Streaming): qué poner en Nova con la pantalla de tu móvil (nativa y
+    90 FPS en wifi; bitrate de datos que Nova aplica sola; perfil «Datos» para 60 FPS).
 
 **Control y privacidad** (Atrio en el PC → Ajustes → Móvil)
 33. Permitir o no capturas, lanzar juegos y energía desde el móvil.
