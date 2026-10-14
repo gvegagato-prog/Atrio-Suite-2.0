@@ -184,18 +184,18 @@ private fun toast(ctx: Context, m: String) = Toast.makeText(ctx, m, Toast.LENGTH
 @Composable
 private fun BigPlay(icon: ImageVector, title: String, sub: String, brush: Brush, busy: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(22.dp)
-    Row(
-        modifier.height(76.dp).clip(shape).background(brush).clickable(enabled = enabled && !busy) { onClick() }
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
+    // Icono arriba y texto debajo: cabe entero aunque los dos botones vayan lado a lado en un móvil estrecho
+    Column(
+        modifier.height(104.dp).clip(shape).background(brush).clickable(enabled = enabled && !busy) { onClick() }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Box(Modifier.size(42.dp).background(Color(0x2EFFFFFF), CircleShape), contentAlignment = Alignment.Center) {
-            if (busy) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.5.dp)
-            else Icon(icon, null, tint = Color.White, modifier = Modifier.size(26.dp))
+        Box(Modifier.size(36.dp).background(Color(0x2EFFFFFF), CircleShape), contentAlignment = Alignment.Center) {
+            if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.5.dp)
+            else Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
         }
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column {
+            Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(sub, color = Color(0xCCFFFFFF), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -220,14 +220,14 @@ fun PlayButtons(key: String, name: String, modifier: Modifier = Modifier, onLaun
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BigPlay(
                 Icons.Rounded.PlayArrow, if (running) "En marcha" else "Jugar en el PC",
-                pc?.let { if (running) "Ya se juega en ${it.name}" else "Se abre en ${it.name}" } ?: "PC apagado",
+                pc?.let { if (running) "Ya en ${it.name}" else "En ${it.name}" } ?: "PC apagado",
                 Brush.linearGradient(listOf(Color(0xFF2B2B31), Color(0xFF17171A))), busyPc, pc != null && !running, Modifier.weight(1f)
             ) {
                 busyPc = true
                 scope.launch { val (_, m) = Suite.send("launch", JSONObject().put("key", key), pc?.dev); busyPc = false; toast(ctx, m); onLaunched(m) }
             }
             BigPlay(
-                Icons.Rounded.Cast, "Streaming", if (running) "Seguir aquí, en el móvil" else "Jugar en este móvil",
+                Icons.Rounded.Cast, "Streaming", if (running) "Seguir en el móvil" else "En este móvil",
                 Brush.linearGradient(listOf(Color(0xFF1F8A8A), Color(0xFF3B3FA8))), busySt, true, Modifier.weight(1f)
             ) {
                 if (Stream.nova(ctx) == null) { needNova = true; return@BigPlay }
