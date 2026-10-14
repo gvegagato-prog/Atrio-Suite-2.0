@@ -84,16 +84,32 @@
       const sc = E.schemes.find((x) => x.id === c.scheme) || { bg: (SCHEMES.find((x) => x[0] === c.scheme) || [])[2], fg: (SCHEMES.find((x) => x[0] === c.scheme) || [])[3] };
       const f = E.fonts.find((x) => x.id === c.font) || {};
       const fo = (E.forms || []).find((x) => x.id === c.form) || {};
-      const on = t.scheme === c.scheme && t.font === c.font && (t.form || 'clasico') === (c.form || 'clasico');
+      const on = t.scheme === c.scheme && t.font === c.font && (t.form || 'clasico') === (c.form || 'clasico') && !t.gauge;
       return h('button.combo-card', {
         'data-nav': true, 'aria-pressed': String(on), style: { background: sc.bg, color: sc.fg },
-        onclick: () => theme({ scheme: c.scheme, font: c.font, form: c.form || 'clasico' }),
+        onclick: () => theme({ scheme: c.scheme, font: c.font, form: c.form || 'clasico', gauge: '' }),
       }, h('b', { style: { fontFamily: fontOf(f) } }, c.name), h('small', [f.name, fo.name].filter(Boolean).join(' · ')));
     });
     // Las formas se aplican al momento: al elegir una, toda la pantalla (esta incluida) se redibuja con ella
     const forms = (E.forms || []).map((fo) => h('button.form-card', {
       'data-nav': true, 'aria-pressed': String((t.form || 'clasico') === fo.id), onclick: () => theme({ form: fo.id }),
     }, h('b', fo.name), h('small', fo.desc)));
+    // Notas aparte de la forma: se puede mezclar, por ejemplo, tarjetas de Píxel con estrellas
+    const formGauge = (A.GAUGE_OF_FORM || {})[t.form || 'clasico'] || 'ring';
+    const gname = (id) => ((E.gauges || []).find((g) => g.id === id) || {}).name || id;
+    const gauges = [h('button.form-card', {
+      'data-nav': true, 'aria-pressed': String(!t.gauge), onclick: () => theme({ gauge: '' }),
+    }, h('b', 'Las de la forma'), h('small', `Ahora: ${gname(formGauge)}`))].concat((E.gauges || []).map((g) => h('button.form-card', {
+      'data-nav': true, 'aria-pressed': String(t.gauge === g.id), onclick: () => theme({ gauge: g.id }),
+    }, h('b', g.name), h('small', g.desc))));
+    // Sorpréndeme: colores, letras, forma y notas al azar
+    const pickOne = (l) => l[Math.floor(Math.random() * l.length)];
+    const surprise = () => theme({
+      scheme: pickOne(E.schemes.filter((x) => x.id !== t.scheme)).id,
+      font: pickOne(E.fonts.filter((x) => x.id !== t.font)).id,
+      form: pickOne((E.forms || []).filter((x) => x.id !== t.form)).id,
+      gauge: Math.random() < 0.5 ? '' : pickOne(E.gauges || [{ id: '' }]).id,
+    });
 
     const accents = ACCENTS.map(([v, name]) => h('button.swatch', {
       'data-nav': true, 'aria-pressed': String(v === t.accent), onclick: () => theme({ accent: v }),
@@ -104,7 +120,9 @@
       h('p.lead', 'Los cambios se aplican al momento. Combina diseño, colores y tipografía hasta dar con el que te guste.'),
       h('h3', 'Diseño de la biblioteca'), h('div.lay-grid', cards),
       h('h3', 'Combinaciones'), h('p.note', 'Colores y letras que van bien juntos (los mismos estilos que en el móvil).'), h('div.combo-grid', combos),
-      h('h3', 'Forma'), h('p.note', 'Cómo se dibuja todo: notas, portadas, botones y el fondo. Cada combinación trae la suya.'), h('div.form-grid', forms),
+      h('div.btn-row', h('button.btn.primary', { 'data-nav': true, onclick: surprise }, A.icon('refresh'), 'Sorpréndeme')),
+      h('h3', 'Forma'), h('p.note', 'Cómo se dibuja todo: portadas, tarjetas, botones y el fondo. Cada combinación trae la suya.'), h('div.form-grid', forms),
+      h('h3', 'Notas'), h('p.note', 'Cómo se ven las notas, aparte de la forma.'), h('div.form-grid', gauges),
       h('h3', 'Colores'), h('div.swatches', schemes), groups,
       h('h3', 'Color de acento'), h('div.swatches', accents),
       h('h3', 'Tipografía'), h('div.font-grid', fonts),

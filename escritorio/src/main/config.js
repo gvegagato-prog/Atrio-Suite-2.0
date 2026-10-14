@@ -19,8 +19,9 @@ const DEFAULTS = {
     clock: true,
     labels: true,
     sharpen: true,         // ampliar con calidad los fondos pequeños (los de 4K nunca se tocan)
-    heroFit: 'nitido',
-    form: 'clasico',       // forma: cómo se dibujan notas, tarjetas y botones (las mismas diez del móvil)     // nitido (ajustado al ancho, sin ampliar de más) | llenar (cubre toda la pantalla)
+    heroFit: 'nitido',     // nitido (ajustado al ancho, sin ampliar de más) | llenar (cubre toda la pantalla)
+    form: 'clasico',       // forma: cómo se dibujan portadas, tarjetas y botones (las mismas diez del móvil)
+    gauge: '',             // notas aparte de la forma ('' = las de la forma)
   },
   sources: { steam: true, heroic: true, lutris: true, emulators: true, custom: true },
   extraSteamPaths: [],

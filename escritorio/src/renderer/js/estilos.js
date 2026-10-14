@@ -559,52 +559,115 @@ A.ESTILOS = {
   {
    "id": "clasico",
    "name": "Clásica",
-   "desc": "Anillos, esquinas suaves y línea fina"
+   "desc": "Anillos, esquinas suaves y línea fina",
+   "gauge": "ring"
   },
   {
    "id": "editorial",
    "name": "Editorial",
-   "desc": "Barras finas con cifras de revista, marcos de foto y grano de papel"
+   "desc": "Barras finas con cifras de revista, marcos de foto y grano de papel",
+   "gauge": "bar"
   },
   {
    "id": "pixel",
    "name": "Píxel",
-   "desc": "Bloques de 8 bits, bordes gruesos, sombra dura y líneas de televisor"
+   "desc": "Bloques de 8 bits, bordes gruesos, sombra dura y líneas de televisor",
+   "gauge": "blocks"
   },
   {
    "id": "terminal",
    "name": "Terminal",
-   "desc": "Barras de texto ▓▓▓░░, [ botones ] y fósforo de monitor"
+   "desc": "Barras de texto ▓▓▓░░, [ botones ] y fósforo de monitor",
+   "gauge": "ascii"
   },
   {
    "id": "neon",
    "name": "Neón",
-   "desc": "Diales de aguja, esquinas biseladas y bordes que brillan sobre rejilla"
+   "desc": "Diales de aguja, esquinas biseladas y bordes que brillan sobre rejilla",
+   "gauge": "dial"
   },
   {
    "id": "suave",
    "name": "Suave",
-   "desc": "Todo muy redondo, sin bordes, barras gorditas"
+   "desc": "Todo muy redondo, sin bordes, barras gorditas",
+   "gauge": "fat"
   },
   {
    "id": "brutal",
    "name": "Brutalista",
-   "desc": "Cifras enormes, negro grueso y sombras desplazadas"
+   "desc": "Cifras enormes, negro grueso y sombras desplazadas",
+   "gauge": "bignum"
   },
   {
    "id": "comic",
    "name": "Cómic",
-   "desc": "Estrellas, tinta gruesa, sombra de viñeta y trama de puntos"
+   "desc": "Estrellas, tinta gruesa, sombra de viñeta y trama de puntos",
+   "gauge": "stars"
   },
   {
    "id": "minimal",
    "name": "Minimal",
-   "desc": "Puntos en vez de anillos, sin bordes, nada que sobre"
+   "desc": "Puntos en vez de anillos, sin bordes, nada que sobre",
+   "gauge": "pips"
   },
   {
    "id": "militar",
    "name": "Militar",
-   "desc": "Barras de segmentos, esquinas cortadas y bordes de plantilla"
+   "desc": "Barras de segmentos, esquinas cortadas y bordes de plantilla",
+   "gauge": "segments"
+  }
+ ],
+ "gauges": [
+  {
+   "id": "ring",
+   "name": "Anillos",
+   "desc": "El de siempre: un arco que se llena"
+  },
+  {
+   "id": "bar",
+   "name": "Barra fina",
+   "desc": "Cifra grande y una línea debajo"
+  },
+  {
+   "id": "fat",
+   "name": "Barra gordita",
+   "desc": "Redonda y blandita"
+  },
+  {
+   "id": "blocks",
+   "name": "Bloques",
+   "desc": "Diez casillas de 8 bits"
+  },
+  {
+   "id": "ascii",
+   "name": "Texto",
+   "desc": "▓▓▓▓░░ como en una terminal"
+  },
+  {
+   "id": "segments",
+   "name": "Segmentos",
+   "desc": "Barras inclinadas de panel militar"
+  },
+  {
+   "id": "dial",
+   "name": "Dial",
+   "desc": "Medio círculo con aguja"
+  },
+  {
+   "id": "bignum",
+   "name": "Cifra enorme",
+   "desc": "El número manda"
+  },
+  {
+   "id": "stars",
+   "name": "Estrellas",
+   "desc": "Cinco estrellas con medias"
+  },
+  {
+   "id": "pips",
+   "name": "Puntos",
+   "desc": "Diez puntos en círculo"
   }
  ]
 };
+A.GAUGE_OF_FORM = Object.fromEntries(A.ESTILOS.forms.map((f) => [f.id, f.gauge]));

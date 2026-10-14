@@ -135,7 +135,16 @@ async function j(method, url, body) {
     { filter: 'valorados', wait: 1200 },
     { click: '[data-rr="p:4242"]', wait: 1500, name: '29-forma-militar-ficha' },
     { close: true, wait: 400 },
-    { config: { theme: { scheme: 'noche', font: 'grotesca', form: 'clasico' } }, wait: 600 },
+    { config: { theme: { scheme: 'p-gameboy', font: 'arcade', form: 'pixel', gauge: 'stars' } }, wait: 1500 },
+    { filter: 'valorados', wait: 1200 },
+    { click: '[data-rr="p:4242"]', wait: 1500, name: '30-mezcla-pixel-estrellas' },
+    { close: true, wait: 400 },
+    { config: { theme: { scheme: 'p-neon', font: 'cyberpunk', form: 'neon', gauge: 'blocks' } }, wait: 1500 },
+    { click: '[data-rr="p:4242"]', wait: 1500, name: '31-mezcla-neon-bloques' },
+    { close: true, wait: 400 },
+    { open: 'settings', section: 'apariencia', wait: 1500, name: '32-apariencia-notas' },
+    { close: true, wait: 400 },
+    { config: { theme: { scheme: 'noche', font: 'grotesca', form: 'clasico', gauge: '' } }, wait: 600 },
   ]));
   fs.mkdirSync(OUT, { recursive: true });
   const env = { ...process.env, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_NO_SANDBOX: '1', ATRIO_SHOTS: OUT, ATRIO_SHOT_PLAN: plan, ATRIO_SIZE: '1720x968' };

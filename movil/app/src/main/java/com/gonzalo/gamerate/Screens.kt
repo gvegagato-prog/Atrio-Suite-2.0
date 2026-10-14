@@ -353,42 +353,8 @@ fun SettingsScreen(
 
         SettingsSection("Apariencia", 100) {
             StyleEntry(themeMode, onTheme)
-            Spacer(Modifier.height(16.dp))
-            Text("Tema", fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ThemeNames.forEachIndexed { i, n -> SoftChip(n, themeMode == i, onPanel = true) { onTheme(i) } }
-            }
-            Text("Lo de tu pareja se ve siempre con el tema contrario al tuyo.", color = UiSoft, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
-            Spacer(Modifier.height(14.dp))
-            Text("Fondo", fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                listOf(4, 0, 1, 2, 3).forEach { i ->
-                    val n = PatternNames[i]
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pop { onLook(look.copy(pattern = i)) }) {
-                        Box(
-                            Modifier.size(64.dp, 48.dp).clip(shp(12.dp))
-                                .pattern(i, Color(look.menu), look.intensity)
-                                .border(if (look.pattern == i) 3.dp else 1.dp, if (look.pattern == i) Charcoal else Sand, shp(12.dp))
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(n, fontSize = 12.sp, fontWeight = if (look.pattern == i) FontWeight.SemiBold else FontWeight.Normal)
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Text("Intensidad", fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                IntensityNames.forEachIndexed { i, n -> SoftChip(n, look.intensity == i, onPanel = true) { onLook(look.copy(intensity = i)) } }
-            }
-            Spacer(Modifier.height(12.dp))
-            ColorRow("Menú principal", look.menu) { onLook(look.copy(menu = it)) }
-            ColorRow(GAMES.title, look.games) { onLook(look.copy(games = it)) }
-            ColorRow(BOOKS.title, look.books) { onLook(look.copy(books = it)) }
-            Spacer(Modifier.height(6.dp))
-            TextButton({ onLook(Look()) }) { Text("Volver al aspecto por defecto", color = Muted) }
+            Text("Tema claro u oscuro, combinaciones, forma, notas, colores, letras, tamaño, fondo e icono: todo está en Estilo.",
+                color = UiSoft, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
 
         SettingsSection("Objetivos de $year", 180) {
@@ -567,7 +533,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ColorRow(label: String, value: Int, onPick: (Int) -> Unit) {
+fun ColorRow(label: String, value: Int, onPick: (Int) -> Unit) {
     Text(label, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
     Spacer(Modifier.height(6.dp))
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

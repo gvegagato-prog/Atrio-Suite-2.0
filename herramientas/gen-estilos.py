@@ -111,9 +111,17 @@ def parse():
 
 
 def parse_forms():
-    """Las formas del móvil (Form.kt): id, nombre y descripción."""
+    """Las formas del móvil (Form.kt): id, nombre, descripción y su marcador de notas."""
     src = open(FORM, encoding='utf-8').read()
-    return [{'id': m.group(1), 'name': m.group(2), 'desc': m.group(3)} for m in re.finditer(r'    Form\("(\w+)", "([^"]+)", "([^"]+)"', src)]
+    return [{'id': m.group(1), 'name': m.group(2), 'desc': m.group(3), 'gauge': m.group(4).lower()}
+            for m in re.finditer(r'    Form\("(\w+)", "([^"]+)", "([^"]+)",[^\n]*?GaugeKind\.(\w+)', src)]
+
+
+def parse_gauges():
+    """Los marcadores de notas del móvil (GAUGE_NAMES en Form.kt)."""
+    src = open(FORM, encoding='utf-8').read()
+    return [{'id': m.group(1).lower(), 'name': m.group(2), 'desc': m.group(3)}
+            for m in re.finditer(r'GaugeKind\.(\w+) to \("([^"]+)" to "([^"]+)"\)', src)]
 
 
 def scheme_css(sid, t):
@@ -166,10 +174,12 @@ def main():
         'fonts': [{'id': i, 'name': n} for i, n in OLD_FONTS] + [{'id': s[0], 'name': s[1], 'display': s[2], 'body': s[3]} for s in SETS],
         'combos': [{'name': n, 'scheme': s, 'font': f, 'form': fo} for n, s, f, fo in COMBOS],
         'forms': parse_forms(),
+        'gauges': parse_gauges(),
     }
     open(OUT_JS, 'w', encoding='utf-8').write(
         "'use strict';\n/* global A */\n// Generado por herramientas/gen-estilos.py (paletas del móvil): no editar a mano.\n"
-        f"A.ESTILOS = {json.dumps(js, ensure_ascii=False, indent=1)};\n")
+        f"A.ESTILOS = {json.dumps(js, ensure_ascii=False, indent=1)};\n"
+        "A.GAUGE_OF_FORM = Object.fromEntries(A.ESTILOS.forms.map((f) => [f.id, f.gauge]));\n")
     print(f'{len(schemes)} esquemas, {len(SETS)} juegos de letras nuevos, {len(COMBOS)} combinaciones, {len(js["forms"])} formas')
 
 

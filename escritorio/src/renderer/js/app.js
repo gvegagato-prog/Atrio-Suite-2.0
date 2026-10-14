@@ -34,6 +34,8 @@
     b.dataset.backdrop = t.backdrop;
     b.dataset.herofit = t.heroFit || 'nitido';
     b.dataset.form = t.form || 'clasico';
+    // Notas: las elegidas aparte o, si no, las de la forma
+    b.dataset.gauge = t.gauge || A.GAUGE_OF_FORM[t.form || 'clasico'] || 'ring';
     b.classList.toggle('no-motion', !t.motion);
     b.classList.toggle('no-clock', !t.clock);
     b.classList.toggle('no-hints', !t.labels);

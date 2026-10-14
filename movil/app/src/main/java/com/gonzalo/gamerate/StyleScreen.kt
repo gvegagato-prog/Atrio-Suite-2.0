@@ -14,9 +14,11 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.*
@@ -60,10 +62,12 @@ object AppIcon {
     fun drawableId(ctx: Context, id: String) = ctx.resources.getIdentifier("icon_$id", "mipmap", ctx.packageName)
 }
 
-private enum class StyleTab(val title: String) { Mixes("Combinaciones"), Forms("Forma"), Colors("Colores"), Titles("Títulos"), Text("Texto"), Size("Tamaño"), Icon("Icono") }
+private enum class StyleTab(val title: String) { Mixes("Combinaciones"), Forms("Forma"), Gauges("Notas"), Colors("Colores"), Titles("Títulos"), Text("Texto"), Size("Tamaño"), Back("Fondo"), Icon("Icono") }
 
 /** Nombre corto de lo elegido ahora (para la tarjeta de Ajustes). */
-fun skinSummary(): String = Skin.currentStyle()?.name ?: "${Skin.palette.name} · ${Skin.display} / ${Skin.body}".replace("Atrio / Atrio", "letras de Atrio")
+fun skinSummary(): String = Skin.currentStyle()?.name
+    ?: ("${Skin.palette.name} · ${Skin.display} / ${Skin.body}".replace("Atrio / Atrio", "letras de Atrio") +
+        " · ${Skin.form.name}" + (Skin.gauge?.let { " · notas: ${GAUGE_NAMES[it]?.first}" } ?: ""))
 
 /** Tarjeta de Ajustes → Apariencia que abre la pantalla de Estilo. */
 @Composable
@@ -92,7 +96,7 @@ fun StyleEntry(themeMode: Int, onTheme: (Int) -> Unit) {
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onClose: () -> Unit) {
+fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onLook: (Look) -> Unit = {}, onClose: () -> Unit) {
     val ctx = LocalContext.current
     var tab by remember { mutableStateOf(StyleTab.Mixes) }
     fun save() = Skin.save(ctx)
@@ -110,6 +114,8 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onClose: () -> Unit) {
                     Overline("Ajustes")
                     Text("Estilo", fontFamily = Display, fontSize = 28.sp)
                 }
+                // Sorpréndeme: todo al azar, con el círculo de cambio
+                ActionPill(Icons.Rounded.Casino, "Sorpréndeme") { withReveal { Skin.surprise(); save() } }
             }
             Preview(Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
             Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -131,6 +137,34 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onClose: () -> Unit) {
                                 color = Muted, fontSize = 13.sp)
                         }
                         items(FORMS, key = { it.id }) { f -> FormCard(f, Skin.form.id == f.id) { withReveal { Skin.form = f; save() } } }
+                    }
+                    StyleTab.Gauges -> Grid(2) {
+                        item(span = { GridItemSpan(2) }) {
+                            Text("Cómo se ven y se tocan las notas, aparte de la forma: mezcla, por ejemplo, tarjetas de Píxel con estrellas.",
+                                color = Muted, fontSize = 13.sp)
+                        }
+                        item(span = { GridItemSpan(2) }) {
+                            GaugeCard(null, "La de la forma", "Ahora: " + (GAUGE_NAMES[Skin.form.gauge]?.first ?: ""), Skin.form.gauge, Skin.gauge == null) {
+                                withReveal { Skin.gauge = null; save() }
+                            }
+                        }
+                        items(GaugeKind.entries.toList(), key = { it.name }) { g ->
+                            val (n, d) = GAUGE_NAMES[g] ?: (g.name to "")
+                            GaugeCard(g, n, d, g, Skin.gauge == g) { withReveal { Skin.gauge = g; save() } }
+                        }
+                    }
+                    StyleTab.Back -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        BackgroundPicker(onLook)
+                        Spacer(Modifier.height(18.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Camaleón", fontWeight = FontWeight.SemiBold)
+                                Text("Al abrir una ficha, la app se tiñe con el color de su portada y se abre en círculo desde donde tocaste. Al salir vuelve tu paleta.",
+                                    color = Muted, fontSize = 13.sp)
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            androidx.compose.material3.Switch(Skin.chameleon, { Skin.chameleon = it; save() })
+                        }
                     }
                     StyleTab.Colors -> Grid(2) {
                         PALETTES.groupBy { it.group }.forEach { (g, list) ->
@@ -308,7 +342,7 @@ private fun FormCard(f: Form, on: Boolean, onClick: () -> Unit) {
             .clickable { onClick() }.padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FormGauge(78f, Color(t.gfx), 58.dp, "78", f)
+            FormGauge(78f, Color(t.gfx), 58.dp, "78", f.gauge)
             Spacer(Modifier.weight(1f))
             Selected(on)
         }
@@ -316,4 +350,57 @@ private fun FormCard(f: Form, on: Boolean, onClick: () -> Unit) {
         Text(f.name, fontFamily = Display, fontSize = 19.sp)
         Text(f.desc, color = Muted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/** Muestra de un marcador de notas. */
+@Composable
+private fun GaugeCard(g: GaugeKind?, name: String, desc: String, kind: GaugeKind, on: Boolean, onClick: () -> Unit) {
+    val t = Skin.tones
+    Row(
+        Modifier.fillMaxWidth().clip(shp(18.dp)).background(Crudo)
+            .border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, shp(18.dp))
+            .clickable { onClick() }.padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FormGauge(if (g == null) 64f else 78f, Color(if (g == null) t.story else t.gfx), 56.dp, if (g == null) "64" else "78", kind)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(name, fontFamily = Display, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(desc, color = Muted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        }
+        Selected(on)
+    }
+}
+
+/** Fondo de las pantallas: dibujo, intensidad y colores (antes estaba en Ajustes). */
+@Composable
+private fun BackgroundPicker(onLook: (Look) -> Unit) {
+    val look = Mode.look
+    Text("Dibujo del fondo", fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        listOf(4, 0, 1, 2, 3).forEach { i ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pop { onLook(look.copy(pattern = i)) }) {
+                Box(
+                    Modifier.size(64.dp, 48.dp).clip(shp(12.dp))
+                        .pattern(i, Color(look.menu), look.intensity)
+                        .border(if (look.pattern == i) 3.dp else 1.dp, if (look.pattern == i) Charcoal else Sand, shp(12.dp))
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(PatternNames[i], fontSize = 12.sp, fontWeight = if (look.pattern == i) FontWeight.SemiBold else FontWeight.Normal)
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    Text("Intensidad", fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(6.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        IntensityNames.forEachIndexed { i, n -> SoftChip(n, look.intensity == i) { onLook(look.copy(intensity = i)) } }
+    }
+    Spacer(Modifier.height(12.dp))
+    ColorRow("Menú principal", look.menu) { onLook(look.copy(menu = it)) }
+    ColorRow(GAMES.title, look.games) { onLook(look.copy(games = it)) }
+    ColorRow(BOOKS.title, look.books) { onLook(look.copy(books = it)) }
+    Spacer(Modifier.height(6.dp))
+    androidx.compose.material3.TextButton({ onLook(Look()) }) { Text("Volver al fondo por defecto", color = Muted) }
 }

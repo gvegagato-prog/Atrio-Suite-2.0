@@ -180,7 +180,7 @@ class MainActivity : ComponentActivity() {
                         FormOverlay()
                         // Ajustes → Estilo: encima de todo
                         if (Skin.open) androidx.compose.material3.Surface(Modifier.fillMaxSize(), color = Paper, contentColor = Charcoal) {
-                            StyleScreen(Mode.themeMode, { t -> store.themeMode = t; withReveal { Mode.themeMode = t } }) { Skin.open = false }
+                            StyleScreen(Mode.themeMode, { t -> store.themeMode = t; withReveal { Mode.themeMode = t } }, { l -> Mode.look = l; store.look = l }) { Skin.open = false }
                         }
                         if (Skin.open) FormOverlay()
                     }

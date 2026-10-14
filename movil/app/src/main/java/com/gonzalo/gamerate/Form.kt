@@ -75,6 +75,23 @@ val FORMS: List<Form> = listOf(
 
 val form: Form get() = Skin.form
 
+/** Marcador de notas en uso: el elegido aparte o, si no, el de la forma. */
+val gaugeKind: GaugeKind get() = Skin.gauge ?: form.gauge
+
+/** Nombre y descripción de cada marcador de notas. */
+val GAUGE_NAMES: Map<GaugeKind, Pair<String, String>> = mapOf(
+    GaugeKind.Ring to ("Anillos" to "El de siempre: un arco que se llena"),
+    GaugeKind.Bar to ("Barra fina" to "Cifra grande y una línea debajo"),
+    GaugeKind.Fat to ("Barra gordita" to "Redonda y blandita"),
+    GaugeKind.Blocks to ("Bloques" to "Diez casillas de 8 bits"),
+    GaugeKind.Ascii to ("Texto" to "▓▓▓▓░░ como en una terminal"),
+    GaugeKind.Segments to ("Segmentos" to "Barras inclinadas de panel militar"),
+    GaugeKind.Dial to ("Dial" to "Medio círculo con aguja"),
+    GaugeKind.BigNum to ("Cifra enorme" to "El número manda"),
+    GaugeKind.Stars to ("Estrellas" to "Cinco estrellas con medias"),
+    GaugeKind.Pips to ("Puntos" to "Diez puntos en círculo"),
+)
+
 /** Forma de una esquina de radio [r] (en la forma clásica): redonda, biselada o recta según el estilo. */
 fun shp(r: Dp): Shape = shpOf(form, r)
 
@@ -136,8 +153,7 @@ private fun lerpTo(a: Color, b: Color, t: Float) = androidx.compose.ui.graphics.
 
 /** Una nota 0–100 dibujada según la forma, dentro de un cuadro de [size]. */
 @Composable
-fun FormGauge(value: Float, color: Color, size: Dp, center: String, f: Form = form) {
-    val kind = f.gauge
+fun FormGauge(value: Float, color: Color, size: Dp, center: String, kind: GaugeKind = gaugeKind) {
     val big = size >= 70.dp
     val numSize = (size.value * if (big) 0.30f else 0.28f).sp
     val numFont: FontFamily = if (big) Display else Body
@@ -302,7 +318,7 @@ private fun starPath(cx: Float, cy: Float, r: Float): Path = Path().apply {
 }
 
 /** ¿El marcador se toca en círculo (anillo, dial, puntos) o de izquierda a derecha? */
-val gaugeIsRadial: Boolean get() = form.gauge == GaugeKind.Ring || form.gauge == GaugeKind.Pips
+val gaugeIsRadial: Boolean get() = gaugeKind == GaugeKind.Ring || gaugeKind == GaugeKind.Pips
 
 // ---------------------------------------------------------------- Fondo de cada forma
 
@@ -398,7 +414,7 @@ fun Modifier.chipLook(selected: Boolean, fill: Color, idle: Color = Color.Transp
 fun Modifier.formBar(frac: Float, color: Color, track: Color, h: Dp): Modifier = this.drawBehind {
     val f = frac.coerceIn(0f, 1f)
     val w = size.width; val hh = size.height
-    when (form.gauge) {
+    when (gaugeKind) {
         GaugeKind.Blocks, GaugeKind.Ascii, GaugeKind.Segments -> {
             val n = 20
             val gap = (w * 0.008f).coerceAtLeast(1.5f)
@@ -406,7 +422,7 @@ fun Modifier.formBar(frac: Float, color: Color, track: Color, h: Dp): Modifier =
             val on = (f * n).toInt().let { if (f > 0f && it == 0) 1 else it }
             for (i in 0 until n) {
                 val x = i * (cw + gap)
-                if (form.gauge == GaugeKind.Segments) {
+                if (gaugeKind == GaugeKind.Segments) {
                     val p = Path().apply { moveTo(x + cw * 0.3f, 0f); lineTo(x + cw, 0f); lineTo(x + cw * 0.7f, hh); lineTo(x, hh); close() }
                     drawPath(p, if (i < on) color else track)
                 } else drawRect(if (i < on) color else track, Offset(x, 0f), Size(cw, hh))

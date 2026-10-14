@@ -53,7 +53,7 @@ import kotlin.math.roundToInt
 fun Ring(value: Int, color: Color, diameter: Dp, center: String? = null) {
     val shown by animateFloatAsState(value.toFloat(), tween(450), label = "anillo")
     val track = Line
-    if (form.gauge != GaugeKind.Ring) {
+    if (gaugeKind != GaugeKind.Ring) {
         FormGauge(shown, color, diameter, center ?: "$value")
         return
     }
@@ -115,6 +115,8 @@ private fun angleToValue(x: Float, y: Float, w: Float, h: Float): Int {
     // Barras, bloques, estrellas…: de izquierda a derecha
     if (!gaugeIsRadial) return (((x - w * 0.05f) / (w * 0.9f)) * 100f).roundToInt().coerceIn(0, 100)
     val deg = Math.toDegrees(atan2((y - h / 2f).toDouble(), (x - w / 2f).toDouble())).toFloat()
+    // Puntos: vuelta entera empezando arriba
+    if (gaugeKind == GaugeKind.Pips) return (((deg + 90f + 360f) % 360f) / 360f * 100f).roundToInt().coerceIn(0, 100)
     var a = (deg - 120f + 720f) % 360f
     if (a > 300f) a = if (a < 330f) 300f else 0f
     return (a / 300f * 100f).roundToInt().coerceIn(0, 100)

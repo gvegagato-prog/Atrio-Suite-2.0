@@ -1137,7 +1137,7 @@ fun App(
                     }
                 )
 
-                is Screen.Edit -> EditScreen(
+                is Screen.Edit -> { ChameleonEffect(s.game.cover); EditScreen(
                     s.game, s.isNew, kind, side,
                     myReact = reacts[reactKey(kind, s.game.id)],
                     onReact = { e -> react(kind, s.game.id, e) },
@@ -1149,10 +1149,11 @@ fun App(
                     editing = s.editing,
                     findTtb = if (kind.isGame) ({ n -> TimeToBeat.find(n, store) }) else null,
                     onQuiet = { g -> if (gamesOf(kind).any { it.id == g.id }) setGames(kind, gamesOf(kind).map { if (it.id == g.id) g else it }) }
-                ) { screen = Screen.Home }
+                ) { screen = Screen.Home } }
 
                 is Screen.PlayDetail -> {
                     val live = myPlays.find { it.id == s.play.id } ?: s.play
+                    ChameleonEffect(live.cover)
                     PlayDetailScreen(
                         kind = kind, partner = side, p0 = live, startEditing = s.editing, sessId = sessId, sessHours = store.sessionHours,
                         sessStart = store.sessionStart,

@@ -90,8 +90,11 @@ adb shell input keyevent 4; sleep 1; adb shell input keyevent 4; sleep 1
 
 step "Ajustes y tema"
 tap "Ajustes"; shot 14_ajustes; alive "ajustes"
+# El tema ya no está en Ajustes: va dentro de Estilo
+must tap "Estilo"; sleep 2
 tap "Claro"; sleep 0.25; adb exec-out screencap -p > "$OUT/15_cambio_tema.png"; shot 16_claro 2; alive "tema"
 tap "Oscuro"; shot 17_oscuro 2; alive "tema2"
+adb shell input keyevent 4; sleep 1
 adb shell input keyevent 4; sleep 1
 step "Juegos"
 tap "Videojuegos"; shot 18_juegos; alive "juegos"
@@ -316,6 +319,13 @@ for f in "Clásica" "Editorial" "Píxel" "Terminal" "Neón" "Suave" "Brutalista"
   top; must tap "Ajustes"; sleep 1.5; must tap "Estilo"; sleep 2
   n=$((n+1))
 done
+step "Notas aparte de la forma, fondo y Sorpréndeme"
+must tap "Forma"; sleep 1; must seek "Píxel"; tap "Píxel"; sleep 2
+must tap "Notas"; sleep 1; must seek "Estrellas"; tap "Estrellas"; sleep 2
+top; shot 60_pixel_con_estrellas 1; alive "notas"
+must tap "Fondo"; sleep 1; must see "Camaleón" 5; shot 61_fondo 1; alive "fondo"
+tap "Sorpréndeme"; sleep 3; shot 62_sorpresa 1; alive "sorpresa"
+tap "Sorpréndeme"; sleep 3; shot 63_sorpresa2 1; alive "sorpresa2"
 must tap "Combinaciones"; sleep 1; top; tap "Atrio"; sleep 2
 adb shell input keyevent 4; sleep 1
 

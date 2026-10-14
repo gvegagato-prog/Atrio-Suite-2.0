@@ -114,6 +114,13 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
     (todo redondo, barras gorditas), Brutalista (cifras enormes, bordes negros), Cómic (estrellas, tinta y trama),
     Minimal (puntos) y Militar (segmentos, esquinas cortadas). En el móvil también cambia la cuadrícula de la biblioteca:
     pósters, mosaico apretado, lista, tarjetas anchas o título sobre la portada. Cada combinación trae su forma.
+63. **Notas aparte** (Estilo → Notas): el marcador de las notas (anillos, barras, bloques, texto, segmentos, dial,
+    cifra enorme, estrellas o puntos) se elige por separado de la forma, para mezclar, por ejemplo, tarjetas de Píxel
+    con estrellas. **Todo lo del aspecto está en Estilo** (tema claro u oscuro, fondo, intensidad y colores incluidos):
+    Ajustes solo tiene la tarjeta que lo abre. **Sorpréndeme** lo cambia todo al azar (también en el PC).
+64. **Camaleón** (Estilo → Fondo, encendido por defecto): al abrir una ficha, la app se tiñe con el color de su
+    portada (fondo, tarjetas y el color de la nota general) y el cambio se abre en círculo desde donde tocaste.
+    Al salir vuelve tu paleta.
 
 **Control y privacidad** (Atrio en el PC → Ajustes → Móvil)
 33. Permitir o no capturas, lanzar juegos y energía desde el móvil.

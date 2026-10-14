@@ -284,12 +284,20 @@ object Skin {
     var textScale by mutableStateOf(1f)
     /** Forma: cómo se dibujan esquinas, notas, botones, portadas y el fondo. */
     var form by mutableStateOf(FORMS[0])
+    /** Cómo se ven las notas, aparte de la forma (null = las de la forma). */
+    var gauge by mutableStateOf<GaugeKind?>(null)
+    /** Camaleón: cada ficha se tiñe con los colores de su portada. */
+    var chameleon by mutableStateOf(true)
+    /** Tonos de la ficha abierta (camaleón), por encima de la paleta. */
+    var override by mutableStateOf<Tones?>(null)
 
     /** Pantalla de Estilo abierta (se pinta encima de toda la app). */
     var open by mutableStateOf(false)
 
     /** Tonos que se ven ahora (según el modo claro u oscuro). */
-    val tones: Tones get() = if (Mode.dark) palette.dark else palette.light
+    val tones: Tones get() = override ?: base
+    /** Tonos de la paleta elegida, sin camaleón. */
+    val base: Tones get() = if (Mode.dark) palette.dark else palette.light
 
     private val provider = GoogleFont.Provider(
         providerAuthority = "com.google.android.gms.fonts",
@@ -313,10 +321,21 @@ object Skin {
         display = s.display
         body = s.body
         form = FORMS.firstOrNull { it.id == s.form } ?: form
+        gauge = null
+    }
+
+    /** Sorpréndeme: paleta, letras, forma y notas al azar (con criterio: letras de títulos y de texto distintas). */
+    fun surprise() {
+        val rnd = kotlin.random.Random(System.nanoTime())
+        palette = PALETTES.filter { it.id != palette.id }.random(rnd)
+        display = DISPLAY_FONTS.random(rnd).name
+        body = BODY_FONTS.filter { it.name != display }.random(rnd).name
+        form = FORMS.filter { it.id != form.id }.random(rnd)
+        gauge = if (rnd.nextBoolean()) null else GaugeKind.entries.random(rnd)
     }
 
     /** La combinación que coincide con lo elegido ahora (si es una de las listas). */
-    fun currentStyle(): SkinStyle? = STYLES.firstOrNull { it.palette == palette.id && it.display == display && it.body == body && it.form == form.id }
+    fun currentStyle(): SkinStyle? = STYLES.firstOrNull { it.palette == palette.id && it.display == display && it.body == body && it.form == form.id && gauge == null }
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE)
 
@@ -327,10 +346,13 @@ object Skin {
         body = p.getString("skin_body", "Atrio") ?: "Atrio"
         textScale = p.getFloat("skin_scale", 1f)
         form = FORMS.firstOrNull { it.id == p.getString("skin_form", "clasico") } ?: FORMS[0]
+        gauge = GaugeKind.entries.firstOrNull { it.name == p.getString("skin_gauge", "") }
+        chameleon = p.getBoolean("skin_chameleon", true)
     }
 
     fun save(ctx: Context) {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
-            .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id).apply()
+            .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
+            .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).apply()
     }
 }
