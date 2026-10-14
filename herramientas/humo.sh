@@ -310,9 +310,10 @@ for f in "Clásica" "Editorial" "Píxel" "Terminal" "Neón" "Suave" "Brutalista"
   top; shot "${n}_forma_${f}" 1; alive "forma $f"
   # La biblioteca con esa forma
   adb shell input keyevent 4; sleep 1.5; adb shell input keyevent 4; sleep 1.5
-  tap "Peliculas"; sleep 2; shot "${n}b_lista_${f}" 1; alive "lista $f"
+  top; must tap "Videojuegos"; sleep 2; shot "${n}b_lista_${f}" 1; alive "lista $f"
   adb shell input keyevent 4; sleep 1.5
-  must tap "Ajustes"; sleep 1.5; must tap "Estilo"; sleep 2
+  adb shell am start -W -n "$PKG/.MainActivity" >/dev/null; sleep 1.5
+  top; must tap "Ajustes"; sleep 1.5; must tap "Estilo"; sleep 2
   n=$((n+1))
 done
 must tap "Combinaciones"; sleep 1; top; tap "Atrio"; sleep 2
