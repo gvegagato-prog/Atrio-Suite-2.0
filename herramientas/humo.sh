@@ -246,7 +246,7 @@ must see "Falta Nova" 8
 shot 37_falta_nova 1
 tap "Ahora no"; sleep 1
 echo "   botones de jugar y de streaming en la ficha" | tee -a "$LOG"
-tap "example.com"; sleep 10
+must seek "example.com"; tap "example.com"; sleep 10
 shot 35_guia_abierta 1; alive "guia abierta"
 must see "Abrir en el navegador" 5
 must see "Example Domain" 20
@@ -262,7 +262,7 @@ echo "   al volver a la app la guía sigue ahí" | tee -a "$LOG"
 # Cerrada con ✕ y vuelta a abrir: instantánea, en la misma página
 tap "Cerrar"; sleep 2
 must see "Guías" 10
-tap "example.com"; sleep 3
+must seek "example.com"; tap "example.com"; sleep 3
 must see "documentation examples" 10
 echo "   cerrada y reabierta, sigue en su sitio" | tee -a "$LOG"
 adb shell input keyevent 4; sleep 2
