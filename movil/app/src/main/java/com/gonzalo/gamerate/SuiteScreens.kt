@@ -469,22 +469,31 @@ fun AddSegDialog(kind: Kind, onSave: (Seg) -> Unit, onDismiss: () -> Unit) {
 fun PlaySuitePanel(
     p: Play, kind: Kind,
     onRate: (Seg) -> Unit, onOpenEntry: (Entry) -> Unit, onAddSeg: () -> Unit,
-    onMemo: () -> Unit, onDeleteMemo: (Memo) -> Unit, onOpenShot: (Shot) -> Unit
+    onMemo: () -> Unit, onDeleteMemo: (Memo) -> Unit, onOpenShot: (Shot) -> Unit,
+    /** Encender o apagar «Valorar por partes» en esta ficha. */
+    onParts: (Boolean) -> Unit = {}
 ) {
     val shape = RoundedCornerShape(16.dp)
     Column(Modifier.fillMaxWidth().border(1.dp, Line, shape).padding(16.dp).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Overline("Partes")
+                Overline("Valorar por partes")
                 Text(
-                    if (p.segs.isEmpty()) (if (kind.isGame) "Cada partida en el PC aparece aquí al cerrar el juego" else "Añade las partes que vas terminando")
-                    else "${p.segs.size} · ${p.unrated().size} sin valorar",
+                    when {
+                        p.noParts -> "Apagado: las partidas suman horas, pero no piden nota ni avisan"
+                        p.segs.isEmpty() -> if (kind.isGame) "Cada partida en el PC aparece aquí al cerrar el juego" else "Añade las partes que vas terminando"
+                        else -> "${p.segs.count { !it.q }} · ${p.unrated().size} sin valorar"
+                    },
                     color = Muted, fontSize = 14.sp
                 )
             }
+            Switch(!p.noParts, { onParts(it) })
+        }
+        if (p.noParts) return@Column
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.End) {
             IconPill(Icons.Rounded.Add, "Añadir parte") { onAddSeg() }
         }
-        val list = p.segs.sortedByDescending { it.e }.take(12)
+        val list = p.segs.filter { !it.q }.sortedByDescending { it.e }.take(12)
         if (list.isNotEmpty()) Spacer(Modifier.height(8.dp))
         list.forEachIndexed { i, sg ->
             if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Line))

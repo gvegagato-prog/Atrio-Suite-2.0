@@ -168,7 +168,8 @@ data class Memo(val t: Long, val x: String, val sh: String = "", val del: Boolea
  * o una que añades a mano. Se valora con un apunte que la lleva en [Entry.seg].
  * src: "atrio", "timer" o "manual".
  */
-data class Seg(val id: String, val s: Long, val e: Long, val min: Int, val src: String, val pc: String = "", val name: String = "")
+/** Una parte jugada. q: guardada sin pedir valoración (el juego tiene «Valorar por partes» apagado). */
+data class Seg(val id: String, val s: Long, val e: Long, val min: Int, val src: String, val pc: String = "", val name: String = "", val q: Boolean = false)
 
 fun memoToJson(m: Memo): JSONObject = JSONObject().put("t", m.t).put("x", m.x).apply {
     if (m.sh.isNotEmpty()) put("sh", m.sh)
@@ -180,8 +181,9 @@ fun memoFromJson(o: JSONObject) = Memo(o.optLong("t"), o.optString("x"), o.optSt
 fun segToJson(g: Seg): JSONObject = JSONObject().put("id", g.id).put("s", g.s).put("e", g.e).put("min", g.min).put("src", g.src).apply {
     if (g.pc.isNotEmpty()) put("pc", g.pc)
     if (g.name.isNotEmpty()) put("name", g.name)
+    if (g.q) put("q", 1)
 }
-fun segFromJson(o: JSONObject) = Seg(o.optString("id"), o.optLong("s"), o.optLong("e"), o.optInt("min"), o.optString("src"), o.optString("pc", ""), o.optString("name", ""))
+fun segFromJson(o: JSONObject) = Seg(o.optString("id"), o.optLong("s"), o.optLong("e"), o.optInt("min"), o.optString("src"), o.optString("pc", ""), o.optString("name", ""), o.optInt("q", 0) == 1)
 
 /** "Partida en el PC", "Sesión con temporizador"… */
 fun Seg.label(): String = name.ifBlank {
@@ -205,12 +207,14 @@ data class Play(
     /** Apuntes rápidos (los borrados se quedan marcados: usa [liveMemos]). */
     val memos: List<Memo> = emptyList(),
     /** Partes jugadas (sesiones), para valorarlas. */
-    val segs: List<Seg> = emptyList()
+    val segs: List<Seg> = emptyList(),
+    /** «Valorar por partes» apagado (juegos online como Deadlock): las partidas suman horas pero no piden nota. */
+    val noParts: Boolean = false
 ) {
     val liveMemos: List<Memo> get() = memos.filter { !it.del }
 
     /** Partes jugadas que aún no tienen apunte. */
-    fun unrated(): List<Seg> = segs.filter { s -> entries.none { it.seg == s.id } }
+    fun unrated(): List<Seg> = if (noParts) emptyList() else segs.filter { s -> !s.q && entries.none { it.seg == s.id } }
 
     /** Porcentaje completado: por capítulos si los hay; si no, por horas frente a la duración media. */
     fun percent(): Int? = when {
@@ -313,7 +317,8 @@ fun playFromJson(o: JSONObject): Play {
         },
         o.optString("logo", ""),
         (o.optJSONArray("memos") ?: JSONArray()).let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { memoFromJson(it) } } },
-        (o.optJSONArray("segs") ?: JSONArray()).let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { segFromJson(it) } } }
+        (o.optJSONArray("segs") ?: JSONArray()).let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { segFromJson(it) } } },
+        o.optBoolean("noParts", false)
     )
 }
 
@@ -337,6 +342,7 @@ fun playToJson(pl: Play): JSONObject {
         .apply {
             if (pl.memos.isNotEmpty()) put("memos", JSONArray().apply { pl.memos.forEach { put(memoToJson(it)) } })
             if (pl.segs.isNotEmpty()) put("segs", JSONArray().apply { pl.segs.forEach { put(segToJson(it)) } })
+            if (pl.noParts) put("noParts", true)
         }
 }
 

@@ -97,8 +97,13 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
 57. En el PC, las mismas paletas como **37 esquemas** y **13 juegos de letras** nuevos (van dentro de la app,
     funcionan sin internet). Se generan de las paletas del móvil (`herramientas/gen-estilos.py`).
 
+**Valorar por partes, a tu gusto**
+58. Cada juego en curso tiene el interruptor **Valorar por partes** (móvil: en su ficha; PC: menú ⋯ de la ficha).
+    Apagado (por ejemplo en Deadlock o LoL), cada partida sigue sumando horas, pero no pide nota, no avisa, no sale
+    como pendiente y los capítulos o las sesiones con temporizador tampoco ofrecen valorarlas.
+
 **Arreglos**
-58. Apagar, reiniciar o suspender desde el móvil prueba varias vías (systemctl, logind, Plasma, GNOME); si algo lo
+59. Apagar, reiniciar o suspender desde el móvil prueba varias vías (systemctl, logind, Plasma, GNOME); si algo lo
     impide, el móvil te dice qué (por ejemplo, el programa que lo bloquea). La orden ya no puede repetirse al encender.
 
 **Control y privacidad** (Atrio en el PC → Ajustes → Móvil)

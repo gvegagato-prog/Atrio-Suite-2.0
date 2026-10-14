@@ -393,8 +393,10 @@ async function segFromSession(key) {
   const p = ((ronron.data() || {}).plays || []).find((o) => Number(o.id) === id && o.status === 1);
   if (!p) return;
   try {
-    await ronron.edit({ op: 'addSeg', kind: 0, id, seg: { id: `a${ses[1]}`, s: ses[1], e: ses[2], min, src: 'atrio', pc: os.hostname() } });
-    send('seg', { id, name: p.name, min });
+    // «Valorar por partes» apagado en esa ficha: la partida se guarda (horas) sin pedir nota
+    const quiet = !!p.noParts;
+    await ronron.edit({ op: 'addSeg', kind: 0, id, seg: { id: `a${ses[1]}`, s: ses[1], e: ses[2], min, src: 'atrio', pc: os.hostname(), ...(quiet ? { q: 1 } : {}) } });
+    if (!quiet) send('seg', { id, name: p.name, min });
   } catch (e) { log('parte jugada', e.message); }
 }
 

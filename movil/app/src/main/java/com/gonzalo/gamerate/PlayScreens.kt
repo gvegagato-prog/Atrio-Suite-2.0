@@ -190,7 +190,8 @@ fun PlayDetailScreen(
             PlaySuitePanel(
                 p, kind,
                 onRate = { onRateSeg(p, it) }, onOpenEntry = { onNote(p, it) }, onAddSeg = { onAddSeg(p) },
-                onMemo = { onMemo(p) }, onDeleteMemo = { onDeleteMemo(p, it) }, onOpenShot = onOpenShot
+                onMemo = { onMemo(p) }, onDeleteMemo = { onDeleteMemo(p, it) }, onOpenShot = onOpenShot,
+                onParts = { on -> upd(p.copy(noParts = !on, updated = System.currentTimeMillis())) }
             )
 
             Spacer(Modifier.height(18.dp))

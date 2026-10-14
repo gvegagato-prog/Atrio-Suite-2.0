@@ -223,7 +223,7 @@
       el.append(h('span.rv-badge.curso', b ? String(b.general) : '·'));
       // Partidas sin valorar: punto rojo con cuántas son
       const rated = new Set((item.entries || []).map((e) => e.seg).filter(Boolean));
-      const todo = (item.segs || []).filter((s) => !rated.has(s.id)).length;
+      const todo = item.noParts ? 0 : (item.segs || []).filter((s) => !s.q && !rated.has(s.id)).length;
       if (todo) el.append(h('span.rv-todo', { title: `${todo} por valorar` }, String(todo)));
     }
     if (item.fav) el.append(h('span.fav', A.icon('starFill')));
@@ -345,6 +345,7 @@
       row('Plataforma', item.platform);
       row('Estudio', item.creator);
       if (item.ttbMain > 0) row('Duración media', fmtMin(item.ttbMain));
+      if (kind === 'p' && item.noParts) row('Valorar por partes', 'Apagado (menú ⋯)');
       if (kind === 'p' && item.parts && item.parts.length) row('Capítulos', `${item.parts.filter((p) => p.d).length} de ${item.parts.length}`);
       const dataBox = h('section.gp-block', h('h3', 'Datos'), rows.length ? h('div.gp-rows', rows) : h('p.gp-empty', 'Sin datos.'));
 
@@ -356,7 +357,7 @@
         const es = [...(item.entries || [])].sort((x, y) => num(y.time) - num(x.time));
         // Partidas sin valorar primero; después apuntes con nota y apuntes rápidos, del más reciente al más antiguo
         const rated = new Set(es.map((e) => e.seg).filter(Boolean));
-        const todo = (item.segs || []).filter((s) => !rated.has(s.id)).sort((a, b) => b.e - a.e);
+        const todo = item.noParts ? [] : (item.segs || []).filter((s) => !s.q && !rated.has(s.id)).sort((a, b) => b.e - a.e);
         const memos = (item.memos || []).filter((m) => m && !m.del);
         const segLabel = (s) => s.name || (s.src === 'atrio' ? `Partida${s.pc ? ` en ${s.pc}` : ''}` : s.src === 'timer' ? 'Sesión con temporizador' : 'Parte añadida a mano');
         const rows = [
@@ -407,6 +408,9 @@
         h('div.menu',
           kind === 'g' ? mi('edit', 'Editar valoración', () => R.editGame(item)) : mi('edit', 'Apuntar', () => R.addNote(item)),
           kind === 'p' ? mi('check', 'Terminado: pasar a valorados', () => R.finish(item)) : null,
+          kind === 'p' ? mi('sliders', item.noParts ? 'Valorar por partes: encender' : 'Valorar por partes: apagar',
+            () => edit({ op: 'savePlay', kind: 0, item: { ...item, noParts: !item.noParts } },
+              item.noParts ? `${item.name}: cada partida pedirá nota otra vez` : `${item.name}: las partidas ya no piden nota`)) : null,
           kind === 'p' && item.status !== 2 ? mi('hide', 'Dropear', () => edit({ op: 'savePlay', kind: 0, item: { ...item, status: 2 } }, `${item.name}: dropeado`)) : null,
           kind === 'p' && item.status !== 1 ? mi('play', 'Seguir jugando', () => edit({ op: 'savePlay', kind: 0, item: { ...item, status: 1, start: item.start || todayDay() } }, `Jugando a ${item.name}`)) : null,
           kind === 'g' ? mi(item.fav ? 'starFill' : 'star', item.fav ? 'Quitar de favoritos' : 'Favorito', () => edit({ op: 'saveGame', kind: 0, item: { ...item, fav: !item.fav } })) : null,

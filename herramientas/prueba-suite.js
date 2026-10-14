@@ -44,7 +44,9 @@ async function until(fn, ms, every = 500) {
   await db('PUT', '/config/webKey', 'prueba');
   // Lo que «el móvil» ya tiene en su cuenta: un juego en curso con el id de SteamGridDB 4242
   const play = { id: 4242, name: 'Juego de Prueba', cover: '', hero: '', status: 1, entries: [], chapter: 0, every: 3, start: 0, end: 0, creator: '', platform: 'PC', pages: 0, minutes: 0, updated: Date.now(), ttbMain: 0, ttbExtra: 0, ttbFull: 0, ttbSrc: '', parts: [], logo: '' };
-  const data = { games: [], plays: [play], books: [], bplays: [], kinds: [], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {} };
+  // Y un juego online con «Valorar por partes» apagado
+  const online = { ...play, id: 4343, name: 'Juego Online', noParts: true };
+  const data = { games: [], plays: [play, online], books: [], bplays: [], kinds: [], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {} };
   await db('PUT', `/users/${uid}/dev/mtest`, { name: 'gonzalo', user: 'gonzalo', device: 'android', updated: { '.sv': 'timestamp' }, data: JSON.stringify(data) });
   const ts = await db('GET', `/users/${uid}/dev/mtest/updated`);
   await db('PATCH', `/users/${uid}`, { 'stamps/mtest': ts });
@@ -54,10 +56,12 @@ async function until(fn, ms, every = 500) {
   fs.writeFileSync(path.join(HOME, '.config', 'atrio', 'ronron.json'), JSON.stringify({ db: FB, authBase: FB, webKey: 'prueba', uid, user: 'gonzalo', refresh: sig.refreshToken, dev: 'atrio-prueba', seen: {} }));
   const game = path.join(OUT, 'juego-de-prueba.sh');
   fs.writeFileSync(game, '#!/bin/sh\nsleep 600\n', { mode: 0o755 });
+  const game2 = path.join(OUT, 'juego-online.sh');
+  fs.writeFileSync(game2, '#!/bin/sh\nsleep 600\n', { mode: 0o755 });
   fs.writeFileSync(path.join(HOME, '.config', 'atrio', 'config.json'), JSON.stringify({
     sources: { steam: false, heroic: false, lutris: false, emulators: false, custom: true },
-    customGames: [{ id: 'prueba', name: 'Juego de Prueba', exec: game, runner: 'native' }],
-    overrides: { 'custom:prueba': { sgdbId: 4242 } },
+    customGames: [{ id: 'prueba', name: 'Juego de Prueba', exec: game, runner: 'native' }, { id: 'online', name: 'Juego Online', exec: game2, runner: 'native' }],
+    overrides: { 'custom:prueba': { sgdbId: 4242 }, 'custom:online': { sgdbId: 4343 } },
     behavior: { autostart: 'off', fullscreen: false, onLaunch: 'none' },
     suite: { segMin: -1 },
   }));
@@ -156,6 +160,25 @@ async function until(fn, ms, every = 500) {
     ok(((cfgNow.overrides['custom:prueba'] || {}).links || []).length === 1, 'Guardada en la configuración de Atrio');
     const gd = await send('guide', { key: 'custom:prueba', url: 'https://deadlock.wiki/Heroes' });
     ok(gd && gd.ok, `Abrir la guía en el PC desde el móvil: ${gd && gd.msg}`);
+    // «Valorar por partes» apagado: la partida se guarda (horas) pero callada, sin pedir nota
+    const lo = await send('launch', { key: 'custom:online' });
+    ok(lo && lo.ok, `Lanzado el juego online: ${lo && lo.msg}`);
+    await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba`); return v && v.game && v.game.sg === 4343 ? v : null; }, 30000);
+    await wait(33000);
+    spawn('pkill', ['-f', game2]);
+    const quiet = await until(async () => {
+      const st = await db('GET', `/users/${uid}/stamps`);
+      for (const dev of Object.keys(st || {})) {
+        if (dev === 'mtest') continue;
+        const d = JSON.parse((await db('GET', `/users/${uid}/dev/${dev}/data`)) || '{}');
+        const p = (d.plays || []).find((x) => x.id === 4343);
+        if (p && p.segs && p.segs.length) return { seg: p.segs[0], p };
+      }
+      return null;
+    }, 40000, 1000);
+    ok(quiet && quiet.seg.q === 1 && quiet.p.noParts === true && quiet.p.minutes >= 0,
+      `Juego con «Valorar por partes» apagado: partida guardada sin pedir nota (${quiet ? JSON.stringify(quiet.seg) : '-'})`);
+
     // Streaming: el PC publica su Polaris, prepara el streaming y empareja el móvil (código de un solo uso o PIN)
     const liveSt = await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba/st`); return v && v.on && v.run ? v : null; }, 40000);
     ok(liveSt && liveSt.uuid === HOST_UUID && liveSt.name === 'PC-de-prueba' && liveSt.creds, `Polaris visto desde el móvil: ${liveSt ? `${liveSt.name} · ${liveSt.uuid} · app ${liveSt.app}` : '-'}`);

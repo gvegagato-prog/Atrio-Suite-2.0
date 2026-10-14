@@ -352,10 +352,13 @@ fun App(
             val mins = ((now() - store.sessionStart) / 60_000L).toInt().coerceIn(0, 720)
             if (mins > 0) {
                 // La sesión queda como parte jugada, lista para valorarla
-                val sg = Seg("t${store.sessionStart}", store.sessionStart, now(), mins, "timer")
+                // Con «Valorar por partes» apagado se guarda igual (horas), pero sin pedir nota
+                val quiet = plays.find { it.id == id }?.noParts == true
+                val sg = Seg("t${store.sessionStart}", store.sessionStart, now(), mins, "timer", q = quiet)
                 setPlays(GAMES, plays.map { if (it.id == id) it.copy(minutes = it.minutes + mins, segs = it.segs + sg, updated = now()) else it })
                 val pl = plays.find { it.id == id }
                 scope.launch {
+                    if (quiet) { snack.showSnackbar("Sesión terminada: +${hoursText(mins)}", withDismissAction = true); return@launch }
                     val r = snack.showSnackbar("Sesión terminada: +${hoursText(mins)}", actionLabel = "Valorar", withDismissAction = true, duration = SnackbarDuration.Long)
                     if (r == SnackbarResult.ActionPerformed && pl != null) { section = 0; screen = Screen.Note(pl, null, sg) }
                 }
@@ -1205,7 +1208,7 @@ fun App(
                         onDeleteMemo = { p, m -> deleteMemo(p, m) },
                         onOpenShot = { sh -> screen = Screen.ShotView(sh, Screen.PlayDetail(live)) },
                         onPartDone = { p, name ->
-                            scope.launch {
+                            if (!p.noParts) scope.launch {
                                 val r = snack.showSnackbar("«$name» completado", actionLabel = "Valorar", withDismissAction = true)
                                 if (r == SnackbarResult.ActionPerformed) screen = Screen.Note(myPlays.find { it.id == p.id } ?: p, null, null, name)
                             }
