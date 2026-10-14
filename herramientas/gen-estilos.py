@@ -14,6 +14,7 @@ import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKIN = os.path.join(ROOT, 'movil/app/src/main/java/com/gonzalo/gamerate/Skin.kt')
+FORM = os.path.join(ROOT, 'movil/app/src/main/java/com/gonzalo/gamerate/Form.kt')
 OUT_CSS = os.path.join(ROOT, 'escritorio/src/renderer/styles/estilos.css')
 OUT_JS = os.path.join(ROOT, 'escritorio/src/renderer/js/estilos.js')
 
@@ -64,12 +65,13 @@ OLD_FONTS = [('grotesca', 'Grotesca'), ('serif', 'Serif'), ('mono', 'Monoespacia
 
 # Combinaciones del PC: esquema + letras (como las del móvil)
 COMBOS = [
-    ('Atrio', 'noche', 'grotesca'), ('Revista', 'p-cafe', 'elegante'), ('Editorial nocturno', 'p-medianoche', 'editorial'),
-    ('Arcade', 'p-gameboy', 'arcade'), ('Píxel neón', 'p-neon', 'pixel'), ('Cyberpunk', 'p-neon', 'cyberpunk'),
-    ('Ciencia ficción', 'p-oceano', 'scifi'), ('Terminal', 'p-ambar', 'terminal'), ('Fantasía', 'p-vino', 'fantasia'),
-    ('Nórdico', 'p-nord', 'moderna'), ('Dracula', 'p-dracula', 'geometrica'), ('Catppuccin', 'p-catppuccin', 'retro'),
-    ('Gruvbox', 'p-gruvbox', 'editorial'), ('Tokyo Night', 'p-tokyonight', 'vanguardia'), ('Rosé Pine', 'p-rosepine', 'elegante'),
-    ('Deportivo', 'p-pizarra', 'deportiva'), ('Brutalista', 'oled', 'geometrica'), ('Minimal', 'p-hielo-claro', 'grotesca'),
+    ('Atrio', 'noche', 'grotesca', 'clasico'), ('Revista', 'p-cafe', 'elegante', 'editorial'), ('Editorial nocturno', 'p-medianoche', 'editorial', 'editorial'),
+    ('Arcade', 'p-gameboy', 'arcade', 'pixel'), ('Píxel neón', 'p-neon', 'pixel', 'pixel'), ('Cyberpunk', 'p-neon', 'cyberpunk', 'neon'),
+    ('Ciencia ficción', 'p-oceano', 'scifi', 'neon'), ('Terminal', 'p-ambar', 'terminal', 'terminal'), ('Fantasía', 'p-vino', 'fantasia', 'editorial'),
+    ('Nórdico', 'p-nord', 'moderna', 'minimal'), ('Dracula', 'p-dracula', 'geometrica', 'neon'), ('Catppuccin', 'p-catppuccin', 'retro', 'suave'),
+    ('Gruvbox', 'p-gruvbox', 'editorial', 'terminal'), ('Tokyo Night', 'p-tokyonight', 'vanguardia', 'neon'), ('Rosé Pine', 'p-rosepine', 'elegante', 'suave'),
+    ('Deportivo', 'p-pizarra', 'deportiva', 'brutal'), ('Brutalista', 'oled', 'geometrica', 'brutal'), ('Minimal', 'p-hielo-claro', 'grotesca', 'minimal'),
+    ('Cómic', 'p-atardecer', 'retro', 'comic'), ('Militar', 'p-bosque', 'deportiva', 'militar'),
 ]
 
 
@@ -106,6 +108,12 @@ def parse():
             return d
         out.append((m.group(1), m.group(2), m.group(3), tones(m.group(4)), tones(m.group(5))))
     return out
+
+
+def parse_forms():
+    """Las formas del móvil (Form.kt): id, nombre y descripción."""
+    src = open(FORM, encoding='utf-8').read()
+    return [{'id': m.group(1), 'name': m.group(2), 'desc': m.group(3)} for m in re.finditer(r'    Form\("(\w+)", "([^"]+)", "([^"]+)"', src)]
 
 
 def scheme_css(sid, t):
@@ -156,12 +164,13 @@ def main():
     js = {
         'schemes': schemes,
         'fonts': [{'id': i, 'name': n} for i, n in OLD_FONTS] + [{'id': s[0], 'name': s[1], 'display': s[2], 'body': s[3]} for s in SETS],
-        'combos': [{'name': n, 'scheme': s, 'font': f} for n, s, f in COMBOS],
+        'combos': [{'name': n, 'scheme': s, 'font': f, 'form': fo} for n, s, f, fo in COMBOS],
+        'forms': parse_forms(),
     }
     open(OUT_JS, 'w', encoding='utf-8').write(
         "'use strict';\n/* global A */\n// Generado por herramientas/gen-estilos.py (paletas del móvil): no editar a mano.\n"
         f"A.ESTILOS = {json.dumps(js, ensure_ascii=False, indent=1)};\n")
-    print(f'{len(schemes)} esquemas, {len(SETS)} juegos de letras nuevos, {len(COMBOS)} combinaciones')
+    print(f'{len(schemes)} esquemas, {len(SETS)} juegos de letras nuevos, {len(COMBOS)} combinaciones, {len(js["forms"])} formas')
 
 
 if __name__ == '__main__':

@@ -182,7 +182,7 @@ private fun LabeledBar(label: String, value: String, frac: Float, color: Color) 
 /** Cifra grande con su etiqueta. */
 @Composable
 private fun BigNumber(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(modifier.border(1.dp, Line, RoundedCornerShape(14.dp)).padding(vertical = 14.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.border(1.dp, Line, shp(14.dp)).padding(vertical = 14.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontFamily = Display, fontSize = 30.sp, lineHeight = 34.sp)
         Text(label, fontSize = 12.sp, color = Muted, textAlign = TextAlign.Center, maxLines = 2)
     }
@@ -365,7 +365,7 @@ fun StatsScreen(
                             Text(if (m.second > 0) "" + m.second else "", fontSize = 11.sp, fontWeight = FontWeight.Medium)
                             Box(
                                 Modifier.fillMaxWidth(0.45f).height((m.second.toFloat() / mx * 62f).dp.coerceAtLeast(2.dp))
-                                    .background(if (m.second > 0) Charcoal else Line, RoundedCornerShape(3.dp))
+                                    .background(if (m.second > 0) Charcoal else Line, shp(3.dp))
                             )
                             Text(m.first, fontSize = 11.sp, color = UiSoft)
                         }

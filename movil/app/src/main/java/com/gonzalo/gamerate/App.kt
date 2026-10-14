@@ -1298,7 +1298,7 @@ fun App(
                     }) { Text("Recuperar") }
                 },
                 dismissButton = { TextButton({ pendingRestore = null }) { Text("Cancelar") } },
-                shape = RoundedCornerShape(24.dp)
+                shape = shp(24.dp)
             )
         }
 
@@ -1369,7 +1369,7 @@ fun App(
             Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (inTabs) 88.dp else 16.dp)
         ) { data ->
             Snackbar(
-                data, shape = RoundedCornerShape(18.dp),
+                data, shape = shp(18.dp),
                 containerColor = Charcoal, contentColor = Paper, actionColor = GoldOnInk, dismissActionContentColor = Crudo
             )
         }

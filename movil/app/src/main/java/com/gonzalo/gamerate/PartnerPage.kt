@@ -134,7 +134,7 @@ fun PartnerPage(
                         val chap = if (kind.isBook && e.chapter > 0) " · cap. " + e.chapter else ""
                         Column(
                             Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                                .border(1.dp, Line, RoundedCornerShape(14.dp)).padding(14.dp)
+                                .border(1.dp, Line, shp(14.dp)).padding(14.dp)
                         ) {
                             Text(fmt(e.time) + chap, color = UiSoft, fontSize = 14.sp)
                             Text(line, fontWeight = FontWeight.Medium, fontSize = 15.sp)

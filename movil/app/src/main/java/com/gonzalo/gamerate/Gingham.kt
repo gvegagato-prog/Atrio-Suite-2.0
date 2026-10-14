@@ -123,11 +123,11 @@ fun Modifier.pattern(type: Int, color: Color, intensity: Int): Modifier = this.d
  */
 fun Modifier.pill(radius: Int = 16, h: Int = 14, v: Int = 8): Modifier =
     if (Mode.look.pattern == 4) this.padding(horizontal = h.dp, vertical = v.dp)
-    else this.background(UiPanel, RoundedCornerShape(radius.dp)).padding(horizontal = h.dp, vertical = v.dp)
+    else this.background(UiPanel, shp(radius.dp)).padding(horizontal = h.dp, vertical = v.dp)
 
 /** Tarjeta sobria: superficie con línea fina. */
 fun Modifier.card(radius: Int = 20): Modifier =
-    this.background(UiPanel, RoundedCornerShape(radius.dp)).border(1.dp, Line, RoundedCornerShape(radius.dp))
+    this.surface(radius.dp, UiPanel)
 
 /** Aparece con fundido y subiendo un poco, tras un retraso (el fondo ya está puesto). */
 fun Modifier.appear(delayMs: Int, on: Boolean = true): Modifier =

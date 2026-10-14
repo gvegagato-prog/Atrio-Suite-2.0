@@ -60,7 +60,7 @@ object AppIcon {
     fun drawableId(ctx: Context, id: String) = ctx.resources.getIdentifier("icon_$id", "mipmap", ctx.packageName)
 }
 
-private enum class StyleTab(val title: String) { Mixes("Combinaciones"), Colors("Colores"), Titles("Títulos"), Text("Texto"), Size("Tamaño"), Icon("Icono") }
+private enum class StyleTab(val title: String) { Mixes("Combinaciones"), Forms("Forma"), Colors("Colores"), Titles("Títulos"), Text("Texto"), Size("Tamaño"), Icon("Icono") }
 
 /** Nombre corto de lo elegido ahora (para la tarjeta de Ajustes). */
 fun skinSummary(): String = Skin.currentStyle()?.name ?: "${Skin.palette.name} · ${Skin.display} / ${Skin.body}".replace("Atrio / Atrio", "letras de Atrio")
@@ -70,9 +70,9 @@ fun skinSummary(): String = Skin.currentStyle()?.name ?: "${Skin.palette.name} �
 fun StyleEntry(themeMode: Int, onTheme: (Int) -> Unit) {
     val t = Skin.tones
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+        Modifier.fillMaxWidth().clip(shp(20.dp))
             .background(Brush.linearGradient(listOf(Color(t.general).copy(alpha = 0.22f), Color(t.gameplay).copy(alpha = 0.18f), Color(t.gfx).copy(alpha = 0.14f))))
-            .border(1.dp, Line, RoundedCornerShape(20.dp)).clickable { Skin.open = true }.padding(16.dp),
+            .border(1.dp, Line, shp(20.dp)).clickable { Skin.open = true }.padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Rounded.Palette, null, tint = Charcoal, modifier = Modifier.size(30.dp))
@@ -125,6 +125,13 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onClose: () -> Unit) {
                             MixCard(s, Skin.currentStyle()?.id == s.id) { withReveal { Skin.apply(s); save() } }
                         }
                     }
+                    StyleTab.Forms -> Grid(2) {
+                        item(span = { GridItemSpan(2) }) {
+                            Text("Cómo se dibuja todo: notas, tarjetas, botones, portadas y el fondo. Cada combinación trae la suya; aquí la cambias sin tocar colores ni letras.",
+                                color = Muted, fontSize = 13.sp)
+                        }
+                        items(FORMS, key = { it.id }) { f -> FormCard(f, Skin.form.id == f.id) { withReveal { Skin.form = f; save() } } }
+                    }
                     StyleTab.Colors -> Grid(2) {
                         PALETTES.groupBy { it.group }.forEach { (g, list) ->
                             item(span = { GridItemSpan(2) }) { Overline(if (g == "Editores") "De editores de código (colores oficiales)" else g, Modifier.padding(top = 8.dp)) }
@@ -171,21 +178,15 @@ private fun Grid(cols: Int, content: androidx.compose.foundation.lazy.grid.LazyG
 @Composable
 private fun Preview(modifier: Modifier) {
     val t = Skin.tones
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Crudo).border(1.dp, Line, RoundedCornerShape(22.dp)).padding(16.dp)) {
+    Column(modifier.fillMaxWidth().surface(22.dp, Crudo).padding(16.dp)) {
         Overline("Jugando ahora")
         Text("Clair Obscur: Expedition 33", fontFamily = Display, fontSize = 24.sp, lineHeight = 28.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text("Acto II · 34 h jugadas · cada partida se apunta sola para valorarla.", color = Muted, fontSize = 13.sp)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf("General" to t.general, "Gráficos" to t.gfx, "Historia" to t.story, "Música" to t.music, "Jugabilidad" to t.gameplay).forEach { (n, c) ->
-                Box(Modifier.size(34.dp).background(Color(c).copy(alpha = 0.18f), CircleShape).border(2.dp, Color(c), CircleShape), contentAlignment = Alignment.Center) {
-                    Text(n.take(1), color = Color(c), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-            }
+            listOf(88 to t.general, 74 to t.gfx, 92 to t.story, 61 to t.music).forEach { (v, c) -> Ring(v, Color(c), 48.dp) }
             Spacer(Modifier.weight(1f))
-            Box(Modifier.background(Charcoal, RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                Text("Jugar", color = Paper, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-            }
+            ActionPill(Icons.Rounded.Check, "Jugar", dark = true) {}
         }
     }
 }
@@ -204,8 +205,8 @@ private fun MixCard(s: SkinStyle, on: Boolean, onClick: () -> Unit) {
     val disp: FontFamily = Skin.family(s.display) ?: AtrioDisplay
     val body: FontFamily = Skin.family(s.body) ?: AtrioBody
     Box(
-        Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(20.dp)).background(tn.cPaper)
-            .border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, RoundedCornerShape(20.dp)).clickable { onClick() }.padding(12.dp)
+        Modifier.fillMaxWidth().height(150.dp).clip(shp(20.dp)).background(tn.cPaper)
+            .border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, shp(20.dp)).clickable { onClick() }.padding(12.dp)
     ) {
         Column {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -214,6 +215,7 @@ private fun MixCard(s: SkinStyle, on: Boolean, onClick: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Text(s.name, fontFamily = disp, color = tn.cInk, fontSize = 21.sp, lineHeight = 24.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(s.desc, fontFamily = body, color = tn.cMuted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("Forma: " + (FORMS.firstOrNull { it.id == s.form }?.name ?: ""), fontFamily = body, color = tn.cInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         }
         Box(Modifier.align(Alignment.TopEnd)) { Selected(on) }
     }
@@ -222,17 +224,17 @@ private fun MixCard(s: SkinStyle, on: Boolean, onClick: () -> Unit) {
 @Composable
 private fun PaletteCard(p: Palette, on: Boolean, onClick: () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, RoundedCornerShape(18.dp))
+        Modifier.fillMaxWidth().clip(shp(18.dp)).border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, shp(18.dp))
             .clickable { onClick() }
     ) {
         Row(Modifier.fillMaxWidth().height(64.dp)) {
             for (tn in listOf(p.light, p.dark)) {
                 Box(Modifier.weight(1f).fillMaxHeight().background(tn.cPaper).padding(8.dp)) {
-                    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)).background(tn.cCrudo).padding(6.dp)) {
+                    Box(Modifier.fillMaxSize().clip(shp(10.dp)).background(tn.cCrudo).padding(6.dp)) {
                         Column {
-                            Box(Modifier.width(34.dp).height(5.dp).background(tn.cInk, RoundedCornerShape(3.dp)))
+                            Box(Modifier.width(34.dp).height(5.dp).background(tn.cInk, shp(3.dp)))
                             Spacer(Modifier.height(4.dp))
-                            Box(Modifier.width(22.dp).height(4.dp).background(tn.cMuted, RoundedCornerShape(3.dp)))
+                            Box(Modifier.width(22.dp).height(4.dp).background(tn.cMuted, shp(3.dp)))
                             Spacer(Modifier.weight(1f))
                             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                 listOf(tn.general, tn.gfx, tn.story, tn.music).forEach { c -> Box(Modifier.size(7.dp).background(Color(c), CircleShape)) }
@@ -252,8 +254,8 @@ private fun PaletteCard(p: Palette, on: Boolean, onClick: () -> Unit) {
 @Composable
 private fun FontRow(name: String, sub: String?, family: FontFamily, on: Boolean, big: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (on) Sand else Crudo)
-            .border(1.dp, if (on) Charcoal else Line, RoundedCornerShape(16.dp)).clickable { onClick() }.padding(14.dp),
+        Modifier.fillMaxWidth().clip(shp(16.dp)).background(if (on) Sand else Crudo)
+            .border(1.dp, if (on) Charcoal else Line, shp(16.dp)).clickable { onClick() }.padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
@@ -282,7 +284,7 @@ private fun IconPicker() {
                     try { ctx.getDrawable(AppIcon.drawableId(ctx, id))?.toBitmap(192, 192)?.asImageBitmap() } catch (e: Exception) { null }
                 }
                 Column(
-                    Modifier.clip(RoundedCornerShape(18.dp)).border(if (cur == id) 3.dp else 1.dp, if (cur == id) Charcoal else Line, RoundedCornerShape(18.dp))
+                    Modifier.clip(shp(18.dp)).border(if (cur == id) 3.dp else 1.dp, if (cur == id) Charcoal else Line, shp(18.dp))
                         .clickable { if (cur != id) { AppIcon.set(ctx, id); cur = id } }.padding(10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -292,5 +294,26 @@ private fun IconPicker() {
                 }
             }
         }
+    }
+}
+
+/** Muestra de una forma: su marcador de nota, una esquina de tarjeta y un botón. */
+@Composable
+private fun FormCard(f: Form, on: Boolean, onClick: () -> Unit) {
+    val t = Skin.tones
+    val sh = shpOf(f, 18.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(sh).background(Crudo)
+            .border(if (on) 3.dp else f.border.coerceAtLeast(1.dp), if (on || f.inkBorder) Charcoal else Line, sh)
+            .clickable { onClick() }.padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FormGauge(78f, Color(t.gfx), 58.dp, "78", f)
+            Spacer(Modifier.weight(1f))
+            Selected(on)
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(f.name, fontFamily = Display, fontSize = 19.sp)
+        Text(f.desc, color = Muted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
     }
 }

@@ -1,0 +1,126 @@
+/* Formas: además de colores y letras, cada estilo dibuja las cosas a su manera (las mismas diez del móvil).
+   Esquinas, bordes, sombras, cómo se ven las notas, los botones, las portadas y un fondo propio. */
+
+body { --pill: 99px; --tile-border: none; --tile-shadow: none; }
+
+/* ---------- Esquinas, bordes y sombras ---------- */
+body[data-form="editorial"] { --radius: .12rem; --radius-s: .1rem; --pill: .15rem;
+  --tile-border: .3rem solid #f4efe4; --tile-shadow: 0 .6rem 1.6rem rgba(0,0,0,.35); }
+body[data-form="pixel"] { --radius: 0; --radius-s: 0; --pill: 0;
+  --tile-border: .2rem solid var(--fg); --tile-shadow: .35rem .35rem 0 var(--fg); }
+body[data-form="terminal"] { --radius: 0; --radius-s: 0; --pill: 0; --tile-border: 1px solid var(--fg); }
+body[data-form="neon"] { --radius: .25rem; --radius-s: .2rem; --pill: .25rem;
+  --tile-border: 1px solid var(--accent); --tile-shadow: 0 0 1.1rem color-mix(in srgb, var(--accent) 60%, transparent); }
+body[data-form="suave"] { --radius: 1.4rem; --radius-s: 1rem; --tile-shadow: 0 .8rem 2rem rgba(0,0,0,.28); }
+body[data-form="brutal"] { --radius: 0; --radius-s: 0; --pill: 0;
+  --tile-border: .2rem solid var(--fg); --tile-shadow: .45rem .45rem 0 var(--fg); }
+body[data-form="comic"] { --radius: .6rem; --radius-s: .45rem;
+  --tile-border: .18rem solid var(--fg); --tile-shadow: .3rem .3rem 0 var(--fg); }
+body[data-form="minimal"] { --radius: .3rem; --radius-s: .2rem; }
+body[data-form="militar"] { --radius: 0; --radius-s: 0; --pill: 0; --tile-border: .14rem solid var(--fg-2); }
+
+.tile { border: var(--tile-border); box-shadow: var(--tile-shadow); }
+.tile.focused { box-shadow: var(--tile-shadow), 0 0 0 .2rem var(--bg), 0 0 0 .4rem var(--accent); }
+/* Esquinas cortadas */
+body[data-form="militar"] .tile, body[data-form="militar"] .btn, body[data-form="militar"] .rr-card,
+body[data-form="neon"] .btn {
+  clip-path: polygon(.7rem 0, 100% 0, 100% calc(100% - .7rem), calc(100% - .7rem) 100%, 0 100%, 0 .7rem);
+}
+/* Botones */
+body[data-form="pixel"] .btn, body[data-form="brutal"] .btn { border: .16rem solid var(--fg); box-shadow: .22rem .22rem 0 var(--fg); }
+body[data-form="pixel"] .btn.quiet, body[data-form="brutal"] .btn.quiet { box-shadow: none; }
+body[data-form="comic"] .btn { border: .14rem solid var(--fg); box-shadow: .2rem .2rem 0 var(--fg); }
+body[data-form="terminal"] .btn { border: 1px solid var(--fg-2); }
+body[data-form="terminal"] .btn::before { content: '['; margin-right: .2rem; color: var(--fg-3); }
+body[data-form="terminal"] .btn::after { content: ']'; margin-left: .2rem; color: var(--fg-3); }
+body[data-form="neon"] .btn.primary { box-shadow: 0 0 1rem color-mix(in srgb, var(--accent) 70%, transparent); background: var(--accent); }
+body[data-form="suave"] .btn { background: color-mix(in srgb, var(--accent) 22%, var(--surface-2)); }
+body[data-form="editorial"] .chip[aria-pressed="true"]::after, body[data-form="minimal"] .chip[aria-pressed="true"]::after { height: 1px; }
+
+/* ---------- Notas: cada forma tiene su marcador ---------- */
+/* Barra fina con cifra de revista (editorial), gordita (suave), bloques (píxel), texto (terminal), segmentos (militar) y cifra enorme (brutal) */
+body:is([data-form="editorial"], [data-form="suave"], [data-form="pixel"], [data-form="terminal"], [data-form="militar"], [data-form="brutal"]) .rr-ring {
+  height: auto; border-radius: 0; background: none; display: flex; flex-direction: column; align-items: stretch; gap: .3rem; min-width: var(--sz);
+}
+body:is([data-form="editorial"], [data-form="suave"], [data-form="pixel"], [data-form="terminal"], [data-form="militar"], [data-form="brutal"]) .rr-ring::before {
+  position: static; inset: auto; order: 2; height: .28rem; border-radius: 0;
+  background: linear-gradient(90deg, var(--tone, var(--fg)) calc(var(--p) * 1%), rgba(var(--fg-rgb), .14) 0);
+}
+body:is([data-form="editorial"], [data-form="suave"], [data-form="pixel"], [data-form="terminal"], [data-form="militar"], [data-form="brutal"]) .rr-ring span { text-align: center; }
+body[data-form="editorial"] .rr-ring span { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; }
+body[data-form="editorial"] .rr-ring::before { height: 2px; }
+body[data-form="suave"] .rr-ring::before { height: .6rem; border-radius: 99px; }
+body[data-form="pixel"] .rr-ring::before, body[data-form="terminal"] .rr-ring::before {
+  height: .55rem; -webkit-mask: repeating-linear-gradient(90deg, #000 0 8%, transparent 8% 10%);
+}
+body[data-form="terminal"] .rr-ring::before { height: .8rem; -webkit-mask: repeating-linear-gradient(90deg, #000 0 4%, transparent 4% 5%); }
+body[data-form="terminal"] .rr-ring span { color: var(--tone, var(--fg)); }
+body[data-form="militar"] .rr-ring::before { height: .45rem; transform: skewX(-25deg);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 7.5%, transparent 7.5% 10%); }
+body[data-form="brutal"] .rr-ring { align-items: flex-start; }
+body[data-form="brutal"] .rr-ring span { font-family: var(--font-display); font-weight: 900; font-size: 2rem; line-height: 1; }
+body[data-form="brutal"] .rr-ring.big span { font-size: 4rem; }
+body[data-form="brutal"] .rr-ring::before { align-self: stretch; height: .6rem; outline: 2px solid var(--fg); }
+.rr-ring.big::before { height: auto; }
+body:is([data-form="editorial"], [data-form="suave"], [data-form="pixel"], [data-form="terminal"], [data-form="militar"], [data-form="brutal"]) .rr-ring.big::before { inset: auto; }
+body[data-form="pixel"] .rr-ring.big::before, body[data-form="terminal"] .rr-ring.big::before { height: .9rem; }
+
+/* Dial de aguja (neón): medio círculo que brilla */
+body[data-form="neon"] .rr-ring {
+  background: conic-gradient(from -90deg, var(--tone, var(--fg)) calc(var(--p) * 1.8deg), rgba(var(--fg-rgb), .14) 0 180deg, transparent 0);
+  filter: drop-shadow(0 0 .4rem color-mix(in srgb, var(--tone, var(--accent)) 70%, transparent));
+}
+body[data-form="neon"] .rr-ring span { transform: translateY(-.15rem); }
+
+/* Estrellas (cómic) */
+body[data-form="comic"] .rr-ring { height: auto; border-radius: 0; background: none; display: flex; flex-direction: column; gap: .1rem; min-width: var(--sz); }
+body[data-form="comic"] .rr-ring::before {
+  content: '★★★★★'; position: static; order: 2; inset: auto; border-radius: 0; font-size: .95rem; letter-spacing: .05em; text-align: center;
+  background: linear-gradient(90deg, var(--tone, var(--fg)) calc(var(--p) * 1%), rgba(var(--fg-rgb), .2) 0);
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 1px var(--fg);
+}
+body[data-form="comic"] .rr-ring.big::before { font-size: 1.6rem; }
+body[data-form="comic"] .rr-ring span { font-family: var(--font-display); }
+
+/* Puntos alrededor (minimal) */
+body[data-form="minimal"] .rr-ring { background: none; }
+body[data-form="minimal"] .rr-ring::before { background: none; }
+body[data-form="minimal"] .rr-ring::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--tone, var(--fg)) calc(var(--p) * 1%), rgba(var(--fg-rgb), .16) 0);
+  -webkit-mask: repeating-conic-gradient(#000 0 7deg, transparent 7deg 36deg), radial-gradient(farthest-side, transparent calc(100% - .32rem), #000 calc(100% - .3rem));
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+}
+body[data-form="minimal"] .rr-ring span { font-weight: 300; }
+
+/* Barras de criterios */
+body[data-form="pixel"] .rr-bar .t, body[data-form="terminal"] .rr-bar .t { border-radius: 0; height: .55rem; }
+body[data-form="pixel"] .rr-bar .t span, body[data-form="terminal"] .rr-bar .t span { border-radius: 0; -webkit-mask: repeating-linear-gradient(90deg, #000 0 .45rem, transparent .45rem .6rem); }
+body[data-form="militar"] .rr-bar .t span { border-radius: 0; transform: skewX(-25deg); -webkit-mask: repeating-linear-gradient(90deg, #000 0 .5rem, transparent .5rem .7rem); }
+body[data-form="suave"] .rr-bar .t { height: .65rem; }
+body[data-form="editorial"] .rr-bar .t, body[data-form="minimal"] .rr-bar .t { height: 2px; }
+body[data-form="brutal"] .rr-bar .t { height: .7rem; border-radius: 0; outline: 2px solid var(--fg); }
+body[data-form="brutal"] .rr-bar .t span { border-radius: 0; }
+body[data-form="neon"] .rr-bar .t span { box-shadow: 0 0 .6rem var(--tone, var(--accent)); }
+body[data-form="comic"] .rr-bar .t { height: .6rem; outline: 2px solid var(--fg); }
+
+/* ---------- Fondo propio ---------- */
+body:is([data-form="pixel"], [data-form="terminal"], [data-form="neon"], [data-form="editorial"], [data-form="comic"])::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+}
+body:is([data-form="pixel"], [data-form="terminal"])::after {
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+}
+body[data-form="neon"]::after {
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px);
+  background-size: 2.2rem 2.2rem;
+}
+body[data-form="editorial"]::after {
+  opacity: .07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+body[data-form="comic"]::after {
+  background-image: radial-gradient(rgba(var(--fg-rgb), .06) 1.2px, transparent 1.5px);
+  background-size: .7rem .7rem;
+}

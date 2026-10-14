@@ -176,10 +176,13 @@ class MainActivity : ComponentActivity() {
                 ) {
                     MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
                         App(store, openId, openPartner, openGo, openRate, shareUrl, shareTitle, { shareUrl = "" }) { openId = 0L; openPartner = false; openGo = ""; openRate = "" }
+                        // Fondo propio de la forma (líneas de TV, rejilla, grano, trama): no se puede tocar
+                        FormOverlay()
                         // Ajustes → Estilo: encima de todo
                         if (Skin.open) androidx.compose.material3.Surface(Modifier.fillMaxSize(), color = Paper, contentColor = Charcoal) {
                             StyleScreen(Mode.themeMode, { t -> store.themeMode = t; withReveal { Mode.themeMode = t } }) { Skin.open = false }
                         }
+                        if (Skin.open) FormOverlay()
                     }
                 }
                 val img = overlay

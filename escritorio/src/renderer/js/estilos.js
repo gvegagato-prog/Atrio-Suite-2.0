@@ -437,92 +437,174 @@ A.ESTILOS = {
   {
    "name": "Atrio",
    "scheme": "noche",
-   "font": "grotesca"
+   "font": "grotesca",
+   "form": "clasico"
   },
   {
    "name": "Revista",
    "scheme": "p-cafe",
-   "font": "elegante"
+   "font": "elegante",
+   "form": "editorial"
   },
   {
    "name": "Editorial nocturno",
    "scheme": "p-medianoche",
-   "font": "editorial"
+   "font": "editorial",
+   "form": "editorial"
   },
   {
    "name": "Arcade",
    "scheme": "p-gameboy",
-   "font": "arcade"
+   "font": "arcade",
+   "form": "pixel"
   },
   {
    "name": "Píxel neón",
    "scheme": "p-neon",
-   "font": "pixel"
+   "font": "pixel",
+   "form": "pixel"
   },
   {
    "name": "Cyberpunk",
    "scheme": "p-neon",
-   "font": "cyberpunk"
+   "font": "cyberpunk",
+   "form": "neon"
   },
   {
    "name": "Ciencia ficción",
    "scheme": "p-oceano",
-   "font": "scifi"
+   "font": "scifi",
+   "form": "neon"
   },
   {
    "name": "Terminal",
    "scheme": "p-ambar",
-   "font": "terminal"
+   "font": "terminal",
+   "form": "terminal"
   },
   {
    "name": "Fantasía",
    "scheme": "p-vino",
-   "font": "fantasia"
+   "font": "fantasia",
+   "form": "editorial"
   },
   {
    "name": "Nórdico",
    "scheme": "p-nord",
-   "font": "moderna"
+   "font": "moderna",
+   "form": "minimal"
   },
   {
    "name": "Dracula",
    "scheme": "p-dracula",
-   "font": "geometrica"
+   "font": "geometrica",
+   "form": "neon"
   },
   {
    "name": "Catppuccin",
    "scheme": "p-catppuccin",
-   "font": "retro"
+   "font": "retro",
+   "form": "suave"
   },
   {
    "name": "Gruvbox",
    "scheme": "p-gruvbox",
-   "font": "editorial"
+   "font": "editorial",
+   "form": "terminal"
   },
   {
    "name": "Tokyo Night",
    "scheme": "p-tokyonight",
-   "font": "vanguardia"
+   "font": "vanguardia",
+   "form": "neon"
   },
   {
    "name": "Rosé Pine",
    "scheme": "p-rosepine",
-   "font": "elegante"
+   "font": "elegante",
+   "form": "suave"
   },
   {
    "name": "Deportivo",
    "scheme": "p-pizarra",
-   "font": "deportiva"
+   "font": "deportiva",
+   "form": "brutal"
   },
   {
    "name": "Brutalista",
    "scheme": "oled",
-   "font": "geometrica"
+   "font": "geometrica",
+   "form": "brutal"
   },
   {
    "name": "Minimal",
    "scheme": "p-hielo-claro",
-   "font": "grotesca"
+   "font": "grotesca",
+   "form": "minimal"
+  },
+  {
+   "name": "Cómic",
+   "scheme": "p-atardecer",
+   "font": "retro",
+   "form": "comic"
+  },
+  {
+   "name": "Militar",
+   "scheme": "p-bosque",
+   "font": "deportiva",
+   "form": "militar"
+  }
+ ],
+ "forms": [
+  {
+   "id": "clasico",
+   "name": "Clásica",
+   "desc": "Anillos, esquinas suaves y línea fina"
+  },
+  {
+   "id": "editorial",
+   "name": "Editorial",
+   "desc": "Barras finas con cifras de revista, marcos de foto y grano de papel"
+  },
+  {
+   "id": "pixel",
+   "name": "Píxel",
+   "desc": "Bloques de 8 bits, bordes gruesos, sombra dura y líneas de televisor"
+  },
+  {
+   "id": "terminal",
+   "name": "Terminal",
+   "desc": "Barras de texto ▓▓▓░░, [ botones ] y fósforo de monitor"
+  },
+  {
+   "id": "neon",
+   "name": "Neón",
+   "desc": "Diales de aguja, esquinas biseladas y bordes que brillan sobre rejilla"
+  },
+  {
+   "id": "suave",
+   "name": "Suave",
+   "desc": "Todo muy redondo, sin bordes, barras gorditas"
+  },
+  {
+   "id": "brutal",
+   "name": "Brutalista",
+   "desc": "Cifras enormes, negro grueso y sombras desplazadas"
+  },
+  {
+   "id": "comic",
+   "name": "Cómic",
+   "desc": "Estrellas, tinta gruesa, sombra de viñeta y trama de puntos"
+  },
+  {
+   "id": "minimal",
+   "name": "Minimal",
+   "desc": "Puntos en vez de anillos, sin bordes, nada que sobre"
+  },
+  {
+   "id": "militar",
+   "name": "Militar",
+   "desc": "Barras de segmentos, esquinas cortadas y bordes de plantilla"
   }
  ]
 };

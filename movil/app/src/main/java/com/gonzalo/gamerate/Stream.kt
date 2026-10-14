@@ -183,7 +183,7 @@ private fun toast(ctx: Context, m: String) = Toast.makeText(ctx, m, Toast.LENGTH
 /** Un botón grande de la pareja «Jugar en el PC / Jugar en streaming». */
 @Composable
 private fun BigPlay(icon: ImageVector, title: String, sub: String, brush: Brush, busy: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(22.dp)
+    val shape = shp(22.dp)
     // Icono arriba y texto debajo: cabe entero aunque los dos botones vayan lado a lado en un móvil estrecho
     Column(
         modifier.height(104.dp).clip(shape).background(brush).clickable(enabled = enabled && !busy) { onClick() }
@@ -260,7 +260,7 @@ fun NovaDialog(onDismiss: () -> Unit) {
         text = { Text("El streaming va con Nova, gratis y de código abierto (no está en Google Play: se instala con su APK de GitHub). Instálalo y en Atrio, PC → Streaming → «Emparejar con Nova»: se empareja con un toque.") },
         confirmButton = { TextButton({ onDismiss(); Stream.installNova(ctx) }) { Text("Descargar Nova") } },
         dismissButton = { TextButton(onDismiss) { Text("Ahora no") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -288,7 +288,7 @@ fun WakeDialog(pcName: String, h: StreamHost, onDismiss: () -> Unit) {
             }) { Text("Encender") }
         },
         dismissButton = { TextButton(onDismiss) { Text("Cerrar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -328,9 +328,9 @@ fun StreamPanel(modifier: Modifier = Modifier) {
             if (m == "NOVA") need = true else if (!ok) toast(ctx, m) else toast(ctx, m)
         }
     }
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+    Column(modifier.fillMaxWidth().clip(shp(20.dp))
         .background(Brush.linearGradient(listOf(Color(0x221F8A8A), Color(0x223B3FA8))))
-        .border(1.dp, Line, RoundedCornerShape(20.dp)).padding(16.dp).animateContentSize()) {
+        .border(1.dp, Line, shp(20.dp)).padding(16.dp).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.CastConnected, null, tint = Charcoal)
             Spacer(Modifier.width(8.dp))
@@ -409,7 +409,7 @@ fun PairDialog(creds: Boolean, onDismiss: () -> Unit) {
                 if (!creds) { Spacer(Modifier.height(8.dp)); Text("Antes, en Atrio del PC (Ajustes → Streaming), guarda tu usuario de Polaris.", color = ColGeneral, fontSize = 13.sp) }
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(pin, { pin = it.filter(Char::isDigit).take(4) }, label = { Text("PIN") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), shape = RoundedCornerShape(14.dp))
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), shape = shp(14.dp))
                 if (msg.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(msg, color = Muted, fontSize = 13.sp) }
                 Spacer(Modifier.height(4.dp))
                 TextButton({ if (!Stream.openNova(ctx)) Stream.installNova(ctx) }) { Text("Abrir Nova") }
@@ -426,7 +426,7 @@ fun PairDialog(creds: Boolean, onDismiss: () -> Unit) {
             }, enabled = pin.length == 4 && !busy) { Text(if (busy) "Un momento…" else "Emparejar") }
         },
         dismissButton = { TextButton({ onDismiss() }, enabled = !busy) { Text("Cerrar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 

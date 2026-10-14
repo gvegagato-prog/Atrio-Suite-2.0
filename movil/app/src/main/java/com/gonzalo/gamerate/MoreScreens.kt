@@ -80,7 +80,7 @@ fun ArtBanner(
         }
         AsyncImage(cover, name,
             Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 50.dp).width(150.dp).aspectRatio(2f / 3f)
-                .shadow(6.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Sand)
+                .shadow(6.dp, shp(12.dp)).clip(shp(12.dp)).background(Sand)
                 .pointerInput(onDouble != null) {
                     if (onDouble != null) detectTapGestures(onDoubleTap = { dbl?.invoke() })
                 },
@@ -197,7 +197,7 @@ fun EditScreen(
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(g.creator, { g = g.copy(creator = it) },
                 label = { Text(kind.creatorWord) }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             if (kind.isGame && g.creator.isBlank()) {
                 Spacer(Modifier.height(6.dp))
                 DetectStudio(g.name) { g = g.copy(creator = it) }
@@ -213,7 +213,7 @@ fun EditScreen(
             ScoresFor(g.scores(), kind.labels) { i, v -> g = g.setScore(i, v) }
             Spacer(Modifier.height(20.dp))
             OutlinedTextField(g.review, { g = g.copy(review = it) }, label = { Text("Tu opinión") },
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp))
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp))
             Spacer(Modifier.height(8.dp))
             VoiceTools(g.review, g.name) { g = g.copy(review = it) }
             Spacer(Modifier.height(10.dp))
@@ -224,7 +224,7 @@ fun EditScreen(
             }
             Spacer(Modifier.height(18.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button({ onSave(g) }, shape = RoundedCornerShape(50), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
+                Button({ onSave(g) }, shape = pillShape(), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
                     Text("Guardar", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 }
                 if (!isNew) TextButton(onDelete) { Text("Eliminar", color = UiSoft) }
@@ -284,7 +284,7 @@ private fun ColumnScope.ReadCard(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Spacer(Modifier.weight(1f))
                     Column(
-                        Modifier.weight(1f).border(1.dp, Charcoal, RoundedCornerShape(12.dp)).padding(vertical = 10.dp),
+                        Modifier.weight(1f).border(1.dp, Charcoal, shp(12.dp)).padding(vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(shortHours(g.minutes), fontFamily = Display, fontSize = 20.sp, maxLines = 1, softWrap = false)
@@ -325,7 +325,7 @@ private fun ColumnScope.ReadCard(
         Spacer(Modifier.height(24.dp))
         Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onEdit, shape = RoundedCornerShape(50), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
+        OutlinedButton(onEdit, shape = pillShape(), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
             Icon(Icons.Rounded.Edit, null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Editar", fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -363,7 +363,7 @@ fun NoteScreen(
             if (forSeg != null || forPart.isNotBlank()) {
                 Spacer(Modifier.height(10.dp))
                 Row(
-                    Modifier.background(Sand, RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 7.dp),
+                    Modifier.background(Sand, pillShape()).padding(horizontal = 14.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -377,12 +377,12 @@ fun NoteScreen(
             ScoresFor(e.scores(), kind.labels) { i, v -> e = e.setScore(i, v) }
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(e.note, { e = e.copy(note = it) }, label = { Text("Anotaciones") },
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp))
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp))
             Spacer(Modifier.height(8.dp))
             VoiceTools(e.note, play.name) { e = e.copy(note = it) }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button({ onSave(e) }, shape = RoundedCornerShape(50), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
+                Button({ onSave(e) }, shape = pillShape(), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
                     Text(if (forSeg != null || forPart.isNotBlank()) "Guardar valoración" else "Guardar apunte", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 }
                 if (entry != null) TextButton(onDelete) { Text("Eliminar", color = UiSoft) }
@@ -499,7 +499,7 @@ fun MenuScreen(
                         Column(Modifier.width(92.dp).pop { onAct(a) }) {
                             AsyncImage(
                                 a.cover, a.name,
-                                Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(8.dp)).background(Sand),
+                                Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(shp(8.dp)).background(Sand),
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(Modifier.height(6.dp))
@@ -517,7 +517,7 @@ fun MenuScreen(
 /** Casilla para crear una categoría propia. */
 @Composable
 private fun NewKindTile(delayMs: Int, modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = shp(16.dp)
     Column(modifier.appear(delayMs).pop(onClick)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(shape).border(1.dp, Line, shape),
@@ -539,7 +539,7 @@ fun Tile(
     label: String, info: MenuInfo, delayMs: Int, modifier: Modifier = Modifier,
     tint: Int = 0, onLongClick: (() -> Unit)? = null, onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = shp(16.dp)
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val sc by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.96f else 1f, label = "tile")

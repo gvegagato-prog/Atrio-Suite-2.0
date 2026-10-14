@@ -119,7 +119,7 @@ fun LiveCard(
         val known = Suite.pcs().maxByOrNull { it.at }
         if (known != null) {
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, Line, RoundedCornerShape(16.dp))
+                Modifier.fillMaxWidth().clip(shp(16.dp)).border(1.dp, Line, shp(16.dp))
                     .clickable { onRemote() }.padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -137,7 +137,7 @@ fun LiveCard(
     }
     val g = pc.game
     @Suppress("UNUSED_VARIABLE") val tick = Suite.tick
-    val shape = RoundedCornerShape(24.dp)
+    val shape = shp(24.dp)
     if (g == null) {
         Row(
             Modifier.fillMaxWidth().clip(shape).background(Crudo).border(1.dp, Line, shape).clickable { onRemote() }.padding(16.dp),
@@ -168,7 +168,7 @@ fun LiveCard(
             ))))
         }
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x55000000), 0.45f to Color(0x22000000), 1f to Color(0xEE0B0B0E))))
-        Row(Modifier.padding(14.dp).background(Color(0x66000000), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(14.dp).background(Color(0x66000000), pillShape()).padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
             LiveDot()
             Spacer(Modifier.width(6.dp))
             Text("EN DIRECTO · ${pc.name.uppercase()}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
@@ -216,7 +216,7 @@ fun LiveCard(
 /** Tarjeta de la suite cuando aún no hay ningún PC (o no has entrado en tu cuenta). */
 @Composable
 fun SuiteIntro(title: String, text: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = shp(20.dp)
     Row(
         Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(LiveColor.copy(alpha = 0.18f), Color.Transparent)))
             .border(1.dp, Line, shape).clickable { onClick() }.padding(16.dp),
@@ -281,13 +281,13 @@ fun ShotStrip(shots: List<Shot>, title: String = "Capturas", onOpen: (Shot) -> U
         Spacer(Modifier.height(8.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(pending.entries.toList(), key = { "d" + it.key }) { (_, f) ->
-                Box(Modifier.width(150.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(Sand), contentAlignment = Alignment.Center) {
+                Box(Modifier.width(150.dp).aspectRatio(16f / 9f).clip(shp(12.dp)).background(Sand), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(progress = { f }, Modifier.size(28.dp), strokeWidth = 3.dp, color = Charcoal)
                 }
             }
             items(shots, key = { it.id }) { s ->
                 AsyncImage(
-                    s.uri, s.game, Modifier.width(150.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(Sand).pop { onOpen(s) },
+                    s.uri, s.game, Modifier.width(150.dp).aspectRatio(16f / 9f).clip(shp(12.dp)).background(Sand).pop { onOpen(s) },
                     contentScale = ContentScale.Crop
                 )
             }
@@ -356,7 +356,7 @@ fun ShotViewer(shot: Shot, onBack: () -> Unit, onDelete: () -> Unit, onMemo: (()
             text = { Text("Se borra de Atrio. Si se guardó en la galería, allí se queda; y en el PC sigue en Imágenes/Atrio.") },
             confirmButton = { TextButton({ ask = false; onDelete() }) { Text("Borrar") } },
             dismissButton = { TextButton({ ask = false }) { Text("Cancelar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 }
@@ -404,13 +404,13 @@ fun MemoDialog(title: String, canShot: Boolean, presetShot: Shot? = null, onSave
         text = {
             Column {
                 OutlinedTextField(text, { text = it }, placeholder = { Text("Lo que está pasando, una idea, algo que no quieres olvidar…") },
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp))
+                    shape = shp(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp))
                 if (presetShot != null) {
                     Spacer(Modifier.height(10.dp))
-                    AsyncImage(presetShot.uri, null, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                    AsyncImage(presetShot.uri, null, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(shp(10.dp)), contentScale = ContentScale.Crop)
                 } else if (canShot) {
                     Spacer(Modifier.height(10.dp))
-                    Row(Modifier.clip(RoundedCornerShape(10.dp)).clickable { withShot = !withShot }.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.clip(shp(10.dp)).clickable { withShot = !withShot }.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(withShot, { withShot = it })
                         Text("Con una captura del PC de este momento")
                     }
@@ -419,7 +419,7 @@ fun MemoDialog(title: String, canShot: Boolean, presetShot: Shot? = null, onSave
         },
         confirmButton = { TextButton({ if (text.isNotBlank() || withShot || presetShot != null) onSave(text.trim(), withShot) }) { Text("Guardar") } },
         dismissButton = { TextButton(onDismiss) { Text("Cancelar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -435,7 +435,7 @@ fun AddSegDialog(kind: Kind, onSave: (Seg) -> Unit, onDismiss: () -> Unit) {
         text = {
             Column {
                 OutlinedTextField(name, { name = it }, label = { Text(if (kind.isGame) "Qué has jugado (opcional)" else "Qué parte (opcional)") },
-                    singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
                 if (kind.isGame) {
                     Spacer(Modifier.height(12.dp))
                     Text("Duración", color = UiSoft, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -460,7 +460,7 @@ fun AddSegDialog(kind: Kind, onSave: (Seg) -> Unit, onDismiss: () -> Unit) {
             }) { Text("Añadir y valorar") }
         },
         dismissButton = { TextButton(onDismiss) { Text("Cancelar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -473,7 +473,7 @@ fun PlaySuitePanel(
     /** Encender o apagar «Valorar por partes» en esta ficha. */
     onParts: (Boolean) -> Unit = {}
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = shp(16.dp)
     Column(Modifier.fillMaxWidth().border(1.dp, Line, shape).padding(16.dp).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -529,7 +529,7 @@ fun PlaySuitePanel(
                     val sh = if (m.sh.isNotBlank()) Suite.shotById(m.sh) else null
                     if (sh != null) {
                         Spacer(Modifier.height(6.dp))
-                        AsyncImage(sh.uri, null, Modifier.fillMaxWidth(0.7f).aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp)).pop { onOpenShot(sh) }, contentScale = ContentScale.Crop)
+                        AsyncImage(sh.uri, null, Modifier.fillMaxWidth(0.7f).aspectRatio(16f / 9f).clip(shp(10.dp)).pop { onOpenShot(sh) }, contentScale = ContentScale.Crop)
                     } else if (m.sh.isNotBlank()) {
                         Text("📷 captura en el PC", color = Muted, fontSize = 12.sp)
                     }
@@ -653,7 +653,7 @@ fun SuiteScreen(
                             contentPadding = PaddingValues(bottom = 24.dp)) {
                             items(shots, key = { it.id }) { s ->
                                 Column(Modifier.pop { onOpenShot(s) }) {
-                                    AsyncImage(s.uri, s.game, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp)).background(Sand), contentScale = ContentScale.Crop)
+                                    AsyncImage(s.uri, s.game, Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(shp(10.dp)).background(Sand), contentScale = ContentScale.Crop)
                                     Text(s.game.ifBlank { "Escritorio" }, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                                     Text(fmt(s.time), fontSize = 11.sp, color = Muted)
                                 }
@@ -685,7 +685,7 @@ fun SuiteScreen(
                         Spacer(Modifier.height(8.dp))
                         var msg by remember { mutableStateOf("") }
                         OutlinedTextField(msg, { msg = it }, placeholder = { Text("Sale como aviso en Atrio") }, singleLine = true,
-                            shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
+                            shape = shp(14.dp), modifier = Modifier.fillMaxWidth(),
                             trailingIcon = { IconButton({ if (msg.isNotBlank()) { act("toast", JSONObject().put("text", msg)); msg = "" } }) { Icon(Icons.Rounded.PlayArrow, "Enviar") } })
                         Spacer(Modifier.height(24.dp))
                         Overline("Dispositivos de tu cuenta")
@@ -717,7 +717,7 @@ fun SuiteScreen(
             text = { Text(if (pc?.game != null) "Ahora mismo se está jugando a ${pc.game.name}: guarda la partida antes." else "Atrio guarda tus horas antes de hacerlo.") },
             confirmButton = { TextButton({ confirm = null; act("power", JSONObject().put("action", c.first)) }) { Text(c.first.replaceFirstChar { it.uppercase() }) } },
             dismissButton = { TextButton({ confirm = null }) { Text("Cancelar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 }
@@ -737,14 +737,14 @@ private fun EmptySuite() {
 @Composable
 private fun PcGameTile(g: PcGame, busy: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(modifier.pop(onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Sand), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(shp(10.dp)).background(Sand), contentAlignment = Alignment.Center) {
             Cover(g.cover, g.name, Modifier.fillMaxSize())
             if (busy) Box(Modifier.fillMaxSize().background(Color(0x88000000)), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(Modifier.size(26.dp), color = Color.White, strokeWidth = 2.dp)
             }
             if (g.fav) Icon(Icons.Rounded.Star, null, tint = Gold, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(16.dp))
             if (g.links.isNotEmpty()) Text("${g.links.size} guía" + if (g.links.size > 1) "s" else "", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.align(Alignment.BottomStart).padding(5.dp).background(Color(0x99000000), RoundedCornerShape(50)).padding(horizontal = 6.dp, vertical = 2.dp))
+                modifier = Modifier.align(Alignment.BottomStart).padding(5.dp).background(Color(0x99000000), pillShape()).padding(horizontal = 6.dp, vertical = 2.dp))
         }
         Spacer(Modifier.height(5.dp))
         Text(g.name, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 15.sp)
@@ -779,7 +779,7 @@ fun PcGameSheet(g: PcGame, pcOnline: Boolean, onPlay: () -> Unit, onDismiss: () 
                     Spacer(Modifier.height(6.dp))
                     if (g.links.isEmpty()) Text("Aún no tiene ninguna. Añade una aquí, compártela desde el navegador (Compartir → Atrio) o guárdala en el PC desde Guías.", color = Muted, fontSize = 13.sp)
                     g.links.forEach { (n, u) ->
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable {
+                        Row(Modifier.fillMaxWidth().clip(shp(10.dp)).clickable {
                             val op = Guides.opener
                             if (op != null) { onDismiss(); op(Guide(n, u, "pc")) } else openUrl(ctx, u)
                         }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -795,9 +795,9 @@ fun PcGameSheet(g: PcGame, pcOnline: Boolean, onPlay: () -> Unit, onDismiss: () 
                     Spacer(Modifier.height(8.dp))
                     TextButton({ adding = true }) { Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(6.dp)); Text("Añadir una web") }
                 } else {
-                    OutlinedTextField(url, { url = it.trim() }, label = { Text("Dirección (https://…)") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(url, { url = it.trim() }, label = { Text("Dirección (https://…)") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(name, { name = it }, label = { Text("Nombre (opcional)") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(name, { name = it }, label = { Text("Nombre (opcional)") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
                 }
             }
         },
@@ -810,7 +810,7 @@ fun PcGameSheet(g: PcGame, pcOnline: Boolean, onPlay: () -> Unit, onDismiss: () 
 
         },
         dismissButton = { TextButton({ if (adding) adding = false else onDismiss() }) { Text(if (adding) "Atrás" else "Cerrar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -836,7 +836,7 @@ fun ShareToGameDialog(url: String, title: String, onDismiss: () -> Unit, say: (S
                     Spacer(Modifier.height(8.dp))
                     Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
                         list.take(60).forEach { g ->
-                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable {
+                            Row(Modifier.fillMaxWidth().clip(shp(10.dp)).clickable {
                                 scope.launch { val (_, m) = Suite.addLink(g.key, url, title.take(60)); say("${g.name}: $m"); onDismiss() }
                             }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 MiniCover(g.cover, 30.dp)
@@ -851,6 +851,6 @@ fun ShareToGameDialog(url: String, title: String, onDismiss: () -> Unit, say: (S
         },
         confirmButton = {},
         dismissButton = { TextButton(onDismiss) { Text("Cancelar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }

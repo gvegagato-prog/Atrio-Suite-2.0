@@ -74,7 +74,7 @@ fun CustomAddScreen(
             }
         }
         Spacer(Modifier.height(20.dp))
-        val shape = RoundedCornerShape(12.dp)
+        val shape = shp(12.dp)
         Box(
             Modifier.align(Alignment.CenterHorizontally).width(150.dp).aspectRatio(2f / 3f).clip(shape)
                 .background(Sand).border(1.dp, Line, shape).pop { onPhoto { cover = it } },
@@ -93,17 +93,17 @@ fun CustomAddScreen(
         Spacer(Modifier.height(20.dp))
         OutlinedTextField(
             name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Nombre") }, singleLine = true,
-            shape = RoundedCornerShape(14.dp)
+            shape = shp(14.dp)
         )
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
             creator, { creator = it }, Modifier.fillMaxWidth(), label = { Text("${kind.creatorWord} (opcional)") },
-            singleLine = true, shape = RoundedCornerShape(14.dp)
+            singleLine = true, shape = shp(14.dp)
         )
         Spacer(Modifier.height(20.dp))
         Button(
             { if (name.isNotBlank()) onCreate(name.trim(), creator.trim(), cover) },
-            enabled = name.isNotBlank(), shape = RoundedCornerShape(50),
+            enabled = name.isNotBlank(), shape = pillShape(),
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) { Text(if (forPlay) "Añadir a la lista" else "Valorar ahora") }
         Spacer(Modifier.height(10.dp))
@@ -141,7 +141,7 @@ fun KindDialog(
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     title, { title = it }, Modifier.fillMaxWidth(), label = { Text("Nombre (p. ej. Películas)") },
-                    singleLine = true, shape = RoundedCornerShape(14.dp)
+                    singleLine = true, shape = shp(14.dp)
                 )
                 Spacer(Modifier.height(14.dp))
                 Text("Qué valoras", fontFamily = Display, fontSize = 17.sp)
@@ -155,14 +155,14 @@ fun KindDialog(
                         crit.value[i], { v -> crit.value = crit.value.toMutableList().also { it[i] = v } },
                         Modifier.fillMaxWidth().padding(vertical = 3.dp),
                         placeholder = { Text(hints[i], color = Muted) }, label = { Text("Criterio ${i + 1}") },
-                        singleLine = true, shape = RoundedCornerShape(14.dp)
+                        singleLine = true, shape = shp(14.dp)
                     )
                 }
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     progress, { progress = it }, Modifier.fillMaxWidth(),
                     label = { Text("Lo que tienes empezado se llama…") }, placeholder = { Text("Viendo", color = Muted) },
-                    singleLine = true, shape = RoundedCornerShape(14.dp)
+                    singleLine = true, shape = shp(14.dp)
                 )
                 Spacer(Modifier.height(14.dp))
                 Text("Buscar en internet", fontFamily = Display, fontSize = 17.sp)
@@ -218,6 +218,6 @@ fun KindDialog(
             ) { Text("Guardar") }
         },
         dismissButton = { TextButton(onDismiss) { Text("Cancelar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }

@@ -365,7 +365,7 @@ object Couple {
 fun FlipCard(
     enabled: Boolean, onClick: () -> Unit, modifier: Modifier,
     front: @Composable () -> Unit, back: @Composable BoxScope.() -> Unit,
-    shape: RoundedCornerShape = RoundedCornerShape(18.dp)
+    shape: androidx.compose.ui.graphics.Shape = shp(18.dp)
 ) {
     var flipped by remember { mutableStateOf(false) }
     val rot by animateFloatAsState(
@@ -536,25 +536,25 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
             OutlinedTextField(
                 user, { user = it }, label = { Text("Usuario") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrect = false, keyboardType = KeyboardType.Ascii),
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 pass, { pass = it }, label = { Text("Contraseña") }, singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrect = false),
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 name, { name = it }, label = { Text("Tu nombre (lo verá tu pareja)") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
             )
             if (needKey) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     key, { key = it.trim() }, label = { Text("Clave web de Firebase") }, singleLine = true,
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                    shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
                 )
                 Text(
                     "Consola de Firebase → ⚙ Configuración del proyecto → General → «Clave de API web». Empieza por AIza.",
@@ -604,7 +604,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
             if (showUrl) {
                 OutlinedTextField(
                     url, { url = it }, label = { Text("Dirección de tu Firebase Realtime Database") }, singleLine = true,
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                    shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
                 )
             }
         } else {
@@ -625,7 +625,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 name, { name = it }, label = { Text("Tu nombre (lo verá tu pareja)") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -656,7 +656,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                 OutlinedTextField(
                     partnerIn, { partnerIn = it }, label = { Text("Usuario de tu pareja") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrect = false, keyboardType = KeyboardType.Ascii),
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                    shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
                 Button(enabled = !busy && partnerIn.isNotBlank(), onClick = {
@@ -757,7 +757,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                     newPass, { newPass = it }, label = { Text("Contraseña nueva") }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrect = false),
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                    shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(6.dp))
                 Button(enabled = !busy && newPass.length >= 6, onClick = {
@@ -781,7 +781,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
             )
             Text(
                 Account.RULES, fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth().background(UiTint, RoundedCornerShape(14.dp)).padding(12.dp)
+                modifier = Modifier.fillMaxWidth().background(UiTint, shp(14.dp)).padding(12.dp)
             )
             OutlinedButton({
                 val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -833,7 +833,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                     }
                 }) { Text("Solo lo de la cuenta") }
             },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 
@@ -849,7 +849,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                         Column(
                             Modifier.fillMaxWidth().padding(vertical = 4.dp)
                                 .pop { restore = n }
-                                .background(Sand, RoundedCornerShape(14.dp)).padding(12.dp)
+                                .background(Sand, shp(14.dp)).padding(12.dp)
                         ) {
                             Text(n.name + if (n.mine) " (este dispositivo)" else "", fontWeight = FontWeight.SemiBold)
                             Text("${n.count} fichas · $whenText", color = Muted, fontSize = 13.sp)
@@ -858,7 +858,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                 }
             },
             confirmButton = { TextButton({ cloud = null }) { Text("Cerrar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
     val r = restore
@@ -884,7 +884,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                 }) { Text("Recuperar") }
             },
             dismissButton = { TextButton({ restore = null }) { Text("Cancelar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 }

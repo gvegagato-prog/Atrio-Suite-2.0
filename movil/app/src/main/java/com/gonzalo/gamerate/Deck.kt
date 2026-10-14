@@ -194,7 +194,7 @@ fun DeckScreen(
                     Column(Modifier.width(78.dp).pop { onAdd(c) }) {
                         AsyncImage(
                             c.image, c.title,
-                            Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Sand),
+                            Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(shp(10.dp)).background(Sand),
                             contentScale = ContentScale.Crop
                         )
                         Text(c.title, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -217,7 +217,7 @@ fun DeckScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     AsyncImage(
                         m.image, m.title,
-                        Modifier.width(150.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(16.dp)).background(Sand),
+                        Modifier.width(150.dp).aspectRatio(2f / 3f).clip(shp(16.dp)).background(Sand),
                         contentScale = ContentScale.Crop
                     )
                     Spacer(Modifier.height(10.dp))
@@ -226,7 +226,7 @@ fun DeckScreen(
             },
             confirmButton = { TextButton({ match = null; onAdd(m) }) { Text("Añadir a mi lista") } },
             dismissButton = { TextButton({ match = null }) { Text("Seguir") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 
@@ -260,7 +260,7 @@ fun DeckScreen(
                 }) { Text("Barajar") }
             },
             dismissButton = { TextButton({ sel = emptySet() }) { Text("Automático") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 
@@ -275,7 +275,7 @@ fun DeckScreen(
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         likes.reversed().forEach { c ->
                             Row(
-                                Modifier.fillMaxWidth().padding(vertical = 4.dp).border(1.dp, Line, RoundedCornerShape(14.dp)).padding(8.dp),
+                                Modifier.fillMaxWidth().padding(vertical = 4.dp).border(1.dp, Line, shp(14.dp)).padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 MiniCover(c.image, 40.dp)
@@ -301,7 +301,7 @@ fun DeckScreen(
                 }
             },
             confirmButton = { TextButton({ showLikes = false }) { Text("Cerrar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 }
@@ -323,7 +323,7 @@ internal fun SwipeCard(
     val off = remember(c.key) { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val cb by rememberUpdatedState(onSwiped)
-    val shape = RoundedCornerShape(20.dp)
+    val shape = shp(20.dp)
     Box(
         Modifier
             .widthIn(max = 420.dp).fillMaxWidth(0.92f).aspectRatio(0.7f)
@@ -370,14 +370,14 @@ internal fun SwipeCard(
             Text(
                 "${c.score}", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 modifier = Modifier.align(Alignment.TopStart).padding(14.dp)
-                    .background(Color(0x66000000), RoundedCornerShape(50))
+                    .background(Color(0x66000000), pillShape())
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
         if (partnerLiked && partnerName != null) {
             Text(
                 "A $partnerName le apetece", fontWeight = FontWeight.Medium, fontSize = 12.sp, color = Charcoal,
-                modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).background(Crudo, RoundedCornerShape(50))
+                modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).background(Crudo, pillShape())
                     .padding(horizontal = 12.dp, vertical = 5.dp)
             )
         }
@@ -395,7 +395,7 @@ private fun BoxScope.Stamp(text: String, color: Color, alpha: Float, align: Alig
         text, color = color, fontWeight = FontWeight.SemiBold, fontSize = 26.sp,
         modifier = Modifier.align(align).padding(top = 60.dp, start = 24.dp, end = 24.dp)
             .graphicsLayer { this.alpha = alpha; rotationZ = rot }
-            .border(2.dp, color, RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+            .border(2.dp, color, shp(8.dp)).background(Color.White.copy(alpha = 0.85f), shp(8.dp))
             .padding(horizontal = 12.dp, vertical = 4.dp)
     )
 }

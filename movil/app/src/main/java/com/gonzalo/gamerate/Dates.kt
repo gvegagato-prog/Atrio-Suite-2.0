@@ -46,7 +46,7 @@ fun DateField(label: String, day: Long, modifier: Modifier = Modifier, onSet: (L
         Spacer(Modifier.height(4.dp))
         Text(
             if (day > 0L) fmtDay(day) else "Elegir fecha",
-            Modifier.clip(RoundedCornerShape(12.dp)).background(UiTint).clickable { open = true }
+            Modifier.clip(shp(12.dp)).background(UiTint).clickable { open = true }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             fontWeight = FontWeight.Medium
         )

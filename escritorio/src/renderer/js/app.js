@@ -33,6 +33,7 @@
     b.dataset.density = t.density;
     b.dataset.backdrop = t.backdrop;
     b.dataset.herofit = t.heroFit || 'nitido';
+    b.dataset.form = t.form || 'clasico';
     b.classList.toggle('no-motion', !t.motion);
     b.classList.toggle('no-clock', !t.clock);
     b.classList.toggle('no-hints', !t.labels);

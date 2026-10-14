@@ -175,7 +175,7 @@ body[data-backdrop="liso"] #backdrop {
 }
 #filters { display: flex; gap: .3rem; flex: 1; min-width: 0; overflow: hidden; }
 .chip {
-  position: relative; padding: .45rem .95rem; border-radius: 99px;
+  position: relative; padding: .45rem .95rem; border-radius: var(--pill, 99px);
   color: var(--fg-2); font-size: 1rem; font-weight: 500; white-space: nowrap;
   transition: color var(--dur), background var(--dur);
 }
@@ -208,14 +208,14 @@ body.no-clock #clock { display: none; }
 #hints span { display: inline-flex; align-items: center; gap: .45rem; }
 #hints kbd {
   font-family: var(--font); font-size: .72rem; font-weight: 600; min-width: 1.45rem; height: 1.45rem; padding: 0 .35rem;
-  display: inline-grid; place-items: center; border-radius: 99px; border: 1.5px solid var(--fg-3); color: var(--fg-2);
+  display: inline-grid; place-items: center; border-radius: var(--pill, 99px); border: 1.5px solid var(--fg-3); color: var(--fg-2);
 }
 body.no-hints #hints { display: none; }
 
 /* ---------- Aviso y pantalla de lanzamiento ---------- */
 #toast {
   position: fixed; left: 50%; bottom: 3rem; z-index: 90; transform: translate(-50%, 1rem);
-  background: var(--fg); color: var(--bg); padding: .7rem 1.3rem; border-radius: 99px;
+  background: var(--fg); color: var(--bg); padding: .7rem 1.3rem; border-radius: var(--pill, 99px);
   font-weight: 500; opacity: 0; pointer-events: none; transition: opacity var(--dur), transform var(--dur) var(--ease);
   max-width: 60vw; text-align: center;
 }
@@ -293,7 +293,7 @@ body[data-light] .title-art { filter: drop-shadow(0 .2rem .8rem rgba(0, 0, 0, .2
 .meta .src { color: var(--fg); font-weight: 500; }
 
 .btn {
-  display: inline-flex; align-items: center; gap: .6rem; height: 2.9rem; padding: 0 1.5rem; border-radius: 99px;
+  display: inline-flex; align-items: center; gap: .6rem; height: 2.9rem; padding: 0 1.5rem; border-radius: var(--pill, 99px);
   font-weight: 600; font-size: 1.05rem; background: var(--surface-2); color: var(--fg);
   transition: background var(--dur), color var(--dur), box-shadow var(--dur);
 }

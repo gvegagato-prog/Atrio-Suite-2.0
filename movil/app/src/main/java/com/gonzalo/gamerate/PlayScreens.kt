@@ -149,7 +149,7 @@ fun PlayDetailScreen(
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(p.creator, { upd(p.copy(creator = it)) },
                 label = { Text(kind.creatorWord) }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             if (kind.isGame && p.creator.isBlank()) {
                 Spacer(Modifier.height(6.dp))
                 DetectStudio(p.name) { upd(p.copy(creator = it)) }
@@ -203,7 +203,7 @@ fun PlayDetailScreen(
                         LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
                         val mins = ((now - sessStart) / 60_000L).toInt().coerceAtLeast(0)
                         Row(
-                            Modifier.border(1.dp, Line, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+                            Modifier.border(1.dp, Line, shp(14.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Rounded.Timer, null, tint = Charcoal)
@@ -214,7 +214,7 @@ fun PlayDetailScreen(
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        Button({ onStop() }, shape = RoundedCornerShape(50)) { Text("Terminar sesión") }
+                        Button({ onStop() }, shape = pillShape()) { Text("Terminar sesión") }
                     } else {
                         Text("Empezar sesión con aviso cada:", color = UiSoft, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         Spacer(Modifier.height(6.dp))
@@ -239,7 +239,7 @@ fun PlayDetailScreen(
             )
 
             Spacer(Modifier.height(18.dp))
-            Button({ onNote(p, null) }, shape = RoundedCornerShape(50),
+            Button({ onNote(p, null) }, shape = pillShape(),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = if (due) ColGeneral else Charcoal)) {
                 Text("Apuntar notas", fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -258,7 +258,7 @@ fun PlayDetailScreen(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            OutlinedButton({ onFinish(p) }, shape = RoundedCornerShape(50)) {
+            OutlinedButton({ onFinish(p) }, shape = pillShape()) {
                 Text(if (b != null) "Pasar a valorados" else "Terminado: valorar ahora")
             }
 
@@ -270,7 +270,7 @@ fun PlayDetailScreen(
                     val line = kind.labels.mapIndexed { i, l -> "${l.take(3)} ${vals[i]}" }.joinToString(" · ")
                     val chap = if (kind.isBook && e.chapter > 0) " · cap. ${e.chapter}" else ""
                     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                        .clip(RoundedCornerShape(14.dp)).border(1.dp, Line, RoundedCornerShape(14.dp))
+                        .clip(shp(14.dp)).border(1.dp, Line, shp(14.dp))
                         .clickable { onNote(p, e) }.padding(14.dp)) {
                         Text(fmt(e.time) + chap, color = UiSoft, fontSize = 14.sp)
                         Text(line, fontWeight = FontWeight.Medium, fontSize = 15.sp)
@@ -290,7 +290,7 @@ fun PlayDetailScreen(
             Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
             Spacer(Modifier.height(16.dp))
             // «Editar» abre los campos (estado, estudio, plataforma, fechas, progreso, horas, portada); «Listo» los cierra
-            OutlinedButton({ editing = !editing }, shape = RoundedCornerShape(50), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
+            OutlinedButton({ editing = !editing }, shape = pillShape(), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
                 Icon(if (editing) Icons.Rounded.Check else Icons.Rounded.Edit, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(if (editing) "Listo" else "Editar", fontSize = 15.sp, fontWeight = FontWeight.Medium)

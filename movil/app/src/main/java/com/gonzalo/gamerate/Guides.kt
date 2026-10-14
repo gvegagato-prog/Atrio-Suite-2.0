@@ -109,22 +109,22 @@ private fun hostHue(host: String) = ((host.hashCode() and 0x7fffffff) % 360).toF
 @Composable
 private fun GuideCard(g: Guide, resume: String?, onOpen: () -> Unit, onLong: () -> Unit) {
     val hue = hostHue(g.host)
-    val shape = RoundedCornerShape(22.dp)
+    val shape = shp(22.dp)
     Box(
         Modifier.width(216.dp).height(128.dp).clip(shape)
             .background(Brush.linearGradient(listOf(Color.hsv(hue, 0.55f, 0.36f), Color.hsv((hue + 35f) % 360f, 0.65f, 0.16f))))
             .combinedClickable(onClick = onOpen, onLongClick = onLong)
     ) {
         Box(
-            Modifier.padding(14.dp).size(44.dp).background(Color(0x33FFFFFF), RoundedCornerShape(12.dp)),
+            Modifier.padding(14.dp).size(44.dp).background(Color(0x33FFFFFF), shp(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage("https://www.google.com/s2/favicons?domain=${g.host}&sz=64", null, Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)), contentScale = ContentScale.Fit)
+            AsyncImage("https://www.google.com/s2/favicons?domain=${g.host}&sz=64", null, Modifier.size(28.dp).clip(shp(6.dp)), contentScale = ContentScale.Fit)
         }
         Text(
             when (g.src) { "pc" -> "PC"; "movil" -> "MÓVIL"; else -> "SUGERIDA" },
             color = Color(0xCCFFFFFF), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
-            modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).background(Color(0x33000000), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp)
+            modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).background(Color(0x33000000), pillShape()).padding(horizontal = 8.dp, vertical = 3.dp)
         )
         Column(Modifier.align(Alignment.BottomStart).padding(14.dp)) {
             Text(g.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -170,7 +170,7 @@ fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier) {
             items(list, key = { it.url }) { g -> GuideCard(g, resume[g.url], { Guides.opener?.invoke(g) }, { menu = g }) }
             item {
                 Box(
-                    Modifier.width(128.dp).height(128.dp).clip(RoundedCornerShape(22.dp)).border(1.dp, Line, RoundedCornerShape(22.dp))
+                    Modifier.width(128.dp).height(128.dp).clip(shp(22.dp)).border(1.dp, Line, shp(22.dp))
                         .clickable { Guides.opener?.invoke(Guide("Buscar guías", "https://duckduckgo.com/?q=" + Uri.encode("$name guía"), "sug")) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -192,9 +192,9 @@ fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier) {
             title = { Text("Añadir una guía", fontFamily = Display) },
             text = {
                 Column {
-                    OutlinedTextField(url, { url = it.trim() }, label = { Text("Dirección (https://…)") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(url, { url = it.trim() }, label = { Text("Dirección (https://…)") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(nm, { nm = it }, label = { Text("Nombre (opcional)") }, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(nm, { nm = it }, label = { Text("Nombre (opcional)") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
                     Text(if (pc != null) "Se guarda también en el PC: la verás en la página de ${pc.name} en Atrio." else "Este juego no está en la biblioteca de ningún PC: la guía se guarda en este móvil.",
                         color = Muted, fontSize = 13.sp)
@@ -211,7 +211,7 @@ fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier) {
                 }) { Text("Guardar") }
             },
             dismissButton = { TextButton({ adding = false }) { Text("Cancelar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
     val m = menu
@@ -233,7 +233,7 @@ fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier) {
                 }
             },
             dismissButton = { TextButton({ menu = null }) { Text("Cerrar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 }

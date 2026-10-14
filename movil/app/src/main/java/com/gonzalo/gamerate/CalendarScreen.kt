@@ -203,7 +203,7 @@ private fun DayDialog(ep: Long, items: List<CalItem>, partnerName: String?, onOp
                 items.forEach { c ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 4.dp).pop { onOpen(c) }
-                            .border(1.dp, Line, RoundedCornerShape(14.dp)).padding(10.dp),
+                            .border(1.dp, Line, shp(14.dp)).padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         MiniCover(c.cover, 42.dp)
@@ -218,7 +218,7 @@ private fun DayDialog(ep: Long, items: List<CalItem>, partnerName: String?, onOp
             }
         },
         confirmButton = { TextButton(onDismiss) { Text("Cerrar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -241,7 +241,7 @@ fun Mark(c: CalItem, ep: Long, modifier: Modifier) {
     } else if (c.realEnd > 0L && c.e == ep) {
         Text(
             "✓",
-            modifier = modifier.background(Color(0x99000000), RoundedCornerShape(8.dp))
+            modifier = modifier.background(Color(0x99000000), shp(8.dp))
                 .padding(horizontal = 6.dp, vertical = 1.dp),
             color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium
         )
@@ -250,7 +250,7 @@ fun Mark(c: CalItem, ep: Long, modifier: Modifier) {
 
 @Composable
 fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: Modifier) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = shp(10.dp)
     Column(
         modifier.padding(2.dp).clip(shape).background(UiPanel)
             .border(if (isToday) 1.5.dp else 1.dp, if (isToday) Charcoal else Line, shape),
@@ -266,7 +266,7 @@ fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: M
         )
         Box(Modifier.weight(1f).fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 2.dp)) {
             if (cs.isNotEmpty()) {
-                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(7.dp))) {
+                Box(Modifier.fillMaxSize().clip(shp(7.dp))) {
                     if (cs.size == 1) {
                         AsyncImage(cs[0].cover, cs[0].name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
@@ -292,7 +292,7 @@ fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: M
                         Text(
                             "+" + (cs.size - 2),
                             modifier = Modifier.align(Alignment.BottomStart).padding(3.dp)
-                                .background(Color(0x99000000), RoundedCornerShape(8.dp))
+                                .background(Color(0x99000000), shp(8.dp))
                                 .padding(horizontal = 5.dp, vertical = 1.dp),
                             color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Medium
                         )

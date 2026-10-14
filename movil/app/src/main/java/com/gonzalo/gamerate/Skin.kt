@@ -46,7 +46,7 @@ data class Palette(val id: String, val name: String, val group: String, val ligh
 data class FontChoice(val name: String, val weights: IntArray)
 
 /** Combinación lista: paleta + letra de títulos + letra del texto. */
-data class SkinStyle(val id: String, val name: String, val desc: String, val palette: String, val display: String, val body: String)
+data class SkinStyle(val id: String, val name: String, val desc: String, val palette: String, val display: String, val body: String, val form: String = "clasico")
 
 private fun t(
     paper: Long, crudo: Long, ink: Long, general: Long, gfx: Long, story: Long, music: Long, gameplay: Long, gold: Long,
@@ -242,36 +242,36 @@ val BODY_FONTS: List<FontChoice> = listOf(
 
 /** Combinaciones listas (paleta + letras). «Atrio» en una letra = la que viene con la app. */
 val STYLES: List<SkinStyle> = listOf(
-    SkinStyle("clasico", "Atrio", "El de siempre: serif cálida y texto limpio", "atrio", "Atrio", "Atrio"),
-    SkinStyle("revista", "Revista", "Portadas de papel y titulares con carácter", "papel", "Playfair Display", "Source Serif 4"),
-    SkinStyle("nocturno", "Editorial nocturno", "Serif elegante sobre azul noche", "medianoche", "DM Serif Display", "DM Sans"),
-    SkinStyle("arcade", "Arcade", "Píxeles y verde de Game Boy", "gameboy", "Press Start 2P", "Space Mono"),
-    SkinStyle("pixel", "Píxel neón", "Recreativa de los 80", "neon", "Silkscreen", "JetBrains Mono"),
-    SkinStyle("cyberpunk", "Cyberpunk", "Neón y letras de cabina", "neon", "Orbitron", "Rajdhani"),
-    SkinStyle("scifi", "Ciencia ficción", "Interfaz de nave", "oceano", "Audiowide", "Exo 2"),
-    SkinStyle("terminal", "Terminal", "Fósforo ámbar", "ambar", "VT323", "IBM Plex Mono"),
-    SkinStyle("fantasia", "Fantasía", "Pergamino y piedra grabada", "vino", "Cinzel", "EB Garamond"),
-    SkinStyle("medieval", "Medieval", "Tinta de monasterio", "cafe", "MedievalSharp", "Crimson Pro"),
-    SkinStyle("terror", "Terror", "Para Resident Evil y compañía", "carmesi", "Creepster", "Spectral"),
-    SkinStyle("comic", "Cómic", "Viñetas y onomatopeyas", "atardecer", "Bangers", "Nunito"),
-    SkinStyle("redondo", "Redondito", "Suave y amable", "sakura", "Fredoka", "Quicksand"),
-    SkinStyle("japon", "Japón", "Té verde y letras redondas", "matcha", "Mochiy Pop One", "Zen Maru Gothic"),
-    SkinStyle("nordico", "Nórdico", "Frío, limpio y tranquilo", "nord", "Bricolage Grotesque", "Manrope"),
-    SkinStyle("dracula", "Dracula", "El tema oscuro más famoso", "dracula", "Unbounded", "Figtree"),
-    SkinStyle("catppuccin", "Catppuccin", "Pastel cremoso", "catppuccin", "Righteous", "Lexend"),
-    SkinStyle("gruvbox", "Gruvbox", "Retro cálido", "gruvbox", "Zilla Slab", "IBM Plex Sans"),
-    SkinStyle("solarized", "Solarized", "El clásico de los programadores", "solarized", "Space Grotesk", "Work Sans"),
-    SkinStyle("tokyo", "Tokyo Night", "Luces de ciudad", "tokyonight", "Syne", "Outfit"),
-    SkinStyle("rosepine", "Rosé Pine", "Rosa empolvado y pino", "rosepine", "Instrument Serif", "Karla"),
-    SkinStyle("everforest", "Everforest", "Bosque en calma", "everforest", "Young Serif", "Atkinson Hyperlegible"),
-    SkinStyle("brutalista", "Brutalista", "Negro puro y letra gorda", "oled", "Archivo Black", "Space Grotesk"),
-    SkinStyle("deportivo", "Deportivo", "Marcador de estadio", "pizarra", "Bebas Neue", "Barlow"),
-    SkinStyle("lujo", "Lujo", "Cobre y Bodoni", "cobre", "Bodoni Moda", "Montserrat"),
-    SkinStyle("minimal", "Minimal", "Nada que sobre", "hielo", "Inter", "Inter"),
-    SkinStyle("cuaderno", "Cuaderno", "Apuntes a mano", "lavanda", "Caveat", "Karla"),
-    SkinStyle("militar", "Militar", "Caqui y plantilla", "bosque", "Black Ops One", "Saira"),
-    SkinStyle("ciruela", "Ciruela", "Morado profundo y geometría", "ciruela", "Sora", "Plus Jakarta Sans"),
-    SkinStyle("atardecer", "Atardecer", "Naranja de verano", "atardecer", "Shrikhand", "Poppins"),
+    SkinStyle("clasico", "Atrio", "El de siempre: serif cálida y texto limpio", "atrio", "Atrio", "Atrio", "clasico"),
+    SkinStyle("revista", "Revista", "Portadas de papel y titulares con carácter", "papel", "Playfair Display", "Source Serif 4", "editorial"),
+    SkinStyle("nocturno", "Editorial nocturno", "Serif elegante sobre azul noche", "medianoche", "DM Serif Display", "DM Sans", "editorial"),
+    SkinStyle("arcade", "Arcade", "Píxeles y verde de Game Boy", "gameboy", "Press Start 2P", "Space Mono", "pixel"),
+    SkinStyle("pixel", "Píxel neón", "Recreativa de los 80", "neon", "Silkscreen", "JetBrains Mono", "pixel"),
+    SkinStyle("cyberpunk", "Cyberpunk", "Neón y letras de cabina", "neon", "Orbitron", "Rajdhani", "neon"),
+    SkinStyle("scifi", "Ciencia ficción", "Interfaz de nave", "oceano", "Audiowide", "Exo 2", "neon"),
+    SkinStyle("terminal", "Terminal", "Fósforo ámbar", "ambar", "VT323", "IBM Plex Mono", "terminal"),
+    SkinStyle("fantasia", "Fantasía", "Pergamino y piedra grabada", "vino", "Cinzel", "EB Garamond", "editorial"),
+    SkinStyle("medieval", "Medieval", "Tinta de monasterio", "cafe", "MedievalSharp", "Crimson Pro", "editorial"),
+    SkinStyle("terror", "Terror", "Para Resident Evil y compañía", "carmesi", "Creepster", "Spectral", "editorial"),
+    SkinStyle("comic", "Cómic", "Viñetas y onomatopeyas", "atardecer", "Bangers", "Nunito", "comic"),
+    SkinStyle("redondo", "Redondito", "Suave y amable", "sakura", "Fredoka", "Quicksand", "suave"),
+    SkinStyle("japon", "Japón", "Té verde y letras redondas", "matcha", "Mochiy Pop One", "Zen Maru Gothic", "suave"),
+    SkinStyle("nordico", "Nórdico", "Frío, limpio y tranquilo", "nord", "Bricolage Grotesque", "Manrope", "minimal"),
+    SkinStyle("dracula", "Dracula", "El tema oscuro más famoso", "dracula", "Unbounded", "Figtree", "neon"),
+    SkinStyle("catppuccin", "Catppuccin", "Pastel cremoso", "catppuccin", "Righteous", "Lexend", "suave"),
+    SkinStyle("gruvbox", "Gruvbox", "Retro cálido", "gruvbox", "Zilla Slab", "IBM Plex Sans", "terminal"),
+    SkinStyle("solarized", "Solarized", "El clásico de los programadores", "solarized", "Space Grotesk", "Work Sans", "minimal"),
+    SkinStyle("tokyo", "Tokyo Night", "Luces de ciudad", "tokyonight", "Syne", "Outfit", "neon"),
+    SkinStyle("rosepine", "Rosé Pine", "Rosa empolvado y pino", "rosepine", "Instrument Serif", "Karla", "suave"),
+    SkinStyle("everforest", "Everforest", "Bosque en calma", "everforest", "Young Serif", "Atkinson Hyperlegible", "minimal"),
+    SkinStyle("brutalista", "Brutalista", "Negro puro y letra gorda", "oled", "Archivo Black", "Space Grotesk", "brutal"),
+    SkinStyle("deportivo", "Deportivo", "Marcador de estadio", "pizarra", "Bebas Neue", "Barlow", "brutal"),
+    SkinStyle("lujo", "Lujo", "Cobre y Bodoni", "cobre", "Bodoni Moda", "Montserrat", "editorial"),
+    SkinStyle("minimal", "Minimal", "Nada que sobre", "hielo", "Inter", "Inter", "minimal"),
+    SkinStyle("cuaderno", "Cuaderno", "Apuntes a mano", "lavanda", "Caveat", "Karla", "suave"),
+    SkinStyle("militar", "Militar", "Caqui y plantilla", "bosque", "Black Ops One", "Saira", "militar"),
+    SkinStyle("ciruela", "Ciruela", "Morado profundo y geometría", "ciruela", "Sora", "Plus Jakarta Sans", "clasico"),
+    SkinStyle("atardecer", "Atardecer", "Naranja de verano", "atardecer", "Shrikhand", "Poppins", "comic"),
 )
 
 /** Tamaños del texto. */
@@ -282,6 +282,8 @@ object Skin {
     var display by mutableStateOf("Atrio")
     var body by mutableStateOf("Atrio")
     var textScale by mutableStateOf(1f)
+    /** Forma: cómo se dibujan esquinas, notas, botones, portadas y el fondo. */
+    var form by mutableStateOf(FORMS[0])
 
     /** Pantalla de Estilo abierta (se pinta encima de toda la app). */
     var open by mutableStateOf(false)
@@ -310,10 +312,11 @@ object Skin {
         palette = PALETTES.firstOrNull { it.id == s.palette } ?: palette
         display = s.display
         body = s.body
+        form = FORMS.firstOrNull { it.id == s.form } ?: form
     }
 
     /** La combinación que coincide con lo elegido ahora (si es una de las listas). */
-    fun currentStyle(): SkinStyle? = STYLES.firstOrNull { it.palette == palette.id && it.display == display && it.body == body }
+    fun currentStyle(): SkinStyle? = STYLES.firstOrNull { it.palette == palette.id && it.display == display && it.body == body && it.form == form.id }
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE)
 
@@ -323,10 +326,11 @@ object Skin {
         display = p.getString("skin_display", "Atrio") ?: "Atrio"
         body = p.getString("skin_body", "Atrio") ?: "Atrio"
         textScale = p.getFloat("skin_scale", 1f)
+        form = FORMS.firstOrNull { it.id == p.getString("skin_form", "clasico") } ?: FORMS[0]
     }
 
     fun save(ctx: Context) {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
-            .putString("skin_body", body).putFloat("skin_scale", textScale).apply()
+            .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id).apply()
     }
 }

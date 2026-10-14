@@ -43,7 +43,7 @@ body[data-view="valorados"] .bd-layer.on { opacity: calc(var(--art-dim) * .8); }
 .rv-grid .tile.focused { transform: translateY(-.35rem); }
 .rv-badge {
   position: absolute; left: .45rem; top: .45rem; min-width: 2.3rem; height: 2.3rem; padding: 0 .45rem;
-  display: grid; place-items: center; border-radius: 99px; font-weight: 700; font-size: 1rem; font-variant-numeric: tabular-nums;
+  display: grid; place-items: center; border-radius: var(--pill, 99px); font-weight: 700; font-size: 1rem; font-variant-numeric: tabular-nums;
   background: rgba(10, 12, 14, .78); color: var(--tone, #fff); box-shadow: inset 0 0 0 2px var(--tone, rgba(255,255,255,.4));
   backdrop-filter: blur(6px);
 }
@@ -81,8 +81,8 @@ body[data-view="valorados"] .bd-layer.on { opacity: calc(var(--art-dim) * .8); }
 .rr-bars { display: grid; grid-template-columns: auto 9rem auto; gap: .45rem .9rem; align-items: center; }
 .rr-bar { display: contents; }
 .rr-bar .k { color: var(--fg-2); font-size: .92rem; }
-.rr-bar .t { height: .38rem; border-radius: 99px; background: rgba(var(--fg-rgb), .12); overflow: hidden; }
-.rr-bar .t span { display: block; height: 100%; border-radius: 99px; background: var(--tone, var(--fg)); }
+.rr-bar .t { height: .38rem; border-radius: var(--pill, 99px); background: rgba(var(--fg-rgb), .12); overflow: hidden; }
+.rr-bar .t span { display: block; height: 100%; border-radius: var(--pill, 99px); background: var(--tone, var(--fg)); }
 .rr-bar .v { font-variant-numeric: tabular-nums; font-weight: 600; font-size: .95rem; text-align: right; min-width: 1.8rem; }
 
 /* Entrar */
@@ -126,9 +126,9 @@ body[data-view="valorados"] .bd-layer.on { opacity: calc(var(--art-dim) * .8); }
 .rr-slider.main .rr-val { font-size: 1.6rem; }
 .rr-slider.focused { box-shadow: inset 0 0 0 2px var(--fg); }
 .rr-lab { color: var(--fg-2); }
-.rr-track { position: relative; height: .5rem; border-radius: 99px; background: rgba(var(--fg-rgb), .14); cursor: pointer; touch-action: none; }
+.rr-track { position: relative; height: .5rem; border-radius: var(--pill, 99px); background: rgba(var(--fg-rgb), .14); cursor: pointer; touch-action: none; }
 .rr-track::after { content: ''; position: absolute; inset: -.7rem 0; }
-.rr-fill { display: block; height: 100%; border-radius: 99px; background: var(--tone, var(--fg)); transition: width 80ms linear; }
+.rr-fill { display: block; height: 100%; border-radius: var(--pill, 99px); background: var(--tone, var(--fg)); transition: width 80ms linear; }
 .rr-val { font-weight: 700; font-size: 1.2rem; font-variant-numeric: tabular-nums; text-align: right; color: var(--tone, var(--fg)); }
 .rr-area { height: auto; min-height: 7rem; padding: .8rem 1rem; line-height: 1.45; resize: vertical; }
 .rr-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.4rem; }
@@ -166,7 +166,7 @@ body[data-light] input.input[type="date"] { color-scheme: light; }
 .cal-rr { position: absolute; top: .5rem; right: .55rem; display: flex; gap: .25rem; align-items: center; }
 .cal-rr-cover { position: relative; overflow: visible; box-shadow: 0 0 0 1.5px var(--accent); }
 .cal-rr-fin {
-  position: absolute; right: -.5rem; bottom: -.35rem; min-width: 1.5rem; height: 1.2rem; padding: 0 .25rem; border-radius: 99px;
+  position: absolute; right: -.5rem; bottom: -.35rem; min-width: 1.5rem; height: 1.2rem; padding: 0 .25rem; border-radius: var(--pill, 99px);
   display: grid; place-items: center; font-size: .7rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--tone);
   background: rgb(var(--scrim)); box-shadow: inset 0 0 0 1.5px var(--tone);
 }

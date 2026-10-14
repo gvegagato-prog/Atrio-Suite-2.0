@@ -53,6 +53,10 @@ import kotlin.math.roundToInt
 fun Ring(value: Int, color: Color, diameter: Dp, center: String? = null) {
     val shown by animateFloatAsState(value.toFloat(), tween(450), label = "anillo")
     val track = Line
+    if (form.gauge != GaugeKind.Ring) {
+        FormGauge(shown, color, diameter, center ?: "$value")
+        return
+    }
     Box(Modifier.size(diameter), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val sw = (size.minDimension * 0.075f).coerceAtLeast(2.5.dp.toPx())
@@ -108,6 +112,8 @@ fun StaticGauge(label: String, value: Int, color: Color, diameter: Dp, modifier:
 
 /** Valor 0–100 según dónde toques del anillo (empieza abajo a la izquierda y gira en sentido horario). */
 private fun angleToValue(x: Float, y: Float, w: Float, h: Float): Int {
+    // Barras, bloques, estrellas…: de izquierda a derecha
+    if (!gaugeIsRadial) return (((x - w * 0.05f) / (w * 0.9f)) * 100f).roundToInt().coerceIn(0, 100)
     val deg = Math.toDegrees(atan2((y - h / 2f).toDouble(), (x - w / 2f).toDouble())).toFloat()
     var a = (deg - 120f + 720f) % 360f
     if (a > 300f) a = if (a < 330f) 300f else 0f
@@ -168,25 +174,20 @@ fun Gauge(label: String, value: Int, color: Color, diameter: Dp, modifier: Modif
 /** Chip de estado: contorno fino; relleno con su color cuando está elegido. */
 @Composable
 fun Chip(text: String, selected: Boolean, color: Color, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
-    Text(text, color = if (selected) Crudo else Charcoal, fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, softWrap = false,
-        modifier = Modifier.clip(shape)
-            .background(if (selected) color else Color.Transparent)
-            .border(1.dp, if (selected) color else Line, shape)
-            .clickable { onClick() }
+    Text(chipLabel(text), color = chipInk(selected), fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, softWrap = false,
+        modifier = Modifier.pop(onClick)
+            .chipLook(selected, color)
             .padding(horizontal = 14.dp, vertical = 8.dp))
 }
 
 /** Chip sobrio: contorno fino apagado, tinta cuando está elegido. */
 @Composable
 fun SoftChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onPanel: Boolean = false, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
     Text(
-        text, color = if (selected) Crudo else Charcoal, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+        chipLabel(text), color = chipInk(selected), fontWeight = FontWeight.Medium, fontSize = 13.sp,
         maxLines = 1,
         modifier = modifier.pop(onClick)
-            .background(if (selected) Charcoal else if (onPanel) Color.Transparent else Crudo, shape)
-            .border(1.dp, if (selected) Charcoal else Line, shape)
+            .chipLook(selected, Charcoal, if (onPanel) Color.Transparent else Crudo)
             .padding(horizontal = 13.dp, vertical = 7.dp)
     )
 }
@@ -196,8 +197,8 @@ fun SoftChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onP
 fun IconPill(icon: ImageVector, desc: String, active: Boolean = false, onClick: () -> Unit) {
     Box(
         Modifier.pop(onClick).size(40.dp)
-            .background(if (active) Charcoal else Color.Transparent, CircleShape)
-            .border(1.dp, if (active) Charcoal else Line, CircleShape),
+            .background(if (active) Charcoal else Color.Transparent, roundShape())
+            .border(borderW.coerceIn(1.dp, 2.dp), if (active) Charcoal else borderC, roundShape()),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, desc, tint = if (active) Crudo else Charcoal, modifier = Modifier.size(20.dp))
@@ -207,16 +208,14 @@ fun IconPill(icon: ImageVector, desc: String, active: Boolean = false, onClick: 
 /** Botón con icono y texto: contorno fino, o relleno de tinta si es el principal. */
 @Composable
 fun ActionPill(icon: ImageVector, text: String, modifier: Modifier = Modifier, dark: Boolean = false, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
     Row(
-        modifier.pop(onClick).background(if (dark) Charcoal else Color.Transparent, shape)
-            .border(1.dp, if (dark) Charcoal else Line, shape)
+        modifier.pop(onClick).chipLook(dark, Charcoal)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = if (dark) Crudo else Charcoal, modifier = Modifier.size(18.dp))
+        Icon(icon, null, tint = chipInk(dark), modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(7.dp))
-        Text(text, color = if (dark) Crudo else Charcoal, fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, softWrap = false)
+        Text(chipLabel(text), color = chipInk(dark), fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, softWrap = false)
     }
 }
 
@@ -224,7 +223,7 @@ fun ActionPill(icon: ImageVector, text: String, modifier: Modifier = Modifier, d
 @Composable
 fun BackButton(onBack: () -> Unit) {
     Box(
-        Modifier.pop(onBack).size(40.dp).border(1.dp, Line, CircleShape),
+        Modifier.pop(onBack).size(40.dp).border(borderW.coerceIn(1.dp, 2.dp), borderC, roundShape()),
         contentAlignment = Alignment.Center
     ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", tint = Charcoal, modifier = Modifier.size(20.dp)) }
 }
@@ -244,7 +243,7 @@ fun TopBar(back: String, onBack: () -> Unit, title: String, actions: @Composable
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
-            Modifier.pop(onBack).size(40.dp).border(1.dp, Line, CircleShape),
+            Modifier.pop(onBack).size(40.dp).border(borderW.coerceIn(1.dp, 2.dp), borderC, roundShape()),
             contentAlignment = Alignment.Center
         ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Volver a $back", tint = Charcoal, modifier = Modifier.size(20.dp)) }
         Column(Modifier.weight(1f).padding(start = 4.dp)) {
@@ -259,7 +258,7 @@ fun TopBar(back: String, onBack: () -> Unit, title: String, actions: @Composable
 @Composable
 fun SearchPill(value: String, placeholder: String, modifier: Modifier = Modifier, onSearch: (() -> Unit)? = null, onChange: (String) -> Unit) {
     Row(
-        modifier.background(Sand, RoundedCornerShape(14.dp)).padding(start = 14.dp, end = 6.dp),
+        modifier.background(Sand, shp(14.dp)).padding(start = 14.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Rounded.Search, null, tint = Muted, modifier = Modifier.size(18.dp))
@@ -285,9 +284,8 @@ fun SearchPill(value: String, placeholder: String, modifier: Modifier = Modifier
 /** Tarjeta: superficie con línea fina y título opcional. */
 @Composable
 fun Panel(modifier: Modifier = Modifier, title: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
     Column(
-        modifier.fillMaxWidth().background(Crudo, shape).border(1.dp, Line, shape).padding(18.dp)
+        modifier.fillMaxWidth().surface(20.dp, Crudo).padding(18.dp)
     ) {
         if (title != null) {
             Text(title, fontFamily = Display, fontSize = 20.sp)
@@ -301,14 +299,7 @@ fun Panel(modifier: Modifier = Modifier, title: String? = null, content: @Compos
 @Composable
 fun Bar(frac: Float, color: Color, modifier: Modifier = Modifier, height: Dp = 6.dp) {
     val f by animateFloatAsState(frac.coerceIn(0f, 1f), tween(600), label = "barra")
-    Box(modifier.fillMaxWidth().height(height).background(Sand, RoundedCornerShape(height / 2))) {
-        if (f > 0f) {
-            Box(
-                Modifier.fillMaxWidth(f.coerceAtLeast(0.03f)).fillMaxHeight()
-                    .background(color, RoundedCornerShape(height / 2))
-            )
-        }
-    }
+    Box(modifier.fillMaxWidth().height(height).formBar(f, color, Sand, height))
 }
 
 /** Portada pequeña redondeada. */
@@ -316,7 +307,7 @@ fun Bar(frac: Float, color: Color, modifier: Modifier = Modifier, height: Dp = 6
 fun MiniCover(url: String, w: Dp = 44.dp, modifier: Modifier = Modifier) {
     AsyncImage(
         url, null,
-        modifier.width(w).aspectRatio(2f / 3f).clip(RoundedCornerShape(6.dp)).background(Sand),
+        modifier.width(w).aspectRatio(2f / 3f).clip(shp(6.dp)).background(Sand).coverFrame(),
         contentScale = ContentScale.Crop
     )
 }
@@ -329,7 +320,7 @@ fun PartnerToggle(on: Boolean, onClick: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     Box(
         Modifier.pop { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick() }
-            .size(40.dp).background(bg, CircleShape).border(1.dp, if (on) Charcoal else Line, CircleShape),
+            .size(40.dp).background(bg, roundShape()).border(borderW.coerceIn(1.dp, 2.dp), if (on) Charcoal else borderC, roundShape()),
         contentAlignment = Alignment.Center
     ) {
         CatFace(fg, if (on) Charcoal else Paper, Modifier.size(22.dp))
@@ -368,7 +359,7 @@ fun critColors() = listOf(ColGfx, ColStory, ColMusic, ColGameplay)
 /** Portada con su inicial detrás (se ve si no hay imagen o mientras carga). */
 @Composable
 fun Cover(url: String, name: String, modifier: Modifier, alpha: Float = 1f) {
-    Box(modifier, contentAlignment = Alignment.Center) {
+    Box(modifier.coverFrame(), contentAlignment = Alignment.Center) {
         if (url.isBlank()) {
             Text(name.trim().take(1).uppercase(), fontFamily = Display, fontSize = 44.sp, color = Muted)
         } else {

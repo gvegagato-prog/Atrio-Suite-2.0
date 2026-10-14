@@ -108,8 +108,8 @@ fun Home(games: List<Game>, kind: Kind, onMenu: () -> Unit, onAdd: (() -> Unit)?
                 EmptyNote("No hay nada que coincida.")
             }
             LazyVerticalGrid(
-                GridCells.Adaptive(150.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(22.dp),
+                formCells(),
+                horizontalArrangement = Arrangement.spacedBy(formGap().first), verticalArrangement = Arrangement.spacedBy(formGap().second),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 itemsIndexed(shown, key = { _, g -> g.id }) { i, g ->
@@ -117,13 +117,7 @@ fun Home(games: List<Game>, kind: Kind, onMenu: () -> Unit, onAdd: (() -> Unit)?
                         enabled = partner != null, onClick = { onOpen(g) },
                         modifier = Modifier.appear(200 + i * 50, i < 12),
                         front = {
-                            Column {
-                                Box {
-                                    Cover(
-                                        g.cover, g.name,
-                                        Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Sand)
-                                            .border(1.dp, Line, RoundedCornerShape(10.dp))
-                                    )
+                            FormTile(g.cover, g.name, g.creator, gauge = { d -> Ring(g.general, ColGeneral, d) }) {
                                     if (g.fav) {
                                         Box(
                                             Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp).background(Crudo, CircleShape),
@@ -137,16 +131,6 @@ fun Home(games: List<Game>, kind: Kind, onMenu: () -> Unit, onAdd: (() -> Unit)?
                                             contentAlignment = Alignment.Center
                                         ) { Text(r, fontSize = 12.sp) }
                                     }
-                                }
-                                Spacer(Modifier.height(10.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(g.name, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.sp)
-                                        if (g.creator.isNotBlank()) Text(g.creator, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    }
-                                    Spacer(Modifier.width(6.dp))
-                                    Ring(g.general, ColGeneral, 34.dp)
-                                }
                             }
                         },
                         back = { partner?.let { PartnerFace(it, g.id, kind) } }
@@ -205,8 +189,8 @@ fun PlayingHome(
                 EmptyNote("No hay nada que coincida.")
             }
             LazyVerticalGrid(
-                GridCells.Adaptive(150.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(22.dp),
+                formCells(),
+                horizontalArrangement = Arrangement.spacedBy(formGap().first), verticalArrangement = Arrangement.spacedBy(formGap().second),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 itemsIndexed(shown, key = { _, p -> p.id }) { i, p ->
@@ -223,17 +207,13 @@ fun PlayingHome(
                         enabled = partner != null, onClick = { onOpen(p) },
                         modifier = Modifier.appear(200 + i * 50, i < 12),
                         front = {
-                            Column {
-                                Box {
-                                    Cover(p.cover, p.name,
-                                        Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)).background(Sand)
-                                            .border(1.dp, Line, RoundedCornerShape(10.dp)),
-                                        alpha = if (p.status == 2) 0.55f else 1f)
+                            FormTile(p.cover, p.name, "$st · ${p.entries.size} ${if (p.entries.size == 1) "apunte" else "apuntes"}$extra",
+                                alpha = if (p.status == 2) 0.55f else 1f, dot = bc) {
                                     if (sessId == p.id) {
                                         Text(
                                             "En sesión", color = Crudo, fontSize = 11.sp, fontWeight = FontWeight.Medium,
                                             modifier = Modifier.align(Alignment.BottomCenter).padding(10.dp)
-                                                .background(Charcoal, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 3.dp)
+                                                .background(Charcoal, pillShape()).padding(horizontal = 10.dp, vertical = 3.dp)
                                         )
                                     }
                                     val r = partner?.reactsToMe?.get(p.id)
@@ -243,14 +223,6 @@ fun PlayingHome(
                                             contentAlignment = Alignment.Center
                                         ) { Text(r, fontSize = 12.sp) }
                                     }
-                                }
-                                Spacer(Modifier.height(10.dp))
-                                Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(Modifier.size(6.dp).background(bc, CircleShape))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("$st · ${p.entries.size} ${if (p.entries.size == 1) "apunte" else "apuntes"}$extra", color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                }
                             }
                         },
                         back = { partner?.let { PartnerFace(it, p.id, kind) } }
@@ -309,7 +281,7 @@ fun WheelDialog(
                     AsyncImage(
                         p.cover, p.name,
                         Modifier.width(170.dp).aspectRatio(2f / 3f).graphicsLayer { scaleX = sc; scaleY = sc }
-                            .shadow(4.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Sand),
+                            .shadow(4.dp, shp(12.dp)).clip(shp(12.dp)).background(Sand),
                         contentScale = ContentScale.Crop
                     )
                     Spacer(Modifier.height(12.dp))
@@ -336,7 +308,7 @@ fun WheelDialog(
                 TextButton(onDismiss) { Text("Cerrar") }
             }
         },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -396,9 +368,9 @@ fun SettingsScreen(
                     val n = PatternNames[i]
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pop { onLook(look.copy(pattern = i)) }) {
                         Box(
-                            Modifier.size(64.dp, 48.dp).clip(RoundedCornerShape(12.dp))
+                            Modifier.size(64.dp, 48.dp).clip(shp(12.dp))
                                 .pattern(i, Color(look.menu), look.intensity)
-                                .border(if (look.pattern == i) 3.dp else 1.dp, if (look.pattern == i) Charcoal else Sand, RoundedCornerShape(12.dp))
+                                .border(if (look.pattern == i) 3.dp else 1.dp, if (look.pattern == i) Charcoal else Sand, shp(12.dp))
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(n, fontSize = 12.sp, fontWeight = if (look.pattern == i) FontWeight.SemiBold else FontWeight.Normal)
@@ -437,9 +409,9 @@ fun SettingsScreen(
 
         SettingsSection("SteamGridDB", 340) {
             OutlinedTextField(k, { k = it }, label = { Text("API key de SteamGridDB") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Text("Se genera en tu perfil de steamgriddb.com, en Preferencias > API. Se guarda solo en este dispositivo.", color = UiSoft, modifier = Modifier.padding(vertical = 8.dp))
-            Button({ onSaveKey(k) }, shape = RoundedCornerShape(50)) { Text("Guardar clave") }
+            Button({ onSaveKey(k) }, shape = pillShape()) { Text("Guardar clave") }
         }
 
         SettingsSection("Servicios", 380) {
@@ -450,7 +422,7 @@ fun SettingsScreen(
                 color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
             )
             OutlinedTextField(rk, { rk = it }, label = { Text("Clave de RAWG") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             Text("IGDB (cuánto dura cada juego)", fontWeight = FontWeight.SemiBold)
             Text(
@@ -461,12 +433,12 @@ fun SettingsScreen(
                 color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
             )
             OutlinedTextField(iid, { iid = it }, label = { Text("Client ID de Twitch") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(isec, { isec = it }, label = { Text("Secreto (Client Secret)") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button({ onSaveServices(rk, iid, isec) }, shape = RoundedCornerShape(50)) { Text("Guardar claves") }
+            Button({ onSaveServices(rk, iid, isec) }, shape = pillShape()) { Text("Guardar claves") }
             Spacer(Modifier.height(16.dp))
             Text("TMDB (películas)", fontWeight = FontWeight.SemiBold)
             Text(
@@ -476,14 +448,14 @@ fun SettingsScreen(
                 color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
             )
             OutlinedTextField(tk, { tk = it }, label = { Text("Clave de TMDB") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button({ onSaveTmdb(tk) }, shape = RoundedCornerShape(50)) { Text("Guardar clave de TMDB") }
+            Button({ onSaveTmdb(tk) }, shape = pillShape()) { Text("Guardar clave de TMDB") }
             Spacer(Modifier.height(12.dp))
             Text("Estudios que faltan", fontWeight = FontWeight.SemiBold)
             Text("Busca en internet el estudio de todos tus juegos que no lo tengan.", color = UiSoft, fontSize = 13.sp)
             Spacer(Modifier.height(6.dp))
-            OutlinedButton(onFillStudios, shape = RoundedCornerShape(50)) { Text("Rellenar estudios") }
+            OutlinedButton(onFillStudios, shape = pillShape()) { Text("Rellenar estudios") }
             if (studioMsg.isNotEmpty()) Text(studioMsg, color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
@@ -495,7 +467,7 @@ fun SettingsScreen(
                     "Lo que ya tengas no se duplica.",
                 color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
             )
-            OutlinedButton(onGoodreads, shape = RoundedCornerShape(50)) { Text("Importar CSV de Goodreads") }
+            OutlinedButton(onGoodreads, shape = pillShape()) { Text("Importar CSV de Goodreads") }
             if (importMsg.isNotEmpty() && "Steam" !in importMsg && "Bookmory" !in importMsg) ImportNote(importMsg)
             Spacer(Modifier.height(14.dp))
             Text("Bookmory", fontWeight = FontWeight.SemiBold)
@@ -506,7 +478,7 @@ fun SettingsScreen(
                     "Lo que ya tengas no se duplica: solo se completa lo que le falte, sin tocar tus notas. Se puede deshacer en Copia de seguridad.",
                 color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
             )
-            OutlinedButton(onBookmory, shape = RoundedCornerShape(50)) { Text("Importar ZIP de Bookmory") }
+            OutlinedButton(onBookmory, shape = pillShape()) { Text("Importar ZIP de Bookmory") }
             if (importMsg.isNotEmpty() && "Bookmory" in importMsg) ImportNote(importMsg)
             Spacer(Modifier.height(14.dp))
             Text("Horas de Steam", fontWeight = FontWeight.SemiBold)
@@ -517,12 +489,12 @@ fun SettingsScreen(
                 color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
             )
             OutlinedTextField(sk, { sk = it }, label = { Text("Clave de Steam") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(su, { su = it }, label = { Text("Tu perfil (URL, nombre o SteamID64)") }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            OutlinedButton({ onSteam(sk, su) }, shape = RoundedCornerShape(50), enabled = sk.isNotBlank() && su.isNotBlank()) { Text("Traer horas de Steam") }
+            OutlinedButton({ onSteam(sk, su) }, shape = pillShape(), enabled = sk.isNotBlank() && su.isNotBlank()) { Text("Traer horas de Steam") }
             if (importMsg.isNotEmpty() && "Steam" in importMsg) ImportNote(importMsg)
         }
 
@@ -535,8 +507,8 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onDriveLink, shape = RoundedCornerShape(50)) { Text("Vincular") }
-                    OutlinedButton(onDriveRestore, shape = RoundedCornerShape(50)) { Text("Recuperar de Drive") }
+                    Button(onDriveLink, shape = pillShape()) { Text("Vincular") }
+                    OutlinedButton(onDriveRestore, shape = pillShape()) { Text("Recuperar de Drive") }
                 }
                 Text(
                     "Si has reinstalado la app: «Recuperar de Drive», elige tu archivo y se cargan tus datos (y queda vinculado otra vez).",
@@ -547,8 +519,8 @@ fun SettingsScreen(
                 if (driveInfo.isNotEmpty()) Text(driveInfo, color = UiSoft, fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onDriveNow, shape = RoundedCornerShape(50)) { Text("Guardar ahora") }
-                    OutlinedButton(onDriveUnlink, shape = RoundedCornerShape(50)) { Text("Desvincular") }
+                    Button(onDriveNow, shape = pillShape()) { Text("Guardar ahora") }
+                    OutlinedButton(onDriveUnlink, shape = pillShape()) { Text("Desvincular") }
                 }
                 TextButton(onDriveRestore) { Text("Recuperar desde un archivo de Drive", color = Muted) }
             }
@@ -561,8 +533,8 @@ fun SettingsScreen(
                 color = UiSoft, modifier = Modifier.padding(bottom = 8.dp)
             )
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button({ onExport() }, shape = RoundedCornerShape(50)) { Text("Exportar datos") }
-                OutlinedButton({ confirm = true }, shape = RoundedCornerShape(50)) { Text("Importar datos") }
+                Button({ onExport() }, shape = pillShape()) { Text("Exportar datos") }
+                OutlinedButton({ confirm = true }, shape = pillShape()) { Text("Importar datos") }
             }
             if (onUndoImport != null) {
                 Spacer(Modifier.height(6.dp))
@@ -589,7 +561,7 @@ fun SettingsScreen(
             text = { Text("Se sustituirán todos tus datos actuales por los del archivo que elijas. Podrás deshacerlo justo después.") },
             confirmButton = { TextButton({ confirm = false; onImport() }) { Text("Elegir archivo") } },
             dismissButton = { TextButton({ confirm = false }) { Text("Cancelar") } },
-            shape = RoundedCornerShape(24.dp)
+            shape = shp(24.dp)
         )
     }
 }
@@ -693,7 +665,7 @@ fun SearchScreen(
                     }
                     if (have != null) {
                         Text(have, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Muted,
-                            modifier = Modifier.border(1.dp, Line, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 4.dp))
+                            modifier = Modifier.border(1.dp, Line, pillShape()).padding(horizontal = 10.dp, vertical = 4.dp))
                     }
                 }
             }
@@ -752,7 +724,7 @@ fun ArtScreen(
             BackButton(onBack)
             if (onGallery != null) ActionPill(Icons.Rounded.PhotoLibrary, "Desde tu galería", dark = true) { onGallery() }
             if (hero) Text("Omitir fondo", color = Charcoal, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                modifier = Modifier.pop(onSkip).border(1.dp, Line, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 9.dp))
+                modifier = Modifier.pop(onSkip).border(1.dp, Line, pillShape()).padding(horizontal = 16.dp, vertical = 9.dp))
         }
         Spacer(Modifier.height(8.dp))
         Overline(game.name, Modifier.padding(start = 4.dp, top = 4.dp))
@@ -763,7 +735,7 @@ fun ArtScreen(
             // Solo cambia lo que se busca: el libro conserva su nombre.
             OutlinedTextField(
                 query, { query = it }, Modifier.fillMaxWidth(),
-                label = { Text("Buscar portada por título") }, singleLine = true, shape = RoundedCornerShape(14.dp),
+                label = { Text("Buscar portada por título") }, singleLine = true, shape = shp(14.dp),
                 placeholder = { Text("Prueba con el título original", color = UiSoft) },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { runSearch() }),
@@ -813,7 +785,7 @@ fun ArtScreen(
             itemsIndexed(list) { i, c ->
                 AsyncImage(c.first, null,
                     Modifier.appear(150 + (i % 12) * 40, i < 12).padding(4.dp).fillMaxWidth().aspectRatio(if (hero) 3.1f else 2f / 3f)
-                        .clip(RoundedCornerShape(12.dp)).background(Sand).clickable { onPick(c.second) },
+                        .clip(shp(12.dp)).background(Sand).clickable { onPick(c.second) },
                     contentScale = ContentScale.Crop)
             }
         }

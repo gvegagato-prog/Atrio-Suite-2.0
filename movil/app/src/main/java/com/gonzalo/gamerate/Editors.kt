@@ -61,7 +61,7 @@ fun PlatformPicker(kind: Kind, value: String, onChange: (String) -> Unit) {
             if (kind.platforms.isNotEmpty()) Spacer(Modifier.height(6.dp))
             OutlinedTextField(
                 value, onChange, label = { Text(kind.platformWord) }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -94,7 +94,7 @@ fun PagesField(pages: Int, onChange: (Int) -> Unit) {
         { t -> onChange(t.filter { it.isDigit() }.take(5).toIntOrNull() ?: 0) },
         label = { Text("Páginas") }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+        shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
     )
 }
 
@@ -111,13 +111,13 @@ fun RecommendDialog(partnerName: String, itemName: String, onSend: (String) -> U
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     note, { note = it }, label = { Text("¿Por qué le va a gustar? (opcional)") },
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp)
+                    shape = shp(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp)
                 )
             }
         },
         confirmButton = { TextButton({ onSend(note.trim()) }) { Text("Recomendar") } },
         dismissButton = { TextButton(onDismiss) { Text("Cancelar") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = shp(24.dp)
     )
 }
 
@@ -125,7 +125,7 @@ fun RecommendDialog(partnerName: String, itemName: String, onSend: (String) -> U
 @Composable
 fun TheirReaction(name: String, emoji: String) {
     Row(
-        Modifier.background(Sand, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 6.dp),
+        Modifier.background(Sand, pillShape()).padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(emoji, fontSize = 18.sp)

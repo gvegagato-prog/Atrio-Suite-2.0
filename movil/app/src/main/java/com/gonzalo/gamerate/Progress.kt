@@ -69,7 +69,7 @@ fun ProgressPanel(
     var editing by remember { mutableStateOf(false) }
     var newPart by remember { mutableStateOf("") }
     val pct = p.percent()
-    val shape = RoundedCornerShape(16.dp)
+    val shape = shp(16.dp)
     val partWord = if (kind.isTv) "episodio" else if (kind.custom) "capítulo o episodio" else "capítulo o acto"
 
     Column(
@@ -121,7 +121,7 @@ fun ProgressPanel(
             p.parts.forEachIndexed { i, part ->
                 if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                    Modifier.fillMaxWidth().clip(shp(8.dp))
                         .combinedClickable(
                             enabled = !readOnly && !editing,
                             // Mantener pulsado: marca como visto todo hasta aquí.
@@ -169,7 +169,7 @@ fun ProgressPanel(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         newPart, { newPart = it }, Modifier.weight(1f),
-                        label = { Text("Añadir $partWord") }, singleLine = true, shape = RoundedCornerShape(14.dp),
+                        label = { Text("Añadir $partWord") }, singleLine = true, shape = shp(14.dp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { add() })
                     )
@@ -242,7 +242,7 @@ fun TtbTiles(main: Int, extra: Int, full: Int) {
             .filter { it.second > 0 }
             .forEach { (l, m) ->
                 Column(
-                    Modifier.weight(1f).border(1.dp, Line, RoundedCornerShape(12.dp)).padding(vertical = 10.dp),
+                    Modifier.weight(1f).border(1.dp, Line, shp(12.dp)).padding(vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(shortHours(m), fontFamily = Display, fontSize = 20.sp, maxLines = 1, softWrap = false,

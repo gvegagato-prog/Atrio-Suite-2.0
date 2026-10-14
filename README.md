@@ -108,6 +108,12 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
 **Arreglos**
 61. Apagar, reiniciar o suspender desde el móvil prueba varias vías (systemctl, logind, Plasma, GNOME); si algo lo
     impide, el móvil te dice qué (por ejemplo, el programa que lo bloquea). La orden ya no puede repetirse al encender.
+62. **Formas** (Estilo → Forma, en el móvil y en el PC): cada estilo dibuja las cosas a su manera, no solo cambia colores.
+    Diez formas: Clásica (anillos), Editorial (barras finas, marcos de foto, grano), Píxel (bloques de 8 bits, sombra dura,
+    líneas de TV), Terminal (barras ▓▓░░, [ botones ]), Neón (diales de aguja, esquinas biseladas, rejilla), Suave
+    (todo redondo, barras gorditas), Brutalista (cifras enormes, bordes negros), Cómic (estrellas, tinta y trama),
+    Minimal (puntos) y Militar (segmentos, esquinas cortadas). En el móvil también cambia la cuadrícula de la biblioteca:
+    pósters, mosaico apretado, lista, tarjetas anchas o título sobre la portada. Cada combinación trae su forma.
 
 **Control y privacidad** (Atrio en el PC → Ajustes → Móvil)
 33. Permitir o no capturas, lanzar juegos y energía desde el móvil.
@@ -169,4 +175,4 @@ Atrio en el PC: [panel del móvil](docs/capturas/02-panel-suite.png) ·
 [Apariencia](docs/capturas/11-apariencia.png) ·
 [Streaming](docs/capturas/12-ajustes-streaming.png) ·
 estilos [Cyberpunk](docs/capturas/13-estilo-cyberpunk.png), [Arcade](docs/capturas/14-estilo-arcade.png),
-[Catppuccin Latte](docs/capturas/16-estilo-latte.png) y [Fantasía](docs/capturas/17-estilo-fantasia.png)
+[Catppuccin Latte](docs/capturas/16-estilo-latte.png) y [Fantasía](docs/capturas/17-estilo-fantasia.png); formas en el PC: [Clásica](docs/capturas/20-forma-clasico-ficha.png), [Editorial](docs/capturas/21-forma-editorial-ficha.png), [Píxel](docs/capturas/22-forma-pixel-ficha.png), [Terminal](docs/capturas/23-forma-terminal-ficha.png), [Neón](docs/capturas/24-forma-neon-ficha.png), [Suave](docs/capturas/25-forma-suave-ficha.png), [Brutalista](docs/capturas/26-forma-brutal-ficha.png), [Cómic](docs/capturas/27-forma-comic-ficha.png), [Minimal](docs/capturas/28-forma-minimal-ficha.png), [Militar](docs/capturas/29-forma-militar-ficha.png)

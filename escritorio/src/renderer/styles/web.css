@@ -15,7 +15,7 @@
 .web-bar { display: flex; align-items: center; gap: .4rem; padding: .7rem .8rem; border-bottom: 1px solid var(--line); min-height: 3.6rem; }
 .web-tabs { flex: 1; display: flex; gap: .35rem; overflow-x: auto; scrollbar-width: none; min-width: 0; }
 .web-tab {
-  flex: none; max-width: 14rem; padding: .45rem .9rem; border-radius: 99px; background: var(--surface-2); color: var(--fg-2);
+  flex: none; max-width: 14rem; padding: .45rem .9rem; border-radius: var(--pill, 99px); background: var(--surface-2); color: var(--fg-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95rem;
 }
 .web-tab[aria-pressed="true"] { background: var(--fg); color: var(--bg); }

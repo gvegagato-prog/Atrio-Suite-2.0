@@ -29,6 +29,7 @@ for m in re.finditer(r'<node [^>]*>', x):
     n = m.group(0)
     txt = re.search(r' text="([^"]*)"', n); d = re.search(r'content-desc="([^"]*)"', n)
     vals = [v.group(1) for v in (txt, d) if v]
+    vals = [v[2:-2] if v.startswith('[ ') and v.endswith(' ]') else v for v in vals]  # [ botones ] de la forma Terminal
     if any(v == t for v in vals) or (best is None and any(v.startswith(t) for v in vals)):
         b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n)
         if b:
@@ -300,7 +301,21 @@ icono_neon() { grep -A30 "enabledComponents" "$OUT/paquete.txt" | grep -q "IconN
 must icono_neon
 echo "   el icono de la app ha cambiado a Neón" | tee -a "$LOG"
 tap "Atrio"; sleep 3
-tap "Combinaciones"; sleep 1; tap "Atrio"; sleep 2
+
+step "Formas: cada una dibuja notas, tarjetas, botones y cuadrículas a su manera"
+n=50
+for f in "Clásica" "Editorial" "Píxel" "Terminal" "Neón" "Suave" "Brutalista" "Cómic" "Minimal" "Militar"; do
+  must tap "Forma"; sleep 1
+  must seek "$f"; tap "$f"; sleep 2
+  top; shot "${n}_forma_${f}" 1; alive "forma $f"
+  # La biblioteca con esa forma
+  adb shell input keyevent 4; sleep 1.5; adb shell input keyevent 4; sleep 1.5
+  tap "Peliculas"; sleep 2; shot "${n}b_lista_${f}" 1; alive "lista $f"
+  adb shell input keyevent 4; sleep 1.5
+  must tap "Ajustes"; sleep 1.5; must tap "Estilo"; sleep 2
+  n=$((n+1))
+done
+must tap "Combinaciones"; sleep 1; top; tap "Atrio"; sleep 2
 adb shell input keyevent 4; sleep 1
 
 step "OK: la app no se ha cerrado en ningún paso"
