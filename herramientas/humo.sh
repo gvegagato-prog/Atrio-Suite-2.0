@@ -316,7 +316,9 @@ for f in "Clásica" "Editorial" "Píxel" "Terminal" "Neón" "Suave" "Brutalista"
   top; must tap "Videojuegos"; sleep 2; shot "${n}b_lista_${f}" 1; alive "lista $f"
   adb shell input keyevent 4; sleep 1.5
   adb shell am start -W -n "$PKG/.MainActivity" >/dev/null; sleep 1.5
-  top; must tap "Ajustes"; sleep 1.5; must tap "Estilo"; sleep 2
+  top; sleep 1
+  ok=0; for i in 1 2 3; do if tap "Ajustes"; then ok=1; break; fi; adb shell input keyevent 4; sleep 2; adb shell am start -W -n "$PKG/.MainActivity" >/dev/null; sleep 2; done
+  must test "$ok" = 1; must tap "Estilo"; sleep 2
   n=$((n+1))
 done
 step "Notas aparte de la forma, fondo y Sorpréndeme"
