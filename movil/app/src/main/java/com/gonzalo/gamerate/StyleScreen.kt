@@ -154,8 +154,6 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onLook: (Look) -> Unit =
                         }
                     }
                     StyleTab.Back -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-                        BackgroundPicker(onLook)
-                        Spacer(Modifier.height(18.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Camaleón", fontWeight = FontWeight.SemiBold)
@@ -165,6 +163,8 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onLook: (Look) -> Unit =
                             Spacer(Modifier.width(10.dp))
                             androidx.compose.material3.Switch(Skin.chameleon, { Skin.chameleon = it; save() })
                         }
+                        Spacer(Modifier.height(18.dp))
+                        BackgroundPicker(onLook)
                     }
                     StyleTab.Colors -> Grid(2) {
                         PALETTES.groupBy { it.group }.forEach { (g, list) ->
