@@ -115,9 +115,10 @@ tap "Nombre" && type "Dune%sParte%sDos"
 kb
 tap "Añadir a la lista"; shot 06_ficha 3; alive "ficha"
 tap "Añadir capítulo o episodio" && type "Primera%sparte" && adb shell input keyevent 66
-sleep 1; tap "Añadir capítulo o episodio" && type "Segunda%sparte" && adb shell input keyevent 66
-kb
-tap "Primera parte"; shot 07_capitulo; alive "capitulo"
+sleep 1.5
+# Con el primero añadido, la lista se cierra y se amplía con «Editar lista»
+must seek "Primera parte"; tap "Primera parte"; shot 07_capitulo; alive "capitulo"
+must see "0 de 1\|1 de 1" 5
 adb shell input swipe 500 1600 500 600 300; shot 08_ficha_abajo; alive "scroll"
 back; shot 09_coleccion_lista; alive "volver"
 
@@ -132,7 +133,6 @@ dock "Cine"; shot 13_cine; alive "cine"
 tap "Series"; sleep 1.5; shot 13b_series; alive "series"
 dock "Diario"; shot 14_diario; alive "diario"
 tap "Libros"; sleep 1; shot 14b_diario_libros
-tap "Estadísticas" || true
 
 step "Descubrir libros con preguntas"
 dock "Libros"
@@ -163,12 +163,12 @@ must see "Combinaciones" 10
 shot 20_estilo 2; alive "estilo"
 tap "Claro"; sleep 0.25; adb exec-out screencap -p > "$OUT/21_cambio_tema.png"; shot 21b_claro 2; alive "tema"
 tap "Oscuro"; sleep 2
-tap "Revista"; sleep 3; shot 22_revista 2; alive "revista"
-tap "Arcade"; sleep 3; shot 23_arcade 2; alive "arcade"
+seek "Revista"; tap "Revista"; sleep 3; shot 22_revista 2; alive "revista"
+seek "Arcade"; tap "Arcade"; sleep 3; top; shot 23_arcade 2; alive "arcade"
 must tap "Forma"; sleep 1; must seek "Píxel"; tap "Píxel"; sleep 2; top; shot 24_forma_pixel 1
 must tap "Notas"; sleep 1; must seek "Estrellas"; tap "Estrellas"; sleep 2; top; shot 25_notas_estrellas 1
 must tap "Acento"; sleep 1; shot 26_acento 1; alive "acento"
-must tap "Interfaz"; sleep 1; tap "Grandes"; sleep 1; tap "Sobrio"; sleep 1; shot 27_interfaz 1; tap "Normales"; tap "Vivo"
+must tap "Interfaz"; sleep 1; tap "Sobrio"; sleep 1; must seek "Grandes"; tap "Grandes"; sleep 1; shot 27_interfaz 1; tap "Normales"; top; tap "Vivo"; top
 must tap "Fondo"; sleep 1; must see "Camaleón" 5; shot 28_fondo 1; alive "fondo"
 tap "Sorpréndeme"; sleep 3; shot 29_sorpresa 1; alive "sorpresa"
 tap "Icono"; sleep 2; shot 30_iconos 2
@@ -319,7 +319,8 @@ must see "documentation examples" 15
 shot 48_guia_al_volver 1; alive "guia al volver"
 echo "   al volver a la app la guía sigue ahí" | tee -a "$LOG"
 tap "Cerrar"; sleep 2
-back
+# Si «Cerrar» ya ha devuelto a la biblioteca, se vuelve a la ficha
+see "Guías" 3 || { tap "Juego de Prueba"; sleep 3; }
 # La ficha de «Jugando» se abre en modo lectura: los campos salen con «Editar»
 top
 must see "Editar" 10
