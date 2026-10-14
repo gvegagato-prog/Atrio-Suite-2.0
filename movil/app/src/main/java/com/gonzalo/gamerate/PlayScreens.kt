@@ -115,7 +115,21 @@ fun PlayDetailScreen(
                     if (p.end > 0L) "Fin " + fmtDay(p.end) else null
                 ).joinToString(" · ")
                 if (days.isNotEmpty()) Text(days, color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
-            } else
+                Spacer(Modifier.height(6.dp))
+                TextButton({ editing = true }) {
+                    Icon(Icons.Rounded.Edit, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Editar")
+                }
+            } else {
+                TextButton({ editing = false }) {
+                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Listo")
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+            if (editing)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(kind.statuses[0], p.status == 0, Charcoal) { upd(p.copy(status = 0)) }
                 Chip(kind.statuses[1], p.status == 1, Charcoal) {

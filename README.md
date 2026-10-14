@@ -103,7 +103,7 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
     como pendiente y los capítulos o las sesiones con temporizador tampoco ofrecen valorarlas.
 60. Las fichas de **Jugando** (y de lo que estás leyendo o viendo) se abren en **modo lectura**, como los valorados:
     estado, plataforma, horas y fechas en texto. Los campos, el progreso, la portada y «Eliminar» salen con **Editar**
-    (abajo del todo); «Listo» los vuelve a cerrar. Lo recién creado se abre ya en edición.
+    (bajo el título y abajo del todo); «Listo» los vuelve a cerrar. Lo recién creado se abre ya en edición.
 
 **Arreglos**
 61. Apagar, reiniciar o suspender desde el móvil prueba varias vías (systemctl, logind, Plasma, GNOME); si algo lo

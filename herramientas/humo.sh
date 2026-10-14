@@ -267,12 +267,14 @@ must see "documentation examples" 10
 echo "   cerrada y reabierta, sigue en su sitio" | tee -a "$LOG"
 adb shell input keyevent 4; sleep 2
 # La ficha de «Jugando» se abre en modo lectura: los campos salen con «Editar»
-must seek "Editar"
+top
+must see "Editar" 10
 shot 38_ficha_lectura 1
 tap "Editar"; sleep 1
-must seek "Listo"
+must see "Listo" 8
 shot 39_ficha_editando 1
 tap "Listo"; sleep 1
+must see "Editar" 8
 echo "   la ficha se abre en modo lectura y se edita con «Editar»" | tee -a "$LOG"
 pkill -f lanzar-atrio || true
 
