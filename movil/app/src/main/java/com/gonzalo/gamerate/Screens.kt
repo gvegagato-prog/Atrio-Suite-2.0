@@ -362,8 +362,8 @@ fun SettingsScreen(
         SettingsSection("Servicios", 380) {
             Text("RAWG (estudios y recomendaciones de juegos)", fontWeight = FontWeight.SemiBold)
             Text(
-                "Con una clave gratuita de rawg.io/apidocs, la pestaña Siguiente te propone juegos y se detectan mejor los estudios. " +
-                    "Sin ella, los estudios se buscan en Wikidata y la pestaña Siguiente solo funciona con libros.",
+                "Con una clave gratuita de rawg.io/apidocs, «Descubrir» te propone juegos según tus respuestas y se detectan mejor los estudios. " +
+                    "Sin ella, los estudios se buscan en Wikidata y Descubrir solo funciona con libros, pelis y series.",
                 color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
             )
             OutlinedTextField(rk, { rk = it }, label = { Text("Clave de RAWG") }, singleLine = true,

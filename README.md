@@ -10,6 +10,28 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio 6.8 (móvil)
+
+- **Apariencia:** de los estilos solo queda lo que hace falta: claro, oscuro o como el móvil, y el color del
+  acento (rojo de imprenta por defecto; también azul, verde, mostaza, naranja, rosa, morado o tinta). La revista
+  es siempre papel liso con sus letras (Fraunces e Inter).
+- **Lector:**
+  - Con la estética de la revista y el acento elegido.
+  - Línea de estado abajo con lo que te queda del capítulo, calculado con tu velocidad de lectura de verdad, y el %.
+  - Notas al pie en una hoja, sin perder la página.
+  - Imágenes a pantalla completa con zoom.
+  - «Ir a» un % o a una página.
+  - Tiempo leído: total, hoy y días seguidos. También se ve en la ficha del libro.
+  - **Leer en voz alta** con la voz del móvil, marcando la frase que va diciendo, con pausa, velocidad y paso de
+    capítulo solo.
+  - Brillo deslizando por el borde izquierdo.
+  - Ajustes nuevos: guiones, espacio entre párrafos, dos columnas en horizontal, animación al pasar página y la
+    letra Fraunces para leer.
+- **Titulares** que nunca se parten a mitad de palabra.
+- **Fotos de las casillas:** llenar la casilla, la forma de la foto, vertical, cuadrada o apaisada; recortada o
+  entera.
+- **Descubrir juegos:** filtros de años y plataformas.
+
 ## Atrio 6 (móvil): cambio completo
 
 La app del móvil se ha rehecho por fuera: otra estética, otra navegación y otras animaciones. Por dentro

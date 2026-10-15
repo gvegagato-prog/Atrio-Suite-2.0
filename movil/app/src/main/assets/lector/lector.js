@@ -1,6 +1,7 @@
 // Lector de Atrio: EPUB, PDF, MOBI/AZW3, FB2 y CBZ con foliate-js (y pdf.js para PDF).
 // Todo se guarda en el móvil a través de window.Atrio (puente con la app): posición, ajustes, subrayados y marcadores.
 import './foliate/view.js'
+import { FootnoteHandler } from './foliate/footnotes.js'
 
 const A = window.Atrio
 const $ = s => document.querySelector(s)
@@ -8,11 +9,19 @@ const st = JSON.parse(A.state())
 const S = Object.assign({
     theme: 'papel', size: 100, font: 'original', spacing: 1.5, margin: 'm', justify: true,
     flow: 'paginated', brightness: -1, warm: 0, keepOn: true, zoom: 'fit-width',
+    // Atrio 6.8: guiones, espacio entre párrafos, dos columnas en horizontal, animación, línea de estado,
+    // tu velocidad de lectura (bytes por minuto; 0 = aún no se sabe) y la velocidad de la voz
+    hyphens: true, paraSpace: 0, columns: false, animated: true, status: true, speed: 0, ttsRate: 1,
 }, st.settings || {})
+// Lo que llevas leído de este libro: tiempo total y por día (ms)
+const stats = Object.assign({ total: 0, days: {} }, st.stats || {})
 let notes = st.annotations || []      // { value, text, note, created, index, label } (el color de antes ya no se usa)
 let marks = st.bookmarks || []        // { value, label, fraction, created }
 const THEMES = [['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
-const FONTS = [['original', 'Original'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
+const FONTS = [['original', 'Original'], ['atrio', 'Fraunces'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
+// El acento de la app (el que elegiste en Apariencia), en su versión clara y oscura
+const ACCENT = st.accent || { light: '#C8372D', dark: '#E0533F' }
+const DARK_THEMES = ['gris', 'noche', 'negro']
 let view, isPDF = false, last = null, chromeOn = false, selection = null
 
 // ---------------------------------------------------------------- Utilidades
@@ -64,6 +73,8 @@ async function abrir() {
     view.addEventListener('load', onLoad)
     view.addEventListener('relocate', onRelocate)
     view.addEventListener('external-link', e => { e.preventDefault(); A.openUrl(e.detail.a.href) })
+    // Notas al pie: se abren en una hoja abajo, sin perder la página
+    view.addEventListener('link', e => footnotes.handle(view.book, e)?.catch(err => { console.warn(err); view.goTo(e.detail.href) }))
     if (!st.title) $('#t-libro').textContent = (typeof view.book.metadata?.title === 'string' ? view.book.metadata.title : '') || ''
     applySettings()
     // Desde la ficha del libro se puede abrir directamente en un subrayado
@@ -78,14 +89,25 @@ async function abrir() {
 function css() {
     const cs = getComputedStyle(document.body)
     const fg = cs.getPropertyValue('--fg').trim(), bg = cs.getPropertyValue('--bg').trim(), accent = cs.getPropertyValue('--accent').trim()
-    const dark = ['gris', 'noche', 'negro'].includes(S.theme)
-    const fam = { original: '', serif: 'Georgia, "Noto Serif", serif', sans: 'system-ui, Roboto, "Noto Sans", sans-serif', facil: 'Verdana, "Atkinson Hyperlegible", sans-serif', mono: '"Roboto Mono", "Noto Sans Mono", monospace' }[S.font]
+    const dark = DARK_THEMES.includes(S.theme)
+    const fam = { original: '', atrio: 'AtrioSerif, Georgia, serif', serif: 'Georgia, "Noto Serif", serif', sans: 'system-ui, Roboto, "Noto Sans", sans-serif', facil: 'Verdana, "Atkinson Hyperlegible", sans-serif', mono: '"Roboto Mono", "Noto Sans Mono", monospace' }[S.font]
+    const font = location.origin + '/assets/lector/fuentes/'
+    const hy = S.hyphens ? 'auto' : 'manual'
+    const para = [
+        '',
+        'p { margin-top: 0 !important; margin-bottom: .55em !important; }',
+        'p { margin-top: 0 !important; margin-bottom: 1.1em !important; text-indent: 0 !important; }',
+    ][S.paraSpace] || ''
     return `
 @namespace epub "http://www.idpf.org/2007/ops";
+@font-face { font-family: AtrioSerif; src: url("${font}display_regular.ttf"); font-weight: 400; }
+@font-face { font-family: AtrioSerif; src: url("${font}display_semibold.ttf"); font-weight: 600 900; }
+@font-face { font-family: AtrioSerif; src: url("${font}display_italic.ttf"); font-style: italic; }
 html { color: ${fg} !important; background: transparent !important; font-size: ${S.size}% !important; color-scheme: ${dark ? 'dark' : 'light'}; }
 body { background: transparent !important; color: inherit !important; ${fam ? `font-family: ${fam} !important;` : ''} }
 ${fam ? 'body *:not(code):not(pre) { font-family: inherit !important; }' : ''}
-p, li, blockquote, dd { line-height: ${S.spacing} !important; text-align: ${S.justify ? 'justify' : 'start'}; -webkit-hyphens: auto; hyphens: auto; widows: 2; orphans: 2; }
+p, li, blockquote, dd { line-height: ${S.spacing} !important; text-align: ${S.justify ? 'justify' : 'start'}; -webkit-hyphens: ${hy}; hyphens: ${hy}; widows: 2; orphans: 2; }
+${para}
 h1, h2, h3, h4, p, li, span, div { color: inherit !important; }
 a:link, a:visited { color: ${accent} !important; }
 img, svg, video { max-width: 100%; ${dark ? 'filter: brightness(.86);' : ''} }
@@ -97,6 +119,8 @@ html, body, body * { -webkit-user-select: none !important; user-select: none !im
 
 function applySettings() {
     document.body.dataset.theme = S.theme
+    document.documentElement.style.setProperty('--accent', DARK_THEMES.includes(S.theme) ? ACCENT.dark : ACCENT.light)
+    document.body.classList.toggle('sin-estado', !S.status)
     A.setTheme(S.theme)
     if (!view?.renderer) return
     if (isPDF) {
@@ -110,7 +134,10 @@ function applySettings() {
         const safe = Math.max(parseFloat(rs.getPropertyValue('--safe-top')) || 0, parseFloat(rs.getPropertyValue('--safe-bottom')) || 0)
         view.renderer.setAttribute('margin', Math.round(safe + { s: 26, m: 42, l: 62 }[S.margin]) + 'px')
         view.renderer.setAttribute('max-inline-size', '760px')
-        view.renderer.setAttribute('max-column-count', '1')
+        // Dos columnas solo si lo pides y la pantalla es ancha (móvil en horizontal o tableta)
+        view.renderer.setAttribute('max-column-count', S.columns ? '2' : '1')
+        if (S.animated) view.renderer.setAttribute('animated', '')
+        else view.renderer.removeAttribute('animated')
     }
     A.setBrightness(S.brightness)
     A.keepScreenOn(!!S.keepOn)
@@ -126,8 +153,73 @@ const saveProgress = debounce(() => {
     A.saveProgress(last.cfi || '', last.fraction || 0, label())
 }, 700)
 
+// ---------------------------------------------------------------- Tu ritmo: tiempo leído y lo que te queda
+// foliate calcula «unidades de tiempo» de 1600 bytes de texto (un minuto a ritmo medio). Midiendo cuánto avanzas de
+// verdad mientras lees, el tiempo que queda se ajusta a tu velocidad.
+const UNIT = 1600
+const LOC = 1500
+let lastTurn = null           // { t, loc }
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') }
+const saveStats = debounce(() => { try { A.saveStats(JSON.stringify(stats)) } catch (e) { } }, 4000)
+const saveSpeed = debounce(() => saveSettings(), 8000)
+function track(detail) {
+    const now = Date.now()
+    const loc = detail.location?.current
+    if (lastTurn && typeof loc === 'number') {
+        const dt = now - lastTurn.t
+        // Solo cuenta como lectura si no has dejado el móvil (más de 10 min en una página = te fuiste)
+        if (dt > 1500 && dt < 10 * 60000 && !document.hidden) {
+            const add = Math.min(dt, 4 * 60000)
+            stats.total += add
+            const d = today()
+            stats.days[d] = (stats.days[d] || 0) + add
+            // Velocidad: lo avanzado (en bytes) entre lo tardado, si es un paso normal de página
+            const dloc = loc - lastTurn.loc
+            if (!isPDF && dloc > 0 && dloc <= 6 && dt > 4000) {
+                const bpm = dloc * LOC / (dt / 60000)
+                if (bpm > 200 && bpm < 20000) { S.speed = S.speed ? Math.round(S.speed * 0.85 + bpm * 0.15) : Math.round(bpm); saveSpeed() }
+            }
+            saveStats()
+        }
+    }
+    if (typeof loc === 'number') lastTurn = { t: now, loc }
+}
+const durTxt = min => {
+    if (!isFinite(min) || min < 0) return ''
+    if (min < 1) return 'menos de 1 min'
+    if (min < 60) return Math.round(min) + ' min'
+    const h = Math.floor(min / 60), m = Math.round(min % 60)
+    return h + ' h' + (m ? ' ' + m + ' min' : '')
+}
+const ms2txt = ms => durTxt(ms / 60000) || '0 min'
+/** Minutos que te quedan (del capítulo y del libro), a tu ritmo si ya se conoce. */
+function remaining(detail) {
+    const tm = detail?.time
+    if (!tm) return null
+    const k = S.speed ? UNIT / S.speed : 1
+    return { section: tm.section * k, total: tm.total * k }
+}
+function drawStatus(detail) {
+    const el = $('#estado')
+    if (!el || !detail) return
+    let left = ''
+    if (isPDF) {
+        const n = view?.book?.sections?.length || 0
+        const i = (detail.section?.current ?? detail.index ?? 0) + 1
+        left = n ? `Página ${i} de ${n}` : ''
+    } else {
+        const r = remaining(detail)
+        if (r) left = r.section >= 1 ? `${durTxt(r.section)} para acabar el capítulo` : 'Última página del capítulo'
+    }
+    $('#e-izq').textContent = left
+    $('#e-der').textContent = pct(detail.fraction)
+}
+
 function onRelocate({ detail }) {
     last = detail
+    track(detail)
+    drawStatus(detail)
+    $('#b-marca-cinta')?.classList.toggle('oculta', !currentMark())
     $('#p-barra').value = detail.fraction ?? 0
     $('#p-pct').textContent = pct(detail.fraction)
     const pg = detail.pageItem?.label ? 'pág. ' + detail.pageItem.label
@@ -161,10 +253,15 @@ function onLoad({ detail: { doc, index } }) {
 
     // Mantener pulsado (sin mover el dedo): la palabra de debajo. Mientras, la página NO se mueve.
     let t0 = null, holding = false, holdTimer = 0, swiped = false, held = false
+    // Brillo: deslizar arriba o abajo por el borde izquierdo de la pantalla (como en los lectores de tinta)
+    let edge = false, glow = null
+    const topX = x => x + (doc.defaultView.frameElement?.getBoundingClientRect().left || 0)
     win.addEventListener('touchstart', e => {
         const t = e.touches[0]
         t0 = t ? { x: t.clientX, y: t.clientY, time: e.timeStamp } : null
         swiped = false; held = false; holding = false
+        edge = !!t && e.touches.length === 1 && topX(t.clientX) < window.innerWidth * 0.1
+        glow = null
         clearTimeout(holdTimer)
         if (t && e.touches.length === 1) holdTimer = setTimeout(() => {
             holding = true; held = true
@@ -174,11 +271,22 @@ function onLoad({ detail: { doc, index } }) {
     win.addEventListener('touchmove', e => {
         const t = e.touches[0]
         if (t0 && t && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) > 12 && !holding) clearTimeout(holdTimer)
+        if (edge && t0 && t && !holding) {
+            const dx = t.clientX - t0.x, dy = t.clientY - t0.y
+            if (glow === null && Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx) * 1.6) glow = S.brightness < 0 ? 0.6 : S.brightness
+            if (glow !== null) {
+                S.brightness = Math.round(Math.min(1, Math.max(0.02, glow - dy / (window.innerHeight * 0.7))) * 100) / 100
+                A.setBrightness(S.brightness)
+                aviso('Brillo ' + Math.round(S.brightness * 100) + ' %')
+                e.stopPropagation()
+            }
+        }
         if (holding) e.stopPropagation()
     }, { capture: true, passive: true })
     win.addEventListener('touchend', e => {
         clearTimeout(holdTimer)
         const t = e.changedTouches[0]
+        if (glow !== null) { glow = null; edge = false; swiped = true; saveSettings(); e.stopPropagation(); holding = false; return }
         // PDF: se pasa de página deslizando (foliate no lo hace solo en los PDF)
         if (isPDF && t0 && t && !holding) {
             const dx = t.clientX - t0.x, dy = t.clientY - t0.y
@@ -208,6 +316,12 @@ function onLoad({ detail: { doc, index } }) {
         if (e.target.closest?.('a')) return
         if (swiped) { swiped = false; return }
         if (held) { held = false; return }
+        // Una imagen: a pantalla completa, para ampliarla
+        const img = !isPDF && e.target.closest?.('img, image')
+        if (img && $('#palabra').classList.contains('oculta') && !selection && !$('#panel').classList.contains('on')) {
+            const src = img.currentSrc || img.src || img.getAttribute('href') || img.getAttributeNS('http://www.w3.org/1999/xlink', 'href')
+            if (src && (img.naturalWidth || 200) >= 120) { showImage(typeof src === 'string' ? src : src.baseVal); return }
+        }
         const hit = noteAt(doc, index, e.clientX, e.clientY)
         setTimeout(() => {
             if (!$('#palabra').classList.contains('oculta')) { hideWord(); return }
@@ -519,6 +633,7 @@ function showChrome(on) {
     // Solo si cambia: esconder o enseñar las barras del móvil cuando ya lo estaban recoloca la página
     if (on === chromeOn) return
     chromeOn = on
+    document.body.classList.toggle('menu', on)
     $('#arriba').classList.toggle('oculta', !on)
     $('#abajo').classList.toggle('oculta', !on)
     A.systemBars(on)
@@ -572,7 +687,7 @@ function openPanel(html, after) {
     after?.($('#panel-cuerpo'))
 }
 function closePanel() { $('#panel').classList.remove('on'); $('#velo').classList.remove('on') }
-$('#velo').addEventListener('click', closePanel)
+$('#velo').addEventListener('click', () => { closePanel(); closePie() })
 
 function editNote(n, after) {
     openPanel(`<h2>Tu nota</h2>
@@ -589,6 +704,8 @@ function editNote(n, after) {
 
 // Ajustes de letra
 function openSettings() {
+    // Al tocar una opción el panel se repinta: que no vuelva arriba del todo
+    const keep = $('#panel').classList.contains('on') ? $('#panel-cuerpo').scrollTop : 0
     const chips = (list, cur, key) => list.map(([v, t]) => `<button class="chip ${cur === v ? 'on' : ''}" data-k="${key}" data-v="${v}">${t}</button>`).join('')
     openPanel(`<h2>Letra y página</h2>
       <h3>Tema</h3>
@@ -607,11 +724,21 @@ function openSettings() {
         <div class="fila">${chips([['s', 'Estrechos'], ['m', 'Normales'], ['l', 'Anchos']], S.margin, 'margin')}</div>
         <h3>Texto</h3>
         <div class="fila">${chips([[true, 'Justificado'], [false, 'Alineado a la izquierda']], S.justify, 'justify')}</div>
+        <div class="fila" style="margin-top:8px">${chips([[true, 'Partir palabras con guion'], [false, 'Sin guiones']], S.hyphens, 'hyphens')}</div>
+        <h3>Párrafos</h3>
+        <div class="fila">${chips([[0, 'Como el libro'], [1, 'Con un poco de aire'], [2, 'Separados, sin sangría']], S.paraSpace, 'paraSpace')}</div>
         <h3>Pasar página</h3>
         <div class="fila">${chips([['paginated', 'Páginas'], ['scrolled', 'Desplazamiento continuo']], S.flow, 'flow')}</div>
+        <div class="fila" style="margin-top:8px">${chips([[true, 'Con animación'], [false, 'Sin animación']], S.animated, 'animated')}</div>
+        <h3>Columnas</h3>
+        <div class="fila">${chips([[false, 'Una'], [true, 'Dos con el móvil en horizontal']], S.columns, 'columns')}</div>
       `}
+      <h3>Abajo de la página</h3>
+      <div class="fila">${chips([[true, isPDF ? 'Página y %' : 'Lo que queda del capítulo y %'], [false, 'Nada']], S.status, 'status')}</div>
       <h3>Pantalla</h3>
-      <div class="fila">${chips([[true, 'Siempre encendida'], [false, 'Normal']], S.keepOn, 'keepOn')}</div>`, el => {
+      <div class="fila">${chips([[true, 'Siempre encendida'], [false, 'Normal']], S.keepOn, 'keepOn')}</div>
+      <p class="sub" style="margin-top:14px">Truco: desliza el dedo arriba o abajo por el borde izquierdo de la página para cambiar el brillo.</p>`, el => {
+        el.scrollTop = keep
         el.querySelectorAll('[data-theme-btn]').forEach(b => {
             const t = b.dataset.themeBtn
             b.style.background = { papel: '#FBF8F1', sepia: '#F1E6CF', gris: '#2B2D31', noche: '#121317', negro: '#000' }[t]
@@ -621,6 +748,7 @@ function openSettings() {
         el.querySelectorAll('.chip[data-k]').forEach(b => b.onclick = () => {
             const k = b.dataset.k; let v = b.dataset.v
             if (v === 'true' || v === 'false') v = v === 'true'
+            else if (/^\d+$/.test(v)) v = Number(v)
             S[k] = v; applySettings(); saveSettings(); openSettings()
         })
         el.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
@@ -647,18 +775,55 @@ function openBrightness() {
     })
 }
 
-// Índice
+// Índice (con «Ir a» y lo que llevas leído)
+/** Días seguidos leyendo (hasta hoy o hasta ayer). */
+function streak() {
+    let n = 0
+    const d = new Date()
+    if (!stats.days[today()]) d.setDate(d.getDate() - 1)
+    for (;;) {
+        const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+        if (!stats.days[k] || stats.days[k] < 60000) break
+        n++; d.setDate(d.getDate() - 1)
+    }
+    return n
+}
+function readingHtml() {
+    if (!stats.total) return ''
+    const r = !isPDF && last ? remaining(last) : null
+    const s = streak()
+    return `<div class="lectura">
+        <div><b>${esc(ms2txt(stats.total))}</b><span>leído en total</span></div>
+        <div><b>${esc(ms2txt(stats.days[today()] || 0))}</b><span>hoy</span></div>
+        ${r ? `<div><b>${esc(durTxt(r.total) || '—')}</b><span>para acabarlo${S.speed ? ' a tu ritmo' : ''}</span></div>` : ''}
+        ${s > 1 ? `<div><b>${s}</b><span>días seguidos</span></div>` : ''}
+      </div>`
+}
 function openToc() {
     const toc = view?.book?.toc || []
     const cur = last?.tocItem?.href
     const items = []
     const walk = (list, depth) => { for (const t of list) { items.push([t, depth]); if (t.subitems?.length) walk(t.subitems, depth + 1) } }
     walk(toc, 0)
-    openPanel(`<h2>Índice</h2>${items.length ? `<ul class="lista">${items.map(([t, d], i) =>
+    const pages = isPDF ? (view?.book?.sections?.length || 0) : 0
+    openPanel(`<h2>Índice</h2>
+      ${readingHtml()}
+      <div class="ir"><span>Ir a</span><input id="ir-n" type="number" inputmode="numeric" min="${isPDF ? 1 : 0}" max="${isPDF ? pages : 100}"
+        placeholder="${isPDF ? 'página (1–' + pages + ')' : '%'}"><button class="boton" id="ir-si">Ir</button></div>
+      ${items.length ? `<ul class="lista">${items.map(([t, d], i) =>
         `<li class="n${Math.min(d, 3)} ${t.href === cur ? 'actual' : ''}" data-i="${i}">${esc(t.label?.trim() || 'Sin título')}</li>`).join('')}</ul>`
         : '<p class="vacio">Este libro no trae índice.</p>'}`, el => {
         el.querySelectorAll('li[data-i]').forEach(li => li.onclick = () => { view.goTo(items[li.dataset.i][0].href); closePanel() })
         el.querySelector('.actual')?.scrollIntoView({ block: 'center' })
+        const go = () => {
+            const n = parseFloat(el.querySelector('#ir-n').value)
+            if (!isFinite(n)) return
+            if (isPDF) view.goTo(Math.min(pages, Math.max(1, Math.round(n))) - 1)
+            else view.goToFraction(Math.min(100, Math.max(0, n)) / 100)
+            closePanel()
+        }
+        el.querySelector('#ir-si').onclick = go
+        el.querySelector('#ir-n').addEventListener('keydown', e => { if (e.key === 'Enter') go() })
     })
 }
 
@@ -766,9 +931,184 @@ async function runSearch(q, el) {
     } catch (e) { estado.textContent = 'No se ha podido buscar en este libro.' }
 }
 
+// ---------------------------------------------------------------- Notas al pie
+const footnotes = new FootnoteHandler()
+footnotes.addEventListener('before-render', e => {
+    const v = e.detail.view
+    // Un enlace dentro de la nota (por ejemplo «volver al texto»): se va allí y se cierra la hoja
+    v.addEventListener('link', ev => { ev.preventDefault(); closePie(); view.goTo(ev.detail.href) })
+    v.addEventListener('external-link', ev => { ev.preventDefault(); A.openUrl(ev.detail.a.href) })
+    $('#pie-cuerpo').replaceChildren(v)
+    v.renderer.setAttribute('flow', 'scrolled')
+    v.renderer.setAttribute('margin', '0px')
+    v.renderer.setAttribute('gap', '4%')
+    v.renderer.setStyles?.(css() + '\naside, aside[epub|type] { display: block !important; } html, body { background: transparent !important; }')
+})
+footnotes.addEventListener('render', e => {
+    const { type } = e.detail
+    $('#pie-tipo').textContent = { footnote: 'Nota al pie', endnote: 'Nota', note: 'Nota', biblioentry: 'Referencia', definition: 'Definición' }[type] || 'Nota'
+    hideSel(); hideWord(); closePanel(); showChrome(false)
+    $('#pie').classList.add('on')
+    $('#velo').classList.add('on')
+})
+function closePie() {
+    $('#pie').classList.remove('on')
+    if (!$('#panel').classList.contains('on')) $('#velo').classList.remove('on')
+    setTimeout(() => { if (!$('#pie').classList.contains('on')) $('#pie-cuerpo').replaceChildren() }, 350)
+}
+$('#pie-cerrar').onclick = closePie
+
+// ---------------------------------------------------------------- Imágenes a pantalla completa
+// Pellizcar para ampliar, arrastrar para moverla, doble toque para ampliar o volver; tocar fuera o atrás cierra.
+const zoom = { s: 1, x: 0, y: 0 }
+function drawImage() { $('#imagen img').style.transform = `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})` }
+function showImage(src) {
+    hideWord(); hideSel(); showChrome(false)
+    Object.assign(zoom, { s: 1, x: 0, y: 0 })
+    const img = $('#imagen img')
+    img.src = src
+    drawImage()
+    $('#imagen').classList.remove('oculta')
+}
+function hideImage() { $('#imagen').classList.add('oculta'); $('#imagen img').removeAttribute('src') }
+{
+    const box = $('#imagen')
+    let p0 = null, lastTap = 0
+    const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+    box.addEventListener('touchstart', e => {
+        const t = e.touches
+        p0 = t.length === 2 ? { d: dist(t), s: zoom.s } : { x: t[0].clientX - zoom.x, y: t[0].clientY - zoom.y, moved: false }
+    }, { passive: true })
+    box.addEventListener('touchmove', e => {
+        const t = e.touches
+        if (!p0) return
+        if (t.length === 2 && p0.d) zoom.s = Math.min(6, Math.max(1, p0.s * dist(t) / p0.d))
+        else if (t.length === 1 && p0.x !== undefined && zoom.s > 1) { zoom.x = t[0].clientX - p0.x; zoom.y = t[0].clientY - p0.y; p0.moved = true }
+        if (zoom.s === 1) { zoom.x = 0; zoom.y = 0 }
+        drawImage()
+        e.preventDefault()
+    }, { passive: false })
+    box.addEventListener('touchend', e => {
+        if (e.touches.length) return
+        const tap = p0 && p0.x !== undefined && !p0.moved
+        p0 = null
+        if (!tap) return
+        const now = Date.now()
+        if (now - lastTap < 300) { Object.assign(zoom, zoom.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2.5 }); drawImage(); lastTap = 0 }
+        else { lastTap = now; setTimeout(() => { if (lastTap === now && zoom.s === 1) hideImage() }, 320) }
+    })
+    $('#imagen-cerrar').onclick = hideImage
+}
+
+// ---------------------------------------------------------------- Escuchar (leer en voz alta)
+// foliate prepara el texto frase a frase (SSML con marcas); cada frase se lee con la voz de Android
+// (A.speak) y, cuando acaba (window.atrioSpoken), se marca y se lee la siguiente. Al acabar el capítulo, sigue.
+let voz = null          // { segs: [{ mark, text }], i }
+let vozOn = false, vozPaused = false, vozN = 0
+const RATES = [0.8, 1, 1.25, 1.5, 1.75, 2]
+const bookLang = () => {
+    const l = view?.book?.metadata?.language
+    return (Array.isArray(l) ? l[0] : l) || 'es'
+}
+function parseSSML(ssml) {
+    const d = new DOMParser().parseFromString(ssml, 'application/xml')
+    const segs = [{ mark: null, text: '' }]
+    const walk = n => {
+        for (const c of n.childNodes) {
+            if (c.nodeType === 3) segs[segs.length - 1].text += c.nodeValue
+            else if (c.nodeType === 1) {
+                if (c.localName === 'mark') segs.push({ mark: c.getAttribute('name'), text: '' })
+                else if (c.localName === 'break') segs[segs.length - 1].text += ' '
+                else walk(c)
+            }
+        }
+    }
+    walk(d.documentElement)
+    return segs.map(x => ({ mark: x.mark, text: x.text.replace(/\s+/g, ' ').trim() })).filter(x => x.text || x.mark)
+}
+/** La frase que se está leyendo: marcada (como un subrayado) y, si no se ve, se pasa de página. */
+function vozMark(range) {
+    const doc = range.startContainer?.ownerDocument
+    let index = null
+    for (const [i, d] of docs) if (d === doc) index = i
+    if (index === null) return
+    mark(index, range)
+    view.renderer.scrollToAnchor?.(range)
+}
+async function vozStart() {
+    if (isPDF) { aviso('Leer en voz alta funciona con libros de texto (EPUB…), no con PDF'); return }
+    hideSel(); hideWord(); closePanel(); showChrome(false)
+    vozOn = true; vozPaused = false
+    drawVoz()
+    $('#voz').classList.remove('oculta')
+    try {
+        await view.initTTS('sentence', vozMark)
+        const r = last?.range
+        vozLoad(r ? view.tts.from(r) : view.tts.start())
+    } catch (e) { console.error(e); aviso('No se ha podido empezar a leer en voz alta'); vozStop() }
+}
+function vozLoad(ssml) {
+    if (!vozOn) return
+    if (!ssml) { vozNextSection(); return }
+    voz = { segs: parseSSML(ssml), i: 0 }
+    vozSay()
+}
+/** Lee la frase actual (o pasa a la siguiente si está vacía). */
+function vozSay() {
+    if (!vozOn || vozPaused || !voz) return
+    let seg = voz.segs[voz.i]
+    while (seg && !seg.text) { if (seg.mark) view.tts.setMark(seg.mark); voz.i++; seg = voz.segs[voz.i] }
+    if (!seg) { vozLoad(view.tts.next()); return }
+    if (seg.mark) view.tts.setMark(seg.mark)
+    vozN++
+    A.speak(seg.text, 'v' + vozN, S.ttsRate, bookLang())
+}
+window.atrioSpoken = (id, error) => {
+    if (id !== 'v' + vozN || !vozOn || vozPaused) return
+    if (error) { aviso('La voz del móvil ha fallado: revisa «Texto a voz» en los ajustes de Android'); vozStop(); return }
+    voz.i++
+    vozSay()
+}
+async function vozNextSection() {
+    const cur = view.renderer.getContents?.()[0]?.index
+    const n = view.book.sections.length
+    let next = (cur ?? -1) + 1
+    while (next < n && view.book.sections[next].linear === 'no') next++
+    if (next >= n) { aviso('Fin del libro'); vozStop(); return }
+    await view.goTo(next)
+    if (!vozOn) return
+    await view.initTTS('sentence', vozMark)
+    vozLoad(view.tts.start())
+}
+function vozPause() {
+    if (!vozOn) return
+    vozPaused = !vozPaused
+    if (vozPaused) A.stopSpeaking(); else vozSay()
+    drawVoz()
+}
+function vozSkip() { if (!vozOn || !voz) return; A.stopSpeaking(); vozPaused = false; voz.i++; vozSay(); drawVoz() }
+function vozStop() {
+    vozOn = false; vozPaused = false; voz = null
+    try { A.stopSpeaking() } catch (e) { }
+    unmark()
+    $('#voz').classList.add('oculta')
+}
+function drawVoz() {
+    $('#v-pausa').textContent = vozPaused ? 'Seguir' : 'Pausa'
+    $('#v-vel').textContent = String(S.ttsRate).replace('.', ',') + '×'
+}
+$('#v-pausa').onclick = vozPause
+$('#v-sig').onclick = vozSkip
+$('#v-parar').onclick = vozStop
+$('#v-vel').onclick = () => {
+    S.ttsRate = RATES[(RATES.indexOf(S.ttsRate) + 1) % RATES.length] || 1
+    saveSettings(); drawVoz()
+}
+
 // ---------------------------------------------------------------- Botones
 $('#b-cerrar').onclick = () => A.close()
 $('#b-indice').onclick = openToc
+$('#b-voz').onclick = () => vozOn ? vozStop() : vozStart()
 $('#b-notas').onclick = () => openNotes('notas')
 $('#b-ajustes').onclick = openSettings
 $('#b-brillo').onclick = openBrightness
@@ -778,15 +1118,19 @@ $('#b-marca').onclick = () => {
     if (m) { marks = marks.filter(x => x !== m); aviso('Marcador quitado') }
     else if (last) { marks.push({ value: last.cfi, label: label() || pct(last.fraction), fraction: last.fraction || 0, created: Date.now() }); aviso('Página marcada') }
     $('#b-marca').classList.toggle('on', !!currentMark())
+    $('#b-marca-cinta')?.classList.toggle('oculta', !currentMark())
     saveMarks()
 }
 
 // Atrás de Android: primero se cierra lo que haya abierto
 window.atrioBack = () => {
+    if (!$('#imagen').classList.contains('oculta')) { hideImage(); return true }
+    if ($('#pie').classList.contains('on')) { closePie(); return true }
     if (!$('#palabra').classList.contains('oculta')) { hideWord(); return true }
     if (pend) { pend = null; $('#pend').classList.add('oculta'); unmark(); return true }
     if (selection) { hideSel(); return true }
     if ($('#panel').classList.contains('on')) { closePanel(); return true }
+    if (vozOn) { vozStop(); return true }
     if (chromeOn) { showChrome(false); return true }
     return false
 }

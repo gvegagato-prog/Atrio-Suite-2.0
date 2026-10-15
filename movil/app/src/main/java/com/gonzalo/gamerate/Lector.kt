@@ -121,6 +121,44 @@ class ReaderActivity : ComponentActivity() {
     private var id = 0L
     private var uri: Uri? = null
 
+    // Leer en voz alta: la voz de Android. Lo que se pide antes de que esté lista, espera en [pending].
+    private var tts: android.speech.tts.TextToSpeech? = null
+    private var ttsReady = false
+    private var pending: (() -> Unit)? = null
+
+    private fun speakNow(text: String, uid: String, rate: Float, lang: String) {
+        val t = tts
+        if (t == null || !ttsReady) {
+            pending = { speakNow(text, uid, rate, lang) }
+            if (t == null) tts = android.speech.tts.TextToSpeech(this) { status ->
+                ttsReady = status == android.speech.tts.TextToSpeech.SUCCESS
+                if (ttsReady) {
+                    tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) {}
+                        override fun onDone(utteranceId: String?) { spoken(utteranceId, false) }
+                        @Deprecated("Deprecated in Java")
+                        override fun onError(utteranceId: String?) { spoken(utteranceId, true) }
+                        override fun onError(utteranceId: String?, errorCode: Int) { spoken(utteranceId, true) }
+                    })
+                    runOnUiThread { pending?.invoke(); pending = null }
+                } else {
+                    pending = null
+                    spoken(uid, true)
+                }
+            }
+            return
+        }
+        // El idioma del libro, si el móvil tiene esa voz (si no, la que tenga por defecto)
+        val loc = java.util.Locale.forLanguageTag(lang.ifBlank { "es" })
+        if (t.isLanguageAvailable(loc) >= android.speech.tts.TextToSpeech.LANG_AVAILABLE && t.voice?.locale?.language != loc.language) t.language = loc
+        t.setSpeechRate(rate.coerceIn(0.5f, 2.5f))
+        t.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, uid)
+    }
+
+    private fun spoken(uid: String?, error: Boolean) = runOnUiThread {
+        if (::web.isInitialized && uid != null) web.evaluateJavascript("window.atrioSpoken && atrioSpoken(${JSONObject.quote(uid)}, $error)", null)
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -233,6 +271,7 @@ class ReaderActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        tts?.stop(); tts?.shutdown(); tts = null
         (web.parent as? android.view.ViewGroup)?.removeView(web)
         web.destroy()
         super.onDestroy()
@@ -261,6 +300,8 @@ class ReaderActivity : ComponentActivity() {
                 .put("file", name)
                 .put("location", o.optString("cfi").ifBlank { null } ?: JSONObject.NULL)
                 .put("goto", intent.getStringExtra("goto") ?: JSONObject.NULL)
+                .put("stats", o.optJSONObject("stats") ?: JSONObject())
+                .put("accent", accentJson())
                 .put("settings", o.optJSONObject("settings") ?: JSONObject(getSharedPreferences("lector", MODE_PRIVATE).getString("ajustes", "{}") ?: "{}"))
                 .put("annotations", o.optJSONArray("notes") ?: org.json.JSONArray())
                 .put("bookmarks", o.optJSONArray("marks") ?: org.json.JSONArray())
@@ -279,6 +320,17 @@ class ReaderActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun saveAnnotations(json: String) = edit { it.put("notes", org.json.JSONArray(json)) }
+
+        /** Lo que llevas leído de este libro (tiempo total y por día). */
+        @JavascriptInterface
+        fun saveStats(json: String) = edit { it.put("stats", JSONObject(json)) }
+
+        /** Lee una frase en voz alta; al acabar contesta en window.atrioSpoken(id, error). */
+        @JavascriptInterface
+        fun speak(text: String, id: String, rate: Double, lang: String) = runOnUiThread { speakNow(text, id, rate.toFloat(), lang) }
+
+        @JavascriptInterface
+        fun stopSpeaking() = runOnUiThread { pending = null; tts?.stop() }
 
         @JavascriptInterface
         fun saveBookmarks(json: String) = edit { it.put("marks", org.json.JSONArray(json)) }
@@ -360,6 +412,14 @@ class ReaderActivity : ComponentActivity() {
         }
     }
 
+    /** El acento elegido en Apariencia (claro y oscuro), para que el lector vaya a juego con la app. */
+    private fun accentJson(): JSONObject {
+        val idA = getSharedPreferences("gamerate", MODE_PRIVATE).getString("skin_accent_id", "rojo")
+        val a = ACCENT_COLORS.firstOrNull { it.id == idA } ?: ACCENT_COLORS.first()
+        fun hex(c: Long) = String.format("#%06X", (c and 0xFFFFFF))
+        return JSONObject().put("light", hex(a.light)).put("dark", hex(a.dark))
+    }
+
     private fun answer(id: String, o: JSONObject) = runOnUiThread {
         if (::web.isInitialized) web.evaluateJavascript("window.atrioResult && atrioResult(${JSONObject.quote(id)}, $o)", null)
     }
@@ -416,8 +476,14 @@ fun BookFileBar(id: Long, name: String) {
             }
             Spacer(Modifier.height(6.dp))
             val notes = st.optJSONArray("notes")?.length() ?: 0
+            val readMin = (st.optJSONObject("stats")?.optLong("total") ?: 0L) / 60000L
+            val readTxt = when {
+                readMin < 1 -> null
+                readMin < 60 -> "$readMin min leyendo"
+                else -> "${readMin / 60} h${if (readMin % 60 > 0) " ${readMin % 60} min" else ""} leyendo"
+            }
             Text(
-                listOfNotNull("${(frac * 100).toInt()} % leído", st.optString("label").ifBlank { null }, if (notes > 0) "$notes subrayados" else null, st.optString("name")).joinToString(" · "),
+                listOfNotNull("${(frac * 100).toInt()} % leído", readTxt, st.optString("label").ifBlank { null }, if (notes > 0) "$notes subrayados" else null, st.optString("name")).joinToString(" · "),
                 color = Muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis
             )
         }

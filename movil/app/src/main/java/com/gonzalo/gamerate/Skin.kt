@@ -284,6 +284,21 @@ val STYLES: List<SkinStyle> = listOf(
     SkinStyle("atardecer", "Atardecer", "Naranja de verano", "atardecer", "Shrikhand", "Poppins", "comic"),
 )
 
+/** Un color de acento de la revista, con su versión para el modo oscuro (más clara, para que se lea sobre papel oscuro). */
+data class Accent(val id: String, val name: String, val light: Long, val dark: Long)
+
+/** Los acentos que se pueden elegir (el rojo de imprenta, el de siempre, el primero). */
+val ACCENT_COLORS = listOf(
+    Accent("rojo", "Rojo", 0xFFC8372D, 0xFFE0533F),
+    Accent("azul", "Azul", 0xFF2F5D8A, 0xFF7FA7C4),
+    Accent("verde", "Verde", 0xFF3F7A4A, 0xFF8FB873),
+    Accent("mostaza", "Mostaza", 0xFFB8861B, 0xFFE0B456),
+    Accent("naranja", "Naranja", 0xFFC8642D, 0xFFE8894F),
+    Accent("rosa", "Rosa", 0xFFB83A6B, 0xFFE07AA1),
+    Accent("morado", "Morado", 0xFF7A4E8C, 0xFFB48BC4),
+    Accent("tinta", "Tinta", 0xFF15120F, 0xFFF1EBE0)
+)
+
 /** Tamaños del texto. */
 val TEXT_SCALES = listOf(0.9f to "Pequeño", 1f to "Normal", 1.12f to "Grande", 1.25f to "Enorme")
 
@@ -300,8 +315,10 @@ object Skin {
     var chameleon by mutableStateOf(true)
     /** Movimiento: 0 vivo (con muelles), 1 sobrio, 2 mínimo. */
     var motion by mutableStateOf(0)
-    /** Color de acento propio (0 = el de la paleta). */
+    /** Color de acento propio (0 = el de la paleta). Solo para la interfaz antigua; en la revista va [accentId]. */
     var accent by mutableStateOf(0L)
+    /** Acento de la revista (uno de [ACCENT_COLORS]). */
+    var accentId by mutableStateOf("rojo")
     /** Tamaño de las portadas en las bibliotecas: 0 normal, 1 grandes, 2 pequeñas. */
     var covers by mutableStateOf(0)
     /** Dock con el nombre del destino elegido (si no, solo iconos). */
@@ -325,7 +342,10 @@ object Skin {
     var open by mutableStateOf(false)
 
     /** Tonos que se ven ahora (según el modo claro u oscuro). */
-    val tones: Tones get() = override ?: base.let { b -> if (accent != 0L) b.copy(general = accent) else b }
+    val tones: Tones get() = override ?: base.let { b ->
+        if (revista) ACCENT_COLORS.firstOrNull { it.id == accentId && it.id != "rojo" }?.let { a -> b.copy(general = if (Mode.dark) a.dark else a.light) } ?: b
+        else if (accent != 0L) b.copy(general = accent) else b
+    }
     /** Tonos de la paleta elegida, sin camaleón. */
     val base: Tones get() = if (Mode.dark) palette.dark else palette.light
 
@@ -386,6 +406,7 @@ object Skin {
         chameleon = p.getBoolean("skin_chameleon", true)
         motion = p.getInt("skin_motion", 0)
         accent = p.getLong("skin_accent", 0L)
+        accentId = p.getString("skin_accent_id", "rojo")?.takeIf { id -> ACCENT_COLORS.any { it.id == id } } ?: "rojo"
         covers = p.getInt("skin_covers", 0)
         dockLabels = p.getBoolean("skin_docklabels", true)
         // La interfaz Feed (1) ya no existe: pasa a Revista
@@ -394,12 +415,17 @@ object Skin {
             p.edit().putBoolean("shell_v3", true).apply()
             applyShell(shell, ctx)
         }
+        // La revista ya no se personaliza (solo claro/oscuro y el acento): siempre su papel, sus letras y su forma
+        if (shell == 2) {
+            palette = PALETTES.first { it.id == "revista" }; display = "Atrio"; body = "Atrio"
+            form = FORMS.first { it.id == "revista" }; gauge = null; chameleon = false; textScale = 1f
+        }
     }
 
     fun save(ctx: Context) {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
             .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
-            .putLong("skin_accent", accent).putInt("skin_covers", covers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
+            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putInt("skin_covers", covers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
     }
 }

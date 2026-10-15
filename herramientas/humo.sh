@@ -171,29 +171,15 @@ must seek "Ajustes"; tap "Ajustes"; sleep 2
 shot 19_ajustes 1; alive "ajustes"
 back
 
-step "Estilo: tema, combinaciones, formas, notas, acento, interfaz, fondo e icono"
+step "Apariencia: claro u oscuro y el color del acento"
 top
-must tap "Estilo"; sleep 2
-must see "Combinaciones" 10
-shot 20_estilo 2; alive "estilo"
+must tap "Apariencia"; sleep 2
+must see "Acento" 10
+shot 20_apariencia 2; alive "apariencia"
 tap "Claro"; sleep 0.25; adb exec-out screencap -p > "$OUT/21_cambio_tema.png"; shot 21b_claro 2; alive "tema"
 tap "Oscuro"; sleep 2
-seek "Revista"; tap "Revista"; sleep 3; shot 22_revista 2; alive "revista"
-seek "Arcade"; tap "Arcade"; sleep 3; top; shot 23_arcade 2; alive "arcade"
-must tap "Forma"; sleep 1; must seek "Píxel"; tap "Píxel"; sleep 2; top; shot 24_forma_pixel 1
-must tap "Notas"; sleep 1; must seek "Estrellas"; tap "Estrellas"; sleep 2; top; shot 25_notas_estrellas 1
-must tap "Acento"; sleep 1; shot 26_acento 1; alive "acento"
-must tap "Interfaz"; sleep 1; tap "Sobrio"; sleep 1; must seek "Grandes"; tap "Grandes"; sleep 1; shot 27_interfaz 1; tap "Normales"; top; tap "Vivo"; top
-must tap "Fondo"; sleep 1; must see "Camaleón" 5; shot 28_fondo 1; alive "fondo"
-tap "Sorpréndeme"; sleep 3; shot 29_sorpresa 1; alive "sorpresa"
-tap "Icono"; sleep 2; shot 30_iconos 2
-tap "Neón"; sleep 4; alive "icono"
-adb shell dumpsys package "$PKG" > "$OUT/paquete.txt" 2>/dev/null || true
-icono_neon() { grep -A30 "enabledComponents" "$OUT/paquete.txt" | grep -q "IconNeon"; }
-must icono_neon
-echo "   el icono de la app ha cambiado a Neón" | tee -a "$LOG"
-tap "Atrio"; sleep 3
-must tap "Combinaciones"; sleep 1; top; tap "Vitrina"; sleep 2
+must seek "AZUL"; tap "AZUL"; sleep 2; shot 26_acento_azul 1; alive "acento"
+tap "ROJO"; sleep 2
 back; back
 
 # ---------------- Cuentas (Firebase de mentira en el propio ordenador: 10.0.2.2 desde el emulador) ----------------

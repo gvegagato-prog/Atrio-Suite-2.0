@@ -41,7 +41,7 @@ const log = [];
       const store = { saved: {} };
       window.__atrio = store;
       window.Atrio = {
-        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: {}, annotations: [], bookmarks: [] }),
+        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: {}, annotations: [], bookmarks: [], stats: {}, accent: { light: '#2F5D8A', dark: '#7FA7C4' } }),
         saveProgress: (cfi, f, l) => { store.saved.progress = { cfi, f, l }; },
         saveSettings: (j) => { store.saved.settings = JSON.parse(j); },
         saveAnnotations: (j) => { store.saved.notes = JSON.parse(j); },
@@ -51,6 +51,10 @@ const log = [];
         buzz: () => { store.buzz = (store.buzz || 0) + 1; },
         lookup: (w, s, id) => { store.lookup = { w, s }; setTimeout(() => window.atrioResult(id, { lang: 'es', langName: 'Español', defs: ['Primera acepción de prueba.', 'Segunda.'] }), 50); },
         translate: (w, s, l, id) => { setTimeout(() => window.atrioResult(id, { word: 'traducida', sentence: 'frase traducida' }), 50); },
+        saveStats: (j) => { store.saved.stats = JSON.parse(j); },
+        // La voz: cada frase «se lee» en 30 ms
+        speak: (t, id) => { (store.spoken ||= []).push(t); setTimeout(() => window.atrioSpoken && window.atrioSpoken(id, false), 30); },
+        stopSpeaking: () => { store.stopped = (store.stopped || 0) + 1; },
       };
     }, name);
     await page.goto(`http://localhost:${port}/assets/lector/index.html`);
@@ -199,6 +203,19 @@ const log = [];
     const est = await page.textContent('#q-estado');
     ok(/resultados/.test(est), `${name}: búsqueda → ${est}`);
     await page.screenshot({ path: path.join(out, name + '-10-busqueda.png') });
+    await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });
+    // Línea de estado: lo que queda del capítulo (o la página) y el %
+    const izq = await page.textContent('#e-izq'), der = await page.textContent('#e-der');
+    ok(/%/.test(der) && izq.length > 3, `${name}: línea de estado «${izq} · ${der}»`);
+    // Leer en voz alta (EPUB): lee frases seguidas y se para
+    if (name.endsWith('epub')) {
+      await page.evaluate(() => document.querySelector('#b-voz').click()); await page.waitForTimeout(2500);
+      const said = await page.evaluate(() => window.__atrio.spoken || []);
+      ok(said.length >= 3, `${name}: lee en voz alta (${said.length} frases: «${(said[0] || '').slice(0, 40)}…»)`);
+      await page.screenshot({ path: path.join(out, name + '-11-voz.png') });
+      await page.click('#v-parar'); await page.waitForTimeout(300);
+      ok(await page.$eval('#voz', (e) => e.classList.contains('oculta')), `${name}: «Parar» quita la voz`);
+    }
     await ctx.close();
   }
   await browser.close();

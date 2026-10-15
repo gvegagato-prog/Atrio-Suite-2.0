@@ -72,7 +72,7 @@ fun ProfileScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!Skin.revista) { Icon(Icons.Rounded.Palette, null, tint = ColGeneral, modifier = Modifier.size(28.dp)); Spacer(Modifier.width(12.dp)) }
                 Column(Modifier.weight(1f)) {
-                    Text("Estilo", fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 24.sp else 17.sp, fontFamily = if (Skin.revista) Display else null)
+                    Text("Apariencia", fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 24.sp else 17.sp, fontFamily = if (Skin.revista) Display else null)
                     Text(skinSummary(), color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (!Skin.revista) Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
@@ -80,7 +80,7 @@ fun ProfileScreen(
                     listOf(t.general, t.gfx, t.story, t.music).forEach { c -> Box(Modifier.size(18.dp).clip(CircleShape).background(Color(c))) }
                 }
             }
-            Text("Colores, letras, formas, notas, movimiento, fondo e icono de la app.", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            Text("Claro u oscuro y el color del acento.", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
         Spacer(Modifier.height(12.dp))
 

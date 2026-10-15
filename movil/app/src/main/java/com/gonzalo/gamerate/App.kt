@@ -28,6 +28,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -928,7 +929,8 @@ fun App(
         }
     )
     val bgColor by animateColorAsState(target, tween(500), label = "fondo")
-    val bgMod = Modifier.pattern(look.pattern, bgColor, look.intensity)
+    // La revista es siempre papel liso (los fondos con dibujo eran de los estilos que ya no existen)
+    val bgMod = if (Skin.revista) Modifier.background(Paper) else Modifier.pattern(look.pattern, bgColor, look.intensity)
     val shown: Any = if (screen is Screen.Home) "top:$dest:$section:$pv" else screen
     val topLevel = screen is Screen.Home
     val dockOn = topLevel && Skin.shell == 0

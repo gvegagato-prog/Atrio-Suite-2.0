@@ -304,7 +304,7 @@ class Capturas6Test {
         go("Videojuegos"); shoot("p08_biblioteca")
         go("+ AÑADIR"); shoot("p09_buscar"); back()
         go("Deadlock"); go("Apuntar notas →"); shoot("p10_apunte"); back(); home()
-        go("Perfil"); go("Estilo"); shoot("p11_estilo"); back(); home()
+        go("Perfil"); go("Apariencia"); shoot("p11_apariencia"); back(); home()
         go("Perfil"); go("Tu PC"); shoot("p12_pc"); home()
         go("Descubrir un libro"); go("5")
         repeat(5) { i -> rule.waitForIdle(); Thread.sleep(300); rule.onAllNodesWithText(if (i % 2 == 0) "A" else "B")[0].performClick() }

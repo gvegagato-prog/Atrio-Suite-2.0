@@ -62,394 +62,84 @@ object AppIcon {
     fun drawableId(ctx: Context, id: String) = ctx.resources.getIdentifier("icon_$id", "mipmap", ctx.packageName)
 }
 
-private enum class StyleTab(val title: String) { Mixes("Combinaciones"), Forms("Forma"), Gauges("Notas"), Colors("Colores"), Accent("Acento"), Titles("Títulos"), Text("Texto"), Size("Interfaz"), Back("Fondo"), Icon("Icono") }
-
-/** Nombre corto de lo elegido ahora (para la tarjeta de Ajustes). */
-fun skinSummary(): String = Skin.currentStyle()?.name
-    ?: ("${Skin.palette.name} · ${Skin.display} / ${Skin.body}".replace("Atrio / Atrio", "letras de Atrio") +
-        " · ${Skin.form.name}" + (Skin.gauge?.let { " · notas: ${GAUGE_NAMES[it]?.first}" } ?: ""))
-
-/** Tarjeta de Ajustes → Apariencia que abre la pantalla de Estilo. */
-@Composable
-fun StyleEntry(themeMode: Int, onTheme: (Int) -> Unit) {
-    val t = Skin.tones
-    Row(
-        Modifier.fillMaxWidth().clip(shp(20.dp))
-            .background(Brush.linearGradient(listOf(Color(t.general).copy(alpha = 0.22f), Color(t.gameplay).copy(alpha = 0.18f), Color(t.gfx).copy(alpha = 0.14f))))
-            .border(1.dp, Line, shp(20.dp)).clickable { Skin.open = true }.padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Rounded.Palette, null, tint = Charcoal, modifier = Modifier.size(30.dp))
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text("Estilo", fontFamily = Display, fontSize = 22.sp)
-            Text(skinSummary(), color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${STYLES.size} combinaciones · ${PALETTES.size} paletas · ${DISPLAY_FONTS.size + BODY_FONTS.size} letras · ${AppIcon.ALL.size} iconos", color = Muted, fontSize = 12.sp)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
-            listOf(t.general, t.gfx, t.story, t.music, t.gameplay).forEach { c ->
-                Box(Modifier.size(18.dp).background(Color(c), CircleShape).border(2.dp, Crudo, CircleShape))
-            }
-        }
-    }
+/** Resumen de la apariencia (para la fila de Perfil): «Claro · acento rojo». */
+fun skinSummary(): String {
+    val tema = when (Mode.themeMode) { 1 -> "Claro"; 2 -> "Oscuro"; else -> "Claro u oscuro según el móvil" }
+    val acento = ACCENT_COLORS.firstOrNull { it.id == Skin.accentId }?.name ?: "Rojo"
+    return "$tema · acento ${acento.lowercase()}"
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/**
+ * Apariencia: lo único que se cambia es si la revista va en claro u oscuro (o como el móvil) y el color del acento
+ * (antetítulos, cifras, enlaces y botones). Se ve al momento en la muestra de abajo y en toda la app.
+ */
 @Composable
-fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onLook: (Look) -> Unit = {}, onClose: () -> Unit) {
+fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAMETER") onLook: (Look) -> Unit = {}, onClose: () -> Unit) {
     val ctx = LocalContext.current
-    var tab by remember { mutableStateOf(StyleTab.Mixes) }
-    fun save() = Skin.save(ctx)
     // Capa a pantalla completa por encima de toda la app (la pone MainActivity): atrás la cierra
     androidx.activity.compose.BackHandler { onClose() }
-    run {
-        // Los toques no pasan a la pantalla de debajo
-        Column(Modifier.fillMaxSize().background(Paper)
+    Column(
+        Modifier.fillMaxSize().background(Paper)
+            // Los toques no pasan a la pantalla de debajo
             .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
-            .statusBarsPadding().navigationBarsPadding()) {
-            if (Skin.revista) Box(Modifier.padding(horizontal = 16.dp)) {
-                TopBar("Ajustes", onClose, "Estilo") { ActionPill(Icons.Rounded.Casino, "Sorpréndeme") { withReveal { Skin.surprise(); save() } } }
-            } else Row(Modifier.padding(start = 8.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                BackButton(onClose)
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Overline("Ajustes")
-                    Text("Estilo", fontFamily = Display, fontSize = 28.sp)
-                }
-                // Sorpréndeme: todo al azar, con el círculo de cambio
-                ActionPill(Icons.Rounded.Casino, "Sorpréndeme") { withReveal { Skin.surprise(); save() } }
+            .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)
+    ) {
+        TopBar("Ajustes", onClose, "Apariencia")
+
+        // Tema
+        SectionTitle("Tema")
+        listOf(1 to "Claro", 2 to "Oscuro", 0 to "Como el móvil").forEachIndexed { i, (mode, name) ->
+            if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+            val on = themeMode == mode
+            Row(
+                Modifier.fillMaxWidth().clickable { if (!on) onTheme(mode) }.padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(name, fontFamily = Display, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, fontSize = 24.sp,
+                    color = if (on) Charcoal else Muted, modifier = Modifier.weight(1f))
+                if (on) Text("✓", color = ColGeneral, fontWeight = FontWeight.Black, fontSize = 20.sp)
             }
-            Preview(Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
-            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ThemeNames.forEachIndexed { i, n -> SoftChip(n, themeMode == i) { onTheme(i) } }
-            }
-            FlowRow(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                StyleTab.entries.forEach { t -> SoftChip(t.title, tab == t) { tab = t } }
-            }
-            Box(Modifier.weight(1f)) {
-                when (tab) {
-                    StyleTab.Mixes -> Grid(2) {
-                        items(STYLES, key = { it.id }) { s ->
-                            MixCard(s, Skin.currentStyle()?.id == s.id) { withReveal { Skin.apply(s); save() } }
-                        }
-                    }
-                    StyleTab.Forms -> Grid(2) {
-                        item(span = { GridItemSpan(2) }) {
-                            Text("Cómo se dibuja todo: notas, tarjetas, botones, portadas y el fondo. Cada combinación trae la suya; aquí la cambias sin tocar colores ni letras.",
-                                color = Muted, fontSize = 13.sp)
-                        }
-                        items(FORMS, key = { it.id }) { f -> FormCard(f, Skin.form.id == f.id) { withReveal { Skin.form = f; save() } } }
-                    }
-                    StyleTab.Gauges -> Grid(2) {
-                        item(span = { GridItemSpan(2) }) {
-                            Text("Cómo se ven y se tocan las notas, aparte de la forma: mezcla, por ejemplo, tarjetas de Píxel con estrellas.",
-                                color = Muted, fontSize = 13.sp)
-                        }
-                        item(span = { GridItemSpan(2) }) {
-                            GaugeCard(null, "La de la forma", "Ahora: " + (GAUGE_NAMES[Skin.form.gauge]?.first ?: ""), Skin.form.gauge, Skin.gauge == null) {
-                                withReveal { Skin.gauge = null; save() }
-                            }
-                        }
-                        items(GaugeKind.entries.toList(), key = { it.name }) { g ->
-                            val (n, d) = GAUGE_NAMES[g] ?: (g.name to "")
-                            GaugeCard(g, n, d, g, Skin.gauge == g) { withReveal { Skin.gauge = g; save() } }
-                        }
-                    }
-                    StyleTab.Back -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Camaleón", fontWeight = FontWeight.SemiBold)
-                                Text("Al abrir una ficha, la app se tiñe con el color de su portada y se abre en círculo desde donde tocaste. Al salir vuelve tu paleta.",
-                                    color = Muted, fontSize = 13.sp)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            androidx.compose.material3.Switch(Skin.chameleon, { Skin.chameleon = it; save() })
-                        }
-                        Spacer(Modifier.height(18.dp))
-                        BackgroundPicker(onLook)
-                    }
-                    StyleTab.Colors -> Grid(2) {
-                        PALETTES.groupBy { it.group }.forEach { (g, list) ->
-                            item(span = { GridItemSpan(2) }) { Overline(if (g == "Editores") "De editores de código (colores oficiales)" else g, Modifier.padding(top = 8.dp)) }
-                            items(list, key = { it.id }) { p -> PaletteCard(p, Skin.palette.id == p.id) { withReveal { Skin.palette = p; save() } } }
-                        }
-                    }
-                    StyleTab.Titles -> Grid(1) {
-                        item { FontRow("Atrio", "Fraunces, la de siempre", AtrioDisplay, Skin.display == "Atrio", big = true) { Skin.display = "Atrio"; save() } }
-                        items(DISPLAY_FONTS, key = { it.name }) { f -> FontRow(f.name, null, Skin.family(f.name)!!, Skin.display == f.name, big = true) { Skin.display = f.name; save() } }
-                    }
-                    StyleTab.Text -> Grid(1) {
-                        item { FontRow("Atrio", "Inter, la de siempre", AtrioBody, Skin.body == "Atrio", big = false) { Skin.body = "Atrio"; save() } }
-                        items(BODY_FONTS, key = { it.name }) { f -> FontRow(f.name, null, Skin.family(f.name)!!, Skin.body == f.name, big = false) { Skin.body = f.name; save() } }
-                    }
-                    StyleTab.Size -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-                        Text("Tamaño del texto", fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            TEXT_SCALES.forEach { (v, n) -> SoftChip(n, Skin.textScale == v) { Skin.textScale = v; save() } }
-                        }
-                        Text("Se suma al tamaño que tengas en Android. Todo se recoloca solo.", color = Muted, fontSize = 13.sp)
-                        Spacer(Modifier.height(18.dp))
-                        Text("Movimiento", fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf("Vivo", "Sobrio", "Mínimo").forEachIndexed { i, n -> SoftChip(n, Skin.motion == i) { Skin.motion = i; save() } }
-                        }
-                        Text(when (Skin.motion) {
-                            0 -> "Muelles con rebote, portadas que vuelan a la ficha y entradas en cascada."
-                            1 -> "Las mismas transiciones, más rápidas y sin rebote."
-                            else -> "Casi sin animaciones: todo aparece al momento."
-                        }, color = Muted, fontSize = 13.sp)
-                        Spacer(Modifier.height(18.dp))
-                        Text("Portadas de las bibliotecas", fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(2 to "Pequeñas (3 por fila)", 0 to "Normales", 1 to "Grandes").forEach { (v, n) -> SoftChip(n, Skin.covers == v) { Skin.covers = v; save() } }
-                        }
-                        Spacer(Modifier.height(18.dp))
-                        Text("Barra de abajo", fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            SoftChip("Con el nombre", Skin.dockLabels) { Skin.dockLabels = true; save() }
-                            SoftChip("Solo iconos", !Skin.dockLabels) { Skin.dockLabels = false; save() }
-                        }
-                    }
-                    StyleTab.Accent -> Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
-                        Text("Color de acento", fontWeight = FontWeight.SemiBold)
-                        Text("El de los botones, la nota general, el progreso y los resaltados. Por defecto, el de la paleta.", color = Muted, fontSize = 13.sp)
-                        Spacer(Modifier.height(12.dp))
-                        SoftChip("El de la paleta", Skin.accent == 0L) { withReveal { Skin.accent = 0L; save() } }
-                        Spacer(Modifier.height(12.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ACCENTS.forEach { (c, n) ->
-                                val on = Skin.accent == c
-                                Box(
-                                    Modifier.size(50.dp).press { withReveal { Skin.accent = c; save() } }.clip(CircleShape).background(Color(c))
-                                        .border(if (on) 3.dp else 0.dp, if (on) Charcoal else Color.Transparent, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) { if (on) Icon(Icons.Rounded.Check, n, tint = Color.White) }
-                            }
-                        }
-                    }
-                    StyleTab.Icon -> IconPicker()
-                }
-            }
-            Text(
-                "Las letras se bajan de Google Fonts la primera vez que las eliges (hace falta conexión). Sin los servicios de Google, se ve la letra del sistema.",
-                color = Muted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
         }
-    }
-}
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
 
-@Composable
-private fun Grid(cols: Int, content: androidx.compose.foundation.lazy.grid.LazyGridScope.() -> Unit) {
-    LazyVerticalGrid(
-        GridCells.Fixed(cols), contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = content
-    )
-}
+        // Acento
+        SectionTitle("Acento")
+        Text("El color de los antetítulos, las cifras, los enlaces y los botones.", color = Muted, fontSize = 13.sp)
+        Spacer(Modifier.height(12.dp))
+        ACCENT_COLORS.chunked(4).forEach { row ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { a ->
+                    val on = Skin.accentId == a.id
+                    val c = Color(if (Mode.dark) a.dark else a.light)
+                    Column(
+                        Modifier.weight(1f).clickable { if (!on) { withReveal { Skin.accentId = a.id }; Skin.save(ctx) } },
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            Modifier.fillMaxWidth().aspectRatio(1f).background(c)
+                                .then(if (on) Modifier.border(3.dp, Charcoal) else Modifier),
+                            contentAlignment = Alignment.Center
+                        ) { if (on) Text("✓", color = if (a.id == "tinta") Paper else Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp) }
+                        Text(a.name.uppercase(), color = if (on) Charcoal else Muted, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1)
+                    }
+                }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
 
-/** Muestra de cómo queda: una ficha de mentira con lo elegido. */
-@Composable
-private fun Preview(modifier: Modifier) {
-    val t = Skin.tones
-    Column(modifier.fillMaxWidth().surface(22.dp, Crudo).padding(16.dp)) {
-        Overline("Jugando ahora")
-        Text("Clair Obscur: Expedition 33", fontFamily = Display, fontSize = 24.sp, lineHeight = 28.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("Acto II · 34 h jugadas · cada partida se apunta sola para valorarla.", color = Muted, fontSize = 13.sp)
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf(88 to t.general, 74 to t.gfx, 92 to t.story, 61 to t.music).forEach { (v, c) -> Ring(v, Color(c), 48.dp) }
+        // Muestra: así se ve una ficha con lo elegido
+        SectionTitle("Así queda")
+        Text("JUGANDO · VIDEOJUEGOS · TEAM CHERRY", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        FitTitle("Hollow Knight: Silksong", 44.sp, 46.sp, letterSpacing = (-1).sp)
+        Box(Modifier.padding(vertical = 10.dp).fillMaxWidth().height(1.dp).background(Charcoal))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("92", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 64.sp, lineHeight = 64.sp)
+            Text("/100", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))
             Spacer(Modifier.weight(1f))
-            ActionPill(Icons.Rounded.Check, "Jugar", dark = true) {}
+            Text("APUNTAR NOTAS →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(bottom = 12.dp))
         }
+        Spacer(Modifier.height(32.dp))
     }
 }
-
-@Composable
-private fun Selected(on: Boolean) {
-    if (on) Box(Modifier.size(24.dp).background(Charcoal, CircleShape), contentAlignment = Alignment.Center) {
-        Icon(Icons.Rounded.Check, null, tint = Paper, modifier = Modifier.size(16.dp))
-    }
-}
-
-@Composable
-private fun MixCard(s: SkinStyle, on: Boolean, onClick: () -> Unit) {
-    val p = PALETTES.firstOrNull { it.id == s.palette } ?: PALETTES[0]
-    val tn = if (Mode.dark) p.dark else p.light
-    val disp: FontFamily = Skin.family(s.display) ?: AtrioDisplay
-    val body: FontFamily = Skin.family(s.body) ?: AtrioBody
-    Box(
-        Modifier.fillMaxWidth().height(150.dp).clip(shp(20.dp)).background(tn.cPaper)
-            .border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, shp(20.dp)).clickable { onClick() }.padding(12.dp)
-    ) {
-        Column {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf(tn.general, tn.gfx, tn.story, tn.music, tn.gameplay).forEach { c -> Box(Modifier.size(12.dp).background(Color(c), CircleShape)) }
-            }
-            Spacer(Modifier.weight(1f))
-            Text(s.name, fontFamily = disp, color = tn.cInk, fontSize = 21.sp, lineHeight = 24.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(s.desc, fontFamily = body, color = tn.cMuted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text("Forma: " + (FORMS.firstOrNull { it.id == s.form }?.name ?: ""), fontFamily = body, color = tn.cInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-        }
-        Box(Modifier.align(Alignment.TopEnd)) { Selected(on) }
-    }
-}
-
-@Composable
-private fun PaletteCard(p: Palette, on: Boolean, onClick: () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().clip(shp(18.dp)).border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, shp(18.dp))
-            .clickable { onClick() }
-    ) {
-        Row(Modifier.fillMaxWidth().height(64.dp)) {
-            for (tn in listOf(p.light, p.dark)) {
-                Box(Modifier.weight(1f).fillMaxHeight().background(tn.cPaper).padding(8.dp)) {
-                    Box(Modifier.fillMaxSize().clip(shp(10.dp)).background(tn.cCrudo).padding(6.dp)) {
-                        Column {
-                            Box(Modifier.width(34.dp).height(5.dp).background(tn.cInk, shp(3.dp)))
-                            Spacer(Modifier.height(4.dp))
-                            Box(Modifier.width(22.dp).height(4.dp).background(tn.cMuted, shp(3.dp)))
-                            Spacer(Modifier.weight(1f))
-                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                listOf(tn.general, tn.gfx, tn.story, tn.music).forEach { c -> Box(Modifier.size(7.dp).background(Color(c), CircleShape)) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth().background(Crudo).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(p.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Selected(on)
-        }
-    }
-}
-
-@Composable
-private fun FontRow(name: String, sub: String?, family: FontFamily, on: Boolean, big: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clip(shp(16.dp)).background(if (on) Sand else Crudo)
-            .border(1.dp, if (on) Charcoal else Line, shp(16.dp)).clickable { onClick() }.padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                if (big) "Jugando ahora" else "Cada partida se apunta sola para valorarla después.",
-                fontFamily = family, fontSize = if (big) 26.sp else 16.sp, lineHeight = if (big) 30.sp else 22.sp, maxLines = 2, overflow = TextOverflow.Ellipsis
-            )
-            Text(name + (sub?.let { " · $it" } ?: ""), color = Muted, fontSize = 12.sp)
-        }
-        Selected(on)
-    }
-}
-
-@Composable
-private fun IconPicker() {
-    val ctx = LocalContext.current
-    var cur by remember { mutableStateOf(AppIcon.current(ctx)) }
-    Column {
-        Text(
-            "El icono de la app en el móvil. Al cambiarlo, algunos móviles quitan el de la pantalla de inicio: vuelve a ponerlo desde el cajón de aplicaciones.",
-            color = Muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Grid(3) {
-            items(AppIcon.ALL, key = { it.first }) { (id, n) ->
-                val bmp = remember(id) {
-                    try { ctx.getDrawable(AppIcon.drawableId(ctx, id))?.toBitmap(192, 192)?.asImageBitmap() } catch (e: Exception) { null }
-                }
-                Column(
-                    Modifier.clip(shp(18.dp)).border(if (cur == id) 3.dp else 1.dp, if (cur == id) Charcoal else Line, shp(18.dp))
-                        .clickable { if (cur != id) { AppIcon.set(ctx, id); cur = id } }.padding(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (bmp != null) Image(bmp, n, Modifier.size(64.dp).clip(CircleShape))
-                    Spacer(Modifier.height(6.dp))
-                    Text(n, fontSize = 13.sp, fontWeight = if (cur == id) FontWeight.SemiBold else FontWeight.Normal)
-                }
-            }
-        }
-    }
-}
-
-/** Muestra de una forma: su marcador de nota, una esquina de tarjeta y un botón. */
-@Composable
-private fun FormCard(f: Form, on: Boolean, onClick: () -> Unit) {
-    val t = Skin.tones
-    val sh = shpOf(f, 18.dp)
-    Column(
-        Modifier.fillMaxWidth().clip(sh).background(Crudo)
-            .border(if (on) 3.dp else f.border.coerceAtLeast(1.dp), if (on || f.inkBorder) Charcoal else Line, sh)
-            .clickable { onClick() }.padding(12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            FormGauge(78f, Color(t.gfx), 58.dp, "78", f.gauge)
-            Spacer(Modifier.weight(1f))
-            Selected(on)
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(f.name, fontFamily = Display, fontSize = 19.sp)
-        Text(f.desc, color = Muted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-/** Muestra de un marcador de notas. */
-@Composable
-private fun GaugeCard(g: GaugeKind?, name: String, desc: String, kind: GaugeKind, on: Boolean, onClick: () -> Unit) {
-    val t = Skin.tones
-    Row(
-        Modifier.fillMaxWidth().clip(shp(18.dp)).background(Crudo)
-            .border(if (on) 3.dp else 1.dp, if (on) Charcoal else Line, shp(18.dp))
-            .clickable { onClick() }.padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        FormGauge(if (g == null) 64f else 78f, Color(if (g == null) t.story else t.gfx), 56.dp, if (g == null) "64" else "78", kind)
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(name, fontFamily = Display, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(desc, color = Muted, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-        }
-        Selected(on)
-    }
-}
-
-/** Fondo de las pantallas: dibujo, intensidad y colores (antes estaba en Ajustes). */
-@Composable
-private fun BackgroundPicker(onLook: (Look) -> Unit) {
-    val look = Mode.look
-    Text("Dibujo del fondo", fontWeight = FontWeight.SemiBold)
-    Spacer(Modifier.height(8.dp))
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        listOf(5, 4, 0, 1, 2, 3).forEach { i ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pop { onLook(look.copy(pattern = i)) }) {
-                Box(
-                    Modifier.size(64.dp, 48.dp).clip(shp(12.dp))
-                        .pattern(i, Color(look.menu), look.intensity)
-                        .border(if (look.pattern == i) 3.dp else 1.dp, if (look.pattern == i) Charcoal else Sand, shp(12.dp))
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(PatternNames[i], fontSize = 12.sp, fontWeight = if (look.pattern == i) FontWeight.SemiBold else FontWeight.Normal)
-            }
-        }
-    }
-    Spacer(Modifier.height(12.dp))
-    Text("Intensidad", fontWeight = FontWeight.SemiBold)
-    Spacer(Modifier.height(6.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        IntensityNames.forEachIndexed { i, n -> SoftChip(n, look.intensity == i) { onLook(look.copy(intensity = i)) } }
-    }
-    Spacer(Modifier.height(12.dp))
-    ColorRow("Menú principal", look.menu) { onLook(look.copy(menu = it)) }
-    ColorRow(GAMES.title, look.games) { onLook(look.copy(games = it)) }
-    ColorRow(BOOKS.title, look.books) { onLook(look.copy(books = it)) }
-    Spacer(Modifier.height(6.dp))
-    androidx.compose.material3.TextButton({ onLook(Look()) }) { Text("Volver al fondo por defecto", color = Muted) }
-}
-
-/** Colores de acento para elegir. */
-val ACCENTS: List<Pair<Long, String>> = listOf(
-    0xFFFF7A50 to "Coral", 0xFFE5484D to "Rojo", 0xFFFF4F9A to "Fresa", 0xFFC86BFA to "Orquídea", 0xFF8B5CF6 to "Violeta",
-    0xFF5B6CFF to "Índigo", 0xFF3E9BFF to "Azul", 0xFF22B8CF to "Turquesa", 0xFF20C997 to "Menta", 0xFF4CAF50 to "Verde",
-    0xFF94C93D to "Lima", 0xFFFFC53D to "Oro", 0xFFFF9F1C to "Naranja", 0xFFB08968 to "Café", 0xFF8D99AE to "Pizarra", 0xFFE6E1D3 to "Hueso"
-)
