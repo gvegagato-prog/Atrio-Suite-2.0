@@ -20,6 +20,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
@@ -45,10 +49,14 @@ import org.json.JSONObject
  */
 
 /** Una casilla: qué módulo enseña (o texto libre / imagen) y lo suyo. */
-data class MagCell(val type: String, val title: String = "", val text: String = "", val image: String = "", val fit: Boolean = false)
+data class MagCell(
+    val type: String, val title: String = "", val text: String = "", val image: String = "", val fit: Boolean = false,
+    /** Encuadre de la imagen: zoom (1 = llena la casilla) y desplazamiento, en fracciones del tamaño de la casilla. */
+    val zoom: Float = 1f, val ox: Float = 0f, val oy: Float = 0f
+)
 
 /** Una fila: una o dos casillas; [split] es dónde va la línea (lo que ocupa la de la izquierda, 0–1). */
-data class MagRowSpec(val cells: List<MagCell>, val split: Float = 0.5f)
+data class MagRowSpec(val cells: List<MagCell>, val split: Float = 0.5f, /** Alto de la fila en dp (0: el que pida lo de dentro). */ val height: Float = 0f)
 
 fun magRows(vararg rows: List<String>): List<MagRowSpec> = rows.map { r -> MagRowSpec(r.map { MagCell(it) }) }
 
@@ -57,8 +65,11 @@ object MagLayouts {
 
     private fun toJson(rows: List<MagRowSpec>) = JSONArray().apply {
         rows.forEach { r ->
-            put(JSONObject().put("s", r.split.toDouble()).put("c", JSONArray().apply {
-                r.cells.forEach { c -> put(JSONObject().put("t", c.type).put("h", c.title).put("x", c.text).put("i", c.image).put("f", c.fit)) }
+            put(JSONObject().put("s", r.split.toDouble()).put("a", r.height.toDouble()).put("c", JSONArray().apply {
+                r.cells.forEach { c ->
+                    put(JSONObject().put("t", c.type).put("h", c.title).put("x", c.text).put("i", c.image).put("f", c.fit)
+                        .put("z", c.zoom.toDouble()).put("ox", c.ox.toDouble()).put("oy", c.oy.toDouble()))
+                }
             }))
         }
     }.toString()
@@ -71,8 +82,9 @@ object MagLayouts {
                 val cs = o.getJSONArray("c")
                 MagRowSpec((0 until cs.length()).map { j ->
                     val c = cs.getJSONObject(j)
-                    MagCell(c.optString("t", "vacio"), c.optString("h"), c.optString("x"), c.optString("i"), c.optBoolean("f"))
-                }.take(2), o.optDouble("s", 0.5).toFloat())
+                    MagCell(c.optString("t", "vacio"), c.optString("h"), c.optString("x"), c.optString("i"), c.optBoolean("f"),
+                        c.optDouble("z", 1.0).toFloat(), c.optDouble("ox", 0.0).toFloat(), c.optDouble("oy", 0.0).toFloat())
+                }.take(2), o.optDouble("s", 0.5).toFloat(), o.optDouble("a", 0.0).toFloat())
             }
         }
     } catch (e: Exception) { null }
@@ -118,13 +130,15 @@ fun MagPage(
     var editingText by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var pickingImage by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var msg by remember { mutableStateOf("") }
+    var framing by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    val cellSizes = remember { mutableStateMapOf<String, androidx.compose.ui.unit.IntSize>() }
 
     fun visible(c: MagCell) = c.type == "texto" || c.type == "imagen" || c.type == "vacio" || defs.containsKey(c.type)
     fun cellAt(p: Pair<Int, Int>) = rows.getOrNull(p.first)?.cells?.getOrNull(p.second)
     fun setCell(p: Pair<Int, Int>, c: MagCell) = set(rows.mapIndexed { i, r -> if (i != p.first) r else r.copy(cells = r.cells.mapIndexed { j, x -> if (j == p.second) c else x }) })
 
     @Composable
-    fun ColumnScope.CellView(c: MagCell) {
+    fun ColumnScope.CellView(c: MagCell, k: String) {
         when (c.type) {
             "texto" -> {
                 if (c.title.isNotBlank()) MagLabel(c.title)
@@ -133,8 +147,16 @@ fun MagPage(
             }
             "imagen" -> {
                 if (c.title.isNotBlank()) MagLabel(c.title)
-                if (c.image.isNotBlank()) AsyncImage(c.image, null, Modifier.fillMaxWidth().padding(top = 2.dp), contentScale = if (c.fit) ContentScale.FillWidth else ContentScale.FillWidth)
-                else if (designing) Text("Imagen", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp)
+                // Con alto de fila fijo, la imagen llena lo que queda; si no, un marco 7:5 (los logos, más apaisado)
+                val fixed = LocalRowFixed.current
+                Box(
+                    Modifier.fillMaxWidth().then(if (fixed) Modifier.weight(1f) else Modifier.aspectRatio(if (c.fit) 2.2f else 1.4f))
+                        .clipToBounds().background(if (c.image.isBlank()) Sand else androidx.compose.ui.graphics.Color.Transparent)
+                        .onSizeChanged { cellSizes[k] = it }
+                ) {
+                    if (c.image.isNotBlank()) FramedImage(c, Modifier.fillMaxSize())
+                    else if (designing) Text("Imagen", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, modifier = Modifier.align(Alignment.Center))
+                }
             }
             "vacio" -> if (designing) Text("Vacía: toca para elegir", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 15.sp)
             else -> defs[c.type]?.let { d ->
@@ -159,19 +181,26 @@ fun MagPage(
                     Tool("↓", i < rows.size - 1) { set(rows.toMutableList().also { val t = it[i]; it[i] = it[i + 1]; it[i + 1] = t }) }
                     if (r.cells.size == 1) Tool("DIVIDIR") { set(rows.mapIndexed { k, x -> if (k == i) x.copy(cells = x.cells + MagCell("vacio"), split = 0.5f) else x }) }
                     else Tool("UNIR") { set(rows.mapIndexed { k, x -> if (k == i) x.copy(cells = listOf(x.cells.firstOrNull { it.type != "vacio" } ?: x.cells[0])) else x }) }
+                    if (r.height > 0f) Tool("ALTO AUTO") { set(rows.mapIndexed { k, x -> if (k == i) x.copy(height = 0f) else x }) }
                     Tool("QUITAR", accent = true) { set(rows.filterIndexed { k, _ -> k != i }) }
                 }
             }
             var widthPx by remember { mutableStateOf(1) }
+            var heightPx by remember { mutableStateOf(1) }
+            val density = androidx.compose.ui.platform.LocalDensity.current.density
             val shown = if (designing) r.cells.withIndex().toList() else cells
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).onSizeChanged { widthPx = it.width.coerceAtLeast(1) }) {
+            val fixed = r.height > 0f
+            Row(
+                Modifier.fillMaxWidth().then(if (fixed) Modifier.height(r.height.dp) else Modifier.height(IntrinsicSize.Min))
+                    .onSizeChanged { widthPx = it.width.coerceAtLeast(1); heightPx = it.height.coerceAtLeast(1) }
+            ) {
                 shown.forEachIndexed { n, (j, c) ->
                     val w = if (shown.size == 2) (if (n == 0) r.split else 1f - r.split) else 1f
                     if (n == 1) {
                         // La línea: en edición se arrastra
                         Box(
                             Modifier.fillMaxHeight().width(if (designing) 28.dp else 1.5.dp)
-                                .then(if (designing) Modifier.pointerInput(i, rows.size) {
+                                .then(if (designing) Modifier.semantics { contentDescription = "Línea de la fila ${i + 1}" }.pointerInput(i, rows.size) {
                                     detectHorizontalDragGestures(onDragEnd = { MagLayouts.save(ctx, key, rows) }) { ch, dx ->
                                         ch.consume()
                                         val ns = (rows[i].split + dx / widthPx).coerceIn(0.3f, 0.7f)
@@ -186,9 +215,12 @@ fun MagPage(
                             }
                         }
                     }
-                    Box(Modifier.weight(w).fillMaxHeight()) {
-                        Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp, start = if (n == 1) 12.dp else 0.dp, end = if (n == 0 && shown.size == 2) 12.dp else 0.dp)) {
-                            CompositionLocalProvider(LocalCellFraction provides w) { CellView(c) }
+                    Box(Modifier.weight(w).fillMaxHeight().clipToBounds()) {
+                        Column(
+                            Modifier.fillMaxWidth().then(if (fixed) Modifier.fillMaxHeight() else Modifier)
+                                .padding(top = 12.dp, bottom = 18.dp, start = if (n == 1) 12.dp else 0.dp, end = if (n == 0 && shown.size == 2) 12.dp else 0.dp)
+                        ) {
+                            CompositionLocalProvider(LocalCellFraction provides w, LocalRowFixed provides fixed) { CellView(c, "$i:$j") }
                         }
                         if (designing) Box(
                             Modifier.matchParentSize()
@@ -204,6 +236,27 @@ fun MagPage(
                                     else -> defs[c.type]?.label ?: MAG_NAMES[c.type] ?: c.type
                                 } }
                         )
+                    }
+                }
+            }
+            if (designing) {
+                // El alto de la fila: se arrastra el círculo ⇕ hacia arriba o hacia abajo
+                Box(
+                    Modifier.fillMaxWidth().height(30.dp)
+                        .semantics { contentDescription = "Alto de la fila ${i + 1}" }
+                        .pointerInput(i, rows.size) {
+                            detectVerticalDragGestures(onDragEnd = { MagLayouts.save(ctx, key, rows) }) { ch, dy ->
+                                ch.consume()
+                                val base = if (rows[i].height > 0f) rows[i].height else heightPx / density
+                                val nh = (base + dy / density).coerceIn(56f, 1400f)
+                                rows = rows.mapIndexed { k, x -> if (k == i) x.copy(height = nh) else x }
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+                    Box(Modifier.size(26.dp).clip(CircleShape).background(ColGeneral), contentAlignment = Alignment.Center) {
+                        Text("⇕", color = Paper, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -230,6 +283,11 @@ fun MagPage(
             title = { Text("¿Qué va aquí?", fontFamily = Display) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (cur?.type == "imagen" && cur.image.isNotBlank()) {
+                        ChoiceRow("Encuadrar la imagen", false) { choosing = null; framing = p }
+                        ChoiceRow("Cambiar la imagen", false) { choosing = null; pickingImage = p }
+                        Box(Modifier.fillMaxWidth().padding(vertical = 6.dp).height(1.dp).background(Line))
+                    }
                     defs.forEach { (t, d) ->
                         ChoiceRow(d.label ?: MAG_NAMES[t] ?: t, cur?.type == t) { setCell(p, MagCell(t)); choosing = null }
                     }
@@ -261,6 +319,17 @@ fun MagPage(
             dismissButton = { TextButton({ editingText = null }) { Text("Cancelar") } },
             containerColor = Paper, shape = shp(4.dp)
         )
+    }
+    // Encuadrar
+    framing?.let { p ->
+        val cur = cellAt(p)
+        if (cur == null || cur.image.isBlank()) { framing = null } else {
+            // El marco tiene la forma exacta de la imagen en su casilla
+            val sz = cellSizes["${p.first}:${p.second}"]
+            val aspect = if (sz != null && sz.width > 0 && sz.height > 0) sz.width.toFloat() / sz.height else if (cur.fit) 2.2f else 1.4f
+            FrameEditor(cur, aspect,
+                onSave = { setCell(p, it); framing = null }, onDismiss = { framing = null })
+        }
     }
     // Imagen
     pickingImage?.let { p ->
@@ -301,6 +370,58 @@ fun MagPage(
         )
     }
 }
+
+/** Una imagen encuadrada: recortada a la casilla, con su zoom y su posición. */
+@Composable
+fun FramedImage(c: MagCell, modifier: Modifier) {
+    AsyncImage(
+        c.image, null,
+        modifier.graphicsLayer {
+            scaleX = c.zoom; scaleY = c.zoom
+            translationX = c.ox * size.width; translationY = c.oy * size.height
+        },
+        contentScale = if (c.fit) ContentScale.Fit else ContentScale.Crop
+    )
+}
+
+/** Encuadrar: la imagen dentro de un marco con la forma de la casilla; dos dedos amplían o reducen, uno la mueve. */
+@Composable
+fun FrameEditor(c: MagCell, aspect: Float, onSave: (MagCell) -> Unit, onDismiss: () -> Unit) {
+    var zoom by remember { mutableStateOf(c.zoom) }
+    var ox by remember { mutableStateOf(c.ox) }
+    var oy by remember { mutableStateOf(c.oy) }
+    var box by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
+    androidx.compose.ui.window.Dialog(onDismiss, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp).background(Paper).padding(18.dp)) {
+            Text("Encuadrar", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+            Text("Pellizca para ampliar o reducir. Arrastra para colocarla. Lo que quede dentro del marco es lo que se verá.", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(aspect.coerceIn(0.3f, 4f)).clipToBounds().background(Sand).border(2.dp, Charcoal)
+                    .onSizeChanged { box = it }
+                    .semantics { contentDescription = "Marco de la imagen" }
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, z, _ ->
+                            zoom = (zoom * z).coerceIn(0.3f, 6f)
+                            ox = (ox + pan.x / box.width).coerceIn(-3f, 3f)
+                            oy = (oy + pan.y / box.height).coerceIn(-3f, 3f)
+                        }
+                    }
+            ) { FramedImage(c.copy(zoom = zoom, ox = ox, oy = oy), Modifier.fillMaxSize()) }
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
+                Tool("− REDUCIR") { zoom = (zoom / 1.15f).coerceIn(0.3f, 6f) }
+                Tool("+ AMPLIAR") { zoom = (zoom * 1.15f).coerceIn(0.3f, 6f) }
+                Tool("CENTRAR") { zoom = 1f; ox = 0f; oy = 0f }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(22.dp, Alignment.End)) {
+                Tool("CANCELAR", onClick = onDismiss)
+                Tool("GUARDAR", accent = true) { onSave(c.copy(zoom = zoom, ox = ox, oy = oy)) }
+            }
+        }
+    }
+}
+
+/** ¿La fila tiene alto fijo? (las imágenes llenan entonces la casilla) */
+val LocalRowFixed = compositionLocalOf { false }
 
 /** Nombres de los módulos (para el selector, cuando el módulo no trae antetítulo). */
 val MAG_NAMES = mapOf("progreso" to "Progreso", "partes" to "Partes y apuntes rápidos")

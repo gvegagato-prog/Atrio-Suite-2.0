@@ -413,7 +413,7 @@ import sys, re
 t, f = sys.argv[1], sys.argv[2]
 for m in re.finditer(r'<node [^>]*>', open(f, encoding='utf-8', errors='ignore').read()):
     n = m.group(0)
-    if f'text="{t}"' in n:
+    if f'text="{t}"' in n or f'content-desc="{t}"' in n:
         b = list(map(int, re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n).groups()))
         print((b[0]+b[2])//2, (b[1]+b[3])//2); break
 PY
@@ -425,6 +425,15 @@ if [ -n "$P1" ]; then
   if [ -n "$P2" ] && [ $(( $3 - $1 )) -gt 60 ]; then echo "   la línea se mueve arrastrándola" | tee -a "$LOG"; else echo "FALLO: la línea no se mueve" | tee -a "$LOG"; exit 1; fi
 fi
 shot 63b_linea 1
+# El alto de la fila: se arrastra el círculo ⇕ hacia abajo y la fila crece
+H1=$(pos "Alto de la fila 1"); echo "   alto en $H1" >> "$LOG"
+if [ -n "$H1" ]; then
+  set -- $H1; adb shell input swipe $1 $2 $1 $(( $2 + 260 )) 900; sleep 1.5
+  H2=$(pos "Alto de la fila 1"); echo "   alto movido a $H2" >> "$LOG"; set -- $H1 $H2
+  if [ -n "$H2" ] && [ $(( $4 - $2 )) -gt 100 ]; then echo "   la fila cambia de alto arrastrando" | tee -a "$LOG"; else echo "FALLO: la fila no cambia de alto" | tee -a "$LOG"; exit 1; fi
+fi
+shot 63e_alto 1
+tap "ALTO AUTO" || true; sleep 1
 # Texto libre en la casilla de las guías
 must tap "Casilla Guías"; sleep 1.5
 must see "¿Qué va aquí?" 5

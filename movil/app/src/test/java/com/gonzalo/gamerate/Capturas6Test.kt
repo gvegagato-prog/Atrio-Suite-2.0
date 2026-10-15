@@ -174,6 +174,23 @@ class Capturas6Test {
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r8e_texto_libre")
         rule.onAllNodesWithText("EDITAR")[0].performClick()
         rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r8f_resultado")
+        // Imagen encuadrada (ampliada y movida) en una fila de alto fijo, y el editor de encuadre
+        rule.runOnUiThread {
+            MagLayouts.save(ctx, "v:0:102", listOf(
+                MagRowSpec(listOf(MagCell("imagen", image = cover("Hades", 0xFFE96443.toInt(), 0xFF904E95.toInt()), zoom = 1.8f, ox = -0.2f, oy = 0.1f), MagCell("nota")), 0.55f, 300f),
+                MagRowSpec(listOf(MagCell("texto", "Mi veredicto", "El mejor roguelike que he jugado.")))
+            ))
+        }
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r9_imagen")
+        rule.onAllNodesWithText("EDITAR")[0].performClick(); shoot("r9a_diseno_imagen")
+        rule.onNodeWithContentDescription("Casilla Imagen").performClick()
+        rule.onAllNodesWithText("Encuadrar la imagen")[0].performClick(); shoot("r9b_encuadre")
+        rule.onAllNodesWithText("+ AMPLIAR")[0].performClick(); rule.onAllNodesWithText("+ AMPLIAR")[0].performClick()
+        rule.onNodeWithContentDescription("Marco de la imagen").performTouchInput { swipeRight() }; shoot("r9c_encuadre_cambiado")
+        rule.onAllNodesWithText("GUARDAR")[0].performClick()
+        rule.onNodeWithContentDescription("Alto de la fila 2").performTouchInput { swipeDown() }; shoot("r9d_alto")
+        rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r9e_resultado")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("r4b_ficha_valorado_2")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("r4c_ficha_valorado_3")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
