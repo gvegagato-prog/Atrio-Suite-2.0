@@ -64,15 +64,36 @@ object Diccionario {
         return out
     }
 
-    /** Las acepciones de una palabra (prueba también en minúscula). */
-    fun define(word: String, langName: String = "Español"): List<String> {
+    private fun plain(s: String) = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "")
+
+    /**
+     * Las palabras que se prueban, por orden: tal cual, en minúscula, sin pronombres pegados (acordarme → acordar,
+     * dándole → dando, decírselo → decir) y en singular (casas → casa).
+     */
+    fun candidates(word: String): List<String> {
         val w = word.trim()
-        for (t in listOf(w.lowercase(Locale("es")), w).distinct()) {
+        val low = w.lowercase(Locale("es"))
+        val out = linkedSetOf(low, w)
+        // Pronombres pegados al infinitivo, al gerundio o al imperativo
+        val cl = Regex("^(.+?)((?:me|te|se|nos|os|lo|la|le|los|las|les){1,2})$").matchEntire(low)
+        if (cl != null) {
+            val stem = cl.groupValues[1]
+            // Sin la tilde que le pone el pronombre (dándole → dando); «oír», «reír»… la conservan
+            if (Regex(".*(ar|er|ir|ando|iendo|yendo)$").matches(plain(stem))) { out += plain(stem); out += stem }
+        }
+        if (low.length > 4 && low.endsWith("es")) out += low.dropLast(2)
+        if (low.length > 3 && low.endsWith("s")) out += low.dropLast(1)
+        return out.toList()
+    }
+
+    /** Las acepciones de una palabra y la palabra con la que se han encontrado. */
+    fun define(word: String, langName: String = "Español"): Pair<String, List<String>> {
+        for (t in candidates(word).take(5)) {
             val ex = extract(t) ?: continue
             val d = parse(ex, langName)
-            if (d.isNotEmpty()) return d
+            if (d.isNotEmpty()) return t to d
         }
-        return emptyList()
+        return word to emptyList()
     }
 
     /** El idioma de un texto (código BCP-47, «und» si no se sabe). */

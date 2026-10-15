@@ -47,4 +47,14 @@ Edificio (en aragonés).
     fun sinSeccion() {
         assertTrue(Diccionario.parse("nada aquí").isEmpty())
     }
+
+    @Test
+    fun formasDeLaPalabra() {
+        val c = Diccionario.candidates("acordarme")
+        assertTrue(c.toString(), "acordar" in c)
+        assertTrue(Diccionario.candidates("dándole").toString(), "dando" in Diccionario.candidates("dándole"))
+        assertTrue("decir" in Diccionario.candidates("decírselo"))
+        assertTrue("casa" in Diccionario.candidates("casas"))
+        assertEquals("hidalgo", Diccionario.candidates("Hidalgo")[0])
+    }
 }

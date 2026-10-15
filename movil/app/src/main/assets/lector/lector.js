@@ -333,7 +333,7 @@ async function showWord(doc, index, range) {
         $('#pal-trad').classList.remove('oculta')
     }
     $('#pal-def').innerHTML = r.defs?.length
-        ? `<ol>${r.defs.map(d => `<li>${esc(d)}</li>`).join('')}</ol>`
+        ? (r.lemma ? `<div class="gris" style="margin-bottom:4px">De «${esc(r.lemma)}»:</div>` : '') + `<ol>${r.defs.map(d => `<li>${esc(d)}</li>`).join('')}</ol>`
         : `<span class="gris">${esc(r.msg || 'No encuentro su significado.')}</span>`
 }
 function hideWord() {
