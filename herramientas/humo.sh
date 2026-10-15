@@ -430,7 +430,7 @@ must tap "Casilla Guías"; sleep 1.5
 must see "¿Qué va aquí?" 5
 must tap "Texto libre (título y texto)"; sleep 1.5
 tap "Título (opcional)" && type "Mi%sveredicto"
-tap "Texto" && type "Lo%smejor%sdel%saño"
+tap "Texto" && type "Lo%smejor%sdel%sjuego"
 kb
 must tap "Guardar"; sleep 1.5
 must see "Casilla Mi veredicto" 5
