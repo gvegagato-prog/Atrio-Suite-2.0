@@ -353,9 +353,16 @@ if [ "${SDK:-0}" -ge 31 ]; then
   shot 53_selector 1
   # Selector de archivos de Android: Descargas → el archivo
   tap "atrio-prueba.epub" || { tap "Show roots" || tap "Mostrar raíces"; sleep 2; tap "Downloads" || tap "Descargas"; sleep 3; tap "atrio-prueba.epub"; }
-  sleep 10
+  sleep 6
+  # Aviso de Android «Viewing full screen» la primera vez que una app oculta las barras
+  tap "GOT IT" || tap "Entendido" || true
+  sleep 4
   shot 54_lector 2; alive "lector"
-  must see "Capítulo primero\|En un lugar de la Mancha" 20
+  if ! see "Capítulo primero\|En un lugar de la Mancha" 20; then
+    adb logcat -d -s AtrioLector > "$OUT/lector_consola.txt"; shot 54b_lector_fallo 1
+    echo "FALLO: el libro no se ve en el lector (consola en lector_consola.txt)" | tee -a "$LOG"; exit 1
+  fi
+  adb logcat -d -s AtrioLector > "$OUT/lector_consola.txt"
   echo "   el libro se abre en el lector" | tee -a "$LOG"
   adb shell input tap 540 1200; sleep 2
   shot 55_lector_barras 1

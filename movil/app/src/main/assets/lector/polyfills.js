@@ -33,3 +33,12 @@
   if (!Array.prototype.findLastIndex) Object.defineProperty(Array.prototype, 'findLastIndex', { value: findLastIndex, writable: true, configurable: true });
   if (!Array.prototype.findLast) Object.defineProperty(Array.prototype, 'findLast', { value: findLast, writable: true, configurable: true });
 })();
+
+// Cualquier error de JavaScript del lector se ve en la pantalla de carga (y llega al registro de Android)
+window.addEventListener('error', function (e) {
+  console.error('Lector: ' + e.message + ' @ ' + (e.filename || '') + ':' + (e.lineno || ''));
+  var t = document.getElementById('carga-txt'); if (t && !document.getElementById('carga').classList.contains('fuera')) t.textContent = 'Error: ' + e.message;
+});
+window.addEventListener('unhandledrejection', function (e) {
+  var r = e.reason; console.error('Lector (promesa): ' + (r && (r.stack || r.message) || r));
+});

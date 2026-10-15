@@ -151,7 +151,13 @@ class ReaderActivity : ComponentActivity() {
         web.settings.allowFileAccess = false
         web.settings.allowContentAccess = false
         web.setBackgroundColor(AColor.parseColor("#FBF8F1"))
-        web.webChromeClient = WebChromeClient()
+        web.webChromeClient = object : WebChromeClient() {
+            // La consola del lector va al registro de Android (adb logcat -s AtrioLector)
+            override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                android.util.Log.i("AtrioLector", "${m.messageLevel()} ${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+                return true
+            }
+        }
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {

@@ -29,21 +29,38 @@ const saveMarks = () => A.saveBookmarks(JSON.stringify(marks))
 const label = () => last?.tocItem?.label?.trim() || ''
 
 // ---------------------------------------------------------------- Abrir el libro
+let paso = 'inicio'
+function fallo(e) {
+    console.error('Lector: fallo en «' + paso + '»', e && (e.stack || e.message || e))
+    $('#carga').classList.remove('fuera')
+    $('#carga-txt').textContent = ((e && e.message) || 'No se ha podido abrir el libro.') + ' (' + paso + ')'
+    $('.gira').classList.add('oculta')
+}
+// Si algo se queda colgado, al menos se ve en qué paso
+setTimeout(() => { if (!$('#carga').classList.contains('fuera') && !$('.gira').classList.contains('oculta')) console.error('Lector: sigue cargando en «' + paso + '»') }, 15000)
+
 async function open() {
+    try { await abrir() } catch (e) { fallo(e) }
+}
+
+async function abrir() {
     $('#t-libro').textContent = st.title || ''
     document.body.dataset.theme = S.theme
     try {
+        paso = 'leer el archivo'
         const res = await fetch('/libro/' + encodeURIComponent(st.file))
         if (!res.ok) throw new Error('No se puede leer el archivo (' + res.status + '). ¿Lo has movido o borrado?')
         const file = new File([await res.blob()], st.file)
+        paso = 'preparar el visor'
         view = document.createElement('foliate-view')
         $('#libro').append(view)
+        paso = 'descomprimir el libro'
         await view.open(file)
     } catch (e) {
-        $('#carga-txt').textContent = (e && e.message) || 'No se ha podido abrir el libro.'
-        $('.gira').classList.add('oculta')
+        fallo(e)
         return
     }
+    paso = 'mostrar la primera página'
     isPDF = !!view.isFixedLayout
     document.body.classList.toggle('pdf', isPDF)
     view.addEventListener('load', onLoad)
@@ -65,6 +82,7 @@ async function open() {
     if (!st.title) $('#t-libro').textContent = (typeof view.book.metadata?.title === 'string' ? view.book.metadata.title : '') || ''
     applySettings()
     await view.init({ lastLocation: st.location || null, showTextStart: !st.location })
+    paso = 'listo'
     $('#carga').classList.add('fuera')
     showChrome(true)
     setTimeout(() => showChrome(false), 1600)
