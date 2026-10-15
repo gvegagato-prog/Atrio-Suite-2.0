@@ -46,6 +46,8 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -137,7 +139,7 @@ fun BigHeader(title: String, overline: String? = null, modifier: Modifier = Modi
                 else Spacer(Modifier.weight(1f))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
             }
-            Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 48.sp, lineHeight = 50.sp, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            FitTitle(title, 48.sp, 50.sp, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).background(Charcoal))
         }
         return
@@ -448,7 +450,7 @@ fun RevistaHeadline(title: String, overline: String?) {
     val (fs, lh) = headlineSize(title)
     Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
         if (overline != null) Text(overline.uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = fs, lineHeight = lh, letterSpacing = (-1.5).sp)
+        FitTitle(title, fs, lh, letterSpacing = (-1.5).sp)
     }
 }
 
@@ -514,4 +516,47 @@ fun Fab6(icon: ImageVector, desc: String, modifier: Modifier = Modifier, onClick
             .clip(roundShape()).background(ColGeneral),
         contentAlignment = Alignment.Center
     ) { Icon(icon, desc, tint = Paper, modifier = Modifier.size(28.dp)) }
+}
+
+/**
+ * Titular que nunca parte una palabra: si la palabra más larga no cabe a lo ancho, baja el tamaño de la letra
+ * (y el interlineado en proporción) hasta que quepa. Para nombres de juegos, libros, colecciones y titulares.
+ */
+@Composable
+fun FitTitle(
+    text: String, fontSize: androidx.compose.ui.unit.TextUnit, lineHeight: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier, color: Color = Color.Unspecified,
+    letterSpacing: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    fontWeight: FontWeight = FontWeight.Bold, maxLines: Int = Int.MAX_VALUE, overflow: TextOverflow = TextOverflow.Clip,
+    fontStyle: androidx.compose.ui.text.font.FontStyle? = null, minSize: Float = 14f
+) {
+    // El ancho que hay se lee al colocarlo (sin BoxWithConstraints, que no vale dentro de filas de alto intrínseco)
+    var maxPx by remember { mutableStateOf(0) }
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val family = Display
+    val size = remember(text, fontSize, maxPx, family, fontWeight, letterSpacing) {
+        if (maxPx <= 0 || maxPx == Constraints.Infinity) return@remember fontSize.value
+        val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (words.isEmpty()) return@remember fontSize.value
+        var s = fontSize.value
+        while (s > minSize) {
+            val style = androidx.compose.ui.text.TextStyle(fontFamily = family, fontWeight = fontWeight, fontSize = s.sp, letterSpacing = letterSpacing, fontStyle = fontStyle)
+            // Un poco de margen por si la letra de verdad es algo más ancha que la que se mide
+            val widest = words.maxOf { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
+            if (widest <= maxPx * 0.97f) break
+            s -= 1f
+        }
+        s
+    }
+    val k = size / fontSize.value
+    Text(
+        text, color = color, fontFamily = family, fontWeight = fontWeight, fontStyle = fontStyle, fontSize = size.sp,
+        lineHeight = if (lineHeight.isSp) (lineHeight.value * k).sp else lineHeight,
+        letterSpacing = letterSpacing, maxLines = maxLines, overflow = overflow,
+        modifier = modifier.layout { measurable, constraints ->
+            if (constraints.maxWidth != maxPx) maxPx = constraints.maxWidth
+            val pl = measurable.measure(constraints)
+            layout(pl.width, pl.height) { pl.place(0, 0) }
+        }
+    )
 }

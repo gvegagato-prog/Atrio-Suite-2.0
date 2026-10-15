@@ -234,7 +234,7 @@ private fun RevistaLibrary(l: LibUi) {
                 if (l.onAdd != null && !l.readOnly) TextLink("+ AÑADIR", ColGeneral) { l.onAdd.invoke(l.segment != 2) }
             }
             if (l.titleSwitch != null) Box(Modifier.padding(top = 8.dp)) { l.titleSwitch.invoke() }
-            else Text(l.kind.title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 52.sp, lineHeight = 54.sp, letterSpacing = (-1.5).sp, modifier = Modifier.padding(top = 8.dp))
+            else FitTitle(l.kind.title, 52.sp, 54.sp, letterSpacing = (-1.5).sp, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
             Box(Modifier.padding(top = 4.dp, bottom = 6.dp).fillMaxWidth().height(3.dp).background(Charcoal))
             if (l.searching) SearchPill(l.query, "Buscar en ${l.kind.title.lowercase()}", Modifier.fillMaxWidth().padding(vertical = 8.dp)) { l.setQuery(it) }
             Segmented(l.labels, l.segment, counts = l.counts) { l.onSegment(it) }
@@ -259,7 +259,7 @@ private fun RevistaLibrary(l: LibUi) {
             // Sin portadas: el título grande, la nota a la derecha y el estudio (o autor) debajo
             Row(Modifier.fillMaxWidth().press(haptic = false) { l.open(c) }.padding(vertical = 14.dp).rise(i, i < 12), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(c.name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 32.sp, letterSpacing = (-0.5).sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    FitTitle(c.name, 30.sp, 32.sp, letterSpacing = (-0.5).sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     val who = (c.game?.creator ?: c.play?.creator).orEmpty()
                     val line = listOf(who, if (c.sub != who) c.sub else "").filter { it.isNotBlank() }.joinToString(" · ")
                     if (line.isNotBlank()) Text(line.uppercase(), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))

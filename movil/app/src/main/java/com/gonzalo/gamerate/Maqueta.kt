@@ -52,8 +52,13 @@ import org.json.JSONObject
 data class MagCell(
     val type: String, val title: String = "", val text: String = "", val image: String = "", val fit: Boolean = false,
     /** Encuadre de la imagen: zoom (1 = llena la casilla) y desplazamiento, en fracciones del tamaño de la casilla. */
-    val zoom: Float = 1f, val ox: Float = 0f, val oy: Float = 0f
+    val zoom: Float = 1f, val ox: Float = 0f, val oy: Float = 0f,
+    /** Forma de la imagen: "llenar" (toda la casilla), "original" (la de la foto), "vertical", "cuadrada", "apaisada"; "" las de antes. */
+    val shape: String = ""
 )
+
+/** Las formas que puede tener una imagen en su casilla. */
+val MAG_SHAPES = listOf("llenar" to "Llenar la casilla", "original" to "La de la foto", "vertical" to "Vertical", "cuadrada" to "Cuadrada", "apaisada" to "Apaisada")
 
 /** Una fila: una o dos casillas; [split] es dónde va la línea (lo que ocupa la de la izquierda, 0–1). */
 data class MagRowSpec(val cells: List<MagCell>, val split: Float = 0.5f, /** Alto de la fila en dp (0: el que pida lo de dentro). */ val height: Float = 0f)
@@ -68,7 +73,7 @@ object MagLayouts {
             put(JSONObject().put("s", r.split.toDouble()).put("a", r.height.toDouble()).put("c", JSONArray().apply {
                 r.cells.forEach { c ->
                     put(JSONObject().put("t", c.type).put("h", c.title).put("x", c.text).put("i", c.image).put("f", c.fit)
-                        .put("z", c.zoom.toDouble()).put("ox", c.ox.toDouble()).put("oy", c.oy.toDouble()))
+                        .put("z", c.zoom.toDouble()).put("ox", c.ox.toDouble()).put("oy", c.oy.toDouble()).put("sh", c.shape))
                 }
             }))
         }
@@ -83,7 +88,7 @@ object MagLayouts {
                 MagRowSpec((0 until cs.length()).map { j ->
                     val c = cs.getJSONObject(j)
                     MagCell(c.optString("t", "vacio"), c.optString("h"), c.optString("x"), c.optString("i"), c.optBoolean("f"),
-                        c.optDouble("z", 1.0).toFloat(), c.optDouble("ox", 0.0).toFloat(), c.optDouble("oy", 0.0).toFloat())
+                        c.optDouble("z", 1.0).toFloat(), c.optDouble("ox", 0.0).toFloat(), c.optDouble("oy", 0.0).toFloat(), c.optString("sh"))
                 }.take(2), o.optDouble("s", 0.5).toFloat(), o.optDouble("a", 0.0).toFloat())
             }
         }
@@ -120,6 +125,18 @@ object MagImages {
     var categories: (Kind) -> List<String> = { emptyList() }
     /** Carga las imágenes (miniatura, imagen) de una categoría. */
     var load: suspend (Kind, Long, String, String) -> List<Pair<String, String>> = { _, _, _, _ -> emptyList() }
+    /** Proporción (ancho / alto) de cada imagen ya cargada, para la forma «la de la foto». */
+    val ratios = androidx.compose.runtime.mutableStateMapOf<String, Float>()
+}
+
+/** Proporción del marco de una imagen según su forma ([cell]: tamaño de la casilla entera, para «llenar»). */
+fun magAspect(c: MagCell, cell: androidx.compose.ui.unit.IntSize?): Float = when (c.shape) {
+    "vertical" -> 0.75f
+    "cuadrada" -> 1f
+    "apaisada" -> 1.4f
+    "original" -> MagImages.ratios[c.image] ?: 1.4f
+    "llenar" -> if (cell != null && cell.width > 0 && cell.height > 0) cell.width.toFloat() / cell.height else 0.75f
+    else -> if (c.fit) 2.2f else 1.4f
 }
 
 /** Qué parte del ancho ocupa la casilla (para que las cifras grandes encojan si la casilla es estrecha). */
@@ -150,6 +167,7 @@ fun MagPage(
     var msg by remember { mutableStateOf("") }
     var framing by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val cellSizes = remember { mutableStateMapOf<String, androidx.compose.ui.unit.IntSize>() }
+    val cellOuter = remember { mutableStateMapOf<String, androidx.compose.ui.unit.IntSize>() }
 
     fun visible(c: MagCell) = c.type == "texto" || c.type == "imagen" || c.type == "vacio" || defs.containsKey(c.type)
     fun cellAt(p: Pair<Int, Int>) = rows.getOrNull(p.first)?.cells?.getOrNull(p.second)
@@ -165,14 +183,21 @@ fun MagPage(
             }
             "imagen" -> {
                 if (c.title.isNotBlank()) MagLabel(c.title)
-                // Con alto de fila fijo, la imagen llena lo que queda; si no, un marco 7:5 (los logos, más apaisado)
+                // La forma la eliges al encuadrar: llenar la casilla (lo que mida la fila), la de la foto, vertical, cuadrada o apaisada
                 val fixed = LocalRowFixed.current
+                val split = LocalCellFraction.current < 0.99f
+                val fill = fixed || (c.shape == "llenar" && split)
+                val shape = when {
+                    fill -> Modifier.weight(1f).heightIn(min = 140.dp)
+                    c.shape == "llenar" -> Modifier.aspectRatio(MagImages.ratios[c.image] ?: 0.75f)   // sola en la fila: la forma de la foto
+                    else -> Modifier.aspectRatio(magAspect(c, null).coerceIn(0.3f, 4f))
+                }
                 Box(
-                    Modifier.fillMaxWidth().then(if (fixed) Modifier.weight(1f) else Modifier.aspectRatio(if (c.fit) 2.2f else 1.4f))
+                    Modifier.fillMaxWidth().then(shape)
                         .clipToBounds().background(if (c.image.isBlank()) Sand else androidx.compose.ui.graphics.Color.Transparent)
                         .onSizeChanged { cellSizes[k] = it }
                 ) {
-                    if (c.image.isNotBlank()) FramedImage(c, Modifier.fillMaxSize())
+                    if (c.image.isNotBlank()) FramedImage(c, Modifier.matchParentSize())
                     else if (designing) Text("Imagen", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, modifier = Modifier.align(Alignment.Center))
                 }
             }
@@ -233,9 +258,9 @@ fun MagPage(
                             }
                         }
                     }
-                    Box(Modifier.weight(w).fillMaxHeight().clipToBounds()) {
+                    Box(Modifier.weight(w).fillMaxHeight().clipToBounds().onSizeChanged { cellOuter["$i:$j"] = it }) {
                         Column(
-                            Modifier.fillMaxWidth().then(if (fixed) Modifier.fillMaxHeight() else Modifier)
+                            Modifier.fillMaxWidth().fillMaxHeight()
                                 .padding(top = 12.dp, bottom = 18.dp, start = if (n == 1) 12.dp else 0.dp, end = if (n == 0 && shown.size == 2) 12.dp else 0.dp)
                         ) {
                             CompositionLocalProvider(LocalCellFraction provides w, LocalRowFixed provides fixed) { CellView(c, "$i:$j") }
@@ -342,10 +367,11 @@ fun MagPage(
     framing?.let { p ->
         val cur = cellAt(p)
         if (cur == null || cur.image.isBlank()) { framing = null } else {
-            // El marco tiene la forma exacta de la imagen en su casilla
-            val sz = cellSizes["${p.first}:${p.second}"]
-            val aspect = if (sz != null && sz.width > 0 && sz.height > 0) sz.width.toFloat() / sz.height else if (cur.fit) 2.2f else 1.4f
-            FrameEditor(cur, aspect,
+            // El marco tiene la forma de la imagen en su casilla (y cambia si eliges otra forma)
+            val k = "${p.first}:${p.second}"
+            val sz = cellSizes[k]
+            val now = if (sz != null && sz.width > 0 && sz.height > 0) sz.width.toFloat() / sz.height else magAspect(cur, cellOuter[k])
+            FrameEditor(cur, { c -> if (c.shape == cur.shape) now else magAspect(c, cellOuter[k]) },
                 onSave = { setCell(p, it); framing = null }, onDismiss = { framing = null })
         }
     }
@@ -376,7 +402,7 @@ fun MagPage(
                             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(l) { (thumb, url) ->
                                 AsyncImage(thumb, null, Modifier.fillMaxWidth().background(Sand).clickable {
-                                    setCell(p, MagCell("imagen", image = url, fit = cat.contains("Logo", true))); pickingImage = null
+                                    setCell(p, MagCell("imagen", image = url, fit = cat.contains("Logo", true), shape = "llenar")); pickingImage = null
                                 }, contentScale = ContentScale.FillWidth)
                             }
                         }
@@ -393,46 +419,68 @@ fun MagPage(
 @Composable
 fun FramedImage(c: MagCell, modifier: Modifier) {
     AsyncImage(
-        c.image, null,
-        modifier.graphicsLayer {
+        model = c.image, contentDescription = null,
+        modifier = modifier.graphicsLayer {
             scaleX = c.zoom; scaleY = c.zoom
             translationX = c.ox * size.width; translationY = c.oy * size.height
         },
-        contentScale = if (c.fit) ContentScale.Fit else ContentScale.Crop
+        contentScale = if (c.fit) ContentScale.Fit else ContentScale.Crop,
+        onSuccess = { st: coil.compose.AsyncImagePainter.State.Success ->
+            val sz = st.painter.intrinsicSize
+            if (sz.width > 0f && sz.height > 0f && sz.width.isFinite()) MagImages.ratios[c.image] = sz.width / sz.height
+        }
     )
 }
 
-/** Encuadrar: la imagen dentro de un marco con la forma de la casilla; dos dedos amplían o reducen, uno la mueve. */
+/**
+ * Encuadrar: la imagen dentro de un marco con la forma que tendrá; dos dedos amplían o reducen, uno la mueve.
+ * Se elige la forma (llenar la casilla, la de la foto, vertical, cuadrada, apaisada) y si se ve la foto entera o recortada.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun FrameEditor(c: MagCell, aspect: Float, onSave: (MagCell) -> Unit, onDismiss: () -> Unit) {
+fun FrameEditor(c: MagCell, aspectOf: (MagCell) -> Float, onSave: (MagCell) -> Unit, onDismiss: () -> Unit) {
     var zoom by remember { mutableStateOf(c.zoom) }
     var ox by remember { mutableStateOf(c.ox) }
     var oy by remember { mutableStateOf(c.oy) }
+    var shape by remember { mutableStateOf(c.shape.ifBlank { "llenar" }) }
+    var whole by remember { mutableStateOf(c.fit) }
     var box by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
+    fun current() = c.copy(zoom = zoom, ox = ox, oy = oy, shape = shape, fit = whole)
     androidx.compose.ui.window.Dialog(onDismiss, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp).background(Paper).padding(18.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp).background(Paper).verticalScroll(rememberScrollState()).padding(18.dp)) {
             Text("Encuadrar", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-            Text("Pellizca para ampliar o reducir. Arrastra para colocarla. Lo que quede dentro del marco es lo que se verá.", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
+            Text("Pellizca para ampliar o reducir (puedes alejarla hasta verla entera). Arrastra para colocarla. Lo que quede dentro del marco es lo que se verá.",
+                color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
+            Text("FORMA", fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
+            androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                MAG_SHAPES.forEach { (id, name) -> Tool(name.uppercase(), accent = shape == id) { shape = id } }
+            }
+            androidx.compose.foundation.layout.FlowRow(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Tool("RECORTADA", accent = !whole) { whole = false }
+                Tool("FOTO ENTERA", accent = whole) { whole = true }
+            }
+            val aspect = aspectOf(current()).coerceIn(0.3f, 4f)
             Box(
-                Modifier.fillMaxWidth().aspectRatio(aspect.coerceIn(0.3f, 4f)).clipToBounds().background(Sand).border(2.dp, Charcoal)
+                Modifier.fillMaxWidth().heightIn(max = 460.dp).aspectRatio(aspect, matchHeightConstraintsFirst = aspect < 0.9f)
+                    .align(Alignment.CenterHorizontally).clipToBounds().background(Sand).border(2.dp, Charcoal)
                     .onSizeChanged { box = it }
                     .semantics { contentDescription = "Marco de la imagen" }
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, z, _ ->
-                            zoom = (zoom * z).coerceIn(0.3f, 6f)
+                            zoom = (zoom * z).coerceIn(0.2f, 6f)
                             ox = (ox + pan.x / box.width).coerceIn(-3f, 3f)
                             oy = (oy + pan.y / box.height).coerceIn(-3f, 3f)
                         }
                     }
-            ) { FramedImage(c.copy(zoom = zoom, ox = ox, oy = oy), Modifier.fillMaxSize()) }
+            ) { FramedImage(current(), Modifier.matchParentSize()) }
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
-                Tool("− REDUCIR") { zoom = (zoom / 1.15f).coerceIn(0.3f, 6f) }
-                Tool("+ AMPLIAR") { zoom = (zoom * 1.15f).coerceIn(0.3f, 6f) }
+                Tool("− REDUCIR") { zoom = (zoom / 1.15f).coerceIn(0.2f, 6f) }
+                Tool("+ AMPLIAR") { zoom = (zoom * 1.15f).coerceIn(0.2f, 6f) }
                 Tool("CENTRAR") { zoom = 1f; ox = 0f; oy = 0f }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(22.dp, Alignment.End)) {
                 Tool("CANCELAR", onClick = onDismiss)
-                Tool("GUARDAR", accent = true) { onSave(c.copy(zoom = zoom, ox = ox, oy = oy)) }
+                Tool("GUARDAR", accent = true) { onSave(current()) }
             }
         }
     }

@@ -54,7 +54,7 @@ fun ProfileScreen(
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 30.sp else 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    FitTitle(name, if (Skin.revista) 30.sp else 22.sp, if (Skin.revista) 32.sp else 26.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         when {
                             !store.paired -> "Sin cuenta: tus datos solo están en este móvil"

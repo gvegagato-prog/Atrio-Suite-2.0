@@ -281,7 +281,18 @@ class Capturas6Test {
         fun go(t: String) { val n = rule.onAllNodesWithText(t)[0]; runCatching { n.performScrollTo() }; n.performClick(); rule.waitForIdle() }
         fun back() { androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle() }
         fun home() { repeat(4) { if (rule.onAllNodesWithText("EN PORTADA").fetchSemanticsNodes().isEmpty()) back() } }
+        // Una foto vertical que llena su casilla, al lado de la nota
+        rule.runOnUiThread {
+            MagLayouts.save(ctx, "v:0:102", listOf(
+                MagRowSpec(listOf(MagCell("imagen", image = cover("Hades", 0xFFE96443.toInt(), 0xFF904E95.toInt()), shape = "llenar"), MagCell("nota"))),
+                MagRowSpec(listOf(MagCell("imagen", image = cover("Hades", 0xFFE96443.toInt(), 0xFF904E95.toInt()), shape = "original", fit = true)))
+            ))
+        }
+        go("Videojuegos"); go("Pasados"); go("Hades II"); shoot("p00_foto_llena")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("p00b_foto_original")
+        home()
         go("Descubrir un juego"); shoot("p01_descubrir")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("p01b_descubrir_filtros")
         go("5"); shoot("p02_pregunta"); back(); back()
         go("Descubrir un libro"); shoot("p03_descubrir_libro"); home()
         go("Diario"); shoot("p04_diario"); home()

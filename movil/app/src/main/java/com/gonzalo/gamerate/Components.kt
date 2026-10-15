@@ -255,7 +255,7 @@ fun TopBar(back: String, onBack: () -> Unit, title: String, actions: @Composable
                 RevistaBack(onBack); Spacer(Modifier.weight(1f)); actions()
             }
             Text(back.uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
-            Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 46.sp, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            FitTitle(title, 44.sp, 46.sp, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).background(Charcoal))
         }
         return

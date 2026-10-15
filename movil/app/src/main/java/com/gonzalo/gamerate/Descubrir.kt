@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.lazy.itemsIndexed as listItemsIndexed
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Brush
@@ -85,6 +87,12 @@ fun quizMatches(a: List<QuizItem>, b: List<QuizItem>): List<QuizItem> {
     val names = b.map { normName(it.title) }.toSet()
     return a.filter { "${it.tv}:${it.id}" in ids || normName(it.title) in names }
 }
+
+/** Los filtros de juegos puestos, para el resumen de arriba de los resultados. */
+fun filterSummary(years: IntRange?, plats: Set<String>): List<String> = listOfNotNull(
+    years?.let { "${it.first}–${it.last}" },
+    plats.takeIf { it.isNotEmpty() }?.joinToString(", ") { p -> when (p) { "pc" -> "PC"; "playstation" -> "PlayStation"; "xbox" -> "Xbox"; "nintendo" -> "Nintendo"; else -> "Móvil" } }
+)
 
 fun quizWhat(domain: Int) = when (domain) { 0 -> "juegos"; 1 -> "libros"; else -> "pelis y series" }
 
@@ -302,7 +310,8 @@ object Quiz {
         return m
     }
 
-    suspend fun games(ctx: Context, t: Taste, key: String, mine: Set<String>): List<QuizItem> = withContext(Dispatchers.IO) {
+    /** [years] y [plats]: los filtros que pones tú (mandan sobre lo que digan las respuestas y se aplican a todas las búsquedas). */
+    suspend fun games(ctx: Context, t: Taste, key: String, mine: Set<String>, years: IntRange? = null, plats: Set<String> = emptySet()): List<QuizItem> = withContext(Dispatchers.IO) {
         if (key.isBlank()) throw IllegalStateException("Para descubrir juegos hace falta tu clave gratuita de RAWG (Perfil → Ajustes → Servicios).")
         val liked = t.liked().filter { g -> GameGenres.any { it.first == g } || g in setOf("educational") }
         val likedTags = t.likedTags()
@@ -310,11 +319,15 @@ object Quiz {
         // Cómo juegas también son etiquetas
         val modeTag = when (t.pick("mode")) { "solo" -> "singleplayer"; "coop" -> "co-op"; "online" -> "multiplayer"; else -> null }
         val parents = parentPlatforms(ctx, key)
-        val plat = when (t.pick("plat")) {
+        fun platIds(p: String?) = when (p) {
             "pc" -> listOfNotNull(parents["pc"]); "playstation" -> listOfNotNull(parents["playstation"]); "xbox" -> listOfNotNull(parents["xbox"])
             "nintendo" -> listOfNotNull(parents["nintendo"]); "mobile" -> listOfNotNull(parents["ios"], parents["android"]); else -> emptyList()
         }
-        val era = t.pick("era")?.let { GAME_ERA[it] }
+        val userPlat = plats.isNotEmpty()
+        val plat = if (userPlat) plats.flatMap { platIds(it) }.distinct() else platIds(t.pick("plat"))
+        if (userPlat && plat.isEmpty()) throw IllegalStateException("No se han podido cargar las plataformas de RAWG. Prueba otra vez.")
+        val userYears = years != null
+        val era = if (years != null) "${years.first}-01-01" to "${years.last}-12-31" else t.pick("era")?.let { GAME_ERA[it] }
         val pop = t.pick("pop")
         val len = t.pick("len")
         val ordering = when (pop) { "mainstream" -> "-added"; "hidden" -> "-metacritic"; "cult" -> "-rating"; else -> "-added" }
@@ -322,8 +335,8 @@ object Quiz {
             append("$RAWG/games?key=${menc(key)}&page_size=40&exclude_additions=true&ordering=$order")
             if (genres.isNotEmpty()) append("&genres=" + menc(genres.joinToString(",")))
             if (tags.isNotEmpty()) append("&tags=" + menc(tags.joinToString(",")))
-            if (filters && plat.isNotEmpty()) append("&parent_platforms=" + plat.joinToString(","))
-            if (filters && era != null) append("&dates=${era.first},${era.second.ifBlank { java.time.LocalDate.now().toString() }}")
+            if ((filters || userPlat) && plat.isNotEmpty()) append("&parent_platforms=" + plat.joinToString(","))
+            if ((filters || userYears) && era != null) append("&dates=${era.first},${era.second.ifBlank { java.time.LocalDate.now().toString() }}")
             if (minRate && t.rate > 0) append("&metacritic=${t.rate.toInt()},100")
         }
         val tagQ = (likedTags.take(2) + listOfNotNull(modeTag)).distinct().take(2)
@@ -346,6 +359,8 @@ object Quiz {
                     val id = o.optLong("id")
                     val name = o.optString("name")
                     if (id == 0L || name.isBlank() || id in seen || normName(name) in mine) continue
+                    // Tus años, sí o sí (por si RAWG devuelve alguno fuera)
+                    if (years != null) { val y = o.optString("released").take(4).toIntOrNull(); if (y == null || y !in years) continue }
                     val gs = o.optJSONArray("genres")?.let { g -> (0 until g.length()).mapNotNull { g.optJSONObject(it) } } ?: emptyList()
                     val ts = o.optJSONArray("tags")?.let { g -> (0 until g.length()).mapNotNull { g.optJSONObject(it)?.optString("slug") } }?.toSet() ?: emptySet()
                     // Lo que encaja: géneros y etiquetas que te gustan (y las que no), su nota y lo que dura
@@ -562,29 +577,46 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
     // El último test de tu pareja de este mismo tipo (si lo ha hecho)
     val theirRun = partner?.quizzes?.get(domain)
 
-    fun finish(all: List<JSONObject>) {
-        val t = Taste().also { tt -> all.forEach { tt.add(it) } }
-        taste = t
+    // Filtros de juegos (año y plataforma): se recuerdan para la próxima vez
+    val fprefs = remember { ctx.getSharedPreferences("descubrir", Context.MODE_PRIVATE) }
+    var fYears by remember { mutableStateOf(fprefs.getString("f_years", "")!!.split('-').mapNotNull { it.toIntOrNull() }.takeIf { it.size == 2 }?.let { it[0]..it[1] }) }
+    var fPlats by remember { mutableStateOf(fprefs.getString("f_plats", "")!!.split(',').filter { it.isNotBlank() }.toSet()) }
+    var searchN by remember { mutableStateOf(0) }
+    fun search(t: Taste) {
         error = ""
         results = null
+        val n = ++searchN
         scope.launch {
             try {
-                results = when (domain) {
-                    0 -> Quiz.games(ctx, t, store.rawgKey, mineN)
+                val r = when (domain) {
+                    0 -> Quiz.games(ctx, t, store.rawgKey, mineN, fYears, fPlats)
                     1 -> Quiz.books(t, mineN)
                     else -> Quiz.screen(t, store.tmdbKey, mineN)
                 }
+                if (n == searchN) results = r
             }
-            catch (e: Exception) { error = e.message ?: "No se ha podido buscar."; results = emptyList() }
+            catch (e: Exception) { if (n == searchN) { error = e.message ?: "No se ha podido buscar."; results = emptyList() } }
+            if (n != searchN) return@launch
             // Se guarda y se sube: a tu pareja le llega el aviso y, si os sale lo mismo, lo veis los dos
             results?.takeIf { it.isNotEmpty() }?.let { store.saveQuiz(domain, it); runCatching { CloudSave.enqueue(ctx) } }
         }
+    }
+    fun setFilters(y: IntRange?, p: Set<String>) {
+        fYears = y; fPlats = p
+        fprefs.edit().putString("f_years", y?.let { "${it.first}-${it.last}" } ?: "").putString("f_plats", p.joinToString(",")).apply()
+        taste?.let { search(it) }
+    }
+    fun finish(all: List<JSONObject>) {
+        val t = Taste().also { tt -> all.forEach { tt.add(it) } }
+        taste = t
+        search(t)
     }
     fun start(n: Int) { length = n; qs = Quiz.pick(ctx, domain, n); idx = 0; answers = emptyList(); results = null; taste = null }
 
     Box(Modifier.fillMaxSize()) {
         when {
-            length == 0 -> if (Skin.revista) QuizIntroRevista(domain, partner?.name, theirRun, onBack) { start(it) }
+            length == 0 -> if (Skin.revista) QuizIntroRevista(domain, partner?.name, theirRun, onBack,
+                    filters = if (domain == 0) ({ GameFilters(fYears, fPlats) { y, p -> setFilters(y, p) } }) else null) { start(it) }
                 else QuizIntro(domain, accent, partner?.name, theirRun, onBack) { start(it) }
             taste == null -> {
                 val q = qs.getOrNull(idx)
@@ -621,7 +653,7 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 34.dp, bottom = 16.dp)) {
                             if (Skin.revista) {
                                 Text(quizWhat(domain).uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                                Text(qq.q, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 38.sp, lineHeight = 41.sp, letterSpacing = (-0.8).sp)
+                                FitTitle(qq.q, 38.sp, 41.sp, letterSpacing = (-0.8).sp)
                             } else Text(qq.q, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp)
                             Spacer(Modifier.height(26.dp))
                             qq.answers.forEachIndexed { ai, (txt, eff) ->
@@ -665,11 +697,12 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
                 }
             }
             else -> if (Skin.revista) QuizResultsRevista(
-                domain, Quiz.summary(taste!!, domain), results, error, added,
+                domain, Quiz.summary(taste!!, domain) + filterSummary(fYears, fPlats), results, error, added,
                 partner?.name, theirRun?.let { r -> results?.let { quizMatches(it, r.items) } },
                 onOpen = { open = it },
                 onAdd = { it -> added = added + "${it.tv}${it.id}"; onAdd(it) },
-                onAgain = { start(length) }, onBack = onBack
+                onAgain = { start(length) }, onBack = onBack,
+                filters = if (domain == 0) ({ GameFilters(fYears, fPlats) { y, p -> setFilters(y, p) } }) else null
             ) else QuizResults(
                 domain, accent, Quiz.summary(taste!!, domain), results, error, added,
                 partner?.name, theirRun?.let { r -> results?.let { quizMatches(it, r.items) } },
@@ -724,16 +757,59 @@ private fun QuizIntro(domain: Int, accent: Color, partnerName: String?, theirs: 
     }
 }
 
+private val GAME_PLATS = listOf("pc" to "PC", "playstation" to "PlayStation", "xbox" to "Xbox", "nintendo" to "Nintendo", "mobile" to "Móvil")
+private const val YEAR_MIN = 1980
+
+/** Filtros de juegos: entre qué años salió y en qué plataformas (ninguna marcada: todas). */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun GameFilters(years: IntRange?, plats: Set<String>, onChange: (IntRange?, Set<String>) -> Unit) {
+    val now = java.time.LocalDate.now().year
+    var range by remember(years) { mutableStateOf((years?.first ?: YEAR_MIN).toFloat()..(years?.last ?: now).toFloat()) }
+    val any = range.start.toInt() <= YEAR_MIN && range.endInclusive.toInt() >= now
+    Column(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("AÑOS", fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+            Text(if (any) "CUALQUIERA" else "${range.start.toInt()} — ${range.endInclusive.toInt()}", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+        }
+        RangeSlider(
+            range, { range = it }, valueRange = YEAR_MIN.toFloat()..now.toFloat(), steps = (now - YEAR_MIN - 1).coerceAtLeast(0),
+            onValueChangeFinished = {
+                val a = range.start.toInt(); val b = range.endInclusive.toInt()
+                onChange(if (a <= YEAR_MIN && b >= now) null else a..b, plats)
+            },
+            colors = SliderDefaults.colors(thumbColor = ColGeneral, activeTrackColor = Charcoal, inactiveTrackColor = Line,
+                activeTickColor = androidx.compose.ui.graphics.Color.Transparent, inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent),
+            modifier = Modifier.semantics { contentDescription = "Años" }
+        )
+        Text("PLATAFORMAS", fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.padding(top = 4.dp))
+        FlowRow(Modifier.padding(top = 6.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val all = plats.isEmpty()
+            Text("TODAS", color = if (all) ColGeneral else Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+                modifier = Modifier.press { if (!all) onChange(years, emptySet()) }.padding(vertical = 6.dp))
+            GAME_PLATS.forEach { (id, name) ->
+                val on = id in plats
+                Text(name.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+                    textDecoration = if (on) androidx.compose.ui.text.style.TextDecoration.Underline else null,
+                    modifier = Modifier.press { onChange(years, if (on) plats - id else plats + id) }.padding(vertical = 6.dp))
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Charcoal))
+    }
+}
+
 /** Revista: portadilla con el titular enorme, la entradilla y el número de preguntas en tres columnas. */
 @Composable
-private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?, onBack: () -> Unit, onStart: (Int) -> Unit) {
+private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?, onBack: () -> Unit,
+    filters: (@Composable () -> Unit)? = null, onStart: (Int) -> Unit) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
         RevistaBack(onBack)
         Box(Modifier.fillMaxWidth().height(3.dp).background(Charcoal))
         Spacer(Modifier.height(14.dp))
         Text("DESCUBRIR · ${quizWhat(domain).uppercase()}", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.rise(0))
-        Text(when (domain) { 0 -> "¿A qué juego ahora?"; 1 -> "¿Qué leo ahora?"; else -> "¿Qué vemos hoy?" },
-            fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 60.sp, lineHeight = 60.sp, letterSpacing = (-1.8).sp, modifier = Modifier.rise(1))
+        FitTitle(when (domain) { 0 -> "¿A qué juego ahora?"; 1 -> "¿Qué leo ahora?"; else -> "¿Qué vemos hoy?" },
+            60.sp, 60.sp, letterSpacing = (-1.8).sp, modifier = Modifier.fillMaxWidth().rise(1))
         Box(Modifier.padding(vertical = 14.dp).fillMaxWidth().height(1.dp).background(Charcoal))
         Text(
             "Unas pocas preguntas, de más de trescientas y nunca las mismas, y una lista de " +
@@ -754,6 +830,7 @@ private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?
         }
         Spacer(Modifier.height(36.dp))
         Spacer(Modifier.weight(1f))
+        if (filters != null) { filters(); Spacer(Modifier.height(22.dp)) }
         Text("¿CUÁNTAS PREGUNTAS?", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
         Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
@@ -776,9 +853,11 @@ private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?
 private fun QuizResultsRevista(
     domain: Int, summary: List<String>, results: List<QuizItem>?, error: String, added: Set<String>,
     partnerName: String?, both: List<QuizItem>?,
-    onOpen: (QuizItem) -> Unit, onAdd: (QuizItem) -> Unit, onAgain: () -> Unit, onBack: () -> Unit
+    onOpen: (QuizItem) -> Unit, onAdd: (QuizItem) -> Unit, onAgain: () -> Unit, onBack: () -> Unit,
+    filters: (@Composable () -> Unit)? = null
 ) {
     val italic = androidx.compose.ui.text.font.FontStyle.Italic
+    var showFilters by remember { mutableStateOf(false) }
     androidx.compose.foundation.lazy.LazyColumn(
         Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 40.dp)
     ) {
@@ -792,6 +871,11 @@ private fun QuizResultsRevista(
             Text((if (results == null) "BUSCANDO…" else "${results.size} RESULTADOS · ${quizWhat(domain).uppercase()}"), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             Text("Para ti", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 60.sp, lineHeight = 60.sp, letterSpacing = (-1.8).sp)
             if (summary.isNotEmpty()) Text(summary.joinToString(" · "), fontFamily = Display, fontStyle = italic, fontSize = 18.sp, lineHeight = 24.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
+            if (filters != null) {
+                Text(if (showFilters) "OCULTAR FILTROS ↑" else "FILTRAR POR AÑO Y PLATAFORMA ↓", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                    modifier = Modifier.press { showFilters = !showFilters }.padding(vertical = 10.dp))
+                if (showFilters) filters()
+            }
             Spacer(Modifier.height(14.dp))
             // Lo que os ha salido a los dos
             if (partnerName != null && both != null && results != null) {
@@ -817,7 +901,7 @@ private fun QuizResultsRevista(
                 Row(verticalAlignment = Alignment.Top) {
                     Text("%02d".format(i + 1), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp, modifier = Modifier.width(52.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(it.title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 27.sp)
+                        FitTitle(it.title, 24.sp, 27.sp)
                         val sub = listOfNotNull(it.year.ifBlank { null }, if (domain == 2) (if (it.tv) "Serie" else "Película") else it.creator.ifBlank { null }).joinToString(" · ")
                         if (sub.isNotBlank()) Text(sub.uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                         Text(if (done) "EN TU LISTA ✓" else "A MI LISTA +", color = if (done) Muted else ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,

@@ -155,7 +155,7 @@ private fun RevistaHome(m: ShellModel) {
                 if (m.ongoing.size > 1) Text("CAMBIAR TÍTULO", color = Ink2, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { choosing = true }.padding(vertical = 4.dp))
             }
             val (fs, lh) = headlineSize(e.name)
-            Text(e.name, color = Ink2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = fs, lineHeight = lh, letterSpacing = (-1.5).sp, modifier = Modifier.padding(top = 10.dp).press { m.open(e) })
+            FitTitle(e.name, fs, lh, color = Ink2, letterSpacing = (-1.5).sp, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).press { m.open(e) })
             Text(
                 listOf(kindShort(e.kind), e.creator, if (e.minutes > 0 && !e.kind.isBook) hoursText(e.minutes) else "").filter { it.isNotBlank() }.joinToString(" · "),
                 color = Grey2, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)
@@ -190,7 +190,7 @@ private fun RevistaHome(m: ShellModel) {
                 Row(Modifier.fillMaxWidth().press(haptic = false) { m.open(e) }.padding(vertical = 10.dp), verticalAlignment = Alignment.Top) {
                     Text("%02d".format(i + 1), color = Red2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, modifier = Modifier.width(56.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(e.name, color = Ink2, fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 25.sp)
+                        FitTitle(e.name, 22.sp, 25.sp, color = Ink2, fontWeight = FontWeight.SemiBold)
                         Text(listOf(kindShort(e.kind), e.creator).filter { it.isNotBlank() }.joinToString(" · "), color = Grey2, fontSize = 13.sp)
                     }
                 }
@@ -206,7 +206,7 @@ private fun RevistaHome(m: ShellModel) {
                 Row(Modifier.fillMaxWidth().press(haptic = false) { m.open(e) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("${e.score}", color = Ink2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 58.sp, lineHeight = 58.sp, modifier = Modifier.width(100.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(e.name, color = Ink2, fontFamily = Display, fontSize = 20.sp, lineHeight = 23.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        FitTitle(e.name, 20.sp, 23.sp, color = Ink2, fontWeight = FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(kindShort(e.kind).uppercase(), color = Red2, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                     }
                 }

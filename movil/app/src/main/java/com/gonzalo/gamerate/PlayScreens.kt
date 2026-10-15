@@ -125,7 +125,7 @@ fun PlayDetailScreen(
             }
             defs["estado"] = MagDef(if (b != null) "Nota" else "Estado") {
                 if (b != null) MagScore(b.general, b.scores(), kind)
-                else Text(kind.statuses.getOrElse(p.status) { "" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 32.sp)
+                else FitTitle(kind.statuses.getOrElse(p.status) { "" }, 30.sp, 32.sp)
                 if (b == null) Text("Aún sin nota", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
                 Spacer(Modifier.height(8.dp))
                 MagLink("Apuntar notas", if (b != null) "media de ${p.entries.size} apuntes" else null, accent = due) { onNote(p, null) }
