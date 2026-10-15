@@ -100,7 +100,8 @@ const log = [];
       const m = await page.evaluate(() => window.__view?.renderer?.getAttribute('margin'));
       ok(m && parseInt(m) >= 42, `${name}: margen arriba y abajo ${m}`);
     }
-    // Barras (tocar el centro)
+    // Barras (tocar el centro). En el EPUB, en una página de texto: en el índice del libro el centro es un enlace.
+    if (name.endsWith('epub')) { await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1500); }
     await page.mouse.click(206, 430); await page.waitForTimeout(600);
     await page.screenshot({ path: path.join(out, name + '-3-barras.png') });
     // Ajustes: tema noche y letra más grande

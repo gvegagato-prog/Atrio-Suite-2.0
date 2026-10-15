@@ -323,7 +323,7 @@ function onLoad({ detail: { doc, index } }) {
     }
 
     doc.addEventListener('click', e => {
-        if (e.target.closest?.('a')) return
+        if (e.target.closest?.('a[href]')) return  // (los <a id> sin enlace, que envuelven párrafos en muchos EPUB, no cuentan)
         if (swiped) { swiped = false; return }
         if (held) { held = false; return }
         // Una imagen: a pantalla completa, para ampliarla

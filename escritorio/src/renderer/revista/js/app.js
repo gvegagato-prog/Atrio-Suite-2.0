@@ -30,7 +30,7 @@
     else RV.aviso('Esta versión de Atrio no puede cambiar de interfaz.', 'error');
   };
 
-  const TITULOS = { portada: 'Portada', diario: 'Diario', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes', descubrir: 'Descubrir' };
+  const TITULOS = { portada: 'Portada', diario: 'Diario', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes', descubrir: 'Descubrir', especial: 'Número especial' };
   function pintar(o = {}) {
     const pag = document.getElementById('pagina');
     // Lo que estabas escribiendo (y dónde), para no perderlo al redibujar con datos nuevos
@@ -211,4 +211,10 @@
     }
   }
   arrancar();
+  // Para las capturas automáticas (ATRIO_SHOTS): cada paso del plan puede ir a una página o cambiar de interfaz
+  window.__test = async (paso) => {
+    if (paso && paso.ir) RV.ir(paso.ir);
+    if (paso && paso.ui && api.switchUi) await api.switchUi(paso.ui);
+    return RV.ruta().v;
+  };
 })(window.RV);

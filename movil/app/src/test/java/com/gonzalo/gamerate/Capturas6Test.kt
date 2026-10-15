@@ -261,6 +261,26 @@ class Capturas6Test {
         org.junit.Assert.assertEquals("The Witcher 3", back[0]?.items?.first()?.title)
     }
 
+    /** Apariencia (se abre desde MainActivity, fuera de App): claro u oscuro y el acento. */
+    @Test
+    fun apariencia() {
+        org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
+        Skin.load(ctx)
+        Mode.dark = false
+        Mode.themeMode = 1
+        Skin.applyShell(2, ctx)
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    StyleScreen(Mode.themeMode, { Mode.themeMode = it; Mode.dark = it == 2 }, {}) {}
+                }
+            }
+        }
+        shoot("a1_apariencia")
+        rule.onAllNodesWithText("AZUL", substring = true, ignoreCase = true)[0].performClick(); shoot("a2_acento_azul")
+        rule.onAllNodesWithText("Oscuro")[0].performClick(); shoot("a3_oscuro")
+    }
+
     /** Todas las pantallas con el estilo revista (para revisar que cuadran). */
     @Test
     fun pestanas() {
@@ -306,6 +326,11 @@ class Capturas6Test {
         go("Deadlock"); go("Apuntar notas →"); shoot("p10_apunte"); back(); home()
         go("Perfil"); go("Apariencia"); shoot("p11_apariencia"); back(); home()
         go("Perfil"); go("Tu PC"); shoot("p12_pc"); home()
+        go("Tu ${java.time.LocalDate.now().year}, número especial"); shoot("p15_especial")
+        // El número especial es un diálogo: tiene su propia raíz
+        val dlg = { rule.onAllNodes(androidx.compose.ui.test.isRoot()).let { it[it.fetchSemanticsNodes().size - 1] } }
+        dlg().performTouchInput { swipeUp() }; shoot("p15b_especial")
+        dlg().performTouchInput { swipeUp() }; shoot("p15c_especial"); back(); home()
         go("Descubrir un libro"); go("5")
         repeat(5) { i -> rule.waitForIdle(); Thread.sleep(300); rule.onAllNodesWithText(if (i % 2 == 0) "A" else "B")[0].performClick() }
         rule.waitUntil(60_000) { rule.onAllNodesWithText("A MI LISTA +").fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("No ha salido nada", substring = true).fetchSemanticsNodes().isNotEmpty() }

@@ -182,7 +182,10 @@
       }
       term.append(ul);
     }
-    root.append(h('div.p-fila2', altas, term, sumario(true)));
+    // Tal día como hoy (si lo hay) encabeza la tercera columna, sobre el sumario
+    const efem = RV.seccionEfemerides ? RV.seccionEfemerides() : null;
+    const col3 = efem ? h('div', efem, h('div', { style: { height: '26px' } }), sumario(true)) : sumario(true);
+    root.append(h('div.p-fila2', altas, term, col3));
     root.append(h('p.pie', 'Atrio · hecho en casa'));
     return root;
   };
@@ -195,6 +198,7 @@
       for (const k of D.tipos()) ul.append(fila(k.title, String(D.valorados(k).length + D.fichas(k).length), () => RV.ir({ v: 'seccion', k: k.id })));
       ul.append(fila('Diario', 'cal.', () => RV.ir({ v: 'diario' })));
       ul.append(fila('Cifras', '→', () => RV.ir({ v: 'cifras' })));
+      if (RV.vistas.especial) ul.append(fila(`Tu ${new Date().getFullYear()}, número especial`, '★', () => RV.ir({ v: 'especial' })));
       ul.append(fila('Descubrir un juego', '→', () => RV.ir({ v: 'descubrir', dom: 0 })));
       ul.append(fila('Descubrir un libro', '→', () => RV.ir({ v: 'descubrir', dom: 1 })));
       ul.append(fila('Descubrir una peli o serie', '→', () => RV.ir({ v: 'descubrir', dom: 2 })));
