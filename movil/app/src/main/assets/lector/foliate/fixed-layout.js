@@ -135,7 +135,9 @@ export class FixedLayout extends HTMLElement {
         const transform = frame => {
             let { element, iframe, width, height, blank, onZoom } = frame
             if (!iframe) return
-            if (onZoom) onZoom({ doc: frame.iframe.contentDocument, scale })
+            // Atrio: cerrar el libro mientras pdf.js dibuja cancela el dibujo; eso no es un fallo
+            if (onZoom) Promise.resolve(onZoom({ doc: frame.iframe.contentDocument, scale }))
+                .catch(e => { if (e?.name !== 'RenderingCancelledException') console.warn(e) })
             const iframeScale = onZoom ? scale : 1
             Object.assign(iframe.style, {
                 width: `${width * iframeScale}px`,

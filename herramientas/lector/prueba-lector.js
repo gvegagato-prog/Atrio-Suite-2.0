@@ -219,6 +219,83 @@ const log = [];
     }
     await ctx.close();
   }
+  // ---------------- PDF leyendo hacia abajo (manga): un PDF de 12 páginas hecho aquí mismo con Chromium
+  {
+    const name = 'manga.pdf';
+    const tmp = await browser.newPage();
+    await tmp.setContent('<style>@page{size:600px 900px;margin:0}body{margin:0}div{width:600px;height:900px;display:flex;align-items:center;justify-content:center;font:bold 260px serif;break-after:page}</style>'
+      + Array.from({ length: 12 }, (_, i) => `<div style="background:hsl(${i * 30},60%,80%)">${i + 1}</div>`).join(''));
+    book = path.join(out, name);
+    await tmp.pdf({ path: book, width: '600px', height: '900px', printBackground: true });
+    await tmp.close();
+    const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    const page = await ctx.newPage();
+    page.on('console', (m) => { if (m.type() === 'error') log.push(m.text()); });
+    page.on('pageerror', (e) => log.push('pageerror ' + e.message));
+    await page.addInitScript(() => {
+      const store = { saved: {} };
+      window.__atrio = store;
+      const noop = () => {};
+      window.Atrio = {
+        state: () => JSON.stringify({ title: 'Manga de prueba', file: 'manga.pdf', location: null, settings: { pdfFlow: 'scroll' }, annotations: [], bookmarks: [], stats: {} }),
+        saveProgress: (cfi, f, l) => { store.saved.progress = { cfi, f, l }; }, saveSettings: (j) => { store.saved.settings = JSON.parse(j); },
+        saveAnnotations: noop, saveBookmarks: noop, setBrightness: noop, keepScreenOn: noop, setTheme: noop, systemBars: noop, copy: noop, share: noop,
+        openUrl: noop, close: noop, buzz: noop, saveStats: noop, speak: noop, stopSpeaking: noop, lookup: noop, translate: noop,
+      };
+    });
+    await page.goto(`http://localhost:${port}/assets/lector/index.html`);
+    await page.waitForSelector('#carga.fuera', { timeout: 60000 }).catch(() => {});
+    ok(!!(await page.$('#carga.fuera')), `${name}: se abre`);
+    await page.waitForTimeout(2500);
+    const rend = await page.evaluate(() => document.querySelector('foliate-view').renderer.localName);
+    ok(rend === 'foliate-fxl-scroll', `${name}: «Deslizando hacia abajo» usa las páginas una debajo de otra (${rend})`);
+    const cargadas = await page.evaluate(() => new Set((window.__docs || []).filter((d) => d.doc.defaultView).map((d) => d.index)).size);
+    ok(cargadas >= 2 && cargadas < 12, `${name}: carga solo las páginas cercanas (${cargadas} de 12)`);
+    await page.screenshot({ path: path.join(out, name + '-1-arriba.png') });
+    const pagina = async () => (await page.textContent('#e-izq')).trim();
+    ok(/Página 1 de 12/.test(await pagina()), `${name}: «${await pagina()}»`);
+    // Deslizar el dedo hacia arriba (con un toque de verdad, empezando encima de la página)
+    const cdp = await ctx.newCDPSession(page);
+    // (Input.synthesizeScrollGesture con «touch» no desplaza nada en Chromium sin pantalla: se usan toques de verdad)
+    for (let i = 0; i < 3; i++) {
+      const pts = [[206, 700], [206, 650], [206, 550], [206, 400], [206, 250], [206, 200]];
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: pts[0][0], y: pts[0][1] }] });
+      for (const p of pts.slice(1)) { await page.waitForTimeout(16); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p[0], y: p[1] }] }); }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await page.waitForTimeout(400);
+    }
+    await page.waitForTimeout(1200);
+    const tras = await pagina();
+    const f1 = await page.evaluate(() => window.__atrio.saved.progress?.f || 0);
+    ok(/Página [3-9] de 12/.test(tras) && f1 > 0.15, `${name}: deslizando hacia arriba se baja por el libro («${tras}», ${Math.round(f1 * 100)} %)`);
+    await page.screenshot({ path: path.join(out, name + '-2-bajando.png') });
+    // Botones de volumen: una pantalla más
+    const y0 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
+    await page.evaluate(() => window.atrioPage(1)); await page.waitForTimeout(600);
+    const y1 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
+    ok(y1 > y0 + 300, `${name}: el botón de volumen baja una pantalla (${Math.round(y0)} → ${Math.round(y1)})`);
+    // Tocar el centro: el menú (no pasa nada más)
+    await page.mouse.click(206, 430); await page.waitForTimeout(700);
+    ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar abre el menú`);
+    // Cambiar a página a página y volver: se queda en la misma página
+    const antes = await pagina();
+    await page.click('#b-ajustes'); await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(out, name + '-3-ajustes.png') });
+    await page.click('[data-k="pdfFlow"][data-v="pages"]');
+    await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2500);
+    const r2 = await page.evaluate(() => document.querySelector('foliate-view').renderer.localName);
+    ok(r2 === 'foliate-fxl' && (await pagina()) === antes, `${name}: «Página a página» reabre en la misma página (${r2}, «${await pagina()}»)`);
+    await page.mouse.click(206, 430); await page.waitForTimeout(600);
+    await page.click('#b-ajustes'); await page.waitForTimeout(500);
+    await page.click('[data-k="pdfFlow"][data-v="strip"]');
+    await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2500);
+    const r3 = await page.evaluate(() => document.querySelector('foliate-view').renderer.localName);
+    ok(r3 === 'foliate-fxl-scroll' && (await pagina()) === antes, `${name}: «Tira continua» vuelve hacia abajo en la misma página («${await pagina()}»)`);
+    const set = await page.evaluate(() => window.__atrio.saved.settings);
+    ok(set && set.pdfFlow === 'strip', `${name}: guarda el modo (${set && set.pdfFlow})`);
+    await page.screenshot({ path: path.join(out, name + '-4-tira.png') });
+    await ctx.close();
+  }
   await browser.close();
   srv.close();
   const errs = log.filter((l) => !/favicon/.test(l));

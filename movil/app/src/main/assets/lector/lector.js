@@ -14,6 +14,8 @@ const S = Object.assign({
     hyphens: true, paraSpace: 0, columns: false, animated: true, status: true, speed: 0, ttsRate: 1,
     // De 21:00 a 7:00, el tema Noche (y por el día, el tuyo)
     nightAuto: false,
+    // PDF y cómics: «pages» página a página; «scroll», deslizando hacia abajo; «strip», tira continua sin huecos (manga)
+    pdfFlow: 'pages',
 }, st.settings || {})
 // Lo que llevas leído de este libro: tiempo total y por día (ms)
 const stats = Object.assign({ total: 0, days: {} }, st.stats || {})
@@ -68,6 +70,8 @@ async function abrir() {
         const file = new File([await res.blob()], st.file)
         paso = 'preparar el visor'
         view = document.createElement('foliate-view')
+        // (solo cuenta en PDF y cómics: los EPUB tienen su propio «Pasar página»)
+        view.dataset.fxlFlow = S.pdfFlow || 'pages'
         $('#libro').append(view)
         paso = 'descomprimir el libro'
         await view.open(file)
@@ -91,6 +95,23 @@ async function abrir() {
     $('#carga').classList.add('fuera')
     showChrome(true)
     setTimeout(() => showChrome(false), 1600)
+}
+
+/** PDF o cómic leyendo hacia abajo (las páginas una debajo de otra). */
+const haciaAbajo = () => isPDF && view?.renderer?.localName === 'foliate-fxl-scroll'
+/** Cambiar entre página a página y hacia abajo: se vuelve a abrir el libro en la misma página. */
+async function reabrir() {
+    const loc = last?.cfi
+    closePanel()
+    $('#carga').classList.remove('fuera')
+    try { view.close() } catch (e) { }
+    try { view.book?.destroy?.() } catch (e) { }
+    view.remove()
+    docs.clear()
+    last = null; lastTurn = null
+    if (loc) st.location = loc
+    st.goto = null
+    await open()
 }
 
 // ---------------------------------------------------------------- Ajustes de lectura
@@ -269,7 +290,8 @@ function onLoad({ detail: { doc, index } }) {
         const t = e.touches[0]
         t0 = t ? { x: t.clientX, y: t.clientY, time: e.timeStamp } : null
         swiped = false; held = false; holding = false
-        edge = !!t && e.touches.length === 1 && topX(t.clientX) < window.innerWidth * 0.1
+        // (leyendo hacia abajo, el borde también sirve para desplazar: ahí no se toca el brillo)
+        edge = !!t && e.touches.length === 1 && topX(t.clientX) < window.innerWidth * 0.1 && !haciaAbajo()
         glow = null
         clearTimeout(holdTimer)
         if (t && e.touches.length === 1) holdTimer = setTimeout(() => {
@@ -483,6 +505,8 @@ function noteAt(doc, index, x, y) {
 }
 // PDF: sin bandas arriba y abajo; lo que sobra alrededor de la página, del color del papel de la página
 function pageColor(doc) {
+    // Leyendo hacia abajo, entre página y página: el blanco del papel (con los temas oscuros, invertido)
+    if (haciaAbajo()) { view.style.background = ''; return }
     const c = doc.querySelector('#canvas canvas')
     if (!c || !c.width || !c.height) return
     try {
@@ -722,8 +746,12 @@ function openSettings() {
       <div class="fila">${THEMES.map(([v, t]) => `<button class="tema ${S.theme === v ? 'on' : ''}" data-theme-btn="${v}" title="${t}" style="background:var(--t-${v})">Aa</button>`).join('')}</div>
       <div class="fila" style="margin-top:10px">${chips([[false, 'Siempre este'], [true, 'Noche de 21:00 a 7:00']], S.nightAuto, 'nightAuto')}</div>
       ${isPDF ? `
+        <h3>Pasar página</h3>
+        <div class="fila">${chips([['pages', 'Página a página'], ['scroll', 'Deslizando hacia abajo'], ['strip', 'Tira continua (manga, webtoon)']], S.pdfFlow, 'pdfFlow')}</div>
+        ${S.pdfFlow === 'pages' ? `
         <h3>Tamaño de la página</h3>
-        <div class="fila">${chips([['fit-width', 'Ajustar al ancho'], ['fit-page', 'Página entera']], S.zoom, 'zoom')}</div>
+        <div class="fila">${chips([['fit-width', 'Ajustar al ancho'], ['fit-page', 'Página entera']], S.zoom, 'zoom')}</div>` : `
+        <p class="sub" style="margin-top:8px">Las páginas, una debajo de otra y al ancho de la pantalla. Los botones de volumen bajan una pantalla.</p>`}
       ` : `
         <h3>Tamaño de letra</h3>
         <div class="paso"><button data-step="size" data-d="-10">−</button><b>${S.size}%</b><button data-step="size" data-d="10">+</button></div>
@@ -760,7 +788,10 @@ function openSettings() {
             const k = b.dataset.k; let v = b.dataset.v
             if (v === 'true' || v === 'false') v = v === 'true'
             else if (/^\d+$/.test(v)) v = Number(v)
-            S[k] = v; applySettings(); saveSettings(); openSettings()
+            S[k] = v; applySettings(); saveSettings()
+            if (k === 'pdfFlow' && isPDF && (v === 'pages') !== !haciaAbajo()) { reabrir(); return }
+            if (k === 'pdfFlow' && isPDF) view.renderer?.setAttribute('gap', v === 'strip' ? '0' : '10')
+            openSettings()
         })
         el.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
             const k = b.dataset.step, d = parseFloat(b.dataset.d)

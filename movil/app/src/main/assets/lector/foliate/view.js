@@ -251,7 +251,13 @@ export class View extends HTMLElement {
         }
 
         this.isFixedLayout = this.book.rendition?.layout === 'pre-paginated'
-        if (this.isFixedLayout) {
+        // Atrio: con data-fxl-flow="scroll" (o "strip", sin hueco entre páginas) los PDF y cómics se leen hacia abajo
+        const fxlFlow = this.dataset.fxlFlow
+        if (this.isFixedLayout && (fxlFlow === 'scroll' || fxlFlow === 'strip')) {
+            await import('./fixed-scroll.js')
+            this.renderer = document.createElement('foliate-fxl-scroll')
+            this.renderer.setAttribute('gap', fxlFlow === 'strip' ? '0' : '10')
+        } else if (this.isFixedLayout) {
             await import('./fixed-layout.js')
             this.renderer = document.createElement('foliate-fxl')
         } else {

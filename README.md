@@ -43,6 +43,9 @@ Ajustes → «Abrir el lanzador clásico» y, desde el lanzador, Ajustes → «V
   acento (rojo de imprenta por defecto; también azul, verde, mostaza, naranja, rosa, morado o tinta). La revista
   es siempre papel liso con sus letras (Fraunces e Inter).
 - **Lector:**
+  - PDF y cómics (CBZ) **deslizando hacia abajo**, para manga: en «Letra y página → Pasar página», «Página a página»,
+    «Deslizando hacia abajo» (las páginas una debajo de otra) o «Tira continua» (sin hueco, para webtoons). Se guarda
+    por libro; los botones de volumen bajan una pantalla.
   - Con la estética de la revista y el acento elegido.
   - Línea de estado abajo con lo que te queda del capítulo, calculado con tu velocidad de lectura de verdad, y el %.
   - Notas al pie en una hoja, sin perder la página.
