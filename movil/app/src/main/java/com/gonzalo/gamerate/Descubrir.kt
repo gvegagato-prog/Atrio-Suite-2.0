@@ -26,6 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.lazy.itemsIndexed as listItemsIndexed
@@ -773,16 +777,10 @@ fun GameFilters(years: IntRange?, plats: Set<String>, onChange: (IntRange?, Set<
             Text("AÑOS", fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
             Text(if (any) "CUALQUIERA" else "${range.start.toInt()} — ${range.endInclusive.toInt()}", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
         }
-        RangeSlider(
-            range, { range = it }, valueRange = YEAR_MIN.toFloat()..now.toFloat(), steps = (now - YEAR_MIN - 1).coerceAtLeast(0),
-            onValueChangeFinished = {
-                val a = range.start.toInt(); val b = range.endInclusive.toInt()
-                onChange(if (a <= YEAR_MIN && b >= now) null else a..b, plats)
-            },
-            colors = SliderDefaults.colors(thumbColor = ColGeneral, activeTrackColor = Charcoal, inactiveTrackColor = Line,
-                activeTickColor = androidx.compose.ui.graphics.Color.Transparent, inactiveTickColor = androidx.compose.ui.graphics.Color.Transparent),
-            modifier = Modifier.semantics { contentDescription = "Años" }
-        )
+        YearRange(range, YEAR_MIN.toFloat(), now.toFloat(), { range = it }) {
+            val a = range.start.toInt(); val b = range.endInclusive.toInt()
+            onChange(if (a <= YEAR_MIN && b >= now) null else a..b, plats)
+        }
         Text("PLATAFORMAS", fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.padding(top = 4.dp))
         FlowRow(Modifier.padding(top = 6.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val all = plats.isEmpty()
@@ -797,6 +795,58 @@ fun GameFilters(years: IntRange?, plats: Set<String>, onChange: (IntRange?, Set<
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(Charcoal))
     }
+}
+
+/**
+ * Deslizador de años de la revista: una línea fina, el tramo elegido en tinta y dos tiradores cuadrados del acento.
+ * Se arrastra el tirador más cercano al dedo; al soltar se avisa con [onDone].
+ */
+@Composable
+private fun YearRange(
+    value: ClosedFloatingPointRange<Float>, min: Float, max: Float,
+    onValue: (ClosedFloatingPointRange<Float>) -> Unit, onDone: () -> Unit
+) {
+    var width by remember { mutableStateOf(1f) }
+    val cur by rememberUpdatedState(value)
+    val accent = ColGeneral
+    val ink = Charcoal
+    val line = Line
+    fun toValue(x: Float) = (min + (x / width).coerceIn(0f, 1f) * (max - min)).let { kotlin.math.round(it) }
+    Box(
+        Modifier.fillMaxWidth().height(40.dp)
+            .onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }
+            .semantics { contentDescription = "Años" }
+            .pointerInput(min, max) {
+                var which = 0
+                detectDragGestures(
+                    onDragStart = { o ->
+                        val v = toValue(o.x)
+                        which = if (kotlin.math.abs(v - cur.start) <= kotlin.math.abs(v - cur.endInclusive)) 0 else 1
+                    },
+                    onDragEnd = { onDone() }, onDragCancel = { onDone() }
+                ) { ch, _ ->
+                    val v = toValue(ch.position.x)
+                    onValue(if (which == 0) v.coerceAtMost(cur.endInclusive)..cur.endInclusive else cur.start..v.coerceAtLeast(cur.start))
+                }
+            }
+            .pointerInput(min, max) {
+                // Un toque suelto: el tirador más cercano salta ahí
+                detectTapGestures { o ->
+                    val v = toValue(o.x)
+                    onValue(if (kotlin.math.abs(v - cur.start) <= kotlin.math.abs(v - cur.endInclusive)) v.coerceAtMost(cur.endInclusive)..cur.endInclusive else cur.start..v.coerceAtLeast(cur.start))
+                    onDone()
+                }
+            }
+            .drawBehind {
+                val y = size.height / 2
+                val k = 7.dp.toPx()
+                fun xOf(v: Float) = k + (v - min) / (max - min).coerceAtLeast(1f) * (size.width - 2 * k)
+                drawLine(line, androidx.compose.ui.geometry.Offset(k, y), androidx.compose.ui.geometry.Offset(size.width - k, y), 2.dp.toPx())
+                val a = xOf(cur.start); val b = xOf(cur.endInclusive)
+                drawLine(ink, androidx.compose.ui.geometry.Offset(a, y), androidx.compose.ui.geometry.Offset(b, y), 3.dp.toPx())
+                for (x in listOf(a, b)) drawRect(accent, androidx.compose.ui.geometry.Offset(x - k, y - k), androidx.compose.ui.geometry.Size(2 * k, 2 * k))
+            }
+    )
 }
 
 /** Revista: portadilla con el titular enorme, la entradilla y el número de preguntas en tres columnas. */
