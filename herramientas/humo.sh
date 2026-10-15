@@ -400,7 +400,8 @@ if [ "${SDK:-0}" -ge 31 ]; then
   must tap "Añadir nota"; sleep 2
   type "Nota%sde%sprueba"; kb
   must tap "Guardar"; sleep 2
-  adb shell input tap 540 1200; sleep 2
+  # Tocar fuera del subrayado (sobre él se abriría su barra): el título del capítulo
+  adb shell input tap 540 380; sleep 2
   must tap "Notas"; sleep 2; shot 57d_lector_notas 1
   must see "Subrayados y notas (1)" 6
   must see "Nota de prueba" 4
