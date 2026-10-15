@@ -837,6 +837,8 @@ fun App(
 
     /** Añade a tu lista algo descubierto con las preguntas. */
     fun quizAdd(it: QuizItem) {
+        // Juegos: como lo que se añade desde RAWG (se busca en SteamGridDB para la portada y el id de siempre)
+        if (it.domain == 0) { addCard(Card("rawg:${it.id}", GAMES.id, it.title, it.cover, it.year, it.creator, "", it.id, (it.rating * 10).toInt())); return }
         val k = when {
             it.domain == 1 -> BOOKS
             it.tv -> kinds.firstOrNull { k -> k.isTv }
@@ -991,7 +993,7 @@ fun App(
                         onStats = { screen = Screen.Stats },
                         onDiscover = when {
                             pv -> null
-                            k.isGame -> ({ screen = Screen.Deck })
+                            k.isGame -> ({ screen = Screen.Quiz(0) })
                             k.isBook -> ({ screen = Screen.Quiz(1) })
                             cine -> ({ screen = Screen.Quiz(2) })
                             else -> null
@@ -1089,7 +1091,7 @@ fun App(
                                 diary = { go(4) },
                                 discover = if (pv) null else ({ d ->
                                     when (d) {
-                                        0 -> { section = 0; screen = Screen.Deck }
+                                        0 -> { section = 0; screen = Screen.Quiz(0) }
                                         1 -> { section = 1; screen = Screen.Quiz(1) }
                                         else -> { section = cineKindId(); screen = Screen.Quiz(2) }
                                     }
@@ -1126,7 +1128,7 @@ fun App(
                             onEditCollection = if (pv) null else ({ k -> kindEdit = k }),
                             onDiscover = if (pv) null else ({ d ->
                                 when (d) {
-                                    0 -> { dest = 1; section = 0; screen = Screen.Deck }
+                                    0 -> { dest = 1; section = 0; screen = Screen.Quiz(0) }
                                     1 -> { dest = 2; section = 1; screen = Screen.Quiz(1) }
                                     else -> { dest = 3; section = cineKindId(); screen = Screen.Quiz(2) }
                                 }
@@ -1150,11 +1152,10 @@ fun App(
                     onShareYear = if (pv) null else ({ y -> shareYear(kind, myGames, y) })
                 ) { screen = Screen.Home }
 
-                Screen.Deck -> DeckScreen(kind, myGames, myPlays, partner, { screen = Screen.Home }, { addCard(it) }) { syncTick++ }
-
                 is Screen.Quiz -> QuizScreen(
-                    s.domain, store, mine = (if (s.domain == 1) listOf(BOOKS) else myKinds.filter { it.isMovie || it.isTv })
+                    s.domain, store, mine = (when (s.domain) { 0 -> listOf(GAMES); 1 -> listOf(BOOKS); else -> myKinds.filter { it.isMovie || it.isTv } })
                         .flatMap { k -> gamesOf(k).map { it.name } + playsOf(k).map { it.name } }.toSet(),
+                    partner = partner,
                     onAdd = { item -> quizAdd(item) },
                     onBack = { screen = Screen.Home }
                 )
@@ -1531,7 +1532,7 @@ fun App(
         val mf = memoFor
         if (mf != null) {
             MemoDialog(
-                "Apunte · ${mf.first.name}", canShot = Suite.target() != null, presetShot = mf.second,
+                "Apunte · ${mf.first.name}", canShot = kind.isGame && Suite.target() != null, presetShot = mf.second,
                 onSave = { t, w -> memoFor = null; saveMemo(mf.first, t, w, mf.second) },
                 onDismiss = { memoFor = null }
             )

@@ -90,7 +90,9 @@ class Partner(
     /** Sus categorías propias y lo que tiene en ellas. */
     val kinds: List<Kind> = emptyList(),
     private val extraGames: Map<Int, List<Game>> = emptyMap(),
-    private val extraPlays: Map<Int, List<Play>> = emptyMap()
+    private val extraPlays: Map<Int, List<Play>> = emptyMap(),
+    /** Su último test de descubrir de cada tipo (0 juegos, 1 libros, 2 pelis y series). */
+    val quizzes: Map<Int, QuizRun> = emptyMap()
 ) {
     /** Cartas que le han gustado en "Siguiente". */
     fun likes(kind: Kind) = if (kind.custom) emptyList() else if (kind.isBook) likesBooks else likesGames
@@ -277,7 +279,8 @@ object Couple {
             cardsFromJson(lk.optJSONArray("0") ?: JSONArray()), cardsFromJson(lk.optJSONArray("1") ?: JSONArray()),
             ks,
             ks.associate { it.id to noLocal(gamesFromJson(d.optJSONArray("items_${it.id}") ?: JSONArray())) },
-            ks.associate { it.id to noLocalP(playsFromJson(d.optJSONArray("iplays_${it.id}") ?: JSONArray())) }
+            ks.associate { it.id to noLocalP(playsFromJson(d.optJSONArray("iplays_${it.id}") ?: JSONArray())) },
+            quizRunsFromJson(d.optJSONObject("quiz"))
         )
     }
 
@@ -299,6 +302,7 @@ object Couple {
         p.recs.forEach { r -> o.put("r:${r.id}", "1") }
         p.reacts.forEach { (k, e) -> o.put("x:$k", e) }
         for (k in listOf(GAMES, BOOKS)) p.likes(k).forEach { c -> o.put("l:${k.id}:${c.key}", "1") }
+        p.quizzes.forEach { (d, r) -> o.put("q:$d", r.time.toString()) }
         return o
     }
 
@@ -344,6 +348,19 @@ object Couple {
             p.likes(k).forEach { c ->
                 if (!prev.has("l:${k.id}:${c.key}") && c.key in mineLikes) out.add("¡Match! A los dos os apetece ${c.title}")
             }
+        }
+        // Tests de descubrir: aviso y, si os sale lo mismo, qué
+        val myQ = store.quizzes
+        p.quizzes.forEach { (d, r) ->
+            if (prev.optString("q:$d", "") == r.time.toString()) return@forEach
+            val what = quizWhat(d)
+            val mineRun = myQ[d]
+            val both = mineRun?.let { quizMatches(r.items, it.items) } ?: emptyList()
+            out.add(when {
+                both.isNotEmpty() -> "¡Coincidís! En el test de $what a los dos os sale ${both.first().title}" + if (both.size > 1) " (y ${both.size - 1} más)" else ""
+                mineRun != null -> "$n ha hecho el test de $what; esta vez no coincidís en nada"
+                else -> "$n ha hecho el test de $what: haz el tuyo y mira si coincidís"
+            })
         }
         val mine = (store.load(0) + store.load(1)).associateBy { it.id } // nombres para las reacciones
         p.reacts.forEach { (k, e) ->

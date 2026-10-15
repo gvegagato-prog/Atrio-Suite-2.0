@@ -21,6 +21,7 @@ import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -206,5 +207,57 @@ class Capturas6Test {
         rule.runOnUiThread { Mode.dark = true; Mode.themeMode = 2 }
         rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }
         shoot("r7_noche")
+    }
+
+    /** Libro con subrayados (la casilla nueva de la ficha) y el test de juegos con la pareja. */
+    @Test
+    fun subrayadosYTest() {
+        org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val store = seed()
+        Skin.load(ctx)
+        Mode.dark = false
+        Mode.themeMode = 1
+        Skin.applyShell(2, ctx)
+        val now = System.currentTimeMillis()
+        BookFiles.put(ctx, 301, org.json.JSONObject().put("uri", "content://prueba/dune.epub").put("name", "dune.epub").put("fraction", 0.42)
+            .put("notes", org.json.JSONArray()
+                .put(org.json.JSONObject().put("value", "epubcfi(/6/8!/4/2/1:0)").put("text", "El miedo es el asesino de la mente.").put("note", "La letanía: me la sé de memoria.").put("label", "Capítulo 1").put("created", now - 86_400_000L * 3).put("index", 3))
+                .put(org.json.JSONObject().put("value", "epubcfi(/6/20!/4/2/1:0)").put("text", "Una persona necesita nuevas experiencias. Sacuden algo muy dentro, permitiéndole crecer.").put("note", "").put("label", "Capítulo 9").put("created", now).put("index", 9))))
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    App(store, 0L, false, "") {}
+                }
+            }
+        }
+        rule.onAllNodesWithText("El nombre del viento")[0].performClick(); shoot("s1_libro")
+        rule.onAllNodesWithText("SUBRAYADOS Y NOTAS")[0].performScrollTo(); shoot("s2_libro_subrayados")
+    }
+
+    @Test
+    fun testJuegosPareja() {
+        org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
+        val store = seed()
+        Skin.load(ctx)
+        Mode.dark = false
+        Mode.themeMode = 1
+        Skin.applyShell(2, ctx)
+        val theirs = QuizRun(System.currentTimeMillis() - 86_400_000L, listOf(QuizItem(0, false, 3328, "The Witcher 3", "The Witcher 3", "2015", "", "Rol (RPG)")))
+        val partner = Partner("Laura", 0L, emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyMap(), 0, 0, quizzes = mapOf(0 to theirs))
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    QuizScreen(0, store, emptySet(), partner, onAdd = {}, onBack = {})
+                }
+            }
+        }
+        shoot("t1_test_juegos")
+        rule.onAllNodesWithText("5")[0].performClick(); shoot("t2_pregunta_juegos")
+        // Coincidencias: la cuenta del aviso a la pareja
+        val mine = listOf(QuizItem(0, false, 3328, "The Witcher 3", "The Witcher 3", "2015", "", ""), QuizItem(0, false, 1, "Otro", "Otro", "2020", "", ""))
+        org.junit.Assert.assertEquals(listOf("The Witcher 3"), quizMatches(mine, theirs.items).map { it.title })
+        val back = quizRunsFromJson(org.json.JSONObject().put("0", quizRunToJson(theirs)))
+        org.junit.Assert.assertEquals("The Witcher 3", back[0]?.items?.first()?.title)
     }
 }

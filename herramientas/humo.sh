@@ -135,6 +135,19 @@ tap "Series"; sleep 1.5; shot 13b_series; alive "series"
 dock "Diario"; shot 14_diario; alive "diario"
 tap "Libros"; sleep 1; shot 14b_diario_libros
 
+step "Descubrir juegos con preguntas"
+dock "Juegos"
+must tap "Descubrir"; sleep 1.5
+must see "A qué juego ahora" 8
+shot 15j_descubrir_juegos 1
+must tap "5"; sleep 1.5
+shot 16j_pregunta_juego 1; alive "pregunta juego"
+for i in 1 2 3 4 5; do tap "A" || tap "B"; sleep 1.2; done
+# Sin clave de RAWG en el emulador: tiene que decirlo (con clave, salen resultados)
+must see "clave gratuita de RAWG\|A mi lista\|resultados" 40
+shot 17j_resultados_juegos 3; alive "resultados juegos"
+back
+
 step "Descubrir libros con preguntas"
 dock "Libros"
 must tap "Descubrir"; sleep 1.5
@@ -381,12 +394,16 @@ if [ "${SDK:-0}" -ge 31 ]; then
   must see "última palabra" 5
   adb shell input swipe 600 1400 600 1400 1200; sleep 2.5
   shot 57c_lector_tramo 1
-  must tap "Verde"; sleep 2
-  echo "   subrayado de la primera a la última palabra" | tee -a "$LOG"
+  must see "Añadir nota" 5
+  echo "   subrayado de la primera a la última palabra (se guarda al momento)" | tee -a "$LOG"
+  must tap "Añadir nota"; sleep 2
+  type "Nota%sde%sprueba"; kb
+  must tap "Guardar"; sleep 2
   adb shell input tap 540 1200; sleep 2
   must tap "Notas"; sleep 2; shot 57d_lector_notas 1
-  must see "Subrayados (1)" 6
-  echo "   el subrayado se guarda" | tee -a "$LOG"
+  must see "Subrayados y notas (1)" 6
+  must see "Nota de prueba" 4
+  echo "   el subrayado y su nota se guardan" | tee -a "$LOG"
   back; sleep 1
   adb shell input keyevent 25; sleep 1.5; adb shell input keyevent 25; sleep 1.5
   shot 58_lector_pagina 1

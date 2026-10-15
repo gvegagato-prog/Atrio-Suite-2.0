@@ -43,10 +43,10 @@ import org.json.JSONObject
 import java.net.URLEncoder
 
 /*
- * Descubrir con preguntas: de un banco de 330 preguntas (pelis y series) o 320 (libros) se hacen solo unas pocas
+ * Descubrir con preguntas: de un banco de 330 preguntas (pelis y series), 320 (libros) o 320 (juegos) se hacen solo unas pocas
  * (5, 7 o 10), variadas y sin repetir las de las últimas veces. Cada respuesta suma o resta géneros, temas, épocas,
  * duración, idioma, popularidad y nota mínima; al final se buscan muchos resultados (TMDB para pelis y series,
- * Open Library para libros) y se ordenan por lo que encajan contigo.
+ * Open Library para libros, RAWG para juegos) y se ordenan por lo que encajan contigo.
  */
 
 /** Algo descubierto, listo para añadir a tu lista. */
@@ -55,12 +55,43 @@ class QuizItem(
     val cover: String, val creator: String, val overview: String = "", val rating: Double = 0.0, val match: Int = 0
 )
 
+/** Un test hecho: cuándo y lo que salió (lo primero, lo que más encaja). */
+class QuizRun(val time: Long, val items: List<QuizItem>)
+
+fun quizRunToJson(r: QuizRun): JSONObject = JSONObject().put("t", r.time).put("i", JSONArray().apply {
+    r.items.forEach { put(JSONObject().put("d", it.domain).put("tv", it.tv).put("id", it.id).put("n", it.title).put("o", it.original)
+        .put("y", it.year).put("c", it.cover).put("a", it.creator).put("r", it.rating).put("m", it.match)) }
+})
+
+fun quizRunsFromJson(o: JSONObject?): Map<Int, QuizRun> {
+    if (o == null) return emptyMap()
+    return o.keys().asSequence().mapNotNull { k ->
+        val d = k.toIntOrNull() ?: return@mapNotNull null
+        val r = o.optJSONObject(k) ?: return@mapNotNull null
+        val a = r.optJSONArray("i") ?: JSONArray()
+        d to QuizRun(r.optLong("t"), (0 until a.length()).mapNotNull { a.optJSONObject(it) }.map { x ->
+            QuizItem(x.optInt("d", d), x.optBoolean("tv"), x.optLong("id"), x.optString("n"), x.optString("o"), x.optString("y"),
+                x.optString("c"), x.optString("a"), "", x.optDouble("r", 0.0), x.optInt("m"))
+        })
+    }.toMap()
+}
+
+/** Lo que os ha salido a los dos (mismo id del mismo sitio, o el mismo título). */
+fun quizMatches(a: List<QuizItem>, b: List<QuizItem>): List<QuizItem> {
+    val ids = b.map { "${it.tv}:${it.id}" }.toSet()
+    val names = b.map { normName(it.title) }.toSet()
+    return a.filter { "${it.tv}:${it.id}" in ids || normName(it.title) in names }
+}
+
+fun quizWhat(domain: Int) = when (domain) { 0 -> "juegos"; 1 -> "libros"; else -> "pelis y series" }
+
 /** Una pregunta del banco. */
 class QuizQ(val id: String, val q: String, val axis: String, val forType: String, val answers: List<Pair<String, JSONObject>>)
 
 /** Lo que van diciendo tus respuestas. */
 class Taste {
-    val weights = HashMap<String, Double>()   // géneros (pelis) o temas (libros)
+    val weights = HashMap<String, Double>()   // géneros (pelis y juegos) o temas (libros)
+    val tags = HashMap<String, Double>()      // etiquetas de RAWG (juegos)
     val kws = LinkedHashMap<String, Int>()
     val votes = HashMap<String, HashMap<String, Int>>() // era, len, type, lang, pop, fic
     var rate = 0.0
@@ -68,6 +99,7 @@ class Taste {
     fun add(e: JSONObject) {
         for (k in e.keys()) when (k) {
             "g", "s" -> e.getJSONObject(k).let { o -> for (g in o.keys()) weights[g] = (weights[g] ?: 0.0) + o.getDouble(g) }
+            "tg" -> e.getJSONObject(k).let { o -> for (g in o.keys()) tags[g] = (tags[g] ?: 0.0) + o.getDouble(g) }
             "kw" -> e.getJSONArray(k).let { a -> for (i in 0 until a.length()) a.getString(i).let { kws[it] = (kws[it] ?: 0) + 1 } }
             "rate" -> rate = maxOf(rate, e.getDouble(k))
             else -> votes.getOrPut(k) { HashMap() }.let { m -> val v = e.getString(k); m[v] = (m[v] ?: 0) + 1 }
@@ -82,11 +114,13 @@ class Taste {
     }
     fun liked(min: Double = 1.5) = weights.filter { it.value >= min }.entries.sortedByDescending { it.value }.map { it.key }
     fun avoided() = weights.filter { it.value <= -2 }.keys
+    fun likedTags(min: Double = 1.5) = tags.filter { it.value >= min }.entries.sortedByDescending { it.value }.map { it.key }
 }
 
 object Quiz {
     private fun bank(ctx: Context, domain: Int): List<QuizQ> {
-        val a = JSONArray(ctx.assets.open(if (domain == 1) "descubrir/libros.json" else "descubrir/pantalla.json").bufferedReader().use { it.readText() })
+        val file = when (domain) { 0 -> "descubrir/juegos.json"; 1 -> "descubrir/libros.json"; else -> "descubrir/pantalla.json" }
+        val a = JSONArray(ctx.assets.open(file).bufferedReader().use { it.readText() })
         return (0 until a.length()).map { a.getJSONObject(it) }.map { o ->
             val ans = o.getJSONArray("a")
             QuizQ(o.getString("id"), o.getString("q"), o.getString("axis"), o.optString("for", "any"),
@@ -103,7 +137,7 @@ object Quiz {
         val fresh = all.filter { it.id !in recent }.ifEmpty { all }
         val out = ArrayList<QuizQ>()
         // Pelis y series: la primera, si quieres película o serie
-        if (domain != 1) fresh.firstOrNull { it.axis == "format" }?.let { out += it }
+        if (domain == 2) fresh.firstOrNull { it.axis == "format" }?.let { out += it }
         val axes = HashSet(out.map { it.axis })
         for (q in fresh) { if (out.size >= n) break; if (q !in out && q.axis !in axes) { out += q; axes += q.axis } }
         for (q in fresh) { if (out.size >= n) break; if (q !in out) out += q }
@@ -139,15 +173,21 @@ object Quiz {
     fun summary(t: Taste, domain: Int): List<String> {
         val out = ArrayList<String>()
         if (domain == 1) out += t.liked().take(3).map { BOOK_NAMES[it] ?: it.replaceFirstChar { c -> c.uppercase() } }
-        else {
+        else if (domain == 0) {
+            out += t.liked().take(3).mapNotNull { g -> GameGenres.firstOrNull { it.first == g }?.second }
+            out += t.likedTags(2.0).take(3).mapNotNull { TAG_NAMES[it] }
+            when (t.pick("plat")) { "pc" -> out += "PC"; "playstation" -> out += "PlayStation"; "xbox" -> out += "Xbox"; "nintendo" -> out += "Nintendo"; "mobile" -> out += "Móvil" }
+            when (t.pick("mode")) { "solo" -> out += "Para ti solo"; "coop" -> out += "En cooperativo"; "online" -> out += "En línea" }
+            t.pick("era")?.let { GAME_ERA_NAMES[it] }?.let { out += it }
+        } else {
             when (t.pick("type")) { "movie" -> out += "Películas"; "tv" -> out += "Series" }
             out += t.liked().take(3).mapNotNull { G_NAMES[it] }
         }
-        t.pick("era")?.let { ERA_NAMES[it] }?.let { out += it }
+        if (domain != 0) t.pick("era")?.let { ERA_NAMES[it] }?.let { out += it }
         when (t.pick("pop")) { "hidden" -> out += "Joyas ocultas"; "mainstream" -> out += "Éxitos"; "cult" -> out += "De culto" }
         when (t.pick("len")) { "short" -> out += "Cortas"; "long" -> out += "Largas" }
         when (t.pick("lang")) { "es", "spa" -> out += "En español"; "ja" -> out += "Japón"; "ko" -> out += "Corea"; "foreign" -> out += "Fuera de Hollywood"; "fr" -> out += "Francia" }
-        if (t.rate >= 7.5) out += "Solo lo mejor"
+        if (t.rate >= 7.5 && domain != 0 || t.rate >= 85) out += "Solo lo mejor"
         return out.distinct()
     }
 
@@ -231,6 +271,119 @@ object Quiz {
         val list = seen.values.sortedByDescending { it.match }
         val top = list.firstOrNull()?.match?.coerceAtLeast(1) ?: 1
         list.map { QuizItem(it.domain, it.tv, it.id, it.title, it.original, it.year, it.cover, it.creator, it.overview, it.rating, (55 + 44 * it.match / top).coerceIn(40, 99)) }
+    }
+
+    // ---------------------------------------------------------------- Juegos (RAWG)
+
+    private const val RAWG = "https://api.rawg.io/api"
+    val TAG_NAMES = mapOf("story-rich" to "Con buena historia", "difficult" to "Difíciles", "relaxing" to "Relajantes", "atmospheric" to "Con atmósfera",
+        "funny" to "Divertidos", "exploration" to "Explorar", "mystery" to "Misterio", "cute" to "Bonitos", "dark" to "Oscuros", "emotional" to "Emotivos",
+        "open-world" to "Mundo abierto", "fantasy" to "Fantasía", "horror" to "Terror", "sci-fi" to "Ciencia ficción", "survival" to "Supervivencia",
+        "roguelike" to "Roguelike", "souls-like" to "Soulslike", "co-op" to "Cooperativo", "competitive" to "Competitivos", "short" to "Cortos",
+        "historical" to "Históricos", "stealth" to "Sigilo", "choices-matter" to "Decisiones", "space" to "Espacio", "cyberpunk" to "Cyberpunk",
+        "pixel-graphics" to "Píxel", "farming" to "Granjas", "management" to "Gestión", "crafting" to "Construir y fabricar", "walking-simulator" to "Paseos",
+        "turn-based" to "Por turnos", "metroidvania" to "Metroidvania", "visual-novel" to "Novela visual", "post-apocalyptic" to "Postapocalípticos")
+    private val GAME_ERA = mapOf("retro" to ("1970-01-01" to "1999-12-31"), "classic" to ("2000-01-01" to "2009-12-31"),
+        "modern" to ("2010-01-01" to "2019-12-31"), "recent" to ("2020-01-01" to ""))
+    val GAME_ERA_NAMES = mapOf("retro" to "Retro", "classic" to "Años 2000", "modern" to "Años 2010", "recent" to "Recientes")
+
+    /** Ids de las «plataformas padre» de RAWG (PC, PlayStation…): se piden una vez y se guardan, no se dan por supuestos. */
+    private fun parentPlatforms(ctx: Context, key: String): Map<String, Int> {
+        val prefs = ctx.getSharedPreferences("descubrir", Context.MODE_PRIVATE)
+        prefs.getString("rawg_parents", null)?.let { s ->
+            runCatching { JSONObject(s).let { o -> o.keys().asSequence().associateWith { o.getInt(it) } } }.getOrNull()?.let { if (it.isNotEmpty()) return it }
+        }
+        val a = runCatching { JSONObject(mget("$RAWG/platforms/lists/parents?key=${menc(key)}&page_size=40")).optJSONArray("results") }.getOrNull() ?: return emptyMap()
+        val m = (0 until a.length()).mapNotNull { a.optJSONObject(it) }.associate { it.optString("slug") to it.optInt("id") }.filter { it.key.isNotBlank() && it.value > 0 }
+        if (m.isNotEmpty()) prefs.edit().putString("rawg_parents", JSONObject(m).toString()).apply()
+        return m
+    }
+
+    suspend fun games(ctx: Context, t: Taste, key: String, mine: Set<String>): List<QuizItem> = withContext(Dispatchers.IO) {
+        if (key.isBlank()) throw IllegalStateException("Para descubrir juegos hace falta tu clave gratuita de RAWG (Perfil → Ajustes → Servicios).")
+        val liked = t.liked().filter { g -> GameGenres.any { it.first == g } || g in setOf("educational") }
+        val likedTags = t.likedTags()
+        val badTags = t.tags.filter { it.value <= -2 }.keys
+        // Cómo juegas también son etiquetas
+        val modeTag = when (t.pick("mode")) { "solo" -> "singleplayer"; "coop" -> "co-op"; "online" -> "multiplayer"; else -> null }
+        val parents = parentPlatforms(ctx, key)
+        val plat = when (t.pick("plat")) {
+            "pc" -> listOfNotNull(parents["pc"]); "playstation" -> listOfNotNull(parents["playstation"]); "xbox" -> listOfNotNull(parents["xbox"])
+            "nintendo" -> listOfNotNull(parents["nintendo"]); "mobile" -> listOfNotNull(parents["ios"], parents["android"]); else -> emptyList()
+        }
+        val era = t.pick("era")?.let { GAME_ERA[it] }
+        val pop = t.pick("pop")
+        val len = t.pick("len")
+        val ordering = when (pop) { "mainstream" -> "-added"; "hidden" -> "-metacritic"; "cult" -> "-rating"; else -> "-added" }
+        fun query(genres: List<String>, tags: List<String>, filters: Boolean, minRate: Boolean, order: String = ordering): String = buildString {
+            append("$RAWG/games?key=${menc(key)}&page_size=40&exclude_additions=true&ordering=$order")
+            if (genres.isNotEmpty()) append("&genres=" + menc(genres.joinToString(",")))
+            if (tags.isNotEmpty()) append("&tags=" + menc(tags.joinToString(",")))
+            if (filters && plat.isNotEmpty()) append("&parent_platforms=" + plat.joinToString(","))
+            if (filters && era != null) append("&dates=${era.first},${era.second.ifBlank { java.time.LocalDate.now().toString() }}")
+            if (minRate && t.rate > 0) append("&metacritic=${t.rate.toInt()},100")
+        }
+        val tagQ = (likedTags.take(2) + listOfNotNull(modeTag)).distinct().take(2)
+        val plans = listOfNotNull(
+            if (tagQ.isNotEmpty()) query(liked.take(2), tagQ, true, true) else null,
+            query(liked.take(2), emptyList(), true, true),
+            query(liked.take(2), emptyList(), true, false),
+            if (likedTags.isNotEmpty()) query(emptyList(), likedTags.take(1), true, false) else null,
+            query(liked.take(1), emptyList(), false, false, "-added")   // reserva
+        )
+        val seen = LinkedHashMap<Long, QuizItem>()
+        var err: Throwable? = null
+        for ((pi, url) in plans.withIndex()) {
+            if (pi == plans.size - 1 && seen.size >= 50) break
+            for (page in 1..2) {
+                val res = runCatching { JSONObject(mget("$url&page=$page")) }.onFailure { err = it }.getOrNull() ?: break
+                val a = res.optJSONArray("results") ?: break
+                for (i in 0 until a.length()) {
+                    val o = a.getJSONObject(i)
+                    val id = o.optLong("id")
+                    val name = o.optString("name")
+                    if (id == 0L || name.isBlank() || id in seen || normName(name) in mine) continue
+                    val gs = o.optJSONArray("genres")?.let { g -> (0 until g.length()).mapNotNull { g.optJSONObject(it) } } ?: emptyList()
+                    val ts = o.optJSONArray("tags")?.let { g -> (0 until g.length()).mapNotNull { g.optJSONObject(it)?.optString("slug") } }?.toSet() ?: emptySet()
+                    // Lo que encaja: géneros y etiquetas que te gustan (y las que no), su nota y lo que dura
+                    var score = 0.0
+                    for (g in gs) score += t.weights[g.optString("slug")] ?: 0.0
+                    for ((tg, w) in t.tags) if (tg in ts) score += w * 0.8
+                    if (modeTag != null && modeTag in ts) score += 2
+                    if (badTags.any { it in ts }) score -= 4
+                    val mc = o.optInt("metacritic", 0)
+                    score += if (mc > 0) (mc - 60) * 0.12 else o.optDouble("rating", 3.0) * 0.8
+                    val hours = o.optInt("playtime", 0)
+                    if (hours > 0) when (len) {
+                        "short" -> score += if (hours <= 12) 2.0 else -2.0
+                        "long" -> score += if (hours >= 35) 2.0 else -1.0
+                        "medium" -> score += if (hours in 8..40) 1.5 else -0.5
+                    }
+                    if (pop == "hidden") score -= kotlin.math.ln(1.0 + o.optInt("added", 0)) * 0.4
+                    if (pi == 0) score += 2
+                    seen[id] = QuizItem(0, false, id, name, name, o.optString("released").take(4), o.optString("background_image"),
+                        gs.take(3).joinToString(" · ") { g -> GameGenres.firstOrNull { it.first == g.optString("slug") }?.second ?: g.optString("name") },
+                        if (hours > 0) "Unas $hours h de media" else "", if (mc > 0) mc / 10.0 else 0.0, score.toInt())
+                }
+                if (res.optString("next").isBlank() || page >= 2) break
+            }
+            if (seen.size >= 100) break
+        }
+        val e = err
+        if (seen.isEmpty() && e != null)
+            throw IllegalStateException(if (e is IllegalArgumentException) "La clave de RAWG no es válida (revísala en Perfil → Ajustes → Servicios)." else "RAWG: ${e.message}")
+        val list = seen.values.sortedByDescending { it.match }
+        val top = list.firstOrNull()?.match?.coerceAtLeast(1) ?: 1
+        list.map { QuizItem(0, false, it.id, it.title, it.original, it.year, it.cover, it.creator, it.overview, it.rating, (55 + 44 * it.match / top).coerceIn(40, 99)) }
+    }
+
+    /** La ficha de un juego en RAWG: su resumen (en inglés, como viene) y su nota de Metacritic (0 si no tiene). */
+    suspend fun gameDetail(id: Long, key: String): Pair<String, Int> = withContext(Dispatchers.IO) {
+        val o = JSONObject(mget("$RAWG/games/$id?key=${menc(key)}"))
+        val raw = o.optString("description_raw").ifBlank {
+            androidx.core.text.HtmlCompat.fromHtml(o.optString("description"), androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+        }.trim()
+        raw to o.optInt("metacritic", 0)
     }
 
     // ---------------------------------------------------------------- Libros (Open Library)
@@ -389,7 +542,7 @@ object Quiz {
 // ---------------------------------------------------------------- Pantalla
 
 @Composable
-fun QuizScreen(domain: Int, store: Store, mine: Set<String>, onAdd: (QuizItem) -> Unit, onBack: () -> Unit) {
+fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, onAdd: (QuizItem) -> Unit, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val mineN = remember(mine) { mine.map { normName(it) }.toSet() }
@@ -402,7 +555,9 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, onAdd: (QuizItem) -
     var taste by remember { mutableStateOf<Taste?>(null) }
     var added by remember { mutableStateOf(setOf<String>()) }
     var open by remember { mutableStateOf<QuizItem?>(null) }
-    val accent = if (domain == 1) Color(0xFF8B5CF6) else Color(0xFFE85A2E)
+    val accent = when (domain) { 0 -> Color(0xFF3E6BE0); 1 -> Color(0xFF8B5CF6); else -> Color(0xFFE85A2E) }
+    // El último test de tu pareja de este mismo tipo (si lo ha hecho)
+    val theirRun = partner?.quizzes?.get(domain)
 
     fun finish(all: List<JSONObject>) {
         val t = Taste().also { tt -> all.forEach { tt.add(it) } }
@@ -410,15 +565,23 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, onAdd: (QuizItem) -
         error = ""
         results = null
         scope.launch {
-            try { results = if (domain == 1) Quiz.books(t, mineN) else Quiz.screen(t, store.tmdbKey, mineN) }
+            try {
+                results = when (domain) {
+                    0 -> Quiz.games(ctx, t, store.rawgKey, mineN)
+                    1 -> Quiz.books(t, mineN)
+                    else -> Quiz.screen(t, store.tmdbKey, mineN)
+                }
+            }
             catch (e: Exception) { error = e.message ?: "No se ha podido buscar."; results = emptyList() }
+            // Se guarda y se sube: a tu pareja le llega el aviso y, si os sale lo mismo, lo veis los dos
+            results?.takeIf { it.isNotEmpty() }?.let { store.saveQuiz(domain, it); runCatching { CloudSave.enqueue(ctx) } }
         }
     }
     fun start(n: Int) { length = n; qs = Quiz.pick(ctx, domain, n); idx = 0; answers = emptyList(); results = null; taste = null }
 
     Box(Modifier.fillMaxSize()) {
         when {
-            length == 0 -> QuizIntro(domain, accent, onBack) { start(it) }
+            length == 0 -> QuizIntro(domain, accent, partner?.name, theirRun, onBack) { start(it) }
             taste == null -> {
                 val q = qs.getOrNull(idx)
                 Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp)) {
@@ -469,6 +632,7 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, onAdd: (QuizItem) -
             }
             else -> QuizResults(
                 domain, accent, Quiz.summary(taste!!, domain), results, error, added,
+                partner?.name, theirRun?.let { r -> results?.let { quizMatches(it, r.items) } },
                 onOpen = { open = it },
                 onAdd = { it -> added = added + "${it.tv}${it.id}"; onAdd(it) },
                 onAgain = { start(length) }, onBack = onBack
@@ -476,24 +640,32 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, onAdd: (QuizItem) -
         }
     }
     open?.let { it ->
-        QuizItemSheet(it, accent, "${it.tv}${it.id}" in added, onAdd = { added = added + "${it.tv}${it.id}"; onAdd(it) }) { open = null }
+        QuizItemSheet(it, accent, "${it.tv}${it.id}" in added, store.rawgKey, onAdd = { added = added + "${it.tv}${it.id}"; onAdd(it) }) { open = null }
     }
 }
 
 @Composable
-private fun QuizIntro(domain: Int, accent: Color, onBack: () -> Unit, onStart: (Int) -> Unit) {
+private fun QuizIntro(domain: Int, accent: Color, partnerName: String?, theirs: QuizRun?, onBack: () -> Unit, onStart: (Int) -> Unit) {
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.35f), Color.Transparent))).statusBarsPadding().navigationBarsPadding().padding(20.dp)) {
         BackRound(onBack = onBack)
         Spacer(Modifier.weight(0.6f))
-        Icon(if (domain == 1) Icons.Rounded.AutoStories else Icons.Rounded.Movie, null, tint = accent, modifier = Modifier.size(52.dp).rise(0))
+        Icon(when (domain) { 0 -> Icons.Rounded.SportsEsports; 1 -> Icons.Rounded.AutoStories; else -> Icons.Rounded.Movie }, null, tint = accent, modifier = Modifier.size(52.dp).rise(0))
         Spacer(Modifier.height(14.dp))
-        Text(if (domain == 1) "¿Qué leo ahora?" else "¿Qué vemos hoy?", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 40.sp, lineHeight = 43.sp, modifier = Modifier.rise(1))
+        Text(when (domain) { 0 -> "¿A qué juego ahora?"; 1 -> "¿Qué leo ahora?"; else -> "¿Qué vemos hoy?" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 40.sp, lineHeight = 43.sp, modifier = Modifier.rise(1))
         Spacer(Modifier.height(10.dp))
         Text(
-            if (domain == 1) "Unas pocas preguntas (de más de 300 distintas, nunca las mismas) y te propongo un montón de libros a tu medida."
-            else "Unas pocas preguntas (de más de 300 distintas, nunca las mismas) y te propongo un montón de películas y series a tu medida.",
+            "Unas pocas preguntas (de más de 300 distintas, nunca las mismas) y te propongo un montón de " +
+                when (domain) { 0 -> "juegos"; 1 -> "libros"; else -> "películas y series" } + " a tu medida.",
             color = Muted, fontSize = 16.sp, lineHeight = 22.sp, modifier = Modifier.rise(2)
         )
+        if (partnerName != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                if (theirs != null) "$partnerName hizo este test el ${fmtDay(theirs.time / 86_400_000L)}. Haz el tuyo: si os sale lo mismo, aparecerá arriba de los resultados."
+                else "Cuando lo hagas, a $partnerName le llegará un aviso; si hace el suyo y coincidís en algo, os saldrá a los dos.",
+                fontSize = 14.sp, lineHeight = 20.sp, modifier = Modifier.fillMaxWidth().clip(shp(14.dp)).background(accent.copy(alpha = 0.12f)).padding(12.dp).rise(3)
+            )
+        }
         Spacer(Modifier.weight(1f))
         Text("¿Cuántas preguntas?", fontWeight = FontWeight.Bold, modifier = Modifier.rise(3))
         Spacer(Modifier.height(10.dp))
@@ -515,6 +687,7 @@ private fun QuizIntro(domain: Int, accent: Color, onBack: () -> Unit, onStart: (
 @Composable
 private fun QuizResults(
     domain: Int, accent: Color, summary: List<String>, results: List<QuizItem>?, error: String, added: Set<String>,
+    partnerName: String?, both: List<QuizItem>?,
     onOpen: (QuizItem) -> Unit, onAdd: (QuizItem) -> Unit, onAgain: () -> Unit, onBack: () -> Unit
 ) {
     LazyVerticalGrid(
@@ -532,6 +705,23 @@ private fun QuizResults(
                     summary.forEach { InfoChip(it) }
                 }
                 Spacer(Modifier.height(12.dp))
+                // Lo que os ha salido a los dos
+                if (partnerName != null && both != null && results != null) {
+                    Column(Modifier.fillMaxWidth().clip(shp(16.dp)).background(accent.copy(alpha = 0.12f)).padding(14.dp)) {
+                        Text(if (both.isEmpty()) "Esta vez no coincidís" else "Coincidís con $partnerName", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        if (both.isEmpty()) Text("Nada de lo que te sale estaba en el último test de $partnerName. Prueba otra ronda.", color = Muted, fontSize = 13.sp)
+                        both.take(8).forEach { b ->
+                            Row(Modifier.fillMaxWidth().press { onOpen(b) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("♥", color = accent, fontSize = 16.sp)
+                                Spacer(Modifier.width(10.dp))
+                                Text(b.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(b.year, color = Muted, fontSize = 12.sp)
+                            }
+                        }
+                        if (both.size > 8) Text("y ${both.size - 8} más", color = Muted, fontSize = 12.sp)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
                 when {
                     results == null -> Row(Modifier.fillMaxWidth().padding(40.dp), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator(color = accent) }
                     error.isNotBlank() -> Text(error, color = ColGeneral, modifier = Modifier.padding(vertical = 20.dp))
@@ -542,7 +732,7 @@ private fun QuizResults(
         itemsIndexed(results ?: emptyList(), key = { _, it -> "${it.tv}${it.id}" }) { i, it ->
             Column(Modifier.rise(i, i < 12)) {
                 CoverCard(
-                    it.cover, it.title, listOfNotNull(it.year.ifBlank { null }, if (domain != 1) (if (it.tv) "Serie" else "Película") else it.creator.ifBlank { null }).joinToString(" · "),
+                    it.cover, it.title, listOfNotNull(it.year.ifBlank { null }, if (domain == 2) (if (it.tv) "Serie" else "Película") else it.creator.ifBlank { null }).joinToString(" · "),
                     null,
                     badge = {
                         Text("${it.match}%", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp,
@@ -566,7 +756,23 @@ private fun QuizResults(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun QuizItemSheet(it: QuizItem, accent: Color, added: Boolean, onAdd: () -> Unit, onDismiss: () -> Unit) {
+private fun QuizItemSheet(it: QuizItem, accent: Color, added: Boolean, rawgKey: String, onAdd: () -> Unit, onDismiss: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    // Juegos: el resumen y la nota de Metacritic se piden a RAWG al abrirlo
+    var summary by remember(it.id) { mutableStateOf(it.overview.takeIf { _ -> it.domain != 0 } ?: "") }
+    var meta by remember(it.id) { mutableStateOf(if (it.domain == 0) (it.rating * 10).toInt() else 0) }
+    var loading by remember(it.id) { mutableStateOf(it.domain == 0) }
+    var translated by remember(it.id) { mutableStateOf(false) }
+    var translating by remember(it.id) { mutableStateOf(false) }
+    var trError by remember(it.id) { mutableStateOf("") }
+    if (it.domain == 0) LaunchedEffect(it.id) {
+        try {
+            val (d, m) = Quiz.gameDetail(it.id, rawgKey)
+            summary = d
+            if (m > 0) meta = m
+        } catch (e: Exception) { summary = "" }
+        loading = false
+    }
     ModalBottomSheet(onDismiss, containerColor = Crudo, shape = shp(28.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp).verticalScroll(rememberScrollState())) {
             Row {
@@ -576,17 +782,65 @@ private fun QuizItemSheet(it: QuizItem, accent: Color, added: Boolean, onAdd: ()
                 }
                 Column(Modifier.weight(1f)) {
                     Text(it.title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 25.sp)
+                    if (it.domain == 0) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Los colores de Metacritic: verde desde 75, amarillo desde 50, rojo por debajo
+                            val mc = when { meta >= 75 -> Color(0xFF66CC33); meta >= 50 -> Color(0xFFFFCC33); meta > 0 -> Color(0xFFFF0000); else -> Sand }
+                            Box(Modifier.size(46.dp).clip(shp(8.dp)).background(mc), contentAlignment = Alignment.Center) {
+                                Text(if (meta > 0) "$meta" else "–", color = if (meta in 50..74) Color.Black else Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(if (meta > 0) "METACRITIC" else "SIN NOTA EN METACRITIC", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                        }
+                    }
                     if (it.original.isNotBlank() && normName(it.original) != normName(it.title)) Text(it.original, color = Muted, fontSize = 13.sp)
                     Text(listOfNotNull(it.year.ifBlank { null }, it.creator.ifBlank { null }).joinToString(" · "), color = Muted, fontSize = 13.sp)
                     Spacer(Modifier.height(8.dp))
                     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         InfoChip("${it.match}% para ti")
-                        if (it.rating > 0) InfoChip(if (it.domain == 1) "★ " + String.format(java.util.Locale("es", "ES"), "%.1f", it.rating) else "TMDB " + String.format(java.util.Locale("es", "ES"), "%.1f", it.rating))
+                        if (it.rating > 0 && it.domain != 0) InfoChip(when (it.domain) {
+                            1 -> "★ " + String.format(java.util.Locale("es", "ES"), "%.1f", it.rating)
+                            else -> "TMDB " + String.format(java.util.Locale("es", "ES"), "%.1f", it.rating)
+                        })
                         if (it.domain == 2 && !it.tv) RtChips(kindOf(Mode.kinds.firstOrNull { k -> k.isMovie }?.id ?: 0), it.id, it.title)
                     }
                 }
             }
-            if (it.overview.isNotBlank()) {
+            if (it.domain == 0) {
+                Spacer(Modifier.height(14.dp))
+                Text("RESUMEN", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                Spacer(Modifier.height(6.dp))
+                when {
+                    loading -> Text("Cargando el resumen…", color = Muted, fontSize = 14.sp)
+                    summary.isBlank() -> Text("RAWG no tiene resumen de este juego.", color = Muted, fontSize = 14.sp)
+                    else -> {
+                        Text(summary, fontSize = 15.sp, lineHeight = 22.sp)
+                        if (it.overview.isNotBlank()) Text(it.overview, color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                        if (!translated) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                if (translating) "Traduciendo… (la primera vez se descarga el traductor del inglés, unos 30 MB)" else "TRADUCIR AL ESPAÑOL →",
+                                color = if (translating) Muted else accent, fontSize = if (translating) 13.sp else 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+                                modifier = Modifier.press {
+                                    if (translating) return@press
+                                    translating = true; trError = ""
+                                    scope.launch {
+                                        try {
+                                            val src = summary
+                                            // Por párrafos: el traductor del móvil va mejor con textos cortos
+                                            summary = withContext(Dispatchers.IO) { src.split(Regex("\\n+")).filter { p -> p.isNotBlank() }.joinToString("\n\n") { p -> Diccionario.translate(p.trim(), "en") } }
+                                            translated = true
+                                        } catch (e: Exception) { trError = e.message ?: "No se ha podido traducir." }
+                                        translating = false
+                                    }
+                                }.padding(vertical = 6.dp)
+                            )
+                            if (trError.isNotBlank()) Text(trError, color = ColGeneral, fontSize = 13.sp)
+                        }
+                    }
+                }
+            } else if (it.overview.isNotBlank()) {
                 Spacer(Modifier.height(14.dp))
                 Text(it.overview, fontSize = 15.sp, lineHeight = 22.sp)
             }

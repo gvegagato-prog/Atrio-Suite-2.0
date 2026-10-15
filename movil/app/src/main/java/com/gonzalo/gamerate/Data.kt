@@ -647,6 +647,16 @@ class Store(ctx: Context) {
         get() = p.getString("pseen", "") ?: ""
         set(v) { p.edit().putString("pseen", v).apply() }
 
+    /** Lo que salió en tu último test de descubrir de cada tipo (0 juegos, 1 libros, 2 pelis y series): se comparte con tu pareja. */
+    val quizzes: Map<Int, QuizRun>
+        get() = quizRunsFromJson(runCatching { JSONObject(p.getString("quizzes", "{}") ?: "{}") }.getOrNull())
+
+    fun saveQuiz(domain: Int, items: List<QuizItem>) {
+        val o = runCatching { JSONObject(p.getString("quizzes", "{}") ?: "{}") }.getOrElse { JSONObject() }
+        o.put("$domain", quizRunToJson(QuizRun(System.currentTimeMillis(), items.take(60))))
+        p.edit().putString("quizzes", o.toString()).apply()
+    }
+
     /** Hay sesión iniciada en tu cuenta de Ronrón: tus datos se guardan en la nube y se mezclan entre dispositivos. */
     val paired: Boolean get() = dbUrl.isNotBlank() && accUid.isNotBlank()
 
@@ -790,6 +800,7 @@ class Store(ctx: Context) {
         o.put("likes", JSONObject()
             .put("0", JSONArray(p.getString("likes_0", "[]")))
             .put("1", JSONArray(p.getString("likes_1", "[]"))))
+        o.put("quiz", runCatching { JSONObject(p.getString("quizzes", "{}") ?: "{}") }.getOrElse { JSONObject() })
         return o.toString()
     }
 

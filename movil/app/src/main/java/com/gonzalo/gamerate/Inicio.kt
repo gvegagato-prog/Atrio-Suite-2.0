@@ -144,7 +144,7 @@ fun InicioScreen(
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).rise(4), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 DiscoverTile("Pelis y series", "Unas preguntas y te propongo", Icons.Rounded.Movie, Color(0xFFE85A2E), Modifier.weight(1f)) { onDiscover(2) }
                 DiscoverTile("Libros", "Tu próximo libro, a medida", Icons.Rounded.AutoStories, Color(0xFF8B5CF6), Modifier.weight(1f)) { onDiscover(1) }
-                DiscoverTile("Juegos", "Desliza y elige", Icons.Rounded.SportsEsports, Color(0xFF3E6BE0), Modifier.weight(1f)) { onDiscover(0) }
+                DiscoverTile("Juegos", "Unas preguntas y a jugar", Icons.Rounded.SportsEsports, Color(0xFF3E6BE0), Modifier.weight(1f)) { onDiscover(0) }
             }
         }
 

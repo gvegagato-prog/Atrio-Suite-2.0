@@ -1,7 +1,6 @@
 // Lector de Atrio: EPUB, PDF, MOBI/AZW3, FB2 y CBZ con foliate-js (y pdf.js para PDF).
 // Todo se guarda en el móvil a través de window.Atrio (puente con la app): posición, ajustes, subrayados y marcadores.
 import './foliate/view.js'
-import { Overlayer } from './foliate/overlayer.js'
 
 const A = window.Atrio
 const $ = s => document.querySelector(s)
@@ -10,12 +9,11 @@ const S = Object.assign({
     theme: 'papel', size: 100, font: 'original', spacing: 1.5, margin: 'm', justify: true,
     flow: 'paginated', brightness: -1, warm: 0, keepOn: true, zoom: 'fit-width',
 }, st.settings || {})
-let notes = st.annotations || []      // { value, color, text, note, created, index, label }
+let notes = st.annotations || []      // { value, text, note, created, index, label } (el color de antes ya no se usa)
 let marks = st.bookmarks || []        // { value, label, fraction, created }
-const COLORS = { amarillo: '#FFD54A', verde: '#8BE38F', azul: '#7FB8FF', rosa: '#FF99C2', subrayado: '#E5484D', marca: '#E85A2E' }
 const THEMES = [['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
 const FONTS = [['original', 'Original'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
-let view, isPDF = false, last = null, chromeOn = false, selection = null, annJustShown = false
+let view, isPDF = false, last = null, chromeOn = false, selection = null
 
 // ---------------------------------------------------------------- Utilidades
 const debounce = (f, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), ms) } }
@@ -65,23 +63,11 @@ async function abrir() {
     document.body.classList.toggle('pdf', isPDF)
     view.addEventListener('load', onLoad)
     view.addEventListener('relocate', onRelocate)
-    view.addEventListener('create-overlay', e => {
-        for (const n of notes) if (n.index === e.detail.index) view.addAnnotation(n)
-    })
-    view.addEventListener('draw-annotation', e => {
-        const { draw, annotation } = e.detail
-        if (annotation.color === 'subrayado') draw(Overlayer.underline, { color: COLORS.subrayado, width: 2 })
-        else draw(Overlayer.highlight, { color: COLORS[annotation.color] || COLORS.amarillo })
-    })
-    view.addEventListener('show-annotation', e => {
-        annJustShown = true
-        const n = notes.find(x => x.value === e.detail.value)
-        if (n) showSel({ mode: 'edit', note: n, range: e.detail.range })
-    })
     view.addEventListener('external-link', e => { e.preventDefault(); A.openUrl(e.detail.a.href) })
     if (!st.title) $('#t-libro').textContent = (typeof view.book.metadata?.title === 'string' ? view.book.metadata.title : '') || ''
     applySettings()
-    await view.init({ lastLocation: st.location || null, showTextStart: !st.location })
+    // Desde la ficha del libro se puede abrir directamente en un subrayado
+    await view.init({ lastLocation: st.goto || st.location || null, showTextStart: !st.location && !st.goto })
     paso = 'listo'
     $('#carga').classList.add('fuera')
     showChrome(true)
@@ -91,7 +77,7 @@ async function abrir() {
 // ---------------------------------------------------------------- Ajustes de lectura
 function css() {
     const cs = getComputedStyle(document.body)
-    const fg = cs.getPropertyValue('--fg').trim(), accent = cs.getPropertyValue('--accent').trim()
+    const fg = cs.getPropertyValue('--fg').trim(), bg = cs.getPropertyValue('--bg').trim(), accent = cs.getPropertyValue('--accent').trim()
     const dark = ['gris', 'noche', 'negro'].includes(S.theme)
     const fam = { original: '', serif: 'Georgia, "Noto Serif", serif', sans: 'system-ui, Roboto, "Noto Sans", sans-serif', facil: 'Verdana, "Atkinson Hyperlegible", sans-serif', mono: '"Roboto Mono", "Noto Sans Mono", monospace' }[S.font]
     return `
@@ -105,7 +91,8 @@ a:link, a:visited { color: ${accent} !important; }
 img, svg, video { max-width: 100%; ${dark ? 'filter: brightness(.86);' : ''} }
 pre { white-space: pre-wrap !important; }
 aside[epub|type~="footnote"], aside[epub|type~="endnote"], aside[epub|type~="rearnote"] { display: none; }
-html, body, body * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }`
+html, body, body * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
+::highlight(atrio) { background-color: ${fg}; color: ${bg}; }`
 }
 
 function applySettings() {
@@ -127,6 +114,7 @@ function applySettings() {
     }
     A.setBrightness(S.brightness)
     A.keepScreenOn(!!S.keepOn)
+    repaintAll()
     let w = $('#calido')
     if (!w) { w = document.createElement('div'); w.id = 'calido'; document.body.append(w) }
     Object.assign(w.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: 15, background: `rgba(255,120,20,${S.warm * 0.28})`, mixBlendMode: 'multiply' })
@@ -164,6 +152,7 @@ function onLoad({ detail: { doc, index } }) {
     // Para las pruebas automáticas (el libro va en un shadow DOM cerrado)
     ;(window.__docs ||= []).push({ doc, index })
     window.__view = view
+    docs.set(index, doc)
     // Nada de la selección del navegador (con sus asas): mantener pulsado lo lleva el lector (también en PDF)
     const stl = doc.createElement('style')
     stl.textContent = 'html,body,body *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}'
@@ -205,16 +194,28 @@ function onLoad({ detail: { doc, index } }) {
     // El menú contextual del navegador (mantener pulsado), fuera
     doc.addEventListener('contextmenu', e => e.preventDefault())
 
+    // Los subrayados de este capítulo (o página). En PDF la página se dibuja después: se repinta cuando aparece.
+    paint(index)
+    if (isPDF) {
+        // Al hacer zoom pdf.js vuelve a crear el texto de la página: los tramos de antes ya no valen
+        const again = debounce(() => { rangeCache.delete(doc); paint(index); pageColor(doc) }, 120)
+        const mo = new MutationObserver(again)
+        for (const el of doc.querySelectorAll('#canvas, .textLayer')) mo.observe(el, { childList: true })
+        win.addEventListener('resize', again)
+    }
+
     doc.addEventListener('click', e => {
         if (e.target.closest?.('a')) return
         if (swiped) { swiped = false; return }
         if (held) { held = false; return }
+        const hit = noteAt(doc, index, e.clientX, e.clientY)
         setTimeout(() => {
-            if (annJustShown) { annJustShown = false; return }
             if (!$('#palabra').classList.contains('oculta')) { hideWord(); return }
             if (selection) { hideSel(); return }
             if ($('#panel').classList.contains('on')) { closePanel(); return }
             if (pend) return
+            // Tocar un subrayado: su nota, copiarlo, compartirlo o quitarlo
+            if (hit) { showSel({ mode: 'edit', note: hit.note, y: yOf(doc, hit.range) }); return }
             // PDF: tocar nunca pasa de página, solo abre o cierra el menú (las páginas, deslizando)
             if (S.flow === 'paginated' && !isPDF) {
                 const fr = doc.defaultView.frameElement?.getBoundingClientRect()
@@ -274,15 +275,105 @@ function sentenceOf(r) {
 }
 
 let pend = null      // subrayado en marcha: { doc, index, start }
-let marca = null     // la palabra marcada (anotación temporal, no se guarda)
+let marca = null     // la palabra marcada ahora mismo (no se guarda): { index, range }
 let palabra = null   // { doc, index, range, word, sentence, lang }
-async function mark(index, range) {
-    await unmark()
-    marca = { value: view.getCFI(index, range), color: 'marca', temp: true }
-    try { await view.addAnnotation(marca) } catch (e) { }
+function mark(index, range) {
+    const old = marca
+    marca = { index, range: range.cloneRange() }
+    if (old && old.index !== index) paint(old.index)
+    paint(index)
 }
-async function unmark() {
-    if (marca) { try { await view.deleteAnnotation(marca) } catch (e) { } marca = null }
+function unmark() {
+    const old = marca
+    marca = null
+    if (old) paint(old.index)
+}
+
+// ---------------------------------------------------------------- Subrayados (como en un Kindle)
+// El texto subrayado se invierte: el fondo, del color de la letra; la letra, del color del fondo.
+// EPUB: CSS Custom Highlight API (::highlight). PDF: un rectángulo blanco en modo «diferencia» encima de la página,
+// que invierte lo que haya debajo (y con los temas oscuros, que ya invierten la página, vuelve a quedar al revés).
+const docs = new Map()          // índice del capítulo/página → su documento
+const rangeCache = new WeakMap() // documento → Map(cfi → Range)
+function rangeOf(doc, value) {
+    let m = rangeCache.get(doc)
+    if (!m) rangeCache.set(doc, m = new Map())
+    if (m.has(value)) return m.get(value)
+    let r = null
+    try { r = view.resolveCFI(value)?.anchor?.(doc) || null } catch (e) { }
+    if (r && typeof r.getClientRects !== 'function') r = null
+    // En PDF el texto de la página llega después: si aún no está, se vuelve a intentar en el siguiente repintado
+    if (r) m.set(value, r)
+    return r
+}
+function rangesFor(index, doc) {
+    const out = []
+    for (const n of notes) if (n.index === index) { const r = rangeOf(doc, n.value); if (r) out.push({ note: n, range: r }) }
+    return out
+}
+function liveDoc(index) {
+    const d = docs.get(index)
+    if (!d || !d.defaultView) { docs.delete(index); return null }
+    return d
+}
+function paint(index) {
+    const doc = liveDoc(index)
+    if (!doc) return
+    const ranges = rangesFor(index, doc).map(x => x.range)
+    if (marca?.index === index) ranges.push(marca.range)
+    const win = doc.defaultView
+    if (!isPDF && win.CSS?.highlights && win.Highlight) {
+        win.CSS.highlights.set('atrio', new win.Highlight(...ranges))
+        return
+    }
+    // PDF (o un WebView muy viejo sin ::highlight): rectángulos encima del texto
+    let box = doc.getElementById('atrio-sub')
+    if (!box) {
+        box = doc.createElement('div')
+        box.id = 'atrio-sub'
+        box.style.cssText = 'position:absolute;left:0;top:0;width:100px;height:0;overflow:visible;pointer-events:none;z-index:5'
+        ;(doc.body || doc.documentElement).append(box)
+    }
+    box.replaceChildren()
+    // La mezcla va en el contenedor: con z-index es un grupo aislado y, dentro, los rectángulos no verían la página
+    box.style.mixBlendMode = isPDF ? 'difference' : 'normal'
+    if (!ranges.length) return
+    const base = box.getBoundingClientRect()
+    const k = base.width / 100 || 1
+    const fill = isPDF ? 'background:#fff'
+        : `background:${getComputedStyle(document.body).getPropertyValue('--fg')};opacity:.32`
+    for (const r of ranges) for (const b of r.getClientRects()) {
+        if (b.width < 1 || b.height < 1) continue
+        const d = doc.createElement('div')
+        d.style.cssText = `position:absolute;${fill};left:${(b.left - base.left) / k}px;top:${(b.top - base.top) / k}px;width:${b.width / k}px;height:${b.height / k}px`
+        box.append(d)
+    }
+}
+function repaintAll() { for (const i of [...docs.keys()]) paint(i) }
+/** El subrayado que hay debajo del dedo, si hay alguno. */
+function noteAt(doc, index, x, y) {
+    for (const h of rangesFor(index, doc))
+        for (const b of h.range.getClientRects())
+            if (x >= b.left - 3 && x <= b.right + 3 && y >= b.top - 3 && y <= b.bottom + 3) return h
+    return null
+}
+// PDF: sin bandas arriba y abajo; lo que sobra alrededor de la página, del color del papel de la página
+function pageColor(doc) {
+    const c = doc.querySelector('#canvas canvas')
+    if (!c || !c.width || !c.height) return
+    try {
+        const ctx = c.getContext('2d')
+        const w = c.width, h = c.height
+        const pts = [[2, 2], [w - 3, 2], [2, h - 3], [w - 3, h - 3], [w >> 1, 2], [w >> 1, h - 3]]
+        const px = pts.map(([x, y]) => ctx.getImageData(x, y, 1, 1).data)
+        // El color que más se repite en los bordes (por si en una esquina hay un dibujo)
+        const key = d => [d[0] >> 3, d[1] >> 3, d[2] >> 3].join()
+        const count = {}
+        for (const d of px) count[key(d)] = (count[key(d)] || 0) + 1
+        const best = px.reduce((a, d) => count[key(d)] > count[key(a)] ? d : a)
+        if (best[3] < 200) return
+        view.style.background = `rgb(${best[0]},${best[1]},${best[2]})`
+    } catch (e) { }
 }
 function yOf(doc, r) {
     const fr = doc.defaultView.frameElement?.getBoundingClientRect()
@@ -357,13 +448,14 @@ $('#pal-rae').onclick = () => { if (palabra) A.openUrl('https://dle.rae.es/' + e
 $('#pal-wik').onclick = () => { if (palabra) A.openUrl('https://es.wiktionary.org/wiki/' + encodeURIComponent(palabra.word.toLowerCase())) }
 $('#p-copiar').onclick = () => { if (palabra) { A.copy(palabra.word); aviso('Copiado') } hideWord() }
 $('#p-compartir').onclick = () => { if (palabra) A.share(`«${palabra.sentence}»\n— ${st.title || ''}`); hideWord() }
+// Nota sobre esta palabra: se subraya y se escribe la nota
 $('#p-nota').onclick = () => {
     const p = palabra
     if (!p) return
     $('#palabra').classList.add('oculta'); palabra = null
     unmark()
-    selection = { mode: 'new', value: view.getCFI(p.index, p.range), text: p.word, index: p.index, doc: p.doc }
-    highlight('amarillo', true)
+    const n = addNote(p.doc, p.index, p.range)
+    if (n) editNote(n)
 }
 // Subrayar: esta palabra es el principio; falta mantener pulsada la última
 $('#p-subrayar').onclick = () => {
@@ -387,11 +479,40 @@ function finishRange(doc, index, end) {
     const r = doc.createRange()
     r.setStart(a.startContainer, a.startOffset)
     r.setEnd(b.endContainer, b.endOffset)
-    const text = r.toString().replace(/\s+/g, ' ').trim()
-    if (!text) return
-    // Mientras eliges el color, el tramo entero se ve marcado
-    mark(index, r)
-    showSel({ mode: 'new', value: view.getCFI(index, r), text, index, doc, y: yOf(doc, r) })
+    const n = addNote(doc, index, r)
+    if (!n) return
+    aviso('Subrayado')
+    showSel({ mode: 'edit', note: n, y: yOf(doc, r) })
+}
+/** Guarda el subrayado del tramo (si ya estaba, devuelve el que había). */
+/** El texto del tramo. En PDF cada trozo de línea es un elemento aparte y toString() los pega sin espacio. */
+function textOf(r) {
+    if (!isPDF) return r.toString().replace(/\s+/g, ' ').trim()
+    const doc = r.startContainer.ownerDocument
+    const w = doc.createTreeWalker(r.commonAncestorContainer, NodeFilter.SHOW_TEXT)
+    const parts = []
+    let n = r.commonAncestorContainer.nodeType === 3 ? r.commonAncestorContainer : w.nextNode()
+    for (; n; n = w.nextNode()) {
+        if (!r.intersectsNode(n)) continue
+        let t = n.textContent
+        if (n === r.endContainer) t = t.slice(0, r.endOffset)
+        if (n === r.startContainer) t = t.slice(r.startOffset)
+        parts.push(t)
+    }
+    return parts.join(' ').replace(/\s+/g, ' ').trim()
+}
+function addNote(doc, index, r) {
+    const text = textOf(r)
+    if (!text) return null
+    const value = view.getCFI(index, r)
+    const old = notes.find(x => x.value === value)
+    if (old) return old
+    const n = { value, color: 'subrayado', text, note: '', created: Date.now(), index, label: label() }
+    notes.push(n)
+    rangeCache.get(doc)?.set(value, r.cloneRange())
+    paint(index)
+    saveNotes()
+    return n
 }
 
 function showChrome(on) {
@@ -403,65 +524,44 @@ function showChrome(on) {
     A.systemBars(on)
 }
 
-// ---------------------------------------------------------------- Selección y subrayados
+// ---------------------------------------------------------------- Barra de un subrayado
 function showSel(sel) {
     selection = sel
     showChrome(false)
     const bar = $('#sel')
     bar.classList.remove('oculta')
     const lower = (sel.y ?? window.innerHeight / 2) > window.innerHeight * 0.55
-    bar.style.top = lower ? 'calc(env(safe-area-inset-top, 0px) + 14px)' : ''
-    bar.style.bottom = lower ? '' : 'calc(env(safe-area-inset-bottom, 0px) + 18px)'
-    for (const b of bar.querySelectorAll('.c')) b.classList.toggle('on', sel.mode === 'edit' && sel.note.color === b.dataset.c)
-    $('#s-borrar').classList.toggle('oculta', sel.mode !== 'edit')
-    $('#s-buscar').classList.toggle('oculta', sel.mode === 'edit')
+    bar.style.top = lower ? 'calc(var(--safe-top) + 14px)' : ''
+    bar.style.bottom = lower ? '' : 'calc(var(--safe-bottom) + 18px)'
+    $('#s-cita').textContent = sel.note.text.length > 140 ? sel.note.text.slice(0, 140) + '…' : sel.note.text
+    $('#s-txt').textContent = sel.note.note || ''
+    $('#s-txt').classList.toggle('oculta', !sel.note.note)
+    $('#s-nota').textContent = sel.note.note ? 'Editar nota' : 'Añadir nota'
 }
 function hideSel() {
-    if (selection?.mode === 'new') { selection.doc?.getSelection()?.removeAllRanges(); unmark() }
     selection = null
     $('#sel').classList.add('oculta')
 }
-
-async function highlight(color, withNote) {
-    const sel = selection
-    if (!sel) return
-    if (sel.mode === 'edit') {
-        sel.note.color = color
-        await view.addAnnotation(sel.note)
-        saveNotes()
-        hideSel()
-        if (withNote) editNote(sel.note)
-        return
-    }
-    const n = { value: sel.value, color, text: sel.text, note: '', created: Date.now(), index: sel.index, label: label() }
-    notes.push(n)
-    await view.addAnnotation(n)
-    saveNotes()
-    hideSel()
-    if (withNote) editNote(n)
-    else aviso('Subrayado')
-}
-for (const b of document.querySelectorAll('#sel .c')) b.addEventListener('click', () => highlight(b.dataset.c, false))
-$('#s-nota').addEventListener('click', () => {
-    if (selection?.mode === 'edit') { const n = selection.note; hideSel(); editNote(n) }
-    else highlight('amarillo', true)
-})
-$('#s-copiar').addEventListener('click', () => { const t = selection?.mode === 'edit' ? selection.note.text : selection?.text; if (t) { A.copy(t); aviso('Copiado') } hideSel() })
+$('#s-nota').addEventListener('click', () => { const n = selection?.note; hideSel(); if (n) editNote(n) })
+$('#s-copiar').addEventListener('click', () => { const t = selection?.note.text; if (t) { A.copy(t); aviso('Copiado') } hideSel() })
 $('#s-compartir').addEventListener('click', () => {
-    const t = selection?.mode === 'edit' ? selection.note.text : selection?.text
-    if (t) A.share(`«${t}»\n— ${st.title || ''}`)
+    const n = selection?.note
+    if (n) A.share(`«${n.text}»${n.note ? `\n${n.note}` : ''}\n— ${st.title || ''}`)
     hideSel()
 })
-$('#s-buscar').addEventListener('click', () => { const t = selection?.text; hideSel(); if (t) openSearch(t) })
+$('#s-buscar').addEventListener('click', () => { const t = selection?.note.text; hideSel(); if (t) openSearch(t) })
 $('#s-borrar').addEventListener('click', () => {
     const n = selection?.note
     hideSel()
     if (!n) return
-    notes = notes.filter(x => x !== n)
-    view.deleteAnnotation(n)
-    saveNotes()
-    aviso('Subrayado borrado')
+    removeNote(n)
+    aviso('Subrayado quitado')
 })
+function removeNote(n) {
+    notes = notes.filter(x => x !== n)
+    paint(n.index)
+    saveNotes()
+}
 
 // ---------------------------------------------------------------- Paneles
 function openPanel(html, after) {
@@ -474,16 +574,16 @@ function openPanel(html, after) {
 function closePanel() { $('#panel').classList.remove('on'); $('#velo').classList.remove('on') }
 $('#velo').addEventListener('click', closePanel)
 
-function editNote(n) {
+function editNote(n, after) {
     openPanel(`<h2>Tu nota</h2>
-        <p class="cita" style="--c:${COLORS[n.color] || COLORS.amarillo}">${esc(n.text)}</p>
+        <p class="cita">${esc(n.text)}</p>
         <textarea id="nota-txt" placeholder="Escribe lo que te sugiere…">${esc(n.note)}</textarea>
         <div class="fila" style="margin-top:12px;justify-content:flex-end">
           <button class="boton suave" id="nota-no">Cancelar</button><button class="boton" id="nota-si">Guardar</button>
         </div>`, el => {
         const t = el.querySelector('#nota-txt'); setTimeout(() => t.focus(), 300)
-        el.querySelector('#nota-no').onclick = closePanel
-        el.querySelector('#nota-si').onclick = () => { n.note = t.value.trim(); saveNotes(); closePanel(); aviso('Nota guardada') }
+        el.querySelector('#nota-no').onclick = () => { closePanel(); after?.() }
+        el.querySelector('#nota-si').onclick = () => { n.note = t.value.trim(); saveNotes(); closePanel(); aviso(n.note ? 'Nota guardada' : 'Nota borrada'); after?.() }
     })
 }
 
@@ -566,20 +666,24 @@ function openToc() {
 function openNotes(tab = 'notas') {
     const list = tab === 'notas'
         ? (notes.length ? `<ul class="lista">${[...notes].sort((a, b) => (a.index - b.index) || (a.created - b.created)).map((n, i) => `
-            <li data-v="${esc(n.value)}"><div class="cita" style="--c:${COLORS[n.color] || COLORS.amarillo}">${esc(n.text)}</div>
+            <li data-v="${esc(n.value)}"><div class="cita">${esc(n.text)}</div>
               ${n.note ? `<div class="nota">✎ ${esc(n.note)}</div>` : ''}
-              <div class="sub">${esc(n.label || '')} · ${fecha(n.created)}</div></li>`).join('')}</ul>`
-            : '<p class="vacio">Mantén pulsado el texto para subrayarlo o dejar una nota.</p>')
+              <div class="sub">${esc(n.label || '')} · ${fecha(n.created)}</div>
+              <div class="mini"><button data-nota="${esc(n.value)}">${n.note ? 'Editar nota' : 'Añadir nota'}</button><button data-quitar="${esc(n.value)}" class="peligro">Quitar</button></div></li>`).join('')}</ul>`
+            : '<p class="vacio">Mantén pulsada una palabra y toca Subrayar o Nota.</p>')
         : (marks.length ? `<ul class="lista">${[...marks].sort((a, b) => a.fraction - b.fraction).map(m => `
             <li data-v="${esc(m.value)}"><b>${esc(m.label || 'Marcador')}</b><div class="sub">${pct(m.fraction)} · ${fecha(m.created)}</div></li>`).join('')}</ul>`
             : '<p class="vacio">Toca el marcador de arriba para guardar la página.</p>')
     openPanel(`<h2>Tus notas</h2>
-      <div class="pestanas"><button class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Subrayados (${notes.length})</button>
+      <div class="pestanas"><button class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Subrayados y notas (${notes.length})</button>
       <button class="chip ${tab === 'marcas' ? 'on' : ''}" data-tab="marcas">Marcadores (${marks.length})</button></div>
       ${list}
       ${tab === 'notas' && notes.length ? '<div class="fila" style="margin-top:14px"><button class="boton suave" id="exportar">Compartir todas</button></div>' : ''}`, el => {
         el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => openNotes(b.dataset.tab))
         el.querySelectorAll('li[data-v]').forEach(li => li.onclick = () => { view.goTo(li.dataset.v); closePanel() })
+        const byValue = v => notes.find(n => n.value === v)
+        el.querySelectorAll('[data-nota]').forEach(b => b.onclick = e => { e.stopPropagation(); const n = byValue(b.dataset.nota); if (n) editNote(n, () => openNotes('notas')) })
+        el.querySelectorAll('[data-quitar]').forEach(b => b.onclick = e => { e.stopPropagation(); const n = byValue(b.dataset.quitar); if (n) { removeNote(n); openNotes('notas') } })
         el.querySelector('#exportar')?.addEventListener('click', () => {
             const txt = `${st.title || ''}\n\n` + [...notes].sort((a, b) => (a.index - b.index) || (a.created - b.created))
                 .map(n => `«${n.text}»${n.note ? `\n   ✎ ${n.note}` : ''}${n.label ? `\n   — ${n.label}` : ''}`).join('\n\n')

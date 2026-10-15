@@ -465,6 +465,15 @@ fun AddSegDialog(kind: Kind, onSave: (Seg) -> Unit, onDismiss: () -> Unit) {
     )
 }
 
+/** Qué son los apuntes rápidos en cada categoría (en los libros no se juega). */
+fun memoHint(kind: Kind): String = when {
+    kind.isGame -> "Ideas sueltas mientras juegas (también desde Atrio)"
+    kind.isBook -> "Ideas sueltas mientras lees"
+    kind.isMovie -> "Ideas sueltas mientras la ves"
+    kind.isTv -> "Ideas sueltas mientras la ves (de cada capítulo)"
+    else -> "Ideas sueltas sobre la marcha"
+}
+
 /** En la ficha de algo en curso: partes por valorar, apuntes rápidos y capturas. */
 @Composable
 fun PlaySuitePanel(
@@ -481,7 +490,7 @@ fun PlaySuitePanel(
                 Overline("Valorar por partes")
                 Text(
                     when {
-                        p.noParts -> "Apagado: las partidas suman horas, pero no piden nota ni avisan"
+                        p.noParts -> if (kind.isGame) "Apagado: las partidas suman horas, pero no piden nota ni avisan" else "Apagado: no se pide nota por partes"
                         p.segs.isEmpty() -> if (kind.isGame) "Cada partida en el PC aparece aquí al cerrar el juego" else "Añade las partes que vas terminando"
                         else -> "${p.segs.count { !it.q }} · ${p.unrated().size} sin valorar"
                     },
@@ -517,7 +526,7 @@ fun PlaySuitePanel(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Overline("Apuntes rápidos")
-                Text(if (memos.isEmpty()) "Ideas sueltas mientras juegas (también desde Atrio)" else "${memos.size}", color = Muted, fontSize = 14.sp)
+                Text(if (memos.isEmpty()) memoHint(kind) else "${memos.size}", color = Muted, fontSize = 14.sp)
             }
             IconPill(Icons.Rounded.EditNote, "Apunte rápido") { onMemo() }
         }

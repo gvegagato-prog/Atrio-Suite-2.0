@@ -151,14 +151,38 @@ const log = [];
       ok(await page.$eval('#pend', (e) => !e.classList.contains('oculta')), `${name}: «Subrayar» pide la última palabra`);
       await hold(w2); await page.waitForTimeout(400);
       const barVisible = await page.$eval('#sel', (e) => !e.classList.contains('oculta'));
-      ok(barVisible, `${name}: al mantener pulsada la última palabra salen los colores`);
-      await page.screenshot({ path: path.join(out, name + '-6b-rango.png') });
+      ok(barVisible, `${name}: al mantener pulsada la última palabra se subraya y sale su barra`);
+      const notes = await page.evaluate(() => window.__atrio.saved.notes);
+      const t = notes?.[0]?.text || '';
+      ok(notes && notes.length === 1 && t.startsWith(w1.w) && t.endsWith(w2.w), `${name}: subrayado de «${w1.w}» a «${w2.w}» guardado al momento (${t.length} letras)`);
+      // Se ve: en EPUB con ::highlight, en PDF con los rectángulos que invierten la página
+      const pintado = await page.evaluate(() => {
+        let n = 0;
+        for (const { doc: d } of window.__docs || []) {
+          if (!d.defaultView) continue;
+          n += d.defaultView.CSS?.highlights?.get('atrio')?.size || 0;
+          n += d.getElementById('atrio-sub')?.children.length || 0;
+        }
+        return n;
+      });
+      ok(pintado > 0, `${name}: el subrayado se pinta (${pintado})`);
+      await page.screenshot({ path: path.join(out, name + '-7-subrayado.png') });
       if (barVisible) {
-        await page.click('#sel .c.verde'); await page.waitForTimeout(900);
-        const notes = await page.evaluate(() => window.__atrio.saved.notes);
-        const t = notes?.[0]?.text || '';
-        ok(notes && notes.length === 1 && t.startsWith(w1.w) && t.endsWith(w2.w), `${name}: subrayado de «${w1.w}» a «${w2.w}» (${t.length} letras)`);
-        await page.screenshot({ path: path.join(out, name + '-7-subrayado.png') });
+        ok(!(await page.$('#sel .c')), `${name}: ya no hay colores para elegir`);
+        await page.click('#s-nota'); await page.waitForTimeout(500);
+        await page.fill('#nota-txt', 'Nota de prueba'); await page.click('#nota-si'); await page.waitForTimeout(600);
+        const n2 = await page.evaluate(() => window.__atrio.saved.notes);
+        ok(n2?.[0]?.note === 'Nota de prueba', `${name}: se añade una nota al subrayado`);
+        // Tocar el subrayado vuelve a sacar su barra
+        await page.mouse.click(w1.x, w1.y); await page.waitForTimeout(700);
+        const again = await page.evaluate(() => ({ vis: !document.querySelector('#sel').classList.contains('oculta'), b: document.querySelector('#s-nota').textContent, t: document.querySelector('#s-txt').textContent }));
+        ok(again.vis && again.b === 'Editar nota' && again.t === 'Nota de prueba', `${name}: tocar el subrayado abre su barra con la nota (${JSON.stringify(again)})`);
+        await page.screenshot({ path: path.join(out, name + '-8-tocar.png') });
+        await page.click('#s-copiar'); await page.waitForTimeout(400);
+      }
+      if (name.endsWith('pdf')) {
+        const bgc = await page.evaluate(() => window.__view?.style.background || '');
+        ok(/rgb/.test(bgc), `${name}: alrededor de la página, el color del papel (${bgc})`);
       }
     }
     // Índice y búsqueda

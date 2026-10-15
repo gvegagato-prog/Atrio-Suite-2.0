@@ -197,6 +197,7 @@ fun RevistaGameRead(
     defs["nota"] = MagDef("Nota") { MagScore(g.general, g.scores(), kind) }
     if (kind.isMovie || kind.isTv) defs["critica"] = MagDef("Crítica") { MagCritics(kind, g.id, g.name) }
     if (kind.isBook) defs["lectura"] = MagDef("Lectura") { BookFileBar(g.id, g.name) }
+    if (kind.isBook) defs["subrayados"] = MagDef("Subrayados y notas") { BookNotesBox(g.id, g.name) }
     defs["opinion"] = MagDef("Opinión", "Escribir" to onEdit) {
         if (g.review.isNotBlank()) MagBody(g.review)
         else Text("Aún no has escrito nada.", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp)
@@ -214,7 +215,7 @@ fun RevistaGameRead(
     val defaults = when {
         kind.isGame -> magRows(listOf("guias", "nota"), listOf("opinion"), listOf("horas", "enlaces"), listOf("datos"))
         kind.isMovie || kind.isTv -> magRows(listOf("critica", "nota"), listOf("opinion"), listOf("datos", "enlaces"))
-        kind.isBook -> magRows(listOf("datos", "nota"), listOf("lectura"), listOf("opinion"), listOf("enlaces"))
+        kind.isBook -> magRows(listOf("datos", "nota"), listOf("lectura"), listOf("subrayados"), listOf("opinion"), listOf("enlaces"))
         else -> magRows(listOf("datos", "nota"), listOf("opinion"), listOf("enlaces"))
     }
     MagPage("v:${kind.id}:${g.id}", "tpl:v:${kind.id}", kind.title, defaults, defs, kind, g.id, g.name, designing)

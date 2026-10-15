@@ -62,7 +62,6 @@ sealed interface Screen {
     /** Estadísticas de la categoría abierta. */
     object Stats : Screen
     /** «Siguiente»: cartas para deslizar (juegos). */
-    object Deck : Screen
     /** Descubrir con preguntas: 1 libros, 2 pelis y series. */
     class Quiz(val domain: Int) : Screen
 }

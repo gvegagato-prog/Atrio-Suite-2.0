@@ -110,6 +110,7 @@ fun PlayDetailScreen(
             if (kind.isGame) defs["guias"] = MagDef("Guías") { GuidesSection(p.id, p.name, inCell = true) }
             if (kind.isMovie || kind.isTv) defs["critica"] = MagDef("Crítica") { MagCritics(kind, p.id, p.name) }
             if (kind.isBook) defs["lectura"] = MagDef("Lectura") { BookFileBar(p.id, p.name) }
+            if (kind.isBook) defs["subrayados"] = MagDef("Subrayados y notas") { BookNotesBox(p.id, p.name) }
             if (kind.isBook) defs["capitulos"] = MagDef("Capítulos") {
                 if (p.status == 1) {
                     Text(if (p.chapter > 0) "${p.chapter}" else "—", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 56.sp, lineHeight = 56.sp)
@@ -183,7 +184,7 @@ fun PlayDetailScreen(
             val defaults = when {
                 kind.isGame -> magRows(listOf("guias", "estado"), listOf("sesion", "jugar"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("horas", "enlaces"))
                 kind.isMovie || kind.isTv -> magRows(listOf("critica", "estado"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
-                kind.isBook -> magRows(listOf("lectura"), listOf("capitulos", "estado"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
+                kind.isBook -> magRows(listOf("lectura"), listOf("capitulos", "estado"), listOf("subrayados"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
                 else -> magRows(listOf("estado"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
             }
             MagPage("p:${kind.id}:${p.id}", "tpl:p:${kind.id}", kind.title, defaults, defs, kind, p.id, p.name, designing)

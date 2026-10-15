@@ -98,6 +98,20 @@ object MagLayouts {
         prefs(ctx).edit().putString(tpl, toJson(clean)).apply()
     }
     fun reset(ctx: Context, key: String, tpl: String) { prefs(ctx).edit().remove(key).remove(tpl).apply() }
+
+    /** Casillas nuevas de esta versión (p. ej. «subrayados»): a las maquetas ya guardadas se les añade una vez,
+     *  en su propia fila detrás de [after]; si luego la quitas, no vuelve. */
+    fun withNew(ctx: Context, key: String, rows: List<MagRowSpec>, mod: String, after: String): List<MagRowSpec> {
+        val flag = "nuevo:$mod:$key"
+        val p = prefs(ctx)
+        if (p.getBoolean(flag, false)) return rows
+        p.edit().putBoolean(flag, true).apply()
+        if (rows.any { r -> r.cells.any { it.type == mod } }) return rows
+        val i = rows.indexOfFirst { r -> r.cells.any { it.type == after } }
+        val out = rows.toMutableList().apply { add(if (i >= 0) i + 1 else size, MagRowSpec(listOf(MagCell(mod)))) }
+        save(ctx, key, out)
+        return out
+    }
 }
 
 /** Las imágenes que se pueden poner en una casilla (las pone la app, que tiene las claves). */
@@ -124,7 +138,11 @@ fun MagPage(
     kind: Kind, itemId: Long, itemName: String, designing: Boolean
 ) {
     val ctx = LocalContext.current
-    var rows by remember(key) { mutableStateOf(MagLayouts.load(ctx, key, tpl) ?: defaults) }
+    var rows by remember(key) {
+        mutableStateOf(MagLayouts.load(ctx, key, tpl)?.let { saved ->
+            if ("subrayados" in defs) MagLayouts.withNew(ctx, key, saved, "subrayados", "lectura") else saved
+        } ?: defaults)
+    }
     fun set(n: List<MagRowSpec>) { rows = n; MagLayouts.save(ctx, key, n) }
     var choosing by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var editingText by remember { mutableStateOf<Pair<Int, Int>?>(null) }

@@ -25,6 +25,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -94,8 +95,9 @@ object BookFiles {
 /** El lector: una página web propia (assets/lector) que pinta el libro a pantalla completa. */
 class ReaderActivity : ComponentActivity() {
     companion object {
-        fun open(ctx: Context, id: Long, name: String) {
-            ctx.startActivity(Intent(ctx, ReaderActivity::class.java).putExtra("id", id).putExtra("name", name)
+        /** [goto]: abrir directamente en ese punto (el de un subrayado). */
+        fun open(ctx: Context, id: Long, name: String, goto: String? = null) {
+            ctx.startActivity(Intent(ctx, ReaderActivity::class.java).putExtra("id", id).putExtra("name", name).putExtra("goto", goto)
                 .addFlags(if (ctx is Activity) 0 else Intent.FLAG_ACTIVITY_NEW_TASK))
         }
 
@@ -258,6 +260,7 @@ class ReaderActivity : ComponentActivity() {
                 .put("title", intent.getStringExtra("name") ?: "")
                 .put("file", name)
                 .put("location", o.optString("cfi").ifBlank { null } ?: JSONObject.NULL)
+                .put("goto", intent.getStringExtra("goto") ?: JSONObject.NULL)
                 .put("settings", o.optJSONObject("settings") ?: JSONObject(getSharedPreferences("lector", MODE_PRIVATE).getString("ajustes", "{}") ?: "{}"))
                 .put("annotations", o.optJSONArray("notes") ?: org.json.JSONArray())
                 .put("bookmarks", o.optJSONArray("marks") ?: org.json.JSONArray())
@@ -419,4 +422,58 @@ fun BookFileBar(id: Long, name: String) {
             )
         }
     }
+}
+
+/** Un subrayado del lector (con su nota, si tiene). */
+data class BookNote(val value: String, val text: String, val note: String, val label: String, val created: Long, val index: Int)
+
+fun bookNotes(ctx: Context, id: Long): List<BookNote> {
+    val a = BookFiles.state(ctx, id).optJSONArray("notes") ?: return emptyList()
+    return (0 until a.length()).mapNotNull { i ->
+        val o = a.optJSONObject(i) ?: return@mapNotNull null
+        BookNote(o.optString("value"), o.optString("text"), o.optString("note"), o.optString("label"), o.optLong("created"), o.optInt("index"))
+    }.sortedWith(compareBy({ it.index }, { it.created }))
+}
+
+/** La casilla «Subrayados y notas» de la ficha de un libro: tocar uno abre el libro ahí. */
+@Composable
+fun BookNotesBox(id: Long, name: String) {
+    val ctx = LocalContext.current
+    var tick by remember { mutableStateOf(0) }
+    val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(life) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, ev -> if (ev == androidx.lifecycle.Lifecycle.Event.ON_RESUME) tick++ }
+        life.lifecycle.addObserver(obs)
+        onDispose { life.lifecycle.removeObserver(obs) }
+    }
+    val file = remember(tick) { BookFiles.get(ctx, id) }
+    val notes = remember(tick) { bookNotes(ctx, id) }
+    var all by remember { mutableStateOf(false) }
+    val italic = androidx.compose.ui.text.font.FontStyle.Italic
+    if (file == null) {
+        Text("Adjunta el libro (casilla Lectura) para leerlo aquí; lo que subrayes y anotes aparecerá en esta casilla.",
+            color = Muted, fontFamily = Display, fontStyle = italic, fontSize = 15.sp, lineHeight = 20.sp)
+        return
+    }
+    if (notes.isEmpty()) {
+        Text("Aún no has subrayado nada. En el lector, mantén pulsada una palabra y toca Subrayar o Nota.",
+            color = Muted, fontFamily = Display, fontStyle = italic, fontSize = 15.sp, lineHeight = 20.sp)
+        return
+    }
+    val withNote = notes.count { it.note.isNotBlank() }
+    Text(listOfNotNull("${notes.size} subrayado${if (notes.size == 1) "" else "s"}", if (withNote > 0) "$withNote con nota" else null).joinToString(" · ").uppercase(),
+        color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+    Spacer(Modifier.height(6.dp))
+    val shown = if (all) notes else notes.take(4)
+    shown.forEachIndexed { i, n ->
+        if (i > 0) Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(Charcoal.copy(alpha = 0.15f)))
+        Column(Modifier.fillMaxWidth().clickable { ReaderActivity.open(ctx, id, name, n.value) }.padding(vertical = 2.dp)) {
+            Text("«${n.text}»", fontFamily = Display, fontSize = 17.sp, lineHeight = 23.sp, maxLines = if (all) 12 else 5, overflow = TextOverflow.Ellipsis)
+            if (n.note.isNotBlank()) Text(n.note, fontStyle = italic, fontSize = 14.sp, lineHeight = 19.sp, color = ColGeneral, modifier = Modifier.padding(top = 4.dp))
+            Text(listOfNotNull(n.label.ifBlank { null }, if (n.created > 0) fmtDay(n.created / 86_400_000L) else null).joinToString(" · ").uppercase(),
+                color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+    if (notes.size > 4) Text(if (all) "VER MENOS" else "VER LOS ${notes.size} →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+        modifier = Modifier.clickable { all = !all }.padding(top = 10.dp, bottom = 4.dp))
 }

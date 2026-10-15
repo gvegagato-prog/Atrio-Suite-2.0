@@ -11,3 +11,10 @@ for dom, files in (('pantalla', ['pantalla-a.json', 'pantalla-b.json']), ('libro
     for p in paths: allq += json.load(open(p, encoding='utf-8'))
     json.dump(allq, open(os.path.join(OUT, dom + '.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print(dom, len(allq), 'preguntas')
+# Juegos (validador propio: géneros y etiquetas de RAWG)
+paths = [os.path.join(HERE, f) for f in ('juegos-a.json', 'juegos-b.json')]
+subprocess.run([sys.executable, os.path.join(HERE, 'validar_juegos.py')] + paths, check=True)
+allq = []
+for p in paths: allq += json.load(open(p, encoding='utf-8'))
+json.dump(allq, open(os.path.join(OUT, 'juegos.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+print('juegos', len(allq), 'preguntas')
