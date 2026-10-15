@@ -120,6 +120,7 @@
   function anadir(k, tab) {
     if (!D.conCuenta()) { RV.ir({ v: 'ajustes' }); return; }
     if (k.isGame) anadirJuego(k, tab === 0 ? 1 : 0);
+    else if (RV.red.buscadorDe(k)) anadirBuscando(k, tab === 0 ? 1 : 0);
     else anadirAMano(k, tab === 0 ? 1 : 0);
   }
   RV.anadir = anadir;
@@ -193,7 +194,55 @@
     });
   }
 
-  // El resto (libros, pelis, series, categorías propias): por nombre, a mano
+  // Libros, pelis y series: con el mismo buscador que el móvil (Open Library, TMDB o TVmaze), para que la ficha
+  // tenga el mismo id en todos lados y no salga repetida. Si no aparece, a mano.
+  function anadirBuscando(k, statusPorDefecto) {
+    const buscador = RV.red.buscadorDe(k);
+    const fuente = RV.red.fuenteDe(k);
+    const input = RV.entrada('', { placeholder: k.isBook ? 'Título o autor' : 'Título', 'data-autofocus': true });
+    const res = h('ul.resultados');
+    const msg = h('p.vacio');
+    let token = 0;
+    const buscar = async () => {
+      const q = input.value.trim();
+      if (!q) return;
+      const my = ++token;
+      res.replaceChildren();
+      msg.textContent = `Buscando en ${fuente}…`;
+      try {
+        const list = await buscador(q);
+        if (my !== token) return;
+        msg.textContent = list.length ? '' : 'Sin resultados. Prueba con otras palabras (o créala a mano).';
+        for (const r of list.slice(0, 20)) {
+          const elegir = async (status) => {
+            if (yaLoTienes(k, r.id)) { d.cerrar(); return; }
+            d.cerrar();
+            // El director (pelis) o los creadores (series), como hace el móvil al añadir
+            let creator = r.creator || '';
+            if (!creator && k.isMovie) creator = await RV.red.director(r.id).catch(() => '');
+            if (!creator && k.isTv) creator = await RV.red.creadores(r.id).catch(() => '');
+            await crear(k, { id: Number(r.id), name: r.name, cover: r.cover || '', hero: '', creator, pages: r.pages || 0 }, status);
+          };
+          res.append(h('li', h('div.resultado',
+            h('span', h('span.tit', r.name), r.sub ? h('span.versal', { style: { display: 'block' } }, r.sub) : null),
+            h('span.acc',
+              h('button.enlace', { type: 'button', onclick: () => elegir(1) }, `${k.statuses[1]} →`),
+              h('button.enlace.acento', { type: 'button', onclick: () => elegir(0) }, 'A mi lista +')))));
+        }
+      } catch (e) {
+        if (my === token) msg.textContent = RV.limpiaError(e);
+      }
+    };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); buscar(); } });
+    const d = RV.dialogo({
+      ante: `Añadir · ${k.title}`, titulo: statusPorDefecto === 1 ? `¿Qué ${k.isBook ? 'estás leyendo' : 'estás viendo'}?` : `¿Qué ${k.isBook ? 'quieres leer' : 'quieres ver'}?`, ancho: true,
+      cuerpo: [h('div', { style: { display: 'flex', gap: '18px', alignItems: 'flex-end' } }, h('div', { style: { flex: '1' } }, RV.campo(`Buscar en ${fuente}`, input)),
+        h('button.boton-tinta', { type: 'button', onclick: buscar }, 'Buscar')), msg, res],
+      acciones: ['hueco', { texto: 'Crear a mano', fn: (x) => { x.cerrar(); anadirAMano(k, statusPorDefecto); } }, { texto: 'Cerrar', fn: (x) => x.cerrar() }],
+    });
+  }
+
+  // El resto (categorías propias, o si no aparece en el buscador): por nombre, a mano
   function anadirAMano(k, statusPorDefecto) {
     const nombre = RV.entrada('', { placeholder: 'Título', 'data-autofocus': true });
     const creador = RV.entrada('', { placeholder: k.creatorWord });

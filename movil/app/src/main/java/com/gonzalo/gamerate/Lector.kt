@@ -125,34 +125,58 @@ class ReaderActivity : ComponentActivity() {
     private var tts: android.speech.tts.TextToSpeech? = null
     private var ttsReady = false
     private var pending: (() -> Unit)? = null
+    // La última frase pedida mientras la voz arrancaba (si no arranca, se le contesta con error a esa)
+    private var pendingUid: String? = null
 
     private fun speakNow(text: String, uid: String, rate: Float, lang: String) {
         val t = tts
         if (t == null || !ttsReady) {
             pending = { speakNow(text, uid, rate, lang) }
-            if (t == null) tts = android.speech.tts.TextToSpeech(this) { status ->
-                ttsReady = status == android.speech.tts.TextToSpeech.SUCCESS
-                if (ttsReady) {
-                    tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
-                        override fun onStart(utteranceId: String?) {}
-                        override fun onDone(utteranceId: String?) { spoken(utteranceId, false) }
-                        @Deprecated("Deprecated in Java")
-                        override fun onError(utteranceId: String?) { spoken(utteranceId, true) }
-                        override fun onError(utteranceId: String?, errorCode: Int) { spoken(utteranceId, true) }
-                    })
-                    runOnUiThread { pending?.invoke(); pending = null }
-                } else {
-                    pending = null
-                    spoken(uid, true)
-                }
-            }
+            pendingUid = uid
+            // El aviso de «lista» se atiende en el siguiente paso del hilo principal: si no hay motor de voz llega
+            // dentro del propio constructor, antes de que [tts] tenga la voz nueva
+            if (t == null) tts = android.speech.tts.TextToSpeech(this) { status -> android.os.Handler(mainLooper).post { ttsInit(status) } }
             return
         }
         // El idioma del libro, si el móvil tiene esa voz (si no, la que tenga por defecto)
         val loc = java.util.Locale.forLanguageTag(lang.ifBlank { "es" })
         if (t.isLanguageAvailable(loc) >= android.speech.tts.TextToSpeech.LANG_AVAILABLE && t.voice?.locale?.language != loc.language) t.language = loc
         t.setSpeechRate(rate.coerceIn(0.5f, 2.5f))
-        t.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, uid)
+        // Android no lee de una vez más de getMaxSpeechInputLength() letras: una frase larguísima va en trozos
+        // (solo el último lleva el id que espera el lector; los de antes no los mira)
+        val max = (android.speech.tts.TextToSpeech.getMaxSpeechInputLength() - 1).coerceAtLeast(100)
+        val parts = if (text.length <= max) listOf(text) else text.chunked(max)
+        var ok = true
+        parts.forEachIndexed { i, part ->
+            val last = i == parts.lastIndex
+            val r = t.speak(part, if (i == 0) android.speech.tts.TextToSpeech.QUEUE_FLUSH else android.speech.tts.TextToSpeech.QUEUE_ADD,
+                null, if (last) uid else "$uid.$i")
+            if (r != android.speech.tts.TextToSpeech.SUCCESS) ok = false
+        }
+        // Si no se ha podido ni poner en cola, no llegará ningún aviso: se contesta ya con error
+        if (!ok) spoken(uid, true)
+    }
+
+    private fun ttsInit(status: Int) {
+        if (tts == null) return // ya se ha cerrado el lector
+        ttsReady = status == android.speech.tts.TextToSpeech.SUCCESS
+        if (ttsReady) {
+            tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) { spoken(utteranceId, false) }
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) { spoken(utteranceId, true) }
+                override fun onError(utteranceId: String?, errorCode: Int) { spoken(utteranceId, true) }
+            })
+            val p = pending; pending = null; pendingUid = null
+            p?.invoke()
+        } else {
+            // No hay motor de voz (o no arranca): se suelta para volver a intentarlo la próxima vez
+            val u = pendingUid
+            pending = null; pendingUid = null
+            tts?.shutdown(); tts = null
+            spoken(u, true)
+        }
     }
 
     private fun spoken(uid: String?, error: Boolean) = runOnUiThread {

@@ -278,15 +278,27 @@ fun WheelDialog(
                         SoftChip("En común (${shared.size})", together, onPanel = true) { together = !together }
                         Spacer(Modifier.height(12.dp))
                     }
-                    AsyncImage(
-                        p.cover, p.name,
-                        Modifier.width(170.dp).aspectRatio(2f / 3f).graphicsLayer { scaleX = sc; scaleY = sc }
-                            .shadow(4.dp, shp(12.dp)).clip(shp(12.dp)).background(Sand),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(p.name, fontFamily = Display, fontSize = 20.sp, textAlign = TextAlign.Center)
-                    if (p.creator.isNotBlank()) Text(p.creator, color = Muted, fontSize = 13.sp)
+                    if (Skin.revista) {
+                        // Revista: sin portadas; el título enorme va cambiando como un letrero de estación
+                        Box(Modifier.fillMaxWidth().height(3.dp).background(Charcoal))
+                        Box(Modifier.fillMaxWidth().heightIn(min = 150.dp).graphicsLayer { scaleX = sc; scaleY = sc }, contentAlignment = Alignment.Center) {
+                            FitTitle(p.name, 40.sp, 42.sp, letterSpacing = (-1).sp, color = if (done) ColGeneral else Charcoal, maxLines = 3,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(vertical = 14.dp))
+                        }
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(Charcoal))
+                        if (p.creator.isNotBlank()) Text(p.creator.uppercase(), color = Muted, fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 8.dp))
+                    } else {
+                        AsyncImage(
+                            p.cover, p.name,
+                            Modifier.width(170.dp).aspectRatio(2f / 3f).graphicsLayer { scaleX = sc; scaleY = sc }
+                                .shadow(4.dp, shp(12.dp)).clip(shp(12.dp)).background(Sand),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(p.name, fontFamily = Display, fontSize = 20.sp, textAlign = TextAlign.Center)
+                        if (p.creator.isNotBlank()) Text(p.creator, color = Muted, fontSize = 13.sp)
+                    }
                     if (done) {
                         Spacer(Modifier.height(8.dp))
                         Text("Elegido entre ${pool.size}.", color = Muted, fontSize = 12.sp)

@@ -174,7 +174,7 @@ back
 step "Apariencia: claro u oscuro y el color del acento"
 top
 must tap "Apariencia"; sleep 2
-must see "Acento" 10
+must see "ACENTO" 10   # en la revista los títulos de bloque van en versalitas
 shot 20_apariencia 2; alive "apariencia"
 tap "Claro"; sleep 0.25; adb exec-out screencap -p > "$OUT/21_cambio_tema.png"; shot 21b_claro 2; alive "tema"
 tap "Oscuro"; sleep 2

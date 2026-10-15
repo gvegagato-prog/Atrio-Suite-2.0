@@ -808,6 +808,10 @@ private fun YearRange(
 ) {
     var width by remember { mutableStateOf(1f) }
     val cur by rememberUpdatedState(value)
+    // Los gestos se crean una vez (pointerInput no se rehace): así llaman siempre a las funciones de ahora,
+    // no a las de la primera vez (que escribirían en un estado viejo y con las plataformas de entonces)
+    val onValueNow by rememberUpdatedState(onValue)
+    val onDoneNow by rememberUpdatedState(onDone)
     val accent = ColGeneral
     val ink = Charcoal
     val line = Line
@@ -823,18 +827,18 @@ private fun YearRange(
                         val v = toValue(o.x)
                         which = if (kotlin.math.abs(v - cur.start) <= kotlin.math.abs(v - cur.endInclusive)) 0 else 1
                     },
-                    onDragEnd = { onDone() }, onDragCancel = { onDone() }
+                    onDragEnd = { onDoneNow() }, onDragCancel = { onDoneNow() }
                 ) { ch, _ ->
                     val v = toValue(ch.position.x)
-                    onValue(if (which == 0) v.coerceAtMost(cur.endInclusive)..cur.endInclusive else cur.start..v.coerceAtLeast(cur.start))
+                    onValueNow(if (which == 0) v.coerceAtMost(cur.endInclusive)..cur.endInclusive else cur.start..v.coerceAtLeast(cur.start))
                 }
             }
             .pointerInput(min, max) {
                 // Un toque suelto: el tirador más cercano salta ahí
                 detectTapGestures { o ->
                     val v = toValue(o.x)
-                    onValue(if (kotlin.math.abs(v - cur.start) <= kotlin.math.abs(v - cur.endInclusive)) v.coerceAtMost(cur.endInclusive)..cur.endInclusive else cur.start..v.coerceAtLeast(cur.start))
-                    onDone()
+                    onValueNow(if (kotlin.math.abs(v - cur.start) <= kotlin.math.abs(v - cur.endInclusive)) v.coerceAtMost(cur.endInclusive)..cur.endInclusive else cur.start..v.coerceAtLeast(cur.start))
+                    onDoneNow()
                 }
             }
             .drawBehind {

@@ -12,6 +12,8 @@ const S = Object.assign({
     // Atrio 6.8: guiones, espacio entre párrafos, dos columnas en horizontal, animación, línea de estado,
     // tu velocidad de lectura (bytes por minuto; 0 = aún no se sabe) y la velocidad de la voz
     hyphens: true, paraSpace: 0, columns: false, animated: true, status: true, speed: 0, ttsRate: 1,
+    // De 21:00 a 7:00, el tema Noche (y por el día, el tuyo)
+    nightAuto: false,
 }, st.settings || {})
 // Lo que llevas leído de este libro: tiempo total y por día (ms)
 const stats = Object.assign({ total: 0, days: {} }, st.stats || {})
@@ -22,6 +24,12 @@ const FONTS = [['original', 'Original'], ['atrio', 'Fraunces'], ['serif', 'Serif
 // El acento de la app (el que elegiste en Apariencia), en su versión clara y oscura
 const ACCENT = st.accent || { light: '#C8372D', dark: '#E0533F' }
 const DARK_THEMES = ['gris', 'noche', 'negro']
+const isNight = () => { const h = new Date().getHours(); return h >= 21 || h < 7 }
+/** El tema que toca ahora: el tuyo, o Noche si lo pediste y es de noche (salvo que ya uses uno oscuro). */
+const theme = () => (S.nightAuto && isNight() && !DARK_THEMES.includes(S.theme)) ? 'noche' : S.theme
+// Cada diez minutos se mira si ha cambiado (al anochecer, sin cerrar el libro)
+let lastTheme = null
+setInterval(() => { if (view && S.nightAuto && theme() !== lastTheme) applySettings() }, 600000)
 let view, isPDF = false, last = null, chromeOn = false, selection = null
 
 // ---------------------------------------------------------------- Utilidades
@@ -52,7 +60,7 @@ async function open() {
 
 async function abrir() {
     $('#t-libro').textContent = st.title || ''
-    document.body.dataset.theme = S.theme
+    document.body.dataset.theme = theme()
     try {
         paso = 'leer el archivo'
         const res = await fetch('/libro/' + encodeURIComponent(st.file))
@@ -89,7 +97,7 @@ async function abrir() {
 function css() {
     const cs = getComputedStyle(document.body)
     const fg = cs.getPropertyValue('--fg').trim(), bg = cs.getPropertyValue('--bg').trim(), accent = cs.getPropertyValue('--accent').trim()
-    const dark = DARK_THEMES.includes(S.theme)
+    const dark = DARK_THEMES.includes(theme())
     const fam = { original: '', atrio: 'AtrioSerif, Georgia, serif', serif: 'Georgia, "Noto Serif", serif', sans: 'system-ui, Roboto, "Noto Sans", sans-serif', facil: 'Verdana, "Atkinson Hyperlegible", sans-serif', mono: '"Roboto Mono", "Noto Sans Mono", monospace' }[S.font]
     const font = location.origin + '/assets/lector/fuentes/'
     const hy = S.hyphens ? 'auto' : 'manual'
@@ -118,10 +126,11 @@ html, body, body * { -webkit-user-select: none !important; user-select: none !im
 }
 
 function applySettings() {
-    document.body.dataset.theme = S.theme
-    document.documentElement.style.setProperty('--accent', DARK_THEMES.includes(S.theme) ? ACCENT.dark : ACCENT.light)
+    lastTheme = theme()
+    document.body.dataset.theme = lastTheme
+    document.documentElement.style.setProperty('--accent', DARK_THEMES.includes(lastTheme) ? ACCENT.dark : ACCENT.light)
     document.body.classList.toggle('sin-estado', !S.status)
-    A.setTheme(S.theme)
+    A.setTheme(lastTheme)
     if (!view?.renderer) return
     if (isPDF) {
         view.renderer.setAttribute('zoom', S.zoom)
@@ -286,7 +295,8 @@ function onLoad({ detail: { doc, index } }) {
     win.addEventListener('touchend', e => {
         clearTimeout(holdTimer)
         const t = e.changedTouches[0]
-        if (glow !== null) { glow = null; edge = false; swiped = true; saveSettings(); e.stopPropagation(); holding = false; return }
+        // (el touchend sí le llega a foliate: así la página vuelve a su sitio si se llegó a mover un poco al empezar)
+        if (glow !== null) { glow = null; edge = false; swiped = true; saveSettings(); holding = false; return }
         // PDF: se pasa de página deslizando (foliate no lo hace solo en los PDF)
         if (isPDF && t0 && t && !holding) {
             const dx = t.clientX - t0.x, dy = t.clientY - t0.y
@@ -710,6 +720,7 @@ function openSettings() {
     openPanel(`<h2>Letra y página</h2>
       <h3>Tema</h3>
       <div class="fila">${THEMES.map(([v, t]) => `<button class="tema ${S.theme === v ? 'on' : ''}" data-theme-btn="${v}" title="${t}" style="background:var(--t-${v})">Aa</button>`).join('')}</div>
+      <div class="fila" style="margin-top:10px">${chips([[false, 'Siempre este'], [true, 'Noche de 21:00 a 7:00']], S.nightAuto, 'nightAuto')}</div>
       ${isPDF ? `
         <h3>Tamaño de la página</h3>
         <div class="fila">${chips([['fit-width', 'Ajustar al ancho'], ['fit-page', 'Página entera']], S.zoom, 'zoom')}</div>
@@ -1008,7 +1019,7 @@ let vozOn = false, vozPaused = false, vozN = 0
 const RATES = [0.8, 1, 1.25, 1.5, 1.75, 2]
 const bookLang = () => {
     const l = view?.book?.metadata?.language
-    return (Array.isArray(l) ? l[0] : l) || 'es'
+    return String((Array.isArray(l) ? l[0] : l) || 'es')
 }
 function parseSSML(ssml) {
     const d = new DOMParser().parseFromString(ssml, 'application/xml')
@@ -1044,7 +1055,10 @@ async function vozStart() {
     try {
         await view.initTTS('sentence', vozMark)
         const r = last?.range
-        vozLoad(r ? view.tts.from(r) : view.tts.start())
+        let ssml = null
+        // Desde lo que se ve; si esa posición no está en el capítulo cargado, desde su principio
+        try { ssml = r ? view.tts.from(r) : null } catch (e) { console.warn(e) }
+        vozLoad(ssml || view.tts.start())
     } catch (e) { console.error(e); aviso('No se ha podido empezar a leer en voz alta'); vozStop() }
 }
 function vozLoad(ssml) {
@@ -1070,15 +1084,17 @@ window.atrioSpoken = (id, error) => {
     vozSay()
 }
 async function vozNextSection() {
-    const cur = view.renderer.getContents?.()[0]?.index
-    const n = view.book.sections.length
-    let next = (cur ?? -1) + 1
-    while (next < n && view.book.sections[next].linear === 'no') next++
-    if (next >= n) { aviso('Fin del libro'); vozStop(); return }
-    await view.goTo(next)
-    if (!vozOn) return
-    await view.initTTS('sentence', vozMark)
-    vozLoad(view.tts.start())
+    try {
+        const cur = view.renderer.getContents?.()?.[0]?.index
+        const n = view.book.sections.length
+        let next = (cur ?? -1) + 1
+        while (next < n && view.book.sections[next].linear === 'no') next++
+        if (next >= n) { aviso('Fin del libro'); vozStop(); return }
+        await view.goTo(next)
+        if (!vozOn) return
+        await view.initTTS('sentence', vozMark)
+        vozLoad(view.tts.start())
+    } catch (e) { console.error(e); aviso('No se ha podido seguir leyendo en voz alta'); vozStop() }
 }
 function vozPause() {
     if (!vozOn) return

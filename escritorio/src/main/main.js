@@ -573,6 +573,28 @@ function setupIpc() {
     return m;
   });
   ipcMain.handle('power', (_e, action) => doPower(action));
+  // La revista busca libros, pelis, series y juegos (Descubrir y «Añadir»): solo en estas webs y solo JSON.
+  // El token de TMDB («eyJ…») va en la cabecera, como en el móvil; las claves v3 ya van en la dirección.
+  const NET_OK = new Set(['openlibrary.org', 'api.themoviedb.org', 'api.tvmaze.com', 'api.rawg.io']);
+  ipcMain.handle('net:json', async (_e, url, token) => {
+    let u;
+    try { u = new URL(String(url)); } catch { throw new Error('Dirección no válida'); }
+    if (u.protocol !== 'https:' || !NET_OK.has(u.hostname)) throw new Error('Esa web no está permitida');
+    const headers = { 'User-Agent': 'Atrio/escritorio (app personal)', Accept: 'application/json' };
+    if (token && u.hostname === 'api.themoviedb.org') headers.Authorization = `Bearer ${String(token)}`;
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    try {
+      const r = await fetch(u.href, { headers, signal: ctl.signal });
+      if (r.status === 401) throw new Error('La clave no es válida (401): revísala en el móvil, en Ajustes → Servicios');
+      if (r.status === 429) throw new Error('Demasiadas búsquedas seguidas: espera un momento');
+      if (!r.ok) throw new Error(`El servidor respondió ${r.status}`);
+      return await r.json();
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('La web tarda demasiado en contestar');
+      throw e;
+    } finally { clearTimeout(t); }
+  });
   setupSuiteIpc();
 
 

@@ -112,7 +112,8 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
                     val on = Skin.accentId == a.id
                     val c = Color(if (Mode.dark) a.dark else a.light)
                     Column(
-                        Modifier.weight(1f).clickable { if (!on) { withReveal { Skin.accentId = a.id }; Skin.save(ctx) } },
+                        // Se guarda dentro del cambio: withReveal lo hace más tarde (tras la foto de la pantalla)
+                        Modifier.weight(1f).clickable { if (!on) withReveal { Skin.accentId = a.id; Skin.save(ctx) } },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(

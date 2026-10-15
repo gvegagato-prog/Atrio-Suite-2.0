@@ -15,6 +15,10 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="art" />
         </intent>
+        <!-- Leer en voz alta en el lector: desde Android 11, sin esto no se ve el motor de voz (TextToSpeech no arranca) -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
     </queries>
     <application
         android:label="Atrio"

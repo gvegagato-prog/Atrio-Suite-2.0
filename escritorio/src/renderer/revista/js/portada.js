@@ -195,6 +195,9 @@
       for (const k of D.tipos()) ul.append(fila(k.title, String(D.valorados(k).length + D.fichas(k).length), () => RV.ir({ v: 'seccion', k: k.id })));
       ul.append(fila('Diario', 'cal.', () => RV.ir({ v: 'diario' })));
       ul.append(fila('Cifras', '→', () => RV.ir({ v: 'cifras' })));
+      ul.append(fila('Descubrir un juego', '→', () => RV.ir({ v: 'descubrir', dom: 0 })));
+      ul.append(fila('Descubrir un libro', '→', () => RV.ir({ v: 'descubrir', dom: 1 })));
+      ul.append(fila('Descubrir una peli o serie', '→', () => RV.ir({ v: 'descubrir', dom: 2 })));
     }
     ul.append(fila('Tu PC', String(D.juegosPc().length), () => RV.ir({ v: 'pc' })));
     ul.append(fila('Ajustes', '→', () => RV.ir({ v: 'ajustes' })));

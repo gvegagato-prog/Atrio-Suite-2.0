@@ -30,7 +30,7 @@
     else RV.aviso('Esta versión de Atrio no puede cambiar de interfaz.', 'error');
   };
 
-  const TITULOS = { portada: 'Portada', diario: 'Diario', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes' };
+  const TITULOS = { portada: 'Portada', diario: 'Diario', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes', descubrir: 'Descubrir' };
   function pintar(o = {}) {
     const pag = document.getElementById('pagina');
     // Lo que estabas escribiendo (y dónde), para no perderlo al redibujar con datos nuevos
@@ -85,6 +85,7 @@
       item('Portada', { v: 'portada' }, v === 'portada'),
       D.tipos().map((k) => item(k.title, { v: 'seccion', k: k.id }, kAct === k.id)),
       item('Diario', { v: 'diario' }, v === 'diario'),
+      item('Descubrir', { v: 'descubrir', dom: 0 }, v === 'descubrir'),
       item('Cifras', { v: 'cifras' }, v === 'cifras'),
       item('Tu PC', { v: 'pc' }, v === 'pc'),
       item('Ajustes', { v: 'ajustes' }, v === 'ajustes'));

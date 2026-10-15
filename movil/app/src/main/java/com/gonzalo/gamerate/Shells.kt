@@ -132,6 +132,7 @@ private fun RevistaHome(m: ShellModel) {
         Rule(1.dp)
         Text(if (m.readOnly) "La colección de ${m.name}" else "La colección de ${m.name}, al día", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
 
+        RevistaLectura(all.filter { it.kind.isBook })
         if (m.paired) { Spacer(Modifier.height(16.dp)); m.live() }
 
         // En portada: lo que elijas de lo que llevas entre manos (si no, lo primero). Es la única imagen de la app.
@@ -213,6 +214,10 @@ private fun RevistaHome(m: ShellModel) {
             }
         }
 
+        // La cita (un subrayado tuyo, distinto cada día) y lo que terminaste tal día como hoy otros años
+        RevistaCita(all.filter { it.kind.isBook })
+        RevistaEfemerides(all) { m.open(it) }
+
         // Sumario: el índice de toda la app
         Spacer(Modifier.height(30.dp))
         RevSection("Sumario")
@@ -227,6 +232,9 @@ private fun RevistaHome(m: ShellModel) {
             SumarioRow("Descubrir una peli o serie", "→") { d(2) }
         }
         SumarioRow("Estadísticas", "→") { m.stats(GAMES) }
+        var especial by remember { mutableStateOf(false) }
+        SumarioRow("Tu ${today.year}, número especial", "★") { especial = true }
+        if (especial) NumeroEspecial(m.name, m.kinds, m.entries, onOpen = { e -> especial = false; m.open(e) }) { especial = false }
         Spacer(Modifier.height(40.dp))
         Text("Atrio · hecho en casa", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 13.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         Spacer(Modifier.height(24.dp))
