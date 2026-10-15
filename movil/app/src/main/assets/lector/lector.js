@@ -117,7 +117,10 @@ function applySettings() {
         view.renderer.setStyles?.(css())
         view.renderer.setAttribute('flow', S.flow)
         view.renderer.setAttribute('gap', { s: '4%', m: '7%', l: '11%' }[S.margin])
-        view.renderer.setAttribute('margin', { s: '28px', m: '44px', l: '64px' }[S.margin])
+        // Arriba y abajo: lo que ocupen la cámara y las barras del móvil, más el margen elegido
+        const rs = getComputedStyle(document.documentElement)
+        const safe = Math.max(parseFloat(rs.getPropertyValue('--safe-top')) || 0, parseFloat(rs.getPropertyValue('--safe-bottom')) || 0)
+        view.renderer.setAttribute('margin', Math.round(safe + { s: 26, m: 42, l: 62 }[S.margin]) + 'px')
         view.renderer.setAttribute('max-inline-size', '760px')
         view.renderer.setAttribute('max-column-count', '1')
     }
@@ -153,23 +156,64 @@ function currentMark() {
 }
 
 // ---------------------------------------------------------------- Toques
+// La app avisa cuando sabe cuánto ocupan las barras del móvil
+window.atrioInsets = () => applySettings()
+
 function onLoad({ detail: { doc, index } }) {
     // Para las pruebas automáticas (el libro va en un shadow DOM cerrado)
     ;(window.__docs ||= []).push({ doc, index })
-    const check = debounce(() => checkSelection(doc, index), 380)
+    window.__view = view
+    const check = debounce(() => checkSelection(doc, index), 300)
     doc.addEventListener('selectionchange', check)
+    const win = doc.defaultView
+
+    // Seleccionar texto: mientras mantienes pulsado o hay algo seleccionado, la página NO se mueve con el dedo
+    // (el paginador de foliate desplaza con cada movimiento y eso deshacía la selección).
+    let t0 = null, holding = false, holdTimer = 0, swiped = false
+    const hasSel = () => { const s = doc.getSelection(); return !!(s && !s.isCollapsed && s.toString().trim()) }
+    win.addEventListener('touchstart', e => {
+        const t = e.touches[0]
+        t0 = t ? { x: t.clientX, y: t.clientY, time: e.timeStamp } : null
+        swiped = false
+        holding = hasSel()
+        clearTimeout(holdTimer)
+        holdTimer = setTimeout(() => { holding = true }, 320)
+    }, { capture: true, passive: true })
+    const block = e => { if (holding || hasSel()) e.stopPropagation() }
+    win.addEventListener('touchmove', e => {
+        const t = e.touches[0]
+        if (t0 && t && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) > 12 && !holding) clearTimeout(holdTimer)
+        block(e)
+    }, { capture: true, passive: true })
+    win.addEventListener('touchend', e => {
+        clearTimeout(holdTimer)
+        const t = e.changedTouches[0]
+        // PDF: se pasa de página deslizando (foliate no lo hace solo en los PDF)
+        if (isPDF && t0 && t && !holding && !hasSel()) {
+            const dx = t.clientX - t0.x, dy = t.clientY - t0.y
+            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4 && e.timeStamp - t0.time < 900) {
+                swiped = true
+                if (dx < 0) view.goRight(); else view.goLeft()
+                if (chromeOn) showChrome(false)
+            }
+        }
+        block(e)
+        holding = false
+    }, { capture: true, passive: true })
+
     doc.addEventListener('click', e => {
         if (e.target.closest?.('a')) return
-        const s = doc.getSelection()
-        if (s && !s.isCollapsed && s.toString().trim()) return
+        if (swiped) { swiped = false; return }
+        if (hasSel()) return
         setTimeout(() => {
             if (annJustShown) { annJustShown = false; return }
             if (selection) { hideSel(); return }
             if ($('#panel').classList.contains('on')) { closePanel(); return }
-            const fr = doc.defaultView.frameElement?.getBoundingClientRect()
-            const x = e.clientX + (fr ? fr.left : 0)
-            const w = window.innerWidth
-            if (S.flow === 'paginated' || isPDF) {
+            // PDF: tocar nunca pasa de página, solo abre o cierra el menú (las páginas, deslizando)
+            if (S.flow === 'paginated' && !isPDF) {
+                const fr = doc.defaultView.frameElement?.getBoundingClientRect()
+                const x = e.clientX + (fr ? fr.left : 0)
+                const w = window.innerWidth
                 if (x < w * 0.27) { view.goLeft(); if (chromeOn) showChrome(false); return }
                 if (x > w * 0.73) { view.goRight(); if (chromeOn) showChrome(false); return }
             }
@@ -179,6 +223,8 @@ function onLoad({ detail: { doc, index } }) {
 }
 
 function showChrome(on) {
+    // Solo si cambia: esconder o enseñar las barras del móvil cuando ya lo estaban recoloca la página
+    if (on === chromeOn) return
     chromeOn = on
     $('#arriba').classList.toggle('oculta', !on)
     $('#abajo').classList.toggle('oculta', !on)

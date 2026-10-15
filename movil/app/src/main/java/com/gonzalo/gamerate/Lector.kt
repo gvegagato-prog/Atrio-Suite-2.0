@@ -142,9 +142,12 @@ class ReaderActivity : ComponentActivity() {
             }
             .build()
         web = object : WebView(this) {
-            // Sin el menú de copiar/compartir de Android: el lector tiene el suyo (subrayar, nota, copiar…)
-            override fun startActionMode(callback: ActionMode.Callback?, type: Int): ActionMode? = null
-            override fun startActionMode(callback: ActionMode.Callback?): ActionMode? = null
+            // El menú de copiar/compartir de Android se abre vacío: el lector tiene el suyo (subrayar, nota, copiar…).
+            // Ojo: devolver null aquí hace que el WebView cancele la selección al momento; hay que dejarlo abrir.
+            override fun startActionMode(callback: ActionMode.Callback?, type: Int): ActionMode? =
+                super.startActionMode(emptyMenu(callback), type)
+            override fun startActionMode(callback: ActionMode.Callback?): ActionMode? =
+                super.startActionMode(emptyMenu(callback))
         }
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
@@ -197,6 +200,17 @@ class ReaderActivity : ComponentActivity() {
         bars(false)
     }
 
+    /** El menú de selección de Android, pero sin opciones (y sin barra visible): la selección se mantiene. */
+    private fun emptyMenu(cb: ActionMode.Callback?): ActionMode.Callback = object : ActionMode.Callback2() {
+        override fun onCreateActionMode(mode: ActionMode, menu: android.view.Menu): Boolean { cb?.onCreateActionMode(mode, menu); menu.clear(); return true }
+        override fun onPrepareActionMode(mode: ActionMode, menu: android.view.Menu): Boolean { cb?.onPrepareActionMode(mode, menu); menu.clear(); return true }
+        override fun onActionItemClicked(mode: ActionMode, item: android.view.MenuItem): Boolean = false
+        override fun onDestroyActionMode(mode: ActionMode) { cb?.onDestroyActionMode(mode) }
+        override fun onGetContentRect(mode: ActionMode, view: View, outRect: android.graphics.Rect) {
+            if (cb is ActionMode.Callback2) cb.onGetContentRect(mode, view, outRect) else super.onGetContentRect(mode, view, outRect)
+        }
+    }
+
     private var safeTop = 0f
     private var safeBottom = 0f
 
@@ -204,7 +218,8 @@ class ReaderActivity : ComponentActivity() {
         if (!::web.isInitialized) return
         web.evaluateJavascript(
             "document.documentElement.style.setProperty('--safe-top','${safeTop}px');" +
-                "document.documentElement.style.setProperty('--safe-bottom','${safeBottom}px')", null
+                "document.documentElement.style.setProperty('--safe-bottom','${safeBottom}px');" +
+                "window.atrioInsets && atrioInsets()", null
         )
     }
 

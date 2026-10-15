@@ -63,6 +63,36 @@ const log = [];
     const prog = await page.evaluate(() => window.__atrio.saved.progress);
     ok(prog && prog.cfi, `${name}: guarda la posición (${prog && (Math.round(prog.f * 1000) / 10)} % · ${prog && prog.l})`);
     await page.screenshot({ path: path.join(out, name + '-2-paginas.png') });
+    // Toques y deslizamientos (con eventos táctiles de verdad)
+    const cdp = await ctx.newCDPSession(page);
+    const touch = async (pts) => {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: pts[0][0], y: pts[0][1] }] });
+      for (const p of pts.slice(1, -1)) { await page.waitForTimeout(p[2] || 16); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p[0], y: p[1] }] }); }
+      const l = pts[pts.length - 1]; await page.waitForTimeout(l[2] || 16);
+      if (pts.length > 1) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: l[0], y: l[1] }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    const frac = async () => (await page.evaluate(() => window.__atrio.saved.progress?.f)) ?? 0;
+    await page.waitForTimeout(900);
+    let f0 = await frac();
+    // Tocar el lado derecho de un PDF: abre el menú y no pasa de página
+    if (name.endsWith('pdf')) {
+      await touch([[380, 430]]); await page.waitForTimeout(900);
+      const menu = await page.$eval('#abajo', (e) => !e.classList.contains('oculta'));
+      ok(menu && (await frac()) === f0, `${name}: tocar el borde abre el menú y no pasa de página`);
+      await touch([[206, 430]]); await page.waitForTimeout(700);
+      // Deslizar hacia la izquierda: página siguiente
+      await touch([[330, 430], [280, 432], [200, 434], [120, 436]]); await page.waitForTimeout(1300);
+      const f1 = await frac();
+      ok(f1 > f0, `${name}: deslizar pasa de página (${Math.round(f0 * 1000) / 10} → ${Math.round(f1 * 1000) / 10} %)`);
+      await touch([[90, 430], [150, 432], [230, 434], [310, 436]]); await page.waitForTimeout(1300);
+      ok((await frac()) < f1, `${name}: deslizar al otro lado vuelve atrás`);
+    } else {
+      // (Los deslizamientos del EPUB no se pueden simular aquí: foliate usa screenX y las pruebas lo mandan a 0.
+      // Mantener pulsado, seleccionar y deslizar se prueban en el emulador con toques de verdad.)
+      const m = await page.evaluate(() => window.__view?.renderer?.getAttribute('margin'));
+      ok(m && parseInt(m) >= 42, `${name}: margen arriba y abajo ${m}`);
+    }
     // Barras (tocar el centro)
     await page.mouse.click(206, 430); await page.waitForTimeout(600);
     await page.screenshot({ path: path.join(out, name + '-3-barras.png') });
