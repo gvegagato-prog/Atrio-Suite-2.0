@@ -426,6 +426,7 @@ if [ -n "$P1" ]; then
 fi
 shot 63b_linea 1
 # El alto de la fila: se arrastra el círculo ⇕ hacia abajo y la fila crece
+seek "Alto de la fila 1"
 H1=$(pos "Alto de la fila 1"); echo "   alto en $H1" >> "$LOG"
 if [ -n "$H1" ]; then
   set -- $H1; adb shell input swipe $1 $2 $1 $(( $2 + 260 )) 900; sleep 1.5
@@ -434,6 +435,7 @@ if [ -n "$H1" ]; then
 fi
 shot 63e_alto 1
 tap "ALTO AUTO" || true; sleep 1
+top
 # Texto libre en la casilla de las guías
 must tap "Casilla Guías"; sleep 1.5
 must see "¿Qué va aquí?" 5
