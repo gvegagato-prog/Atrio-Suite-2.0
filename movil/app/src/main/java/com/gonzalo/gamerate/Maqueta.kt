@@ -29,6 +29,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -193,7 +195,14 @@ fun MagPage(
                                 .drawBehind {
                                     drawRoundRect(ColGeneral, style = androidx.compose.ui.graphics.drawscope.Stroke(3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))))
                                 }
-                                .clickable { choosing = i to j }
+                                .clickable(onClickLabel = "Cambiar") { choosing = i to j }
+                                // Lo de dentro queda tapado: la casilla se anuncia con su nombre (TalkBack y pruebas)
+                                .semantics { contentDescription = "Casilla " + when (c.type) {
+                                    "texto" -> c.title.ifBlank { "Texto libre" }
+                                    "imagen" -> c.title.ifBlank { "Imagen" }
+                                    "vacio" -> "vacía"
+                                    else -> defs[c.type]?.label ?: MAG_NAMES[c.type] ?: c.type
+                                } }
                         )
                     }
                 }

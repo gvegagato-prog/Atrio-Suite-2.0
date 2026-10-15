@@ -426,17 +426,17 @@ if [ -n "$P1" ]; then
 fi
 shot 63b_linea 1
 # Texto libre en la casilla de las guías
-must tap "GUÍAS"; sleep 1.5
+must tap "Casilla Guías"; sleep 1.5
 must see "¿Qué va aquí?" 5
 must tap "Texto libre (título y texto)"; sleep 1.5
 tap "Título (opcional)" && type "Mi%sveredicto"
 tap "Texto" && type "Lo%smejor%sdel%saño"
 kb
 must tap "Guardar"; sleep 1.5
-must see "MI VEREDICTO" 5
+must see "Casilla Mi veredicto" 5
 echo "   texto libre en una casilla" | tee -a "$LOG"
 # Imagen: se abre el selector (en el emulador no hay clave de SteamGridDB)
-must tap "MI VEREDICTO"; sleep 1.5
+must tap "Casilla Mi veredicto"; sleep 1.5
 must tap "Imagen"; sleep 3; shot 63c_imagen 1
 must see "PORTADA" 5
 tap "Cerrar"; sleep 1
