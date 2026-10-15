@@ -20,8 +20,13 @@ Ajustes → «Abrir el lanzador clásico» y, desde el lanzador, Ajustes → «V
 - **Portada:** «ATRIO» enorme, el número del día, «En portada» con lo que estás jugando, leyendo o viendo (la única
   imagen, con el arte del PC si es el mismo juego), «Ahora mismo», las notas más altas, lo último que has terminado
   y el sumario. Sin cuenta, invita a entrar y Tu PC funciona igual.
+- **Tal día como hoy** (en la portada) y **Tu año, número especial**: cifras, la portada del año, lo mejor, mes a mes,
+  tu nota media y la decepción; se puede ir a años anteriores.
 - **Secciones** (Videojuegos, Libros y tus categorías): En curso / En lista / Terminados / Dejados, buscador, orden
-  y «+ Añadir» (videojuegos con SteamGridDB; el resto, a mano, con el mismo id que les da el móvil).
+  y «+ Añadir»: videojuegos con SteamGridDB, libros con Open Library, películas con TMDB y series con TVmaze (los
+  mismos ids que usa el móvil, así la ficha es la misma en los dos), o a mano.
+- **Descubrir** un juego, un libro o una peli o serie: las mismas preguntas que el móvil (teclas A–E, espacio para
+  saltar), filtros de año y plataforma para juegos y «A mi lista +». Usa las claves de RAWG y TMDB de tu cuenta.
 - **Fichas en casillas:** nota gigante con criterios, opinión con capitular, datos, apuntes, apuntes rápidos, horas,
   partes, «Jugar en el PC» y capturas. Apuntar, valorar partidas, terminar, cambiar de estado, favorito, borrar…
   Todo se sincroniza con el móvil al momento.
@@ -29,6 +34,7 @@ Ajustes → «Abrir el lanzador clásico» y, desde el lanzador, Ajustes → «V
 - **Ajustes:** tema claro, oscuro o automático; acento (rojo, azul, verde, mostaza, morado, naranja, rosa o tinta);
   cuenta; clave de SteamGridDB.
 - Teclado: `Esc` vuelve, `/` busca, `F11` pantalla completa.
+- Prueba sin Electron: `node herramientas/revista/prueba-revista.js carpeta` (Chromium con una cuenta de ejemplo).
 - Para abrir una u otra sin tocar la configuración: `--revista` / `--lanzador` (o `ATRIO_UI=revista|lanzador`).
 
 ## Atrio 6.8 (móvil)
