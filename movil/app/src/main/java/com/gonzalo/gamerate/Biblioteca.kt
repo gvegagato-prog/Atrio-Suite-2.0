@@ -120,7 +120,7 @@ fun LibraryScreen(
                     Spacer(Modifier.height(10.dp))
                     // Atajos de cada apartado
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (onDiscover != null) ActionPill(Icons.Rounded.AutoAwesome, if (kind.isGame) "Siguiente juego" else "Descubrir", dark = true, onClick = onDiscover)
+                        if (onDiscover != null) ActionPill(Icons.Rounded.AutoAwesome, "Descubrir", dark = true, onClick = onDiscover)
                         if (segment == 1 && onWheel != null && counts[1] > 0) ActionPill(Icons.Rounded.Casino, "Ruleta", onClick = onWheel)
                         if (segment == 2) {
                             listOf("Nota", "Recientes", "Nombre").forEachIndexed { i, n -> SoftChip(n, sort == i) { sort = i } }

@@ -127,7 +127,8 @@ step "Dock: Juegos, Libros, Cine y Diario"
 home
 dock "Juegos"; shot 10_juegos; alive "juegos"
 tap "Pasados"; sleep 1; shot 10b_pasados
-must tap "Siguiente juego"; shot 11_siguiente 3; alive "siguiente"
+must tap "Descubrir"; shot 11_siguiente 3; alive "siguiente"
+must see "A qué juego ahora" 8
 back
 dock "Libros"; shot 12_libros; alive "libros"
 dock "Cine"; shot 13_cine; alive "cine"
