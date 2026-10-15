@@ -138,7 +138,7 @@ private fun GuideCard(g: Guide, resume: String?, onOpen: () -> Unit, onLong: () 
  * (para tenerla en el móvil mientras juegas en el PC). Mantener pulsada una tarjeta: más opciones.
  */
 @Composable
-fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier) {
+fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier, inCell: Boolean = false) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var tick by remember { mutableStateOf(0) }
@@ -158,6 +158,26 @@ fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier) {
     val resume = remember(list, tick) {
         list.associate { g -> g.url to WebActivity.lastPage(ctx, g.url)?.let { (u, t) -> if (u.trimEnd('/') == g.url.trimEnd('/')) null else t.ifBlank { Uri.parse(u).lastPathSegment ?: u } } }
     }
+    if (Skin.revista) Column(modifier.fillMaxWidth()) {
+        // Revista: una lista de texto (sin tarjetas ni iconos), con «Seguías en…» debajo
+        if (!inCell) SectionTitle("Guías", action = "Añadir", onAction = { adding = true })
+        list.forEach { g ->
+            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+            Column(Modifier.fillMaxWidth().combinedClickable(onClick = { Guides.opener?.invoke(g) }, onLongClick = { menu = g }).padding(vertical = 6.dp)) {
+                Text(g.title, fontFamily = Display, fontSize = 18.sp, lineHeight = 21.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    (resume[g.url]?.let { "Seguías en: $it" } ?: g.host).uppercase() + if (g.src == "sug") " · SUGERIDA" else "",
+                    color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        if (list.isEmpty()) Text("Ninguna todavía.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 16.sp)
+        Spacer(Modifier.height(6.dp))
+        if (inCell) Text("+ AÑADIR", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable { adding = true }.padding(vertical = 4.dp))
+        Text("BUSCAR GUÍAS →", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            modifier = Modifier.clickable { Guides.opener?.invoke(Guide("Buscar guías", "https://duckduckgo.com/?q=" + Uri.encode("$name guía"), "sug")) }.padding(vertical = 4.dp))
+        if (msg.isNotEmpty()) Text(msg, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+    } else
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Language, null, tint = Charcoal, modifier = Modifier.size(22.dp))

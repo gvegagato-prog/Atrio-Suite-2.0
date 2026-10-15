@@ -229,34 +229,51 @@ fun PlayButtons(key: String, name: String, modifier: Modifier = Modifier, onLaun
     var needNova by remember { mutableStateOf(false) }
     var waking by remember { mutableStateOf(false) }
     val running = pc?.game?.key == key
+    val launch: () -> Unit = {
+        busyPc = true
+        scope.launch { val (_, m) = Suite.send("launch", JSONObject().put("key", key), pc?.dev); busyPc = false; toast(ctx, m); onLaunched(m) }
+    }
+    val stream: () -> Unit = stream@{
+        if (Stream.nova(ctx) == null) { needNova = true; return@stream }
+        if (pc == null) {
+            val h = any?.st
+            if ((h != null && h.macs.isNotEmpty()) || Tuya.configured(ctx)) waking = true
+            else toast(ctx, "El PC no está conectado: enciéndelo o abre Atrio en él.")
+            return@stream
+        }
+        busySt = true
+        scope.launch {
+            val err = Stream.play(ctx, if (running) null else key)
+            busySt = false
+            if (err == "NOVA") needNova = true else if (err != null) toast(ctx, err)
+        }
+    }
+    if (Skin.revista) {
+        // Revista: dos líneas de texto en lugar de botones de color
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            val canPc = pc != null && !running
+            Column(Modifier.fillMaxWidth().clickable(enabled = canPc && !busyPc) { launch() }) {
+                Text(if (busyPc) "Abriendo…" else if (running) "En marcha" else "Jugar en el PC →", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+                    color = if (canPc || running) Charcoal else Muted)
+                Text((pc?.let { if (running) "Ya en ${it.name}" else "En ${it.name}" } ?: "PC apagado").uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+            Column(Modifier.fillMaxWidth().clickable(enabled = !busySt) { stream() }) {
+                Text(if (busySt) "Conectando…" else "Streaming →", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = ColGeneral)
+                Text((if (running) "Seguir en el móvil" else "En este móvil").uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+        }
+    } else
     Column(modifier.fillMaxWidth().animateContentSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BigPlay(
                 Icons.Rounded.PlayArrow, if (running) "En marcha" else "Jugar en el PC",
                 pc?.let { if (running) "Ya en ${it.name}" else "En ${it.name}" } ?: "PC apagado",
                 Brush.linearGradient(listOf(Color(0xFF2B2B31), Color(0xFF17171A))), busyPc, pc != null && !running, Modifier.weight(1f)
-            ) {
-                busyPc = true
-                scope.launch { val (_, m) = Suite.send("launch", JSONObject().put("key", key), pc?.dev); busyPc = false; toast(ctx, m); onLaunched(m) }
-            }
+            ) { launch() }
             BigPlay(
                 Icons.Rounded.Cast, "Streaming", if (running) "Seguir en el móvil" else "En este móvil",
                 Brush.linearGradient(listOf(Color(0xFF1F8A8A), Color(0xFF3B3FA8))), busySt, true, Modifier.weight(1f)
-            ) {
-                if (Stream.nova(ctx) == null) { needNova = true; return@BigPlay }
-                if (pc == null) {
-                    val h = any?.st
-                    if ((h != null && h.macs.isNotEmpty()) || Tuya.configured(ctx)) waking = true
-                    else toast(ctx, "El PC no está conectado: enciéndelo o abre Atrio en él.")
-                    return@BigPlay
-                }
-                busySt = true
-                scope.launch {
-                    val err = Stream.play(ctx, if (running) null else key)
-                    busySt = false
-                    if (err == "NOVA") needNova = true else if (err != null) toast(ctx, err)
-                }
-            }
+            ) { stream() }
         }
     }
     if (needNova) NovaDialog { needNova = false }

@@ -192,7 +192,7 @@ fun DeckScreen(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 10.dp)) {
                 items(matches, key = { it.key }) { c ->
                     Column(Modifier.width(78.dp).pop { onAdd(c) }) {
-                        AsyncImage(
+                        if (!Skin.revista) AsyncImage(
                             c.image, c.title,
                             Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(shp(10.dp)).background(Sand),
                             contentScale = ContentScale.Crop
@@ -215,7 +215,7 @@ fun DeckScreen(
             title = { Text("¡Match!", fontFamily = Display) },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    AsyncImage(
+                    if (!Skin.revista) AsyncImage(
                         m.image, m.title,
                         Modifier.width(150.dp).aspectRatio(2f / 3f).clip(shp(16.dp)).background(Sand),
                         contentScale = ContentScale.Crop
@@ -354,7 +354,9 @@ internal fun SwipeCard(
                 }
             )
     ) {
-        AsyncImage(c.image, c.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        // Revista: sin imágenes; la carta es de tinta con el título en grande
+        if (Skin.revista) Box(Modifier.fillMaxSize().background(Color(0xFF15120F)))
+        else AsyncImage(c.image, c.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color(0xDD000000))

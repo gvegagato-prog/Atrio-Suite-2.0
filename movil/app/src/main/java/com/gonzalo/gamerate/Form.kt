@@ -62,7 +62,6 @@ data class Form(
 
 val FORMS: List<Form> = listOf(
     Form("revista", "Revista", "Papel sin tarjetas: filetes finos, cifras enormes y subrayados", Corner.Square, 0f, 0.dp, false, Shade.None, GaugeKind.BigNum, ChipKind.Underline, CoverKind.Plain, Overlay.None, GridKind.List),
-    Form("bento", "Escritorio", "Bloques muy redondos y llenos de color", Corner.Round, 1.6f, 0.dp, false, Shade.None, GaugeKind.Fat, ChipKind.Filled, CoverKind.Soft, Overlay.None, GridKind.Poster),
     Form("vitrina", "Vitrina", "Atrio 6: esquinas grandes, sin bordes, portadas protagonistas", Corner.Round, 1.3f, 0.dp, false, Shade.None, GaugeKind.Ring, ChipKind.Filled, CoverKind.Soft, Overlay.None, GridKind.Poster),
     Form("clasico", "Clásica", "Anillos, esquinas suaves y línea fina", Corner.Round, 1f, 1.dp, false, Shade.None, GaugeKind.Ring, ChipKind.Pill, CoverKind.Plain, Overlay.None, GridKind.Poster),
     Form("editorial", "Editorial", "Barras finas con cifras de revista, marcos de foto y grano de papel", Corner.Round, 0.12f, 1.dp, false, Shade.Soft, GaugeKind.Bar, ChipKind.Underline, CoverKind.Polaroid, Overlay.Grain, GridKind.Wide),

@@ -92,7 +92,6 @@ fun LibraryScreen(
         favOnly, { favOnly = it }, sessId, readOnly, open, onAdd, onStats, onDiscover, onWheel, titleSwitch, badgeFor, onBack
     )
     if (Skin.revista) { RevistaLibrary(lib); return }
-    if (Skin.escritorio) { EscritorioLibrary(lib); return }
     val grid = rememberLazyGridState()
     Box(Modifier.fillMaxSize()) {
         LazyVerticalGrid(
@@ -202,7 +201,7 @@ private fun EmptyLibrary(kind: Kind, segment: Int, searching: Boolean, onAdd: ((
 }
 
 
-// ================================================================ Bibliotecas de las interfaces Revista y Escritorio
+// ================================================================ Biblioteca de la interfaz Revista
 
 /** Lo que necesita cualquier biblioteca para pintarse. */
 private class LibUi(
@@ -257,108 +256,24 @@ private fun RevistaLibrary(l: LibUi) {
         }
         items(l.cells.size, key = { "${l.segment}-${l.cells[it].id}" }) { i ->
             val c = l.cells[i]
-            Row(Modifier.fillMaxWidth().press(haptic = false) { l.open(c) }.padding(vertical = 12.dp).rise(i, i < 12), verticalAlignment = Alignment.CenterVertically) {
-                Text("%02d".format(i + 1), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.width(30.dp))
-                Box(Modifier.width(54.dp).aspectRatio(2f / 3f).sharedCover(coverKey(l.kind.id, c.id)).background(Sand), contentAlignment = Alignment.Center) {
-                    if (c.cover.isBlank()) Text(c.name.take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Muted)
-                    else coil.compose.AsyncImage(c.cover, c.name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                }
-                Spacer(Modifier.width(14.dp))
+            // Sin portadas: el título grande, la nota a la derecha y el estudio (o autor) debajo
+            Row(Modifier.fillMaxWidth().press(haptic = false) { l.open(c) }.padding(vertical = 14.dp).rise(i, i < 12), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(c.name, fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 21.sp, lineHeight = 24.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    if (c.sub.isNotBlank()) Text(c.sub, color = Muted, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Text(c.name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 32.sp, letterSpacing = (-0.5).sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    val who = (c.game?.creator ?: c.play?.creator).orEmpty()
+                    val line = listOf(who, if (c.sub != who) c.sub else "").filter { it.isNotBlank() }.joinToString(" · ")
+                    if (line.isNotBlank()) Text(line.uppercase(), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                     val pct = c.play?.percent()
                     if (pct != null && pct > 0) Text("$pct % HECHO", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     if (c.play?.id == l.sessId && l.sessId != 0L) Box(Modifier.padding(top = 4.dp)) { LiveDot() }
                     if (l.badgeFor != null) Box(Modifier.padding(top = 4.dp).height(26.dp).width(120.dp)) { l.badgeFor.invoke(this, c.id, c.name) }
                 }
                 if (c.game != null) {
-                    Spacer(Modifier.width(10.dp))
-                    Text("${c.game.general}", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 44.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Text("${c.game.general}", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 48.sp, lineHeight = 48.sp)
                 }
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
-        }
-    }
-}
-
-/** Escritorio: los apartados son bloques de colores con su cifra; los títulos, bloques grandes y pequeños. */
-@Composable
-private fun EscritorioLibrary(l: LibUi) {
-    val segColors = listOf(ColGeneral, ColGfx, ColGameplay, ColAvg)
-    Box(Modifier.fillMaxSize()) {
-        LazyVerticalGrid(
-            GridCells.Fixed(2), Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 110.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Column {
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (l.onBack != null) { BackRound(onBack = l.onBack); Spacer(Modifier.width(10.dp)) }
-                        Box(Modifier.weight(1f)) {
-                            if (l.titleSwitch != null) l.titleSwitch.invoke()
-                            else Text(l.kind.title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, maxLines = 1)
-                        }
-                        RoundIcon(Icons.Rounded.Search, "Buscar", active = l.searching) { l.setSearching(!l.searching); if (l.searching) l.setQuery("") }
-                        Spacer(Modifier.width(8.dp))
-                        RoundIcon(Icons.Rounded.Insights, "Estadísticas", onClick = l.onStats)
-                    }
-                    if (l.searching) SearchPill(l.query, "Buscar en ${l.kind.title.lowercase()}", Modifier.fillMaxWidth().padding(bottom = 8.dp)) { l.setQuery(it) }
-                    // Los cuatro apartados como bloques con su cifra
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        l.labels.forEachIndexed { i, n ->
-                            val on = i == l.segment
-                            Column(
-                                Modifier.weight(1f).height(84.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
-                                    .background(if (on) segColors[i] else Crudo).press { l.onSegment(i) }.padding(10.dp)
-                            ) {
-                                Text("${l.counts[i]}", color = if (on) Color.White else Charcoal, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-                                Spacer(Modifier.weight(1f))
-                                Text(n, color = if (on) Color.White.copy(alpha = 0.9f) else Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            }
-                        }
-                    }
-                    Row(Modifier.padding(top = 10.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (l.onDiscover != null) ActionPill(Icons.Rounded.AutoAwesome, if (l.kind.isGame) "Siguiente juego" else "Descubrir", dark = true, onClick = l.onDiscover)
-                        if (l.segment == 1 && l.onWheel != null && l.counts[1] > 0) ActionPill(Icons.Rounded.Casino, "Ruleta", onClick = l.onWheel)
-                        if (l.segment == 2) {
-                            listOf("Nota", "Recientes", "Nombre").forEachIndexed { i, n -> SoftChip(n, l.sort == i) { l.setSort(i) } }
-                            SoftChip("★ Favoritos", l.favOnly) { l.setFav(!l.favOnly) }
-                        }
-                    }
-                    if (l.cells.isEmpty()) EmptyLibrary(l.kind, l.segment, l.query.isNotBlank(), if (l.readOnly) null else l.onAdd)
-                }
-            }
-            items(l.cells.size, key = { "${l.segment}-${l.cells[it].id}" }, span = { if (it == 0) GridItemSpan(maxLineSpan) else GridItemSpan(1) }) { i ->
-                val c = l.cells[i]
-                val big = i == 0
-                Box(
-                    Modifier.fillMaxWidth().then(if (big) Modifier.height(210.dp) else Modifier.aspectRatio(0.78f)).rise(i, i < 12)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(26.dp)).background(Crudo).press { l.open(c) }
-                ) {
-                    val art = if (big) (c.play?.hero ?: c.game?.hero).orEmpty().ifBlank { c.cover } else c.cover
-                    if (art.isNotBlank()) coil.compose.AsyncImage(art, c.name, Modifier.fillMaxSize().sharedCover(if (big) null else coverKey(l.kind.id, c.id)), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                    else Text(c.name.take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 60.sp, color = Muted, modifier = Modifier.align(Alignment.Center))
-                    Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.85f))))
-                    Column(Modifier.align(Alignment.BottomStart).padding(14.dp)) {
-                        Text(c.name, color = Color.White, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = if (big) 24.sp else 16.sp, lineHeight = if (big) 27.sp else 19.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                        if (c.sub.isNotBlank()) Text(c.sub, color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, maxLines = 1)
-                        val pct = c.play?.percent()
-                        if (pct != null && pct > 0) Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.25f))) {
-                            Box(Modifier.fillMaxWidth(pct / 100f).fillMaxHeight().background(ColGameplay))
-                        }
-                    }
-                    if (c.game != null) Box(Modifier.align(Alignment.TopEnd).padding(10.dp).size(44.dp).clip(CircleShape).background(ColGeneral), contentAlignment = Alignment.Center) {
-                        Text("${c.game.general}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                    }
-                    if (c.play?.id == l.sessId && l.sessId != 0L) Box(Modifier.align(Alignment.TopEnd).padding(10.dp)) { LiveDot() }
-                    if (l.badgeFor != null) Box(Modifier.align(Alignment.TopStart).padding(10.dp)) { l.badgeFor.invoke(this, c.id, c.name) }
-                }
-            }
-        }
-        if (l.onAdd != null && !l.readOnly) {
-            Fab6(Icons.Rounded.Add, "Añadir", Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 22.dp, bottom = 22.dp)) { l.onAdd.invoke(l.segment != 2) }
         }
     }
 }

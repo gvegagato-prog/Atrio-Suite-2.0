@@ -381,20 +381,21 @@ else
   echo "== Lector: se prueba en Android 12 o más (este emulador es Android $SDK)" | tee -a "$LOG"
 fi
 
-step "Interfaces nuevas: Revista y Escritorio (portada, biblioteca y ficha)"
-for sh in 2 3; do
-  adb shell am force-stop "$PKG"; sleep 1
-  adb shell am start -W -n "$PKG/.MainActivity" --ei shell $sh >/dev/null; sleep 5
-  shot "60_interfaz_$sh" 2; alive "interfaz $sh"
-  if [ $sh = 2 ]; then must seek "Videojuegos"; tap "Videojuegos"; else must seek "JUEGOS"; tap "JUEGOS"; fi
-  sleep 2; shot "61_biblioteca_$sh" 1; alive "biblioteca $sh"
-  must seek "Juego de Prueba"; tap "Juego de Prueba"; sleep 3
-  shot "62_ficha_$sh" 1; alive "ficha $sh"
-  adb shell input swipe 540 1600 540 700 500; sleep 1; shot "62_ficha_${sh}b" 1
-  back; back; sleep 1; alive "volver $sh"
-done
-must see "Escritorio" 5
-echo "   Revista y Escritorio: portada, biblioteca y ficha" | tee -a "$LOG"
+step "Revista: portada, imagen de portada, biblioteca y ficha en casillas"
+adb shell am force-stop "$PKG"; sleep 1
+adb shell am start -W -n "$PKG/.MainActivity" --ei shell 2 >/dev/null; sleep 5
+shot 60_revista 2; alive "revista"
+must see "EN PORTADA" 10
+if tap "CAMBIAR IMAGEN"; then sleep 6; shot 60b_cambiar_imagen 1; alive "cambiar imagen"; back; sleep 2; fi
+must seek "Videojuegos"; tap "Videojuegos"; sleep 2
+shot 61_revista_biblioteca 1; alive "biblioteca revista"
+must seek "Juego de Prueba"; tap "Juego de Prueba"; sleep 3
+shot 62_revista_ficha 1; alive "ficha revista"
+must see "GUÍAS" 5
+adb shell input swipe 540 1600 540 700 500; sleep 1; shot 62b_revista_ficha 1
+must seek "EDITAR"
+back; back; sleep 1; alive "volver revista"
+echo "   Revista: portada, biblioteca y ficha en casillas" | tee -a "$LOG"
 
 step "OK: la app no se ha cerrado en ningún paso"
 adb logcat -d | grep -E "AndroidRuntime|FATAL" -A20 > "$OUT/errores_log.txt" || true

@@ -164,7 +164,7 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = 
         return
     }
     Row(modifier.fillMaxWidth().padding(top = 22.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, fontFamily = Display, fontWeight = if (Skin.escritorio) FontWeight.Bold else FontWeight.SemiBold, fontSize = if (Skin.escritorio) 22.sp else 20.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (action != null && onAction != null) Text(action, color = ColGeneral, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.press(onClick = onAction).padding(6.dp))
     }
 }
@@ -292,6 +292,20 @@ fun CoverCard(
     onLong: (() -> Unit)? = null, interactive: Boolean = true, onClick: () -> Unit
 ) {
     val shape = shp(20.dp)
+    if (Skin.revista) {
+        // Revista: sin portada; una ficha de papel con filete y el título en grande
+        Box(modifier.fillMaxWidth().aspectRatio(ratio).then(if (interactive) Modifier.press(onLong = onLong, onClick = onClick) else Modifier)
+            .background(Crudo).border(1.dp, Charcoal)) {
+            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp)) {
+                Text(name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 22.sp, maxLines = 5, overflow = TextOverflow.Ellipsis)
+                if (!sub.isNullOrBlank()) Text(sub.uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                if (progress != null) Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).background(Line)) { Box(Modifier.fillMaxWidth(progress.coerceIn(0.02f, 1f)).fillMaxHeight().background(ColGeneral)) }
+            }
+            if (badge != null) Box(Modifier.align(Alignment.TopEnd).padding(8.dp), content = badge)
+            if (badgeStart != null) Box(Modifier.align(Alignment.TopStart).padding(8.dp), content = badgeStart)
+        }
+        return
+    }
     Box(modifier.fillMaxWidth().aspectRatio(ratio).then(if (interactive) Modifier.press(onLong = onLong, onClick = onClick) else Modifier)) {
         Box(Modifier.matchParentSize().sharedCover(sharedKey).clip(shape).background(Sand), contentAlignment = Alignment.Center) {
             if (cover.isBlank()) {
@@ -331,7 +345,7 @@ fun Card6(modifier: Modifier = Modifier, padding: Dp = 18.dp, onClick: (() -> Un
     }
     Column(
         modifier.fillMaxWidth().then(if (onClick != null) Modifier.press(onClick = onClick) else Modifier)
-            .surface(if (Skin.escritorio) 28.dp else 24.dp, Crudo).padding(padding),
+            .surface(24.dp, Crudo).padding(padding),
         content = content
     )
 }
@@ -347,7 +361,6 @@ fun HeroHeader(
 ) {
     val art = hero.ifBlank { cover }
     if (Skin.revista) { RevistaHero(cover, hero, title, overline, sharedKey, onBack, actions, chips); return }
-    if (Skin.escritorio) { EscritorioHero(cover, hero, title, overline, sharedKey, onBack, actions, chips); return }
     Box(Modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().height(330.dp)) {
             if (art.isNotBlank()) {
@@ -386,77 +399,54 @@ fun HeroHeader(
     }
 }
 
-/** Revista: barra fina arriba, foto a sangre sin difuminar, antetítulo rojo y titular enorme con filete. */
+/** Tamaño del titular de revista según lo largo que sea (sin portada, el título es lo que manda). */
+fun headlineSize(title: String): Pair<androidx.compose.ui.unit.TextUnit, androidx.compose.ui.unit.TextUnit> {
+    val longest = title.split(' ').maxOfOrNull { it.length } ?: 0
+    return when {
+        title.length <= 8 && longest <= 8 -> 86.sp to 84.sp
+        title.length <= 16 && longest <= 10 -> 66.sp to 66.sp
+        title.length <= 30 && longest <= 13 -> 50.sp to 52.sp
+        else -> 38.sp to 41.sp
+    }
+}
+
+/** Barra de arriba de las fichas de revista: «Volver» y los botones de la derecha. */
+@Composable
+fun RevistaTopBar(onBack: () -> Unit, actions: @Composable RowScope.() -> Unit = {}) {
+    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.press(onClick = onBack).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", tint = Charcoal, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp))
+            Text("VOLVER", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
+        }
+        Spacer(Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), content = actions)
+    }
+}
+
+/** Titular de ficha: antetítulo rojo y el nombre enorme, a todo lo ancho, sin imágenes. */
+@Composable
+fun RevistaHeadline(title: String, overline: String?) {
+    val (fs, lh) = headlineSize(title)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
+        if (overline != null) Text(overline.uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = fs, lineHeight = lh, letterSpacing = (-1.5).sp)
+    }
+}
+
+/** Revista: sin imágenes; «Volver», antetítulo rojo y el titular enorme con filete grueso. */
 @Composable
 private fun RevistaHero(
     cover: String, hero: String, title: String, overline: String?, sharedKey: String?,
     onBack: () -> Unit, actions: @Composable RowScope.() -> Unit, chips: @Composable () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.press(onClick = onBack).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", tint = Charcoal, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp))
-                Text("VOLVER", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
-            }
-            Spacer(Modifier.weight(1f))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), content = actions)
-        }
+    Column(Modifier.fillMaxWidth()) {
+        RevistaTopBar(onBack, actions)
         Box(Modifier.padding(horizontal = 18.dp).fillMaxWidth().height(3.dp).background(Charcoal))
-        Spacer(Modifier.height(14.dp))
-        if (hero.isNotBlank()) {
-            AsyncImage(hero, null, Modifier.padding(horizontal = 18.dp).fillMaxWidth().aspectRatio(16f / 9f), contentScale = ContentScale.Crop)
-            Spacer(Modifier.height(14.dp))
-        }
-        Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                if (overline != null) Text(overline.uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = if (title.length > 24) 34.sp else 44.sp, lineHeight = if (title.length > 24) 37.sp else 46.sp, letterSpacing = (-0.8).sp)
-            }
-            if (hero.isBlank() || cover.isNotBlank()) {
-                Spacer(Modifier.width(14.dp))
-                Box(Modifier.width(92.dp).aspectRatio(2f / 3f).sharedCover(sharedKey).background(Sand), contentAlignment = Alignment.Center) {
-                    if (cover.isBlank()) Text(title.take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 40.sp, color = Muted)
-                    else AsyncImage(cover, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                }
-            }
-        }
+        Spacer(Modifier.height(12.dp))
+        RevistaHeadline(title, overline)
         Box(Modifier.padding(horizontal = 18.dp, vertical = 12.dp).fillMaxWidth().height(1.dp).background(Charcoal))
         Box(Modifier.padding(horizontal = 18.dp)) { chips() }
         Spacer(Modifier.height(6.dp))
-    }
-}
-
-/** Escritorio: la cabecera es un bloque grande y redondo, con la portada y el título dentro. */
-@Composable
-private fun EscritorioHero(
-    cover: String, hero: String, title: String, overline: String?, sharedKey: String?,
-    onBack: () -> Unit, actions: @Composable RowScope.() -> Unit, chips: @Composable () -> Unit
-) {
-    val art = hero.ifBlank { cover }
-    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp)) {
-        Box(Modifier.fillMaxWidth().padding(top = 6.dp).height(300.dp).clip(RoundedCornerShape(32.dp)).background(Brush.linearGradient(listOf(ColGeneral, ColStory)))) {
-            if (art.isNotBlank()) AsyncImage(art, null, Modifier.fillMaxSize().then(if (hero.isBlank()) Modifier.blur(24.dp) else Modifier), contentScale = ContentScale.Crop, alpha = 0.75f)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.25f), 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.75f))))
-            Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                BackRound(onImage = true, onBack = onBack)
-                Spacer(Modifier.weight(1f))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), content = actions)
-            }
-            Row(Modifier.align(Alignment.BottomStart).padding(16.dp), verticalAlignment = Alignment.Bottom) {
-                Box(Modifier.width(96.dp).aspectRatio(2f / 3f).sharedCover(sharedKey).shadow(18.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                    if (cover.isBlank()) Text(title.take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 40.sp, color = Color.White)
-                    else AsyncImage(cover, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    if (overline != null) Text(overline.uppercase(), color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(title, color = Color.White, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = if (title.length > 24) 22.sp else 28.sp, lineHeight = if (title.length > 24) 25.sp else 31.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        chips()
-        Spacer(Modifier.height(4.dp))
     }
 }
 

@@ -157,10 +157,11 @@ fun LiveCard(
         return
     }
     val play = plays.find { it.id == g.sg }
-    val hero = play?.hero?.ifBlank { null } ?: g.hero.ifBlank { g.cover }
+    // Revista: sin arte ni logo, un recuadro de tinta con el nombre
+    val hero = if (Skin.revista) "" else play?.hero?.ifBlank { null } ?: g.hero.ifBlank { g.cover }
     Box(Modifier.fillMaxWidth().height(236.dp).clip(shape).background(Color(0xFF15151A)).clickable { onRemote() }) {
         if (hero.isNotBlank()) AsyncImage(hero, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        else {
+        else if (!Skin.revista) {
             // Sin arte: un degradado con un tono propio de cada juego (el mismo nombre, el mismo color)
             val hue = ((g.name.hashCode() and 0x7fffffff) % 360).toFloat()
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(
@@ -174,7 +175,7 @@ fun LiveCard(
             Text("EN DIRECTO · ${pc.name.uppercase()}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
         }
         Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp)) {
-            val logo = play?.logo?.ifBlank { null } ?: g.logo
+            val logo = if (Skin.revista) "" else play?.logo?.ifBlank { null } ?: g.logo
             if (logo.isNotBlank()) {
                 AsyncImage(logo, g.name, Modifier.heightIn(max = 54.dp).widthIn(max = 230.dp), contentScale = ContentScale.Fit, alignment = Alignment.CenterStart)
             } else {

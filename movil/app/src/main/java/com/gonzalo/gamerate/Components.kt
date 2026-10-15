@@ -318,6 +318,7 @@ fun Bar(frac: Float, color: Color, modifier: Modifier = Modifier, height: Dp = 6
 /** Portada pequeña redondeada. */
 @Composable
 fun MiniCover(url: String, w: Dp = 44.dp, modifier: Modifier = Modifier) {
+    if (Skin.revista) return  // Revista: sin portadas
     AsyncImage(
         url, null,
         modifier.width(w).aspectRatio(2f / 3f).clip(shp(6.dp)).background(Sand).coverFrame(),
@@ -372,6 +373,13 @@ fun critColors() = listOf(ColGfx, ColStory, ColMusic, ColGameplay)
 /** Portada con su inicial detrás (se ve si no hay imagen o mientras carga). */
 @Composable
 fun Cover(url: String, name: String, modifier: Modifier, alpha: Float = 1f) {
+    // Revista: sin portadas; el nombre en tipografía, como un lomo
+    if (Skin.revista) {
+        Box(modifier.background(Crudo).border(1.dp, Charcoal).padding(8.dp), contentAlignment = Alignment.BottomStart) {
+            Text(name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 18.sp, maxLines = 5, overflow = TextOverflow.Ellipsis)
+        }
+        return
+    }
     Box(modifier.coverFrame(), contentAlignment = Alignment.Center) {
         if (url.isBlank()) {
             Text(name.trim().take(1).uppercase(), fontFamily = Display, fontSize = 44.sp, color = Muted)

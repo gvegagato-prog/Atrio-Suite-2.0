@@ -268,7 +268,13 @@ fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: M
             fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Normal
         )
         Box(Modifier.weight(1f).fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 2.dp)) {
-            if (cs.isNotEmpty()) {
+            if (cs.isNotEmpty() && Skin.revista) {
+                // Revista: sin portadas; el título en letra pequeña y cuántos más hay
+                Column(Modifier.fillMaxSize()) {
+                    Text(cs[0].name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 9.sp, lineHeight = 10.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if (cs.size > 1) Text("+${cs.size - 1}", color = ColGeneral, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
+            } else if (cs.isNotEmpty()) {
                 Box(Modifier.fillMaxSize().clip(shp(7.dp))) {
                     if (cs.size == 1) {
                         AsyncImage(cs[0].cover, cs[0].name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)

@@ -149,34 +149,25 @@ class Capturas6Test {
                 }
             }
         }
-        // Revista
         shoot("r1_portada")
         rule.onRoot().performTouchInput { swipeUp() }; rule.onRoot().performTouchInput { swipeUp() }; shoot("r2_portada_abajo")
         rule.onAllNodesWithText("Videojuegos")[0].performClick(); shoot("r3_biblioteca")
         rule.onAllNodesWithText("Pasados")[0].performClick(); shoot("r3b_biblioteca_pasados")
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r4_ficha_valorado")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("r4b_ficha_valorado_2")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("r4c_ficha_valorado_3")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.onAllNodesWithText("Jugando")[0].performClick()
         rule.onAllNodesWithText("Deadlock")[0].performClick(); shoot("r5_ficha_jugando")
-        rule.onRoot().performTouchInput { swipeUp() }; shoot("r5b_ficha_jugando_abajo")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("r5b_ficha_jugando_2")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("r5c_ficha_jugando_3")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        // Escritorio
-        rule.runOnUiThread { Skin.applyShell(3, ctx) }
-        rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }
-        shoot("e1_escritorio")
-        rule.onRoot().performTouchInput { swipeUp() }; shoot("e2_escritorio_abajo")
-        rule.onAllNodesWithText("JUEGOS")[0].performClick(); shoot("e3_biblioteca")
-        rule.onAllNodesWithText("Deadlock")[0].performClick(); shoot("e4_ficha_jugando")
-        rule.onRoot().performTouchInput { swipeUp() }; shoot("e4b_ficha_abajo")
+        rule.onRoot().performTouchInput { swipeUp() }; rule.onRoot().performTouchInput { swipeUp() }
+        rule.onAllNodesWithText("Diario")[0].performClick(); shoot("r6_diario")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        rule.onAllNodesWithText("Pasados")[0].performClick(); shoot("e5_biblioteca_pasados")
-        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        rule.onAllNodesWithText("DIARIO")[0].performClick(); shoot("e6_diario")
         rule.runOnUiThread { Mode.dark = true; Mode.themeMode = 2 }
-        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        rule.runOnUiThread { Skin.applyShell(2, ctx) }
-        rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }
-        shoot("r6_revista_noche")
+        rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }
+        shoot("r7_noche")
     }
 }

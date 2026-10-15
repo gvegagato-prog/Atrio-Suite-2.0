@@ -10,8 +10,8 @@ android {
         applicationId = "com.gonzalo.gamerate"
         minSdk = 29
         targetSdk = 34
-        versionCode = 30
-        versionName = "6.2"
+        versionCode = 31
+        versionName = "6.3"
     }
     // Firma fija: así cada versión nueva se instala encima de la anterior sin borrar tus datos.
     signingConfigs {

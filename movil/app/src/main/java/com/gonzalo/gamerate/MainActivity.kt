@@ -45,7 +45,7 @@ sealed interface Screen {
     object Home : Screen
     object Settings : Screen
     class Search(val forPlay: Boolean, val manual: Boolean = false) : Screen
-    class Art(val game: Game, val hero: Boolean, val isNew: Boolean, val chain: Boolean, val play: Play?) : Screen
+    class Art(val game: Game, val hero: Boolean, val isNew: Boolean, val chain: Boolean, val play: Play?, val home: Boolean = false) : Screen
     /** editing: abrir directamente en edición (si no, las ya valoradas se abren en modo lectura). */
     class Edit(val game: Game, val isNew: Boolean, val editing: Boolean = false) : Screen
     /** editing: se abre ya en modo edición (recién creada, o al volver de cambiar la portada). */
@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
             store.webKey = "prueba"
         }
         // Para la prueba automática: abrir con una interfaz concreta (0 = la del dock)
-        intent?.getIntExtra("shell", -1)?.takeIf { it in 0..3 }?.let { Skin.shell = it; Skin.save(this) }
+        intent?.getIntExtra("shell", -1)?.takeIf { it == 0 || it == 2 }?.let { if (it == 2) Skin.applyShell(2, this) else { Skin.shell = 0; Skin.save(this) } }
         // Portadas: aparecen con un fundido suave en lugar de saltar.
         coil.Coil.setImageLoader(coil.ImageLoader.Builder(this).crossfade(180).build())
         setContent {

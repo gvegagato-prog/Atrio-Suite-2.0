@@ -92,7 +92,7 @@ fun App(
     var tab by remember { mutableStateOf(0) }
     // Atrio 6: destino del dock (0 Inicio, 1 Juegos, 2 Libros, 3 Cine, 4 Diario) y apartado de la biblioteca
     var dest by remember { mutableStateOf(0) }
-    /** En las interfaces nuevas (Feed, Revista, Escritorio): la biblioteca se ha abierto a propósito. */
+    /** En la interfaz Revista: la biblioteca se ha abierto a propósito. */
     var shellLib by remember { mutableStateOf(false) }
     var segment by remember { mutableStateOf(0) }
     var cineTv by remember { mutableStateOf(false) }
@@ -753,7 +753,8 @@ fun App(
         if (p != null) {
             val np = p.copy(cover = g.cover, hero = g.hero)
             savePlay(np)
-            screen = Screen.PlayDetail(np, editing = true)
+            // Imagen de «En portada»: se vuelve a Inicio
+            screen = if (s.home) Screen.Home else Screen.PlayDetail(np, editing = true)
         } else {
             screen = Screen.Edit(g, s.isNew, editing = true)
         }
@@ -1071,7 +1072,12 @@ fun App(
                                 add = if (pv) null else ({ k -> section = k.id; screen = Screen.Search(true) }),
                                 partner = if (p != null) ({ togglePartner() }) else null,
                                 stats = { k -> section = k.id; shellLib = true; screen = Screen.Stats },
-                                live = liveSlot
+                                live = liveSlot,
+                                pickImage = if (pv) null else ({ o ->
+                                    val pl = o.play
+                                    section = o.kind.id
+                                    screen = Screen.Art(Game(pl.id, pl.name, pl.cover, hero = pl.hero, creator = pl.creator), o.kind.hasHero, false, false, pl, home = true)
+                                })
                             ))
                         } else InicioScreen(
                             name = if (pv) p!!.name else store.myName.ifBlank { "Atrio" },
@@ -1284,7 +1290,7 @@ fun App(
                     onSkip = { toEdit(s, s.game) },
                     onBack = {
                         val p = s.play
-                        screen = if (s.chain) Screen.Home else if (p != null) Screen.PlayDetail(p, editing = true) else Screen.Edit(s.game, s.isNew, editing = true)
+                        screen = if (s.chain || s.home) Screen.Home else if (p != null) Screen.PlayDetail(p, editing = true) else Screen.Edit(s.game, s.isNew, editing = true)
                     },
                     search = if (kind.isBook && !s.hero) ({ q -> OpenLib.coversFor(q) }) else null,
                     translate = if (kind.isBook && !s.hero) ({ q -> TitleEn.translate(q)?.let { it.title to it.source } }) else null,

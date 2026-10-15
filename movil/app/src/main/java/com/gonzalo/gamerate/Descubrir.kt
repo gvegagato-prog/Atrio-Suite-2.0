@@ -570,8 +570,10 @@ private fun QuizItemSheet(it: QuizItem, accent: Color, added: Boolean, onAdd: ()
     ModalBottomSheet(onDismiss, containerColor = Crudo, shape = shp(28.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp).verticalScroll(rememberScrollState())) {
             Row {
-                AsyncImage(it.cover, it.title, Modifier.width(110.dp).aspectRatio(2f / 3f).clip(shp(16.dp)).background(Sand), contentScale = ContentScale.Crop)
-                Spacer(Modifier.width(14.dp))
+                if (!Skin.revista) {
+                    AsyncImage(it.cover, it.title, Modifier.width(110.dp).aspectRatio(2f / 3f).clip(shp(16.dp)).background(Sand), contentScale = ContentScale.Crop)
+                    Spacer(Modifier.width(14.dp))
+                }
                 Column(Modifier.weight(1f)) {
                     Text(it.title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 25.sp)
                     if (it.original.isNotBlank() && normName(it.original) != normName(it.title)) Text(it.original, color = Muted, fontSize = 13.sp)

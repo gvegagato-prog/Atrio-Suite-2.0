@@ -161,6 +161,19 @@ fun EditScreen(
         PartnerPage(ps, g.id, kind, g.name, g.cover, g.hero, { withReveal { viewP = false } }, { withReveal { viewP = false } }, myReact, onReact)
     } else {
     Column(Modifier.fillMaxSize().imePadding().verticalScroll(scroll)) {
+        if (Skin.revista && reading) {
+            // Revista: la página en casillas (sin imágenes)
+            RevistaGameRead(
+                g, kind, partnerName, partner?.reactsToMe?.get(g.id), ttbMsg, onBack,
+                onFav = { g = g.copy(fav = !g.fav); onQuiet(g) },
+                onPartner = if (partner != null) ({ withReveal { viewP = true } }) else null,
+                onExport = onExport,
+                onRecommend = if (onRecommend != null) ({ recommend = true }) else null
+            ) {
+                reading = false
+                scope.launch { scroll.animateScrollTo(0) }
+            }
+        } else {
         HeroHeader(
             g.cover, g.hero, g.name, listOfNotNull(kind.title, g.creator.ifBlank { null }).joinToString(" · "), coverKey(kind.id, g.id), onBack,
             actions = {
@@ -251,6 +264,7 @@ fun EditScreen(
                 if (!isNew) TextButton(onDelete) { Text("Eliminar", color = UiSoft) }
             }
             Spacer(Modifier.height(12.dp))
+        }
         }
         Spacer(Modifier.navigationBarsPadding().height(16.dp))
     }
