@@ -162,7 +162,9 @@ class ReaderActivity : ComponentActivity() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val u = request.url
-                if (u.host == "appassets.androidplatform.net") return false
+                // Los capítulos se cargan en iframes con direcciones blob:/data:/about: — eso no se toca.
+                // Solo los enlaces web de verdad, en la página principal, se abren fuera (en el navegador).
+                if (!request.isForMainFrame || u.scheme !in setOf("http", "https") || u.host == "appassets.androidplatform.net") return false
                 try { startActivity(Intent(Intent.ACTION_VIEW, u)) } catch (e: Exception) { }
                 return true
             }
