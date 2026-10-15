@@ -10,6 +10,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -1553,6 +1558,8 @@ fun App(
             )
         }
 
+        // Revista: una franja de papel bajo la hora y la batería, para que lo que se desplaza no pase por debajo
+        if (Skin.revista) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).then(Modifier.drawBehind { drawRect(Paper) }))
         // Con el dock a la vista, los avisos salen por encima de él (no lo tapan)
         val snackPad by animateDpAsState(if (dockOn) 84.dp else 12.dp, tween(Motion.ms(220)), label = "snackpad")
         SnackbarHost(
