@@ -13,7 +13,8 @@ android {
         versionCode = 34
         versionName = "6.6"
         // El traductor del lector trae código nativo por procesador: solo móviles de 64 bits (arm64) y el emulador de pruebas (x86_64)
-        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        // (-Pabis=arm64-v8a genera la del móvil sola, más ligera)
+        ndk { abiFilters += ((project.findProperty("abis") as String?)?.split(",") ?: listOf("arm64-v8a", "x86_64")) }
     }
     // Firma fija: así cada versión nueva se instala encima de la anterior sin borrar tus datos.
     signingConfigs {
