@@ -280,10 +280,12 @@ class ReaderActivity : ComponentActivity() {
 
     private fun pushInsets() {
         if (!::web.isInitialized) return
+        // (antes de que cargue la página aún no hay documento: entonces no se hace nada y llega en onPageFinished)
         web.evaluateJavascript(
-            "document.documentElement.style.setProperty('--safe-top','${safeTop}px');" +
+            "if (document.documentElement) {" +
+                "document.documentElement.style.setProperty('--safe-top','${safeTop}px');" +
                 "document.documentElement.style.setProperty('--safe-bottom','${safeBottom}px');" +
-                "window.atrioInsets && atrioInsets()", null
+                "window.atrioInsets && atrioInsets() }", null
         )
     }
 

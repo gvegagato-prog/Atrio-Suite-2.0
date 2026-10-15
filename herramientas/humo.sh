@@ -29,11 +29,16 @@ t, f, nth, attempt = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]
 x = open(f, encoding='utf-8', errors='ignore').read()
 H = max([int(b) for b in re.findall(r'bounds="\[\d+,\d+\]\[\d+,(\d+)\]"', x)] or [2280])
 best = None; seen = 0; hidden = False
+# Si no está tal cual, sin distinguir mayúsculas: los WebView nuevos (api34) dan el texto ya en versalitas («ÍNDICE»)
+t0 = t
+fold = not re.search(r'(?:text|content-desc)="(?:\[ )?' + re.escape(t), x)
+if fold: t = t.casefold()
 for m in re.finditer(r'<node [^>]*>', x):
     n = m.group(0)
     txt = re.search(r' text="([^"]*)"', n); d = re.search(r'content-desc="([^"]*)"', n)
     vals = [v.group(1) for v in (txt, d) if v]
     vals = [v[2:-2] if v.startswith('[ ') and v.endswith(' ]') else v for v in vals]  # [ botones ] de la forma Terminal
+    if fold: vals = [v.casefold() for v in vals]
     exact = any(v == t for v in vals)
     if exact or (best is None and any(v.startswith(t) for v in vals)):
         b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n)
@@ -47,7 +52,7 @@ for m in re.finditer(r'<node [^>]*>', x):
             if exact and nth: break
 DOCK = {"Inicio", "Juegos", "Libros", "Cine", "Diario"}
 # Lo que queda tapado por el dock o la barra de navegación: primero se sube un poco la pantalla
-low = attempt == 1 and t not in DOCK and ((best is not None and best[1] > H - H * 0.16) or (best is None and hidden))
+low = attempt == 1 and t0 not in DOCK and ((best is not None and best[1] > H - H * 0.16) or (best is None and hidden))
 print("BAJO" if low else ("" if best is None else f"{best[0]} {best[1]}"))
 PY
 )
@@ -80,6 +85,7 @@ see() {
   for i in $(seq 1 ${2:-20}); do
     dump
     grep -q "$1" "$OUT/ui.xml" && return 0
+    grep -qi "$1" "$OUT/ui.xml" && return 0   # (api34: el WebView da el texto en versalitas)
     sleep 2
   done
   echo "   no aparece «$1»" | tee -a "$LOG"; return 1
