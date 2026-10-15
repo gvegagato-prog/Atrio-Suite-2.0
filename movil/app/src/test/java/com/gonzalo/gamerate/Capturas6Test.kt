@@ -260,4 +260,45 @@ class Capturas6Test {
         val back = quizRunsFromJson(org.json.JSONObject().put("0", quizRunToJson(theirs)))
         org.junit.Assert.assertEquals("The Witcher 3", back[0]?.items?.first()?.title)
     }
+
+    /** Todas las pantallas con el estilo revista (para revisar que cuadran). */
+    @Test
+    fun pestanas() {
+        org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val store = seed()
+        Skin.load(ctx)
+        Mode.dark = false
+        Mode.themeMode = 1
+        Skin.applyShell(2, ctx)
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    App(store, 0L, false, "") {}
+                }
+            }
+        }
+        fun go(t: String) { val n = rule.onAllNodesWithText(t)[0]; runCatching { n.performScrollTo() }; n.performClick(); rule.waitForIdle() }
+        fun back() { androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle() }
+        fun home() { repeat(4) { if (rule.onAllNodesWithText("EN PORTADA").fetchSemanticsNodes().isEmpty()) back() } }
+        go("Descubrir un juego"); shoot("p01_descubrir")
+        go("5"); shoot("p02_pregunta"); back(); back()
+        go("Descubrir un libro"); shoot("p03_descubrir_libro"); home()
+        go("Diario"); shoot("p04_diario"); home()
+        go("Estadísticas"); shoot("p05_estadisticas"); home()
+        go("Perfil"); shoot("p06_perfil")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("p06b_perfil")
+        go("Ajustes"); shoot("p07_ajustes")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("p07b_ajustes"); home()
+        go("Videojuegos"); shoot("p08_biblioteca")
+        go("+ AÑADIR"); shoot("p09_buscar"); back()
+        go("Deadlock"); go("Apuntar notas →"); shoot("p10_apunte"); back(); home()
+        go("Perfil"); go("Estilo"); shoot("p11_estilo"); back(); home()
+        go("Perfil"); go("Tu PC"); shoot("p12_pc"); home()
+        go("Descubrir un libro"); go("5")
+        repeat(5) { i -> rule.waitForIdle(); Thread.sleep(300); rule.onAllNodesWithText(if (i % 2 == 0) "A" else "B")[0].performClick() }
+        rule.waitUntil(60_000) { rule.onAllNodesWithText("A MI LISTA +").fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("No ha salido nada", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        shoot("p13_resultados")
+        if (rule.onAllNodesWithText("% PARA TI").fetchSemanticsNodes().isNotEmpty()) { rule.onAllNodesWithText("% PARA TI")[0].performClick(); shoot("p14_ficha_resultado") }
+    }
 }

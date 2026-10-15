@@ -107,7 +107,9 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, onLook: (Look) -> Unit =
         Column(Modifier.fillMaxSize().background(Paper)
             .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
             .statusBarsPadding().navigationBarsPadding()) {
-            Row(Modifier.padding(start = 8.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (Skin.revista) Box(Modifier.padding(horizontal = 16.dp)) {
+                TopBar("Ajustes", onClose, "Estilo") { ActionPill(Icons.Rounded.Casino, "Sorpréndeme") { withReveal { Skin.surprise(); save() } } }
+            } else Row(Modifier.padding(start = 8.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 BackButton(onClose)
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {

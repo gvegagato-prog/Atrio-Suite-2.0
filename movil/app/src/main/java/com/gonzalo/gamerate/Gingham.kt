@@ -133,7 +133,7 @@ fun Modifier.pattern(type: Int, color: Color, intensity: Int): Modifier = this.d
  * Con el fondo liso no hace falta: solo deja el mismo espacio, sin caja.
  */
 fun Modifier.pill(radius: Int = 16, h: Int = 14, v: Int = 8): Modifier =
-    if (Mode.look.pattern >= 4) this.padding(horizontal = h.dp, vertical = v.dp)
+    if (Mode.look.pattern >= 4 || Skin.revista) this.padding(horizontal = if (Skin.revista) 0.dp else h.dp, vertical = v.dp)
     else this.background(UiPanel, shp(radius.dp)).padding(horizontal = h.dp, vertical = v.dp)
 
 /** Tarjeta sobria: superficie con línea fina. */

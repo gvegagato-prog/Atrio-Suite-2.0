@@ -219,11 +219,12 @@ fun LiveCard(
 fun SuiteIntro(title: String, text: String, onClick: () -> Unit) {
     val shape = shp(20.dp)
     Row(
-        Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(LiveColor.copy(alpha = 0.18f), Color.Transparent)))
-            .clickable { onClick() }.padding(16.dp),
+        (if (Skin.revista) Modifier.fillMaxWidth().surface(20.dp, Crudo).clickable { onClick() }.padding(top = 14.dp, bottom = 12.dp)
+        else Modifier.fillMaxWidth().clip(shape).background(Brush.linearGradient(listOf(LiveColor.copy(alpha = 0.18f), Color.Transparent)))
+            .clickable { onClick() }.padding(16.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Rounded.Computer, null, tint = LiveColor, modifier = Modifier.size(28.dp))
+        Icon(Icons.Rounded.Computer, null, tint = if (Skin.revista) Charcoal else LiveColor, modifier = Modifier.size(28.dp))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Overline("Novedad · Atrio en el PC")

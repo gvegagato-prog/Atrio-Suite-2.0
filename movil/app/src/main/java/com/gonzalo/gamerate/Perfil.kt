@@ -41,18 +41,20 @@ fun ProfileScreen(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding()
             .padding(horizontal = 18.dp).padding(bottom = 24.dp)
     ) {
-        BigHeader("Perfil") { BackRound(onBack = onBack) }
+        if (Skin.revista) TopBar("Atrio", onBack, "Perfil") else BigHeader("Perfil") { BackRound(onBack = onBack) }
 
         // Quién eres
         Card6(Modifier.rise(0)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val name = store.myName.ifBlank { "Tú" }
-                Box(Modifier.size(58.dp).clip(CircleShape).background(ColGeneral), contentAlignment = Alignment.Center) {
+                // Revista: la inicial como capitular roja, sin círculo
+                if (Skin.revista) Text(name.take(1).uppercase(), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 64.sp, lineHeight = 64.sp)
+                else Box(Modifier.size(58.dp).clip(CircleShape).background(ColGeneral), contentAlignment = Alignment.Center) {
                     Text(name.take(1).uppercase(), color = Paper, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 30.sp else 22.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         when {
                             !store.paired -> "Sin cuenta: tus datos solo están en este móvil"
@@ -68,13 +70,12 @@ fun ProfileScreen(
         // Estilo
         Card6(Modifier.rise(1), onClick = onStyle) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Palette, null, tint = ColGeneral, modifier = Modifier.size(28.dp))
-                Spacer(Modifier.width(12.dp))
+                if (!Skin.revista) { Icon(Icons.Rounded.Palette, null, tint = ColGeneral, modifier = Modifier.size(28.dp)); Spacer(Modifier.width(12.dp)) }
                 Column(Modifier.weight(1f)) {
-                    Text("Estilo", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text("Estilo", fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 24.sp else 17.sp, fontFamily = if (Skin.revista) Display else null)
                     Text(skinSummary(), color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+                if (!Skin.revista) Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
                     val t = Skin.tones
                     listOf(t.general, t.gfx, t.story, t.music).forEach { c -> Box(Modifier.size(18.dp).clip(CircleShape).background(Color(c))) }
                 }
@@ -94,7 +95,7 @@ fun ProfileScreen(
 
         // Objetivos
         Card6(Modifier.rise(3)) {
-            Text("Objetivos de ${LocalDate.now().year}", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text("Objetivos de ${LocalDate.now().year}", fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 24.sp else 17.sp, fontFamily = if (Skin.revista) Display else null)
             Text("Cuántos quieres terminar este año. 0 = sin objetivo.", color = Muted, fontSize = 13.sp)
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -111,7 +112,7 @@ fun ProfileScreen(
 
         // Cuenta y pareja
         Card6(Modifier.rise(4)) {
-            Text("Cuenta y pareja", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text("Cuenta y pareja", fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 24.sp else 17.sp, fontFamily = if (Skin.revista) Display else null)
             Spacer(Modifier.height(8.dp))
             couple()
         }
@@ -128,13 +129,12 @@ fun ProfileScreen(
 private fun ProfileRow(icon: ImageVector, title: String, sub: String, modifier: Modifier, onClick: () -> Unit) {
     Card6(modifier, onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = Charcoal, modifier = Modifier.size(26.dp))
-            Spacer(Modifier.width(12.dp))
+            if (!Skin.revista) { Icon(icon, null, tint = Charcoal, modifier = Modifier.size(26.dp)); Spacer(Modifier.width(12.dp)) }
             Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(title, fontWeight = FontWeight.Bold, fontSize = if (Skin.revista) 24.sp else 17.sp, fontFamily = if (Skin.revista) Display else null)
                 Text(sub, color = Muted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Muted)
+            if (Skin.revista) Text("→", fontFamily = Display, fontSize = 24.sp) else Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Muted)
         }
     }
 }

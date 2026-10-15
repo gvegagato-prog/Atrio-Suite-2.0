@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -197,6 +198,12 @@ fun SoftChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onP
 /** Botón redondo de icono. */
 @Composable
 fun IconPill(icon: ImageVector, desc: String, active: Boolean = false, onClick: () -> Unit) {
+    if (Skin.revista) {
+        Box(Modifier.pop(onClick).size(40.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, desc, tint = if (active) ColGeneral else Charcoal, modifier = Modifier.size(22.dp))
+        }
+        return
+    }
     Box(
         Modifier.pop(onClick).size(40.dp)
             .background(if (active) Charcoal else Color.Transparent, roundShape())
@@ -224,6 +231,7 @@ fun ActionPill(icon: ImageVector, text: String, modifier: Modifier = Modifier, d
 /** Botón de volver: flecha en un círculo de línea fina. */
 @Composable
 fun BackButton(onBack: () -> Unit) {
+    if (Skin.revista) { RevistaBack(onBack); return }
     Box(
         Modifier.pop(onBack).size(40.dp).border(borderW.coerceIn(1.dp, 2.dp), borderC, roundShape()),
         contentAlignment = Alignment.Center
@@ -233,12 +241,25 @@ fun BackButton(onBack: () -> Unit) {
 /** Texto pequeño en mayúsculas para encabezar grupos. */
 @Composable
 fun Overline(text: String, modifier: Modifier = Modifier) {
+    if (Skin.revista) { Text(text.uppercase(), color = Charcoal, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = modifier); return }
     Text(text.uppercase(), color = Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp, modifier = modifier)
 }
 
 /** Cabecera de pantalla (Atrio 6): volver, la sección pequeña encima y el título grande; botones a la derecha. */
 @Composable
 fun TopBar(back: String, onBack: () -> Unit, title: String, actions: @Composable RowScope.() -> Unit = {}) {
+    if (Skin.revista) {
+        // Revista: «← VOLVER», la sección en rojo y el título grande con filete grueso
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                RevistaBack(onBack); Spacer(Modifier.weight(1f)); actions()
+            }
+            Text(back.uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
+            Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 44.sp, lineHeight = 46.sp, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(3.dp).background(Charcoal))
+        }
+        return
+    }
     Row(
         Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -271,10 +292,12 @@ fun TitleTabs(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 fun SearchPill(value: String, placeholder: String, modifier: Modifier = Modifier, onSearch: (() -> Unit)? = null, onChange: (String) -> Unit) {
     Row(
-        modifier.background(Sand, shp(14.dp)).padding(start = 14.dp, end = 6.dp),
+        // Revista: sin caja, solo un filete grueso debajo
+        (if (Skin.revista) modifier.drawBehind { drawRect(Charcoal, androidx.compose.ui.geometry.Offset(0f, size.height - 2.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 2.dp.toPx())) }.padding(end = 6.dp)
+        else modifier.background(Sand, shp(14.dp)).padding(start = 14.dp, end = 6.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Rounded.Search, null, tint = Muted, modifier = Modifier.size(18.dp))
+        Icon(Icons.Rounded.Search, null, tint = if (Skin.revista) Charcoal else Muted, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f).padding(vertical = 11.dp)) {
             if (value.isEmpty()) Text(placeholder, color = Muted, fontSize = 14.sp, maxLines = 1)
@@ -297,6 +320,20 @@ fun SearchPill(value: String, placeholder: String, modifier: Modifier = Modifier
 /** Tarjeta: superficie con línea fina y título opcional. */
 @Composable
 fun Panel(modifier: Modifier = Modifier, title: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    if (Skin.revista) {
+        // Revista: sin caja; filete arriba y el título en versalitas con el cuadradito rojo
+        Column(modifier.fillMaxWidth().surface(20.dp, Crudo).padding(top = 14.dp, bottom = 12.dp)) {
+            if (title != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).background(ColGeneral)); Spacer(Modifier.width(8.dp))
+                    Text(title.uppercase(), fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 2.sp)
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            content()
+        }
+        return
+    }
     Column(
         modifier.fillMaxWidth().surface(20.dp, Crudo).padding(18.dp)
     ) {
@@ -312,7 +349,8 @@ fun Panel(modifier: Modifier = Modifier, title: String? = null, content: @Compos
 @Composable
 fun Bar(frac: Float, color: Color, modifier: Modifier = Modifier, height: Dp = 6.dp) {
     val f by animateFloatAsState(frac.coerceIn(0f, 1f), tween(600), label = "barra")
-    Box(modifier.fillMaxWidth().height(height).formBar(f, color, Sand, height))
+    // Revista: todas las barras en tinta (sin colores por criterio)
+    Box(modifier.fillMaxWidth().height(height).formBar(f, if (Skin.revista) Charcoal else color, Sand, height))
 }
 
 /** Portada pequeña redondeada. */

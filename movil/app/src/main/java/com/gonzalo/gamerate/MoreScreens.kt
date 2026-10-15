@@ -377,14 +377,17 @@ fun NoteScreen(
     val forSeg = seg ?: play.segs.find { it.id == e.seg && e.seg.isNotEmpty() }
     val forPart = e.part
     Column(Modifier.fillMaxSize().imePadding().wrapContentWidth().widthIn(max = 760.dp).statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        BackButton(onBack)
-        Spacer(Modifier.height(12.dp))
+        if (Skin.revista) TopBar(if (entry != null) "Apunte" else "Nuevo apunte", onBack, play.name) else {
+            BackButton(onBack)
+            Spacer(Modifier.height(12.dp))
+        }
         Column(
-            Modifier.fillMaxWidth().card(24).padding(18.dp),
+            if (Skin.revista) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().card(24).padding(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(play.name, fontSize = 28.sp, lineHeight = 32.sp, fontFamily = Display, textAlign = TextAlign.Center)
-            Text(fmt(e.time), color = UiSoft)
+            if (!Skin.revista) Text(play.name, fontSize = 28.sp, lineHeight = 32.sp, fontFamily = Display, textAlign = TextAlign.Center)
+            Text(if (Skin.revista) fmt(e.time).uppercase() else fmt(e.time), color = UiSoft, fontSize = if (Skin.revista) 11.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
+                fontWeight = if (Skin.revista) FontWeight.Black else null, letterSpacing = if (Skin.revista) 1.6.sp else androidx.compose.ui.unit.TextUnit.Unspecified)
             if (kind.isBook) Text("Capítulo ${e.chapter}", color = UiSoft)
             if (forSeg != null || forPart.isNotBlank()) {
                 Spacer(Modifier.height(10.dp))

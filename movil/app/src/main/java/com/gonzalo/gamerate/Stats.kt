@@ -182,6 +182,13 @@ private fun LabeledBar(label: String, value: String, frac: Float, color: Color) 
 /** Cifra grande con su etiqueta. */
 @Composable
 private fun BigNumber(value: String, label: String, modifier: Modifier = Modifier) {
+    if (Skin.revista) {
+        Column(modifier.padding(vertical = 6.dp), horizontalAlignment = Alignment.Start) {
+            Text(value, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 52.sp, lineHeight = 54.sp)
+            Text(label.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, color = Muted, maxLines = 2)
+        }
+        return
+    }
     Column(modifier.border(1.dp, Line, shp(14.dp)).padding(vertical = 14.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontFamily = Display, fontSize = 30.sp, lineHeight = 34.sp)
         Text(label, fontSize = 12.sp, color = Muted, textAlign = TextAlign.Center, maxLines = 2)

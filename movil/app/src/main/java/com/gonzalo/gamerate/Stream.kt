@@ -441,9 +441,10 @@ fun StreamPanel(modifier: Modifier = Modifier) {
             if (m == "NOVA") need = true else if (!ok) toast(ctx, m) else toast(ctx, m)
         }
     }
-    Column(modifier.fillMaxWidth().clip(shp(20.dp))
+    Column((if (Skin.revista) modifier.fillMaxWidth().surface(20.dp, Crudo).padding(top = 14.dp, bottom = 12.dp)
+        else modifier.fillMaxWidth().clip(shp(20.dp))
         .background(Brush.linearGradient(listOf(Color(0x221F8A8A), Color(0x223B3FA8))))
-        .border(1.dp, Line, shp(20.dp)).padding(16.dp).animateContentSize()) {
+        .border(1.dp, Line, shp(20.dp)).padding(16.dp)).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.CastConnected, null, tint = Charcoal)
             Spacer(Modifier.width(8.dp))
@@ -465,22 +466,22 @@ fun StreamPanel(modifier: Modifier = Modifier) {
         }, Icons.Rounded.Public)
         Spacer(Modifier.height(10.dp))
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (nv.value == null) FilledTonalButton({ Stream.installNova(ctx) }) { Text("Descargar Nova") }
-            if (pc != null && h?.on == true) FilledTonalButton({ pairNow(false) }, enabled = !busy) {
+            if (nv.value == null) FilledTonalButton({ Stream.installNova(ctx) }, shape = pillShape()) { Text("Descargar Nova") }
+            if (pc != null && h?.on == true) FilledTonalButton({ pairNow(false) }, shape = pillShape(), enabled = !busy) {
                 Icon(Icons.Rounded.Key, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (busy) "Un momento…" else "Emparejar con Nova")
             }
-            if (nv.value != null) OutlinedButton({ Stream.openNova(ctx) }) { Icon(Icons.Rounded.Cast, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Abrir Nova") }
+            if (nv.value != null) OutlinedButton({ Stream.openNova(ctx) }, shape = pillShape()) { Icon(Icons.Rounded.Cast, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Abrir Nova") }
             if (pc != null && h?.on == true && !h.running) OutlinedButton({
                 busy = true
                 scope.launch { val (_, m) = Suite.send("polaris", JSONObject(), pc.dev, 60_000); busy = false; toast(ctx, m) }
-            }, enabled = !busy) { Text(if (busy) "Arrancando…" else "Arrancar Polaris") }
+            }, enabled = !busy, shape = pillShape()) { Text(if (busy) "Arrancando…" else "Arrancar Polaris") }
             if (pc != null && h?.on == true) OutlinedButton({
                 busy = true
                 scope.launch { val err = Stream.play(ctx, null); busy = false; if (err == "NOVA") need = true else if (err != null) toast(ctx, err) }
-            }, enabled = !busy) { Text("Ver el escritorio") }
+            }, enabled = !busy, shape = pillShape()) { Text("Ver el escritorio") }
             if (pc != null && h?.on == true) TextButton({ pairing = true }) { Text("Con PIN") }
             TextButton({ tuyaSetup = true }) { Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Enchufe del PC") }
-            if (pc == null) OutlinedButton({ waking = true }) { Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Encender ${any?.name ?: "el PC"}") }
+            if (pc == null) OutlinedButton({ waking = true }, shape = pillShape()) { Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Encender ${any?.name ?: "el PC"}") }
         }
         Spacer(Modifier.height(12.dp))
         QualityGuide()
@@ -497,7 +498,7 @@ fun StreamPanel(modifier: Modifier = Modifier) {
                 IconButton({ clip.setText(AnnotatedString(h.tsIp)); toast(ctx, "Copiada") }) { Icon(Icons.Rounded.ContentCopy, "Copiar") }
             }
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (pc != null) OutlinedButton({ pairNow(true) }, enabled = !busy) { Text("Emparejar por Tailscale") }
+                if (pc != null) OutlinedButton({ pairNow(true) }, shape = pillShape(), enabled = !busy) { Text("Emparejar por Tailscale") }
                 TextButton({ Stream.installTailscale(ctx) }) { Icon(Icons.Rounded.Language, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Tailscale para el móvil") }
             }
         }

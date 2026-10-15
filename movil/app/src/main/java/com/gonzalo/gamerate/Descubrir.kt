@@ -25,6 +25,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.lazy.itemsIndexed as listItemsIndexed
+import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -555,7 +558,7 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
     var taste by remember { mutableStateOf<Taste?>(null) }
     var added by remember { mutableStateOf(setOf<String>()) }
     var open by remember { mutableStateOf<QuizItem?>(null) }
-    val accent = when (domain) { 0 -> Color(0xFF3E6BE0); 1 -> Color(0xFF8B5CF6); else -> Color(0xFFE85A2E) }
+    val accent = if (Skin.revista) ColGeneral else when (domain) { 0 -> Color(0xFF3E6BE0); 1 -> Color(0xFF8B5CF6); else -> Color(0xFFE85A2E) }
     // El último test de tu pareja de este mismo tipo (si lo ha hecho)
     val theirRun = partner?.quizzes?.get(domain)
 
@@ -581,11 +584,23 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
 
     Box(Modifier.fillMaxSize()) {
         when {
-            length == 0 -> QuizIntro(domain, accent, partner?.name, theirRun, onBack) { start(it) }
+            length == 0 -> if (Skin.revista) QuizIntroRevista(domain, partner?.name, theirRun, onBack) { start(it) }
+                else QuizIntro(domain, accent, partner?.name, theirRun, onBack) { start(it) }
             taste == null -> {
                 val q = qs.getOrNull(idx)
                 Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (Skin.revista) {
+                        // Revista: «Volver», «Pregunta 2 de 7» y un filete que se va llenando de rojo
+                        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RevistaBack { if (idx > 0) { idx--; answers = answers.dropLast(1) } else length = 0 }
+                            Spacer(Modifier.weight(1f))
+                            Text("PREGUNTA ${idx + 1} DE ${qs.size}", fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                        }
+                        val prog by animateFloatAsState((idx + 1f) / qs.size.coerceAtLeast(1), Motion.smooth(), label = "prog")
+                        Box(Modifier.fillMaxWidth().height(3.dp).background(Charcoal)) {
+                            Box(Modifier.fillMaxWidth(prog).fillMaxHeight().background(ColGeneral))
+                        }
+                    } else Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         BackRound { if (idx > 0) { idx--; answers = answers.dropLast(1) } else length = 0 }
                         Spacer(Modifier.width(12.dp))
                         val prog by animateFloatAsState((idx + 1f) / qs.size.coerceAtLeast(1), Motion.smooth(), label = "prog")
@@ -604,10 +619,25 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
                     ) { i ->
                         val qq = qs[i]
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 34.dp, bottom = 16.dp)) {
-                            Text(qq.q, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp)
+                            if (Skin.revista) {
+                                Text(quizWhat(domain).uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                                Text(qq.q, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 38.sp, lineHeight = 41.sp, letterSpacing = (-0.8).sp)
+                            } else Text(qq.q, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp)
                             Spacer(Modifier.height(26.dp))
                             qq.answers.forEachIndexed { ai, (txt, eff) ->
-                                Row(
+                                if (Skin.revista) Row(
+                                    // Revista: cada respuesta, una línea con su letra capitular en rojo
+                                    Modifier.fillMaxWidth().rise(ai).press {
+                                        val all = answers + eff
+                                        answers = all
+                                        if (i + 1 >= qs.size) finish(all) else idx = i + 1
+                                    }.drawBehind { drawLine(Charcoal, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 2f) }
+                                        .padding(vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(('A' + ai).toString(), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, modifier = Modifier.width(40.dp))
+                                    Text(txt, fontFamily = Display, fontSize = 21.sp, lineHeight = 26.sp, modifier = Modifier.weight(1f))
+                                } else Row(
                                     Modifier.fillMaxWidth().padding(vertical = 5.dp).rise(ai).press {
                                         val all = answers + eff
                                         answers = all
@@ -623,14 +653,24 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
                                 }
                             }
                             Spacer(Modifier.height(10.dp))
-                            TextButton({ val all = answers + JSONObject(); answers = all; if (i + 1 >= qs.size) finish(all) else idx = i + 1 }) {
+                            if (Skin.revista) {
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(Charcoal))
+                                Text("ME DA IGUAL, SIGUIENTE →", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                                    modifier = Modifier.press { val all = answers + JSONObject(); answers = all; if (i + 1 >= qs.size) finish(all) else idx = i + 1 }.padding(vertical = 14.dp))
+                            } else TextButton({ val all = answers + JSONObject(); answers = all; if (i + 1 >= qs.size) finish(all) else idx = i + 1 }) {
                                 Text("Me da igual, siguiente", color = Muted)
                             }
                         }
                     }
                 }
             }
-            else -> QuizResults(
+            else -> if (Skin.revista) QuizResultsRevista(
+                domain, Quiz.summary(taste!!, domain), results, error, added,
+                partner?.name, theirRun?.let { r -> results?.let { quizMatches(it, r.items) } },
+                onOpen = { open = it },
+                onAdd = { it -> added = added + "${it.tv}${it.id}"; onAdd(it) },
+                onAgain = { start(length) }, onBack = onBack
+            ) else QuizResults(
                 domain, accent, Quiz.summary(taste!!, domain), results, error, added,
                 partner?.name, theirRun?.let { r -> results?.let { quizMatches(it, r.items) } },
                 onOpen = { open = it },
@@ -681,6 +721,115 @@ private fun QuizIntro(domain: Int, accent: Color, partnerName: String?, theirs: 
             }
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** Revista: portadilla con el titular enorme, la entradilla y el número de preguntas en tres columnas. */
+@Composable
+private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?, onBack: () -> Unit, onStart: (Int) -> Unit) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
+        RevistaBack(onBack)
+        Box(Modifier.fillMaxWidth().height(3.dp).background(Charcoal))
+        Spacer(Modifier.height(14.dp))
+        Text("DESCUBRIR · ${quizWhat(domain).uppercase()}", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.rise(0))
+        Text(when (domain) { 0 -> "¿A qué juego ahora?"; 1 -> "¿Qué leo ahora?"; else -> "¿Qué vemos hoy?" },
+            fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 60.sp, lineHeight = 60.sp, letterSpacing = (-1.8).sp, modifier = Modifier.rise(1))
+        Box(Modifier.padding(vertical = 14.dp).fillMaxWidth().height(1.dp).background(Charcoal))
+        Text(
+            "Unas pocas preguntas, de más de trescientas y nunca las mismas, y una lista de " +
+                when (domain) { 0 -> "juegos"; 1 -> "libros"; else -> "películas y series" } + " hecha a tu medida.",
+            fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 21.sp, lineHeight = 28.sp, color = Muted, modifier = Modifier.rise(2)
+        )
+        if (partnerName != null) {
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.height(IntrinsicSize.Min).rise(3)) {
+                Box(Modifier.width(3.dp).fillMaxHeight().background(ColGeneral))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    if (theirs != null) "$partnerName hizo este test el ${fmtDay(theirs.time / 86_400_000L)}. Haz el tuyo: si os sale lo mismo, aparecerá arriba de los resultados."
+                    else "Cuando lo hagas, a $partnerName le llegará un aviso; si hace el suyo y coincidís en algo, os saldrá a los dos.",
+                    fontSize = 15.sp, lineHeight = 21.sp
+                )
+            }
+        }
+        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.weight(1f))
+        Text("¿CUÁNTAS PREGUNTAS?", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).rise(4)) {
+            listOf(5 to "Rápido", 7 to "Normal", 10 to "A fondo").forEachIndexed { i, (n, label) ->
+                if (i > 0) Box(Modifier.width(1.dp).fillMaxHeight().background(Charcoal))
+                Column(Modifier.weight(1f).press { onStart(n) }.padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$n", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 56.sp, lineHeight = 58.sp, color = if (n == 7) ColGeneral else Charcoal)
+                    Text(label.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp, color = if (n == 7) ColGeneral else Muted)
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** Revista: los resultados como un índice (número, título, datos y el % que encaja), sin portadas. */
+@Composable
+private fun QuizResultsRevista(
+    domain: Int, summary: List<String>, results: List<QuizItem>?, error: String, added: Set<String>,
+    partnerName: String?, both: List<QuizItem>?,
+    onOpen: (QuizItem) -> Unit, onAdd: (QuizItem) -> Unit, onAgain: () -> Unit, onBack: () -> Unit
+) {
+    val italic = androidx.compose.ui.text.font.FontStyle.Italic
+    androidx.compose.foundation.lazy.LazyColumn(
+        Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 40.dp)
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                RevistaBack(onBack); Spacer(Modifier.weight(1f))
+                Text("OTRA RONDA ↻", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press(onClick = onAgain).padding(vertical = 10.dp))
+            }
+            Box(Modifier.fillMaxWidth().height(3.dp).background(Charcoal))
+            Spacer(Modifier.height(12.dp))
+            Text((if (results == null) "BUSCANDO…" else "${results.size} RESULTADOS · ${quizWhat(domain).uppercase()}"), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            Text("Para ti", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 60.sp, lineHeight = 60.sp, letterSpacing = (-1.8).sp)
+            if (summary.isNotEmpty()) Text(summary.joinToString(" · "), fontFamily = Display, fontStyle = italic, fontSize = 18.sp, lineHeight = 24.sp, color = Muted, modifier = Modifier.padding(top = 6.dp))
+            Spacer(Modifier.height(14.dp))
+            // Lo que os ha salido a los dos
+            if (partnerName != null && both != null && results != null) {
+                Column(Modifier.fillMaxWidth().border(2.dp, Charcoal).padding(14.dp)) {
+                    Text((if (both.isEmpty()) "Sin coincidencias con $partnerName" else "Coincidís con $partnerName").uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    if (both.isEmpty()) Text("Nada de lo que te sale estaba en su último test. Prueba otra ronda.", fontFamily = Display, fontStyle = italic, fontSize = 16.sp, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                    both.take(8).forEach { b ->
+                        Text("${b.title} →", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().press { onOpen(b) }.padding(vertical = 5.dp))
+                    }
+                    if (both.size > 8) Text("Y ${both.size - 8} MÁS", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                }
+                Spacer(Modifier.height(14.dp))
+            }
+            when {
+                results == null -> Row(Modifier.fillMaxWidth().padding(40.dp), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator(color = ColGeneral) }
+                error.isNotBlank() -> Text(error, color = ColGeneral, fontFamily = Display, fontSize = 18.sp, modifier = Modifier.padding(vertical = 20.dp))
+                results.isEmpty() -> Text("No ha salido nada con esa mezcla. Prueba otra ronda.", fontFamily = Display, fontStyle = italic, fontSize = 18.sp, color = Muted, modifier = Modifier.padding(vertical = 20.dp))
+            }
+        }
+        listItemsIndexed(results ?: emptyList(), key = { _: Int, it: QuizItem -> "${it.tv}${it.id}" }) { i: Int, it: QuizItem ->
+            val done = "${it.tv}${it.id}" in added
+            Column(Modifier.fillMaxWidth().drawBehind { drawLine(Charcoal.copy(alpha = 0.25f), androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 2f) }.press { onOpen(it) }.padding(vertical = 14.dp)) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Text("%02d".format(i + 1), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp, modifier = Modifier.width(52.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(it.title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 27.sp)
+                        val sub = listOfNotNull(it.year.ifBlank { null }, if (domain == 2) (if (it.tv) "Serie" else "Película") else it.creator.ifBlank { null }).joinToString(" · ")
+                        if (sub.isNotBlank()) Text(sub.uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+                        Text(if (done) "EN TU LISTA ✓" else "A MI LISTA +", color = if (done) Muted else ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+                            modifier = Modifier.press { if (!done) onAdd(it) }.padding(top = 8.dp, bottom = 2.dp))
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("${it.match}", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 34.sp)
+                        Text("% PARA TI", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -184,7 +185,7 @@ fun CalendarScreen(
 @Composable
 private fun MonthArrow(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {
     Box(
-        Modifier.pop(onClick).size(36.dp).border(1.dp, Line, CircleShape),
+        Modifier.pop(onClick).size(36.dp).then(if (Skin.revista) Modifier else Modifier.border(1.dp, Line, CircleShape)),
         contentAlignment = Alignment.Center
     ) { Icon(icon, desc, tint = Charcoal, modifier = Modifier.size(20.dp)) }
 }
@@ -253,6 +254,20 @@ fun Mark(c: CalItem, ep: Long, modifier: Modifier) {
 
 @Composable
 fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: Modifier) {
+    if (Skin.revista) {
+        // Revista: sin cajas; filete fino arriba, el número en la letra de titulares (hoy, en rojo) y el título debajo
+        Column(modifier.padding(horizontal = 2.dp).drawBehind {
+            drawLine(if (isToday) ColGeneral else Charcoal.copy(alpha = 0.35f), Offset(0f, 0f), Offset(size.width, 0f), if (isToday) 3.dp.toPx() else 1.dp.toPx())
+        }.padding(top = 4.dp)) {
+            Text("$day", color = when { isToday -> ColGeneral; cs.isEmpty() -> Muted; else -> Charcoal }, fontFamily = Display,
+                fontWeight = if (isToday || cs.isNotEmpty()) FontWeight.Bold else FontWeight.Normal, fontSize = 15.sp)
+            if (cs.isNotEmpty()) {
+                Text(cs[0].name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 9.sp, lineHeight = 10.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                if (cs.size > 1) Text("+${cs.size - 1}", color = ColGeneral, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        return
+    }
     val shape = shp(10.dp)
     Column(
         modifier.padding(2.dp).clip(shape).background(UiPanel)

@@ -580,7 +580,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
             }
             Spacer(Modifier.height(10.dp))
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(enabled = !busy && user.isNotBlank() && pass.isNotBlank(), onClick = {
+                Button(shape = pillShape(), enabled = !busy && user.isNotBlank() && pass.isNotBlank(), onClick = {
                     val c = creds() ?: return@Button
                     launchOp {
                         if (!prepare()) return@launchOp msg
@@ -601,7 +601,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                         }
                     }
                 }) { Text("Entrar") }
-                OutlinedButton(enabled = !busy && user.isNotBlank() && pass.isNotBlank(), onClick = {
+                OutlinedButton(shape = pillShape(), enabled = !busy && user.isNotBlank() && pass.isNotBlank(), onClick = {
                     val c = creds() ?: return@OutlinedButton
                     launchOp {
                         if (!prepare()) return@launchOp msg
@@ -646,11 +646,11 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
             )
             Spacer(Modifier.height(8.dp))
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(enabled = !busy, onClick = {
+                Button(shape = pillShape(), enabled = !busy, onClick = {
                     store.myName = name
                     launchOp { syncNow() }
                 }) { Text("Sincronizar ahora") }
-                OutlinedButton(enabled = !busy, onClick = {
+                OutlinedButton(shape = pillShape(), enabled = !busy, onClick = {
                     launchOp {
                         val r = Couple.check(store)
                         val here = store.itemCount()
@@ -676,7 +676,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                     shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(8.dp))
-                Button(enabled = !busy && partnerIn.isNotBlank(), onClick = {
+                Button(shape = pillShape(), enabled = !busy && partnerIn.isNotBlank(), onClick = {
                     launchOp {
                         Account.setPartner(store, partnerIn)
                         partnerIn = ""
@@ -698,8 +698,8 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                     color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
                 )
                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(enabled = !busy, onClick = { launchOp { refreshPartner(); if (info != null) "Al día." else "Todavía no hay nada suyo que ver." } }) { Text("Mirar lo suyo") }
-                    OutlinedButton(enabled = !busy, onClick = {
+                    OutlinedButton(shape = pillShape(), enabled = !busy, onClick = { launchOp { refreshPartner(); if (info != null) "Al día." else "Todavía no hay nada suyo que ver." } }) { Text("Mirar lo suyo") }
+                    OutlinedButton(shape = pillShape(), enabled = !busy, onClick = {
                         launchOp {
                             Account.clearPartner(store)
                             info = null
@@ -748,7 +748,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                 color = UiSoft, fontSize = 13.sp
             )
             Spacer(Modifier.height(6.dp))
-            OutlinedButton(enabled = !busy, onClick = {
+            OutlinedButton(shape = pillShape(), enabled = !busy, onClick = {
                 launchOp {
                     cloud = Couple.nodes(store)
                     if (cloud.isNullOrEmpty()) "No hay copias." else ""
@@ -758,8 +758,8 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
             // ---- Sesión ----
             Spacer(Modifier.height(18.dp))
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(enabled = !busy, onClick = { showPass = !showPass }) { Text("Cambiar contraseña") }
-                OutlinedButton(enabled = !busy, onClick = {
+                OutlinedButton(shape = pillShape(), enabled = !busy, onClick = { showPass = !showPass }) { Text("Cambiar contraseña") }
+                OutlinedButton(shape = pillShape(), enabled = !busy, onClick = {
                     Account.signOut(store)
                     signed = false
                     info = null
@@ -777,7 +777,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                     shape = shp(14.dp), modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(6.dp))
-                Button(enabled = !busy && newPass.length >= 6, onClick = {
+                Button(shape = pillShape(), enabled = !busy && newPass.length >= 6, onClick = {
                     launchOp {
                         Account.changePassword(store, newPass)
                         newPass = ""
@@ -804,7 +804,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
                 val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 cm.setPrimaryClip(ClipData.newPlainText("reglas", Account.RULES))
                 msg = "Reglas copiadas."
-            }) { Text("Copiar reglas") }
+            }, shape = pillShape()) { Text("Copiar reglas") }
         }
 
         if (msg.isNotEmpty()) {

@@ -172,6 +172,13 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = 
 /** Botón redondo de icono (sobre imágenes, translúcido). */
 @Composable
 fun RoundIcon(icon: ImageVector, desc: String, onImage: Boolean = false, active: Boolean = false, size: Dp = 42.dp, onClick: () -> Unit) {
+    if (Skin.revista && !onImage) {
+        // Revista: el icono solo, sin círculo ni caja (rojo si está activo)
+        Box(Modifier.size(size).press(onClick = onClick), contentAlignment = Alignment.Center) {
+            Icon(icon, desc, tint = if (active) ColGeneral else Charcoal, modifier = Modifier.size(size * 0.52f))
+        }
+        return
+    }
     val bg = when {
         active -> Charcoal
         onImage -> Color.Black.copy(alpha = 0.38f)
@@ -186,7 +193,19 @@ fun RoundIcon(icon: ImageVector, desc: String, onImage: Boolean = false, active:
 
 /** Botón de volver para pantallas sin dock. */
 @Composable
-fun BackRound(onImage: Boolean = false, onBack: () -> Unit) = RoundIcon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", onImage = onImage, onClick = onBack)
+fun BackRound(onImage: Boolean = false, onBack: () -> Unit) {
+    if (Skin.revista && !onImage) { RevistaBack(onBack); return }
+    RoundIcon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", onImage = onImage, onClick = onBack)
+}
+
+/** «← VOLVER» de la revista. */
+@Composable
+fun RevistaBack(onBack: () -> Unit) {
+    Row(Modifier.press(onClick = onBack).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", tint = Charcoal, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp))
+        Text("VOLVER", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
+    }
+}
 
 /** Botón grande de acción (relleno de acento o de tinta). */
 @Composable

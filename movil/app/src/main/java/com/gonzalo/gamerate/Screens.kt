@@ -342,7 +342,8 @@ fun SettingsScreen(
     var confirm by remember { mutableStateOf(false) }
     val year = LocalDate.now().year
     Column(Modifier.fillMaxSize().imePadding().wrapContentWidth().widthIn(max = 760.dp).statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (Skin.revista) TopBar("Perfil", onBack, "Ajustes")
+        else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BackButton(onBack)
             Column {
                 Overline("Perfil")
@@ -566,7 +567,8 @@ fun SearchScreen(
         } catch (e: Exception) { msg = e.message ?: "Error de conexión" }
     }
     Column(Modifier.fillMaxSize().imePadding().wrapContentWidth().widthIn(max = 760.dp).statusBarsPadding().padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (Skin.revista) TopBar(title, onBack, "Añadir")
+        else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BackButton(onBack)
             Column {
                 Overline(title)
