@@ -58,6 +58,14 @@ private fun t(
 
 /** Las paletas. Las de editores conocidos usan sus colores oficiales; las de Atrio son propias. */
 val PALETTES: List<Palette> = listOf(
+    // Interfaz Revista: papel y tinta, con rojo de imprenta (de noche, papel oscuro y tinta clara).
+    Palette("revista", "Revista", "Atrio",
+        t(0xF3EEE4, 0xFAF6EE, 0x15120F, 0xC8372D, 0x2F5D8A, 0x8A5A2B, 0x3F7A4A, 0x7A4E8C, 0xB8861B, 0xE9E2D5, 0xD9D0C1, 0xBDB2A0, 0x7C746A),
+        t(0x141210, 0x1C1916, 0xF1EBE0, 0xE0533F, 0x7FA7C4, 0xD3A46A, 0x8FB873, 0xB48BC4, 0xE0B456, 0x221E1A, 0x2E2924, 0x4A433B, 0x9C9387)),
+    // Interfaz Escritorio: azul noche con bloques de colores vivos (y su versión clara).
+    Palette("escritorio", "Escritorio", "Atrio",
+        t(0xEEF0F8, 0xFFFFFF, 0x14162A, 0xFF5A36, 0x2E6BFF, 0x8B4DFF, 0x10B386, 0xF5A300, 0xF5A300, 0xE3E6F2, 0xD8DCEB, 0xBFC4D8, 0x5E6380),
+        t(0x0D0F1C, 0x181B2E, 0xF2F3FA, 0xFF6B3D, 0x4D8BFF, 0xA45CFF, 0x14C08F, 0xFFC23D, 0xFFC23D, 0x20243A, 0x272B45, 0x3A3F5E, 0x9AA0BF)),
     // Atrio 6: la de la app nueva. Oscura de verdad, con un coral cálido; la clara, de papel blanco roto.
     Palette("vitrina", "Vitrina", "Atrio",
         t(0xF5F3EF, 0xFFFFFF, 0x14151A, 0xE85A2E, 0x3E6BE0, 0x8B5CF6, 0x1F9D72, 0xC98A00, 0xD99A00, 0xECE9E3, 0xE4E0D9, 0xC9C4BB, 0x6D6A64),
@@ -288,7 +296,7 @@ object Skin {
     var body by mutableStateOf("Atrio")
     var textScale by mutableStateOf(1f)
     /** Forma: cómo se dibujan esquinas, notas, botones, portadas y el fondo. */
-    var form by mutableStateOf(FORMS[0])
+    var form by mutableStateOf(FORMS.first { it.id == "vitrina" })
     /** Cómo se ven las notas, aparte de la forma (null = las de la forma). */
     var gauge by mutableStateOf<GaugeKind?>(null)
     /** Camaleón: cada ficha se tiñe con los colores de su portada. */
@@ -301,8 +309,20 @@ object Skin {
     var covers by mutableStateOf(0)
     /** Dock con el nombre del destino elegido (si no, solo iconos). */
     var dockLabels by mutableStateOf(true)
-    /** Interfaz de la pantalla principal: 0 la de Atrio 6.0, 1 Feed, 2 Revista, 3 Escritorio. */
-    var shell by mutableStateOf(1)
+    /** Interfaz: 0 la de Atrio 6.0 (con dock), 2 Revista, 3 Escritorio. */
+    var shell by mutableStateOf(2)
+    val revista: Boolean get() = shell == 2
+    val escritorio: Boolean get() = shell == 3
+
+    /** Cambia de interfaz y le pone su estilo (colores, letra y forma); luego se puede retocar en Estilo. */
+    fun applyShell(i: Int, ctx: Context) {
+        shell = i
+        when (i) {
+            2 -> { palette = PALETTES.first { it.id == "revista" }; display = "Atrio"; body = "Atrio"; form = FORMS.first { it.id == "revista" }; gauge = null; chameleon = false }
+            3 -> { palette = PALETTES.first { it.id == "escritorio" }; display = "Vitrina"; body = "Atrio"; form = FORMS.first { it.id == "bento" }; gauge = null; chameleon = false }
+        }
+        save(ctx)
+    }
     /** Tonos de la ficha abierta (camaleón), por encima de la paleta. */
     var override by mutableStateOf<Tones?>(null)
 
@@ -362,18 +382,23 @@ object Skin {
             p.edit().putBoolean("skin_v6", true).putString("skin_palette", "vitrina").putString("skin_display", "Vitrina")
                 .putString("skin_body", "Atrio").putString("skin_form", "vitrina").remove("skin_gauge").apply()
         }
-        palette = PALETTES.firstOrNull { it.id == p.getString("skin_palette", "vitrina") } ?: PALETTES[0]
+        palette = PALETTES.firstOrNull { it.id == p.getString("skin_palette", "vitrina") } ?: PALETTES.first { it.id == "vitrina" }
         display = p.getString("skin_display", "Vitrina") ?: "Vitrina"
         body = p.getString("skin_body", "Atrio") ?: "Atrio"
         textScale = p.getFloat("skin_scale", 1f)
-        form = FORMS.firstOrNull { it.id == p.getString("skin_form", "vitrina") } ?: FORMS[0]
+        form = FORMS.firstOrNull { it.id == p.getString("skin_form", "vitrina") } ?: FORMS.first { it.id == "vitrina" }
         gauge = GaugeKind.entries.firstOrNull { it.name == p.getString("skin_gauge", "") }
         chameleon = p.getBoolean("skin_chameleon", true)
         motion = p.getInt("skin_motion", 0)
         accent = p.getLong("skin_accent", 0L)
         covers = p.getInt("skin_covers", 0)
         dockLabels = p.getBoolean("skin_docklabels", true)
-        shell = p.getInt("skin_shell", 1)
+        // La interfaz Feed (1) ya no existe: pasa a Revista
+        shell = p.getInt("skin_shell", 2).let { if (it == 1) 2 else it }
+        if (!p.getBoolean("shell_v2", false)) {
+            p.edit().putBoolean("shell_v2", true).apply()
+            applyShell(shell, ctx)
+        }
     }
 
     fun save(ctx: Context) {
