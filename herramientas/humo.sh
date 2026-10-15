@@ -371,14 +371,20 @@ if [ "${SDK:-0}" -ge 31 ]; then
   back; sleep 1
   tap "Letra" && sleep 2 && shot 57_lector_letra 1
   back; sleep 1
-  # Subrayar: mantener pulsado sobre el texto; la selección tiene que quedarse (antes se deshacía al momento)
-  adb shell input swipe 400 1100 400 1100 1500; sleep 3
-  shot 57b_lector_seleccion 1; alive "seleccion"
-  must see "Copiar" 6
-  echo "   la selección se mantiene y sale la barra de subrayar" | tee -a "$LOG"
+  # Mantener pulsada una palabra: su menú (significado, RAE…); «Subrayar» y mantener pulsada la última palabra
+  adb shell input swipe 400 1100 400 1100 1200; sleep 4
+  shot 57b_lector_palabra 1; alive "palabra"
+  must see "Subrayar" 6
+  must see "RAE" 3
+  echo "   mantener pulsada una palabra abre su menú" | tee -a "$LOG"
+  must tap "Subrayar"; sleep 1.5
+  must see "última palabra" 5
+  adb shell input swipe 600 1400 600 1400 1200; sleep 2.5
+  shot 57c_lector_tramo 1
   must tap "Verde"; sleep 2
+  echo "   subrayado de la primera a la última palabra" | tee -a "$LOG"
   adb shell input tap 540 1200; sleep 2
-  must tap "Notas"; sleep 2; shot 57c_lector_notas 1
+  must tap "Notas"; sleep 2; shot 57d_lector_notas 1
   must see "Subrayados (1)" 6
   echo "   el subrayado se guarda" | tee -a "$LOG"
   back; sleep 1

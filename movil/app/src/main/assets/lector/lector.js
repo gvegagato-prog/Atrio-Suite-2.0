@@ -12,7 +12,7 @@ const S = Object.assign({
 }, st.settings || {})
 let notes = st.annotations || []      // { value, color, text, note, created, index, label }
 let marks = st.bookmarks || []        // { value, label, fraction, created }
-const COLORS = { amarillo: '#FFD54A', verde: '#8BE38F', azul: '#7FB8FF', rosa: '#FF99C2', subrayado: '#E5484D' }
+const COLORS = { amarillo: '#FFD54A', verde: '#8BE38F', azul: '#7FB8FF', rosa: '#FF99C2', subrayado: '#E5484D', marca: '#E85A2E' }
 const THEMES = [['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
 const FONTS = [['original', 'Original'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
 let view, isPDF = false, last = null, chromeOn = false, selection = null, annJustShown = false
@@ -104,7 +104,8 @@ h1, h2, h3, h4, p, li, span, div { color: inherit !important; }
 a:link, a:visited { color: ${accent} !important; }
 img, svg, video { max-width: 100%; ${dark ? 'filter: brightness(.86);' : ''} }
 pre { white-space: pre-wrap !important; }
-aside[epub|type~="footnote"], aside[epub|type~="endnote"], aside[epub|type~="rearnote"] { display: none; }`
+aside[epub|type~="footnote"], aside[epub|type~="endnote"], aside[epub|type~="rearnote"] { display: none; }
+html, body, body * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }`
 }
 
 function applySettings() {
@@ -163,33 +164,34 @@ function onLoad({ detail: { doc, index } }) {
     // Para las pruebas automáticas (el libro va en un shadow DOM cerrado)
     ;(window.__docs ||= []).push({ doc, index })
     window.__view = view
-    const check = debounce(() => checkSelection(doc, index), 300)
-    doc.addEventListener('selectionchange', check)
+    // Nada de la selección del navegador (con sus asas): mantener pulsado lo lleva el lector (también en PDF)
+    const stl = doc.createElement('style')
+    stl.textContent = 'html,body,body *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}'
+    ;(doc.head || doc.documentElement).append(stl)
     const win = doc.defaultView
 
-    // Seleccionar texto: mientras mantienes pulsado o hay algo seleccionado, la página NO se mueve con el dedo
-    // (el paginador de foliate desplaza con cada movimiento y eso deshacía la selección).
-    let t0 = null, holding = false, holdTimer = 0, swiped = false
-    const hasSel = () => { const s = doc.getSelection(); return !!(s && !s.isCollapsed && s.toString().trim()) }
+    // Mantener pulsado (sin mover el dedo): la palabra de debajo. Mientras, la página NO se mueve.
+    let t0 = null, holding = false, holdTimer = 0, swiped = false, held = false
     win.addEventListener('touchstart', e => {
         const t = e.touches[0]
         t0 = t ? { x: t.clientX, y: t.clientY, time: e.timeStamp } : null
-        swiped = false
-        holding = hasSel()
+        swiped = false; held = false; holding = false
         clearTimeout(holdTimer)
-        holdTimer = setTimeout(() => { holding = true }, 320)
+        if (t && e.touches.length === 1) holdTimer = setTimeout(() => {
+            holding = true; held = true
+            onHold(doc, index, t0.x, t0.y)
+        }, 450)
     }, { capture: true, passive: true })
-    const block = e => { if (holding || hasSel()) e.stopPropagation() }
     win.addEventListener('touchmove', e => {
         const t = e.touches[0]
         if (t0 && t && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) > 12 && !holding) clearTimeout(holdTimer)
-        block(e)
+        if (holding) e.stopPropagation()
     }, { capture: true, passive: true })
     win.addEventListener('touchend', e => {
         clearTimeout(holdTimer)
         const t = e.changedTouches[0]
         // PDF: se pasa de página deslizando (foliate no lo hace solo en los PDF)
-        if (isPDF && t0 && t && !holding && !hasSel()) {
+        if (isPDF && t0 && t && !holding) {
             const dx = t.clientX - t0.x, dy = t.clientY - t0.y
             if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4 && e.timeStamp - t0.time < 900) {
                 swiped = true
@@ -197,18 +199,22 @@ function onLoad({ detail: { doc, index } }) {
                 if (chromeOn) showChrome(false)
             }
         }
-        block(e)
+        if (holding) e.stopPropagation()
         holding = false
     }, { capture: true, passive: true })
+    // El menú contextual del navegador (mantener pulsado), fuera
+    doc.addEventListener('contextmenu', e => e.preventDefault())
 
     doc.addEventListener('click', e => {
         if (e.target.closest?.('a')) return
         if (swiped) { swiped = false; return }
-        if (hasSel()) return
+        if (held) { held = false; return }
         setTimeout(() => {
             if (annJustShown) { annJustShown = false; return }
+            if (!$('#palabra').classList.contains('oculta')) { hideWord(); return }
             if (selection) { hideSel(); return }
             if ($('#panel').classList.contains('on')) { closePanel(); return }
+            if (pend) return
             // PDF: tocar nunca pasa de página, solo abre o cierra el menú (las páginas, deslizando)
             if (S.flow === 'paginated' && !isPDF) {
                 const fr = doc.defaultView.frameElement?.getBoundingClientRect()
@@ -222,6 +228,172 @@ function onLoad({ detail: { doc, index } }) {
     })
 }
 
+// ---------------------------------------------------------------- Palabras (mantener pulsado)
+const LETRA = /[\p{L}\p{N}\p{M}’'·-]/u
+/** La palabra que hay en (x, y) del documento: recorre el texto del bloque y mira dónde cae el dedo. */
+function wordAt(doc, x, y) {
+    const el = doc.elementFromPoint(x, y)
+    if (!el) return null
+    const block = el.closest?.('p,li,dd,dt,blockquote,h1,h2,h3,h4,h5,h6,td,th,figcaption,span,div') || el
+    const walker = doc.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+    let best = null, bestD = 1e9, n
+    while ((n = walker.nextNode())) {
+        const t = n.textContent
+        const re = /[\p{L}\p{N}\p{M}’'·-]+/gu
+        let m
+        while ((m = re.exec(t))) {
+            const r = doc.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length)
+            for (const b of r.getClientRects()) {
+                if (x >= b.left - 2 && x <= b.right + 2 && y >= b.top - 4 && y <= b.bottom + 4) return trimWord(r)
+                const d = Math.hypot(Math.max(b.left - x, 0, x - b.right), Math.max(b.top - y, 0, y - b.bottom))
+                if (d < bestD) { bestD = d; best = r }
+            }
+        }
+    }
+    return best && bestD < 18 ? trimWord(best) : null
+}
+/** Sin guiones ni apóstrofos sueltos al principio o al final. */
+function trimWord(r) {
+    const t = r.toString()
+    const a = t.length - t.replace(/^[’'·-]+/, '').length, b = t.length - t.replace(/[’'·-]+$/, '').length
+    if (a) r.setStart(r.startContainer, r.startOffset + a)
+    if (b && t.length - a - b > 0) r.setEnd(r.endContainer, r.endOffset - b)
+    return r
+}
+/** La frase en la que está la palabra (para saber el idioma y traducirla con su contexto). */
+function sentenceOf(r) {
+    const block = r.startContainer.parentElement?.closest?.('p,li,dd,blockquote,h1,h2,h3,h4,td,div') || r.startContainer.parentElement
+    const all = (block?.textContent || '').replace(/\s+/g, ' ')
+    const w = r.toString()
+    const i = all.indexOf(w)
+    if (i < 0) return all.slice(0, 300)
+    const s = Math.max(all.lastIndexOf('. ', i), all.lastIndexOf('? ', i), all.lastIndexOf('! ', i))
+    let e = all.slice(i).search(/[.?!](\s|$)/)
+    e = e < 0 ? all.length : i + e + 1
+    return all.slice(s < 0 ? 0 : s + 2, e).trim().slice(0, 400)
+}
+
+let pend = null      // subrayado en marcha: { doc, index, start }
+let marca = null     // la palabra marcada (anotación temporal, no se guarda)
+let palabra = null   // { doc, index, range, word, sentence, lang }
+async function mark(index, range) {
+    await unmark()
+    marca = { value: view.getCFI(index, range), color: 'marca', temp: true }
+    try { await view.addAnnotation(marca) } catch (e) { }
+}
+async function unmark() {
+    if (marca) { try { await view.deleteAnnotation(marca) } catch (e) { } marca = null }
+}
+function yOf(doc, r) {
+    const fr = doc.defaultView.frameElement?.getBoundingClientRect()
+    return (fr ? fr.top : 0) + r.getBoundingClientRect().top
+}
+
+function onHold(doc, index, x, y) {
+    const w = wordAt(doc, x, y)
+    if (!w) return
+    A.buzz()
+    if (pend) {
+        if (pend.doc !== doc) { aviso('El subrayado tiene que acabar en el mismo capítulo'); return }
+        finishRange(doc, index, w)
+        return
+    }
+    showWord(doc, index, w)
+}
+
+let lookupN = 0
+const results = {}
+window.atrioResult = (id, r) => { results[id]?.(r); delete results[id] }
+function ask(fn, ...args) {
+    const id = 'r' + (++lookupN)
+    return new Promise(res => { results[id] = res; A[fn](...args, id) })
+}
+
+async function showWord(doc, index, range) {
+    hideSel(); closePanel(); showChrome(false)
+    const word = range.toString().trim()
+    const sentence = sentenceOf(range)
+    palabra = { doc, index, range: range.cloneRange(), word, sentence, lang: null }
+    await mark(index, range)
+    const box = $('#palabra')
+    $('#pal-w').textContent = word
+    $('#pal-lang').textContent = ''
+    $('#pal-def').innerHTML = '<span class="gris">Buscando el significado…</span>'
+    $('#pal-tr').classList.add('oculta')
+    $('#pal-trad').classList.add('oculta')
+    box.classList.toggle('arriba', yOf(doc, range) > window.innerHeight * 0.5)
+    box.classList.remove('oculta')
+    const mine = palabra
+    const r = await ask('lookup', word, sentence)
+    if (palabra !== mine) return
+    palabra.lang = r.lang
+    if (r.lang && r.lang !== 'es' && r.lang !== 'und') {
+        $('#pal-lang').textContent = r.langName || r.lang
+        $('#pal-trad').textContent = 'Traducir del ' + (r.langName || r.lang).toLowerCase() + ' al español'
+        $('#pal-trad').classList.remove('oculta')
+    }
+    $('#pal-def').innerHTML = r.defs?.length
+        ? `<ol>${r.defs.map(d => `<li>${esc(d)}</li>`).join('')}</ol>`
+        : `<span class="gris">${esc(r.msg || 'No encuentro su significado.')}</span>`
+}
+function hideWord() {
+    $('#palabra').classList.add('oculta')
+    palabra = null
+    if (!pend) unmark()
+}
+$('#pal-trad').onclick = async () => {
+    const p = palabra
+    if (!p) return
+    const tr = $('#pal-tr')
+    tr.classList.remove('oculta')
+    tr.innerHTML = '<span class="gris">Traduciendo… (la primera vez se descarga el traductor de este idioma, unos 30 MB)</span>'
+    const r = await ask('translate', p.word, p.sentence, p.lang || 'und')
+    if (palabra !== p) return
+    tr.innerHTML = r.word
+        ? `<b>${esc(r.word)}</b>${r.sentence ? `<div style="margin-top:6px">${esc(r.sentence)}</div>` : ''}`
+        : `<span class="gris">${esc(r.msg || 'No se ha podido traducir.')}</span>`
+}
+$('#pal-rae').onclick = () => { if (palabra) A.openUrl('https://dle.rae.es/' + encodeURIComponent(palabra.word.toLowerCase())) }
+$('#pal-wik').onclick = () => { if (palabra) A.openUrl('https://es.wiktionary.org/wiki/' + encodeURIComponent(palabra.word.toLowerCase())) }
+$('#p-copiar').onclick = () => { if (palabra) { A.copy(palabra.word); aviso('Copiado') } hideWord() }
+$('#p-compartir').onclick = () => { if (palabra) A.share(`«${palabra.sentence}»\n— ${st.title || ''}`); hideWord() }
+$('#p-nota').onclick = () => {
+    const p = palabra
+    if (!p) return
+    $('#palabra').classList.add('oculta'); palabra = null
+    unmark()
+    selection = { mode: 'new', value: view.getCFI(p.index, p.range), text: p.word, index: p.index, doc: p.doc }
+    highlight('amarillo', true)
+}
+// Subrayar: esta palabra es el principio; falta mantener pulsada la última
+$('#p-subrayar').onclick = () => {
+    const p = palabra
+    if (!p) return
+    $('#palabra').classList.add('oculta'); palabra = null
+    pend = { doc: p.doc, index: p.index, start: p.range }
+    $('#pend').classList.remove('oculta')
+}
+$('#pend-no').onclick = () => { pend = null; $('#pend').classList.add('oculta'); unmark() }
+$('#pend-una').onclick = () => { const p = pend; if (p) finishRange(p.doc, p.index, p.start) }
+
+function finishRange(doc, index, end) {
+    const start = pend.start
+    pend = null
+    $('#pend').classList.add('oculta')
+    unmark()
+    // Da igual el orden: de la primera palabra a la última
+    const before = end.compareBoundaryPoints(Range.START_TO_START, start) < 0
+    const a = before ? end : start, b = before ? start : end
+    const r = doc.createRange()
+    r.setStart(a.startContainer, a.startOffset)
+    r.setEnd(b.endContainer, b.endOffset)
+    const text = r.toString().replace(/\s+/g, ' ').trim()
+    if (!text) return
+    // Mientras eliges el color, el tramo entero se ve marcado
+    mark(index, r)
+    showSel({ mode: 'new', value: view.getCFI(index, r), text, index, doc, y: yOf(doc, r) })
+}
+
 function showChrome(on) {
     // Solo si cambia: esconder o enseñar las barras del móvil cuando ya lo estaban recoloca la página
     if (on === chromeOn) return
@@ -232,19 +404,6 @@ function showChrome(on) {
 }
 
 // ---------------------------------------------------------------- Selección y subrayados
-function checkSelection(doc, index) {
-    const s = doc.getSelection()
-    if (!s || s.isCollapsed) { if (selection?.mode === 'new') hideSel(); return }
-    const text = s.toString().trim()
-    if (!text) return
-    const range = s.getRangeAt(0)
-    const value = view.getCFI(index, range)
-    const fr = doc.defaultView.frameElement?.getBoundingClientRect()
-    const r = range.getBoundingClientRect()
-    const y = (fr ? fr.top : 0) + r.top
-    showSel({ mode: 'new', value, text, index, doc, y })
-}
-
 function showSel(sel) {
     selection = sel
     showChrome(false)
@@ -258,7 +417,7 @@ function showSel(sel) {
     $('#s-buscar').classList.toggle('oculta', sel.mode === 'edit')
 }
 function hideSel() {
-    if (selection?.mode === 'new') selection.doc?.getSelection()?.removeAllRanges()
+    if (selection?.mode === 'new') { selection.doc?.getSelection()?.removeAllRanges(); unmark() }
     selection = null
     $('#sel').classList.add('oculta')
 }
@@ -520,6 +679,8 @@ $('#b-marca').onclick = () => {
 
 // Atrás de Android: primero se cierra lo que haya abierto
 window.atrioBack = () => {
+    if (!$('#palabra').classList.contains('oculta')) { hideWord(); return true }
+    if (pend) { pend = null; $('#pend').classList.add('oculta'); unmark(); return true }
     if (selection) { hideSel(); return true }
     if ($('#panel').classList.contains('on')) { closePanel(); return true }
     if (chromeOn) { showChrome(false); return true }

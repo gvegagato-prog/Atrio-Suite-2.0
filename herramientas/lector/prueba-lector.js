@@ -47,7 +47,10 @@ const log = [];
         saveAnnotations: (j) => { store.saved.notes = JSON.parse(j); },
         saveBookmarks: (j) => { store.saved.marks = JSON.parse(j); },
         setBrightness: () => {}, keepScreenOn: () => {}, setTheme: () => {}, systemBars: () => {},
-        copy: () => {}, share: (t) => { store.shared = t; }, openUrl: () => {}, close: () => {},
+        copy: () => {}, share: (t) => { store.shared = t; }, openUrl: (u) => { store.url = u; }, close: () => {},
+        buzz: () => { store.buzz = (store.buzz || 0) + 1; },
+        lookup: (w, s, id) => { store.lookup = { w, s }; setTimeout(() => window.atrioResult(id, { lang: 'es', langName: 'Español', defs: ['Primera acepción de prueba.', 'Segunda.'] }), 50); },
+        translate: (w, s, l, id) => { setTimeout(() => window.atrioResult(id, { word: 'traducida', sentence: 'frase traducida' }), 50); },
       };
     }, name);
     await page.goto(`http://localhost:${port}/assets/lector/index.html`);
@@ -107,39 +110,56 @@ const log = [];
     await page.mouse.click(206, 120); await page.waitForTimeout(700);
     await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });
     await page.screenshot({ path: path.join(out, name + '-5-noche.png') });
-    // Subrayar: seleccionar texto dentro del libro
-    const sel = await page.evaluate(async () => {
+    // Mantener pulsada una palabra: sale su menú (significado); «Subrayar» y mantener pulsada la última palabra
+    const wordsAt = await page.evaluate(() => {
+      const out = [];
       for (const { doc: d } of [...(window.__docs || [])].reverse()) {
         const f = d.defaultView?.frameElement; if (!f || !d.body) continue;
-        const r = f.getBoundingClientRect();
+        const fr = f.getBoundingClientRect();
         const w = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT);
         let n;
-        while ((n = w.nextNode())) {
-          if (n.textContent.trim().length < 20) continue;
-          const range = d.createRange(); range.setStart(n, 0); range.setEnd(n, Math.min(n.textContent.length, 60));
-          const rr = range.getBoundingClientRect();
-          const x = r.left + rr.left, y = r.top + rr.top;
-          if (x < 0 || x > window.innerWidth || y < 0 || y > window.innerHeight || rr.width === 0) continue;
-          d.getSelection().removeAllRanges(); d.getSelection().addRange(range);
-          d.dispatchEvent(new Event('selectionchange'));
-          return range.toString();
+        while ((n = w.nextNode()) && out.length < 40) {
+          const re = /[\p{L}]{4,}/gu; let m;
+          while ((m = re.exec(n.textContent)) && out.length < 40) {
+            const r = d.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+            const b = r.getBoundingClientRect();
+            const x = fr.left + b.left + b.width / 2, y = fr.top + b.top + b.height / 2;
+            if (b.width > 0 && x > 20 && x < innerWidth - 20 && y > 60 && y < innerHeight - 60) out.push({ w: m[0], x, y });
+          }
         }
+        if (out.length) break;
       }
-      return null;
+      return out;
     });
-    await page.waitForTimeout(800);
-    const barVisible = await page.$eval('#sel', (e) => !e.classList.contains('oculta'));
-    ok(sel && barVisible, `${name}: al seleccionar sale la barra de subrayar («${(sel || '').slice(0, 30)}…»)`);
-    await page.screenshot({ path: path.join(out, name + '-6-seleccion.png') });
-    if (barVisible) {
-      await page.click('#sel .c.verde'); await page.waitForTimeout(900);
-      const notes = await page.evaluate(() => window.__atrio.saved.notes);
-      ok(notes && notes.length === 1 && notes[0].color === 'verde', `${name}: subrayado guardado (${notes && notes.length})`);
-      await page.screenshot({ path: path.join(out, name + '-7-subrayado.png') });
-      await page.mouse.click(206, 430); await page.waitForTimeout(500);
-      await page.click('#b-notas'); await page.waitForTimeout(600);
-      await page.screenshot({ path: path.join(out, name + '-8-notas.png') });
-      await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });
+    const hold = async (p) => {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }] });
+      await page.waitForTimeout(700);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await page.waitForTimeout(500);
+    };
+    const w1 = wordsAt[0], w2 = wordsAt[Math.min(5, wordsAt.length - 1)];
+    let menuOk = false;
+    if (w1) {
+      await hold(w1);
+      const shown = await page.evaluate(() => ({ vis: !document.querySelector('#palabra').classList.contains('oculta'), w: document.querySelector('#pal-w').textContent, def: document.querySelector('#pal-def').textContent }));
+      menuOk = shown.vis && shown.w === w1.w && /Primera acepción/.test(shown.def);
+      ok(menuOk, `${name}: mantener pulsado «${w1.w}» abre su menú con el significado (${shown.w} · ${shown.def.slice(0, 30)})`);
+      await page.screenshot({ path: path.join(out, name + '-6-palabra.png') });
+    } else ok(false, `${name}: no encuentro palabras en pantalla`);
+    if (menuOk) {
+      await page.click('#p-subrayar'); await page.waitForTimeout(400);
+      ok(await page.$eval('#pend', (e) => !e.classList.contains('oculta')), `${name}: «Subrayar» pide la última palabra`);
+      await hold(w2); await page.waitForTimeout(400);
+      const barVisible = await page.$eval('#sel', (e) => !e.classList.contains('oculta'));
+      ok(barVisible, `${name}: al mantener pulsada la última palabra salen los colores`);
+      await page.screenshot({ path: path.join(out, name + '-6b-rango.png') });
+      if (barVisible) {
+        await page.click('#sel .c.verde'); await page.waitForTimeout(900);
+        const notes = await page.evaluate(() => window.__atrio.saved.notes);
+        const t = notes?.[0]?.text || '';
+        ok(notes && notes.length === 1 && t.startsWith(w1.w) && t.endsWith(w2.w), `${name}: subrayado de «${w1.w}» a «${w2.w}» (${t.length} letras)`);
+        await page.screenshot({ path: path.join(out, name + '-7-subrayado.png') });
+      }
     }
     // Índice y búsqueda
     await page.mouse.click(206, 430); await page.waitForTimeout(500);

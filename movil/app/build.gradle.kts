@@ -10,8 +10,8 @@ android {
         applicationId = "com.gonzalo.gamerate"
         minSdk = 29
         targetSdk = 34
-        versionCode = 33
-        versionName = "6.5"
+        versionCode = 34
+        versionName = "6.6"
     }
     // Firma fija: así cada versión nueva se instala encima de la anterior sin borrar tus datos.
     signingConfigs {
@@ -76,6 +76,9 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+    // Lector: traducir palabras sin conexión (el idioma se baja una vez) y saber en qué idioma está el texto
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("com.google.mlkit:language-id:17.0.6")
     // Pruebas de la lógica en el ordenador (sin emulador): org.json de verdad en lugar del de Android
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

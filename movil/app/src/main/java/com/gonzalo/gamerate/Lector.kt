@@ -315,6 +315,49 @@ class ReaderActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun close() = runOnUiThread { finish() }
+
+        /** Un toque de vibración al coger una palabra. */
+        @JavascriptInterface
+        fun buzz() = runOnUiThread { web.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS) }
+
+        /** Significado de una palabra (y en qué idioma está su frase). Contesta en window.atrioResult(id, …). */
+        @JavascriptInterface
+        fun lookup(word: String, sentence: String, id: String) {
+            Thread {
+                val o = JSONObject()
+                val lang = Diccionario.identify(sentence.ifBlank { word })
+                o.put("lang", lang)
+                if (lang != "und") o.put("langName", Diccionario.langName(lang))
+                try {
+                    val defs = Diccionario.define(word, if (lang == "es" || lang == "und") "Español" else Diccionario.langName(lang))
+                    o.put("defs", org.json.JSONArray(defs))
+                    if (defs.isEmpty()) o.put("msg", "El Wikcionario no tiene esta palabra. Prueba con la RAE.")
+                } catch (e: Exception) {
+                    o.put("msg", "No se ha podido consultar el Wikcionario (¿sin conexión?).")
+                }
+                answer(id, o)
+            }.start()
+        }
+
+        /** Traduce la palabra y su frase al español (el idioma se baja la primera vez, unos 30 MB). */
+        @JavascriptInterface
+        fun translate(word: String, sentence: String, lang: String, id: String) {
+            Thread {
+                val o = JSONObject()
+                try {
+                    val from = if (lang == "und") Diccionario.identify(sentence.ifBlank { word }) else lang
+                    o.put("word", Diccionario.translate(word, from))
+                    if (sentence.isNotBlank() && sentence != word) o.put("sentence", Diccionario.translate(sentence, from))
+                } catch (e: Exception) {
+                    o.put("msg", "No se ha podido traducir: ${e.message ?: "sin conexión para bajar el idioma"}")
+                }
+                answer(id, o)
+            }.start()
+        }
+    }
+
+    private fun answer(id: String, o: JSONObject) = runOnUiThread {
+        if (::web.isInitialized) web.evaluateJavascript("window.atrioResult && atrioResult(${JSONObject.quote(id)}, $o)", null)
     }
 }
 
