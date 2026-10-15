@@ -92,6 +92,8 @@ fun App(
     var tab by remember { mutableStateOf(0) }
     // Atrio 6: destino del dock (0 Inicio, 1 Juegos, 2 Libros, 3 Cine, 4 Diario) y apartado de la biblioteca
     var dest by remember { mutableStateOf(0) }
+    /** En las interfaces nuevas (Feed, Revista, Escritorio): la biblioteca se ha abierto a propósito. */
+    var shellLib by remember { mutableStateOf(false) }
     var segment by remember { mutableStateOf(0) }
     var cineTv by remember { mutableStateOf(false) }
     var diaryKind by remember { mutableStateOf(0) }
@@ -900,6 +902,11 @@ fun App(
     val bgMod = Modifier.pattern(look.pattern, bgColor, look.intensity)
     val shown: Any = if (screen is Screen.Home) "top:$dest:$section:$pv" else screen
     val topLevel = screen is Screen.Home
+    val dockOn = topLevel && Skin.shell == 0
+    // Al volver de una ficha abierta desde Feed, Revista o Escritorio, se vuelve a esa pantalla (no a la biblioteca)
+    LaunchedEffect(screen is Screen.Home) {
+        if (screen is Screen.Home && Skin.shell != 0 && !shellLib && dest == 0) section = -1
+    }
 
     val touchWatcher = Modifier.pointerInput(Unit) {
         awaitPointerEventScope {
@@ -995,7 +1002,7 @@ fun App(
                     }
                     dest in 1..3 && section >= 0 -> Library(kind, null)
                     dest == 3 -> Box(Modifier.fillMaxSize().statusBarsPadding().padding(20.dp)) { Text("Aún no hay categoría de películas o series.", color = Muted) }
-                    section >= 0 -> Library(kind) { section = -1 }
+                    section >= 0 && (Skin.shell == 0 || shellLib) -> Library(kind) { section = -1; shellLib = false }
                     else -> {
                         val ongoing = sectionKinds.flatMap { k -> ps(k).filter { it.status == 1 }.map { Ongoing(k, it) } }
                             .sortedWith(compareByDescending<Ongoing> { !pv && it.kind.isGame && it.play.id == sessId }.thenByDescending { it.play.activity })
@@ -1006,35 +1013,7 @@ fun App(
                                 "${pl.count { it.status == 1 }} ${k.statuses[1].lowercase()} · ${g.size} ${k.doneWord.lowercase()}")
                         }
                         val doneYear = { k: Kind -> gs(k).count { it.end > 0L && LocalDate.ofEpochDay(it.end).year == year } }
-                        InicioScreen(
-                            name = if (pv) p!!.name else store.myName.ifBlank { "Atrio" },
-                            readOnly = pv, partnerName = p?.name,
-                            hint = if (!pv && p != null && !store.knowsDoubleTap) "Toca a tu pareja (el gato) para ver lo suyo" else null,
-                            ongoing = ongoing, sessId = if (pv) 0L else sessId,
-                            collections = collections, recs = pendingRecs, acts = acts,
-                            goals = listOf(
-                                Triple(GAMES.title, doneYear(GAMES), if (pv) p!!.goalGames else goalG),
-                                Triple(BOOKS.title, doneYear(BOOKS), if (pv) p!!.goalBooks else goalB)
-                            ),
-                            onTitleDouble = { togglePartner() },
-                            onPartner = if (p != null) ({ togglePartner() }) else null,
-                            onProfile = if (pv) null else ({ screen = Screen.Profile }),
-                            onOpen = { o -> openPlay(o.kind, o.play) },
-                            onPrimary = { o -> primaryAction(o) { sc -> section = o.kind.id; screen = sc } },
-                            primaryLabel = { o -> primaryLabel(o) },
-                            onCollection = { k -> section = k.id; segment = 0 },
-                            onNewCollection = if (pv) null else ({ kindNew = true }),
-                            onEditCollection = if (pv) null else ({ k -> kindEdit = k }),
-                            onDiscover = if (pv) null else ({ d ->
-                                when (d) {
-                                    0 -> { dest = 1; section = 0; screen = Screen.Deck }
-                                    1 -> { dest = 2; section = 1; screen = Screen.Quiz(1) }
-                                    else -> { dest = 3; section = cineKindId(); screen = Screen.Quiz(2) }
-                                }
-                            }),
-                            onRecAdd = { recAdd(it) }, onRecDismiss = { recDone(it) },
-                            onAct = { a -> withReveal { screen = Screen.PartnerItem(a.kind, a.id) } },
-                            top = {
+                        val liveSlot: @Composable () -> Unit = {
                                 if (!pv && store.paired) {
                                     LiveCard(
                                         plays, onShot = { shoot { s -> if (s != null) screen = Screen.ShotView(s, Screen.Home) } }, shooting = shooting,
@@ -1063,6 +1042,66 @@ fun App(
                                     ) { screen = Screen.Profile }
                                 }
                             }
+                        if (Skin.shell != 0) {
+                            ShellHome(ShellModel(
+                                name = if (pv) p!!.name else store.myName.ifBlank { "Atrio" },
+                                readOnly = pv,
+                                kinds = sectionKinds,
+                                entries = { k -> (gs(k).map { ShellEntry(k, null, it) } + ps(k).map { ShellEntry(k, it, null) }).distinctBy { it.id } },
+                                ongoing = ongoing,
+                                paired = !pv && store.paired,
+                                partnerName = p?.name,
+                                open = { e ->
+                                    shellLib = false
+                                    if (e.play != null) openPlay(e.kind, e.play)
+                                    else { section = e.kind.id; screen = if (pv) Screen.PartnerItem(e.kind.id, e.id) else Screen.Edit(e.game!!, false) }
+                                },
+                                primary = { o -> primaryAction(o) { sc -> section = o.kind.id; screen = sc } },
+                                primaryLabel = { o -> primaryLabel(o) },
+                                library = { k -> if (k.isMovie || k.isTv) cineTv = k.isTv; section = k.id; segment = 0; shellLib = true },
+                                diary = { go(4) },
+                                discover = if (pv) null else ({ d ->
+                                    when (d) {
+                                        0 -> { section = 0; screen = Screen.Deck }
+                                        1 -> { section = 1; screen = Screen.Quiz(1) }
+                                        else -> { section = cineKindId(); screen = Screen.Quiz(2) }
+                                    }
+                                }),
+                                profile = if (pv) null else ({ screen = Screen.Profile }),
+                                add = if (pv) null else ({ k -> section = k.id; screen = Screen.Search(true) }),
+                                partner = if (p != null) ({ togglePartner() }) else null,
+                                stats = { k -> section = k.id; shellLib = true; screen = Screen.Stats },
+                                live = liveSlot
+                            ))
+                        } else InicioScreen(
+                            name = if (pv) p!!.name else store.myName.ifBlank { "Atrio" },
+                            readOnly = pv, partnerName = p?.name,
+                            hint = if (!pv && p != null && !store.knowsDoubleTap) "Toca a tu pareja (el gato) para ver lo suyo" else null,
+                            ongoing = ongoing, sessId = if (pv) 0L else sessId,
+                            collections = collections, recs = pendingRecs, acts = acts,
+                            goals = listOf(
+                                Triple(GAMES.title, doneYear(GAMES), if (pv) p!!.goalGames else goalG),
+                                Triple(BOOKS.title, doneYear(BOOKS), if (pv) p!!.goalBooks else goalB)
+                            ),
+                            onTitleDouble = { togglePartner() },
+                            onPartner = if (p != null) ({ togglePartner() }) else null,
+                            onProfile = if (pv) null else ({ screen = Screen.Profile }),
+                            onOpen = { o -> openPlay(o.kind, o.play) },
+                            onPrimary = { o -> primaryAction(o) { sc -> section = o.kind.id; screen = sc } },
+                            primaryLabel = { o -> primaryLabel(o) },
+                            onCollection = { k -> section = k.id; segment = 0 },
+                            onNewCollection = if (pv) null else ({ kindNew = true }),
+                            onEditCollection = if (pv) null else ({ k -> kindEdit = k }),
+                            onDiscover = if (pv) null else ({ d ->
+                                when (d) {
+                                    0 -> { dest = 1; section = 0; screen = Screen.Deck }
+                                    1 -> { dest = 2; section = 1; screen = Screen.Quiz(1) }
+                                    else -> { dest = 3; section = cineKindId(); screen = Screen.Quiz(2) }
+                                }
+                            }),
+                            onRecAdd = { recAdd(it) }, onRecDismiss = { recDone(it) },
+                            onAct = { a -> withReveal { screen = Screen.PartnerItem(a.kind, a.id) } },
+                            top = liveSlot
                         )
                     }
                 }
@@ -1401,7 +1440,7 @@ fun App(
         }
         // Dock: solo en las pantallas principales
         androidx.compose.animation.AnimatedVisibility(
-            topLevel, Modifier.align(Alignment.BottomCenter),
+            dockOn, Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically(Motion.bouncy()) { it } + fadeIn(), exit = slideOutVertically(tween(Motion.ms(160))) { it } + fadeOut(tween(Motion.ms(120)))
         ) {
             Dock(
@@ -1509,7 +1548,7 @@ fun App(
         }
 
         // Con el dock a la vista, los avisos salen por encima de él (no lo tapan)
-        val snackPad by animateDpAsState(if (topLevel) 84.dp else 12.dp, tween(Motion.ms(220)), label = "snackpad")
+        val snackPad by animateDpAsState(if (dockOn) 84.dp else 12.dp, tween(Motion.ms(220)), label = "snackpad")
         SnackbarHost(
             snack,
             Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = snackPad)

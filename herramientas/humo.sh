@@ -96,7 +96,7 @@ step "Instalar (Android $SDK)"
 adb install -r movil/app/build/outputs/apk/release/app-release.apk | tee -a "$LOG"
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null
 step "Abrir: Inicio"
-adb shell am start -W -n "$PKG/.MainActivity" | tee -a "$LOG"
+adb shell am start -W -n "$PKG/.MainActivity" --ei shell 0 | tee -a "$LOG"
 shot 01_inicio 6; alive "abrir"
 must see "Buenas" 10
 
@@ -187,7 +187,7 @@ step "Cuentas: Firebase de mentira"
 node herramientas/fakefirebase.js 9000 "$OUT/fb.json" > "$OUT/fb.log" 2>&1 &
 sleep 2
 adb shell am force-stop "$PKG"; sleep 1
-adb shell am start -W -n "$PKG/.MainActivity" --es fbtest http://10.0.2.2:9000 | tee -a "$LOG"
+adb shell am start -W -n "$PKG/.MainActivity" --ei shell 0 --es fbtest http://10.0.2.2:9000 | tee -a "$LOG"
 sleep 4; alive "abrir con prueba"
 must tap "Perfil y ajustes"; sleep 1
 must seek "Crear cuenta"
@@ -380,6 +380,16 @@ if [ "${SDK:-0}" -ge 31 ]; then
 else
   echo "== Lector: se prueba en Android 12 o más (este emulador es Android $SDK)" | tee -a "$LOG"
 fi
+
+step "Interfaces nuevas: Feed, Revista y Escritorio"
+for sh in 1 2 3; do
+  adb shell am force-stop "$PKG"; sleep 1
+  adb shell am start -W -n "$PKG/.MainActivity" --ei shell $sh >/dev/null; sleep 5
+  shot "60_interfaz_$sh" 2; alive "interfaz $sh"
+  adb shell input swipe 540 1600 540 700 500; sleep 2; shot "60_interfaz_${sh}b" 1; alive "interfaz $sh desliza"
+done
+must see "Escritorio" 5
+echo "   las tres interfaces se abren y se desplazan" | tee -a "$LOG"
 
 step "OK: la app no se ha cerrado en ningún paso"
 adb logcat -d | grep -E "AndroidRuntime|FATAL" -A20 > "$OUT/errores_log.txt" || true

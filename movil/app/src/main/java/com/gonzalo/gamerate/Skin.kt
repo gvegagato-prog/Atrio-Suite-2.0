@@ -301,6 +301,8 @@ object Skin {
     var covers by mutableStateOf(0)
     /** Dock con el nombre del destino elegido (si no, solo iconos). */
     var dockLabels by mutableStateOf(true)
+    /** Interfaz de la pantalla principal: 0 la de Atrio 6.0, 1 Feed, 2 Revista, 3 Escritorio. */
+    var shell by mutableStateOf(1)
     /** Tonos de la ficha abierta (camaleón), por encima de la paleta. */
     var override by mutableStateOf<Tones?>(null)
 
@@ -371,12 +373,13 @@ object Skin {
         accent = p.getLong("skin_accent", 0L)
         covers = p.getInt("skin_covers", 0)
         dockLabels = p.getBoolean("skin_docklabels", true)
+        shell = p.getInt("skin_shell", 1)
     }
 
     fun save(ctx: Context) {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
             .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
-            .putLong("skin_accent", accent).putInt("skin_covers", covers).putBoolean("skin_docklabels", dockLabels).apply()
+            .putLong("skin_accent", accent).putInt("skin_covers", covers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
     }
 }

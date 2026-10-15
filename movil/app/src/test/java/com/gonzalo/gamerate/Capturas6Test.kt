@@ -12,6 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -95,6 +100,7 @@ class Capturas6Test {
         coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
         val store = seed()
         Skin.load(ctx)
+        Skin.shell = 0
         Mode.dark = true
         Mode.themeMode = 2
         rule.setContent {
@@ -125,5 +131,34 @@ class Capturas6Test {
         rule.onNodeWithContentDescription("Diario").performClick(); shoot("06_diario")
         rule.onNodeWithContentDescription("Inicio").performClick()
         rule.onNodeWithContentDescription("Perfil y ajustes").performClick(); shoot("07_perfil")
+    }
+
+    @Test
+    fun interfaces() {
+        org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val store = seed()
+        Skin.load(ctx)
+        Skin.shell = 1
+        Mode.dark = true
+        Mode.themeMode = 2
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    App(store, 0L, false, "") {}
+                }
+            }
+        }
+        shoot("i1_feed")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("i1b_feed_siguiente")
+        rule.onRoot().performTouchInput { swipeLeft() }; shoot("i1c_feed_libros")
+        rule.onNodeWithContentDescription("Menú").performClick(); shoot("i1d_feed_menu")
+        rule.onRoot().performTouchInput { click(androidx.compose.ui.geometry.Offset(centerX, 120f)) }
+        rule.onAllNodesWithText("Revista")[0].performClick(); shoot("i2_revista")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("i2b_revista_abajo")
+        rule.onRoot().performTouchInput { swipeUp() }; rule.onRoot().performTouchInput { swipeUp() }; shoot("i2c_revista_sumario")
+        rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }
+        rule.onAllNodesWithText("Escritorio")[0].performClick(); shoot("i3_escritorio")
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("i3b_escritorio_abajo")
     }
 }

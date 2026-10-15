@@ -108,6 +108,8 @@ class MainActivity : ComponentActivity() {
             store.dbUrl = it
             store.webKey = "prueba"
         }
+        // Para la prueba automática: abrir con una interfaz concreta (0 = la del dock)
+        intent?.getIntExtra("shell", -1)?.takeIf { it in 0..3 }?.let { Skin.shell = it; Skin.save(this) }
         // Portadas: aparecen con un fundido suave en lugar de saltar.
         coil.Coil.setImageLoader(coil.ImageLoader.Builder(this).crossfade(180).build())
         setContent {
