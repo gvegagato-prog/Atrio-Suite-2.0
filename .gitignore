@@ -9,3 +9,4 @@ local.properties
 *.apk
 humo_out/
 *.AppImage
+emu*/
