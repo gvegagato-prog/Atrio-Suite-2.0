@@ -84,19 +84,21 @@ fun MagLink(text: String, sub: String? = null, accent: Boolean = false, onClick:
 @Composable
 fun MagFact(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Bottom) {
-        Text(label, fontSize = 14.sp, color = Muted)
+        Text(label, fontSize = 14.sp, color = Muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         Box(Modifier.weight(1f).height(12.dp).padding(horizontal = 6.dp).drawBehind {
             drawLine(Muted.copy(alpha = 0.6f), Offset(0f, size.height - 2), Offset(size.width, size.height - 2), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 6f)))
         })
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
     }
 }
 
 /** La nota en cifras enormes y, debajo, los criterios con puntos guía. */
 @Composable
 fun MagScore(general: Int, scores: List<Int>, kind: Kind, big: Dp = 0.dp) {
+    // En una casilla estrecha, la cifra encoge (nunca se parte en dos líneas)
+    val k = (LocalCellFraction.current / 0.5f).coerceIn(0.55f, 1f)
     Row(verticalAlignment = Alignment.Bottom) {
-        Text("$general", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 84.sp, lineHeight = 80.sp, letterSpacing = (-3).sp)
+        Text("$general", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = (84 * k).sp, lineHeight = (80 * k).sp, letterSpacing = (-3 * k).sp, maxLines = 1, softWrap = false)
         Text("/100", color = Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 12.dp))
     }
     if (kind.crit > 1) {
@@ -141,7 +143,8 @@ fun MagCritics(kind: Kind, id: Long, name: String) {
 @Composable
 fun MagHours(mine: Int, main: Int, extra: Int, full: Int, msg: String = "") {
     if (mine > 0) {
-        Text(shortHours(mine), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 40.sp, lineHeight = 42.sp)
+        val k = (LocalCellFraction.current / 0.5f).coerceIn(0.6f, 1f)
+        Text(shortHours(mine), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = (40 * k).sp, lineHeight = (42 * k).sp, maxLines = 1, softWrap = false)
         Text("TUS HORAS", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(Modifier.height(8.dp))
     }

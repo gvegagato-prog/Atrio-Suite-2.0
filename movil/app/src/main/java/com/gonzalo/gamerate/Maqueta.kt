@@ -94,6 +94,9 @@ object MagImages {
     var load: suspend (Kind, Long, String, String) -> List<Pair<String, String>> = { _, _, _, _ -> emptyList() }
 }
 
+/** Qué parte del ancho ocupa la casilla (para que las cifras grandes encojan si la casilla es estrecha). */
+val LocalCellFraction = compositionLocalOf { 1f }
+
 /** Un módulo que puede ir en una casilla: su antetítulo (null: el módulo ya trae el suyo) y lo que pinta. */
 class MagDef(val label: String?, val action: Pair<String, () -> Unit>? = null, val content: @Composable ColumnScope.() -> Unit)
 
@@ -169,7 +172,7 @@ fun MagPage(
                                 .then(if (designing) Modifier.pointerInput(i, rows.size) {
                                     detectHorizontalDragGestures(onDragEnd = { MagLayouts.save(ctx, key, rows) }) { ch, dx ->
                                         ch.consume()
-                                        val ns = (rows[i].split + dx / widthPx).coerceIn(0.22f, 0.78f)
+                                        val ns = (rows[i].split + dx / widthPx).coerceIn(0.3f, 0.7f)
                                         rows = rows.mapIndexed { k, x -> if (k == i) x.copy(split = ns) else x }
                                     }
                                 } else Modifier),
@@ -183,10 +186,10 @@ fun MagPage(
                     }
                     Box(Modifier.weight(w).fillMaxHeight()) {
                         Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp, start = if (n == 1) 12.dp else 0.dp, end = if (n == 0 && shown.size == 2) 12.dp else 0.dp)) {
-                            CellView(c)
+                            CompositionLocalProvider(LocalCellFraction provides w) { CellView(c) }
                         }
                         if (designing) Box(
-                            Modifier.matchParentSize().padding(vertical = 6.dp, horizontal = 2.dp)
+                            Modifier.matchParentSize()
                                 .drawBehind {
                                     drawRoundRect(ColGeneral, style = androidx.compose.ui.graphics.drawscope.Stroke(3f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))))
                                 }
