@@ -160,6 +160,7 @@ class ReaderActivity : ComponentActivity() {
         }
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
+            override fun onPageFinished(view: WebView, url: String) { pushInsets() }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val u = request.url
                 // Los capítulos se cargan en iframes con direcciones blob:/data:/about: — eso no se toca.
@@ -184,7 +185,27 @@ class ReaderActivity : ComponentActivity() {
                 web.evaluateJavascript("window.atrioBack ? atrioBack() : false") { r -> if (r != "true") finish() }
             }
         })
+        // El WebView no le dice al CSS cuánto ocupan la barra de estado y la de navegación: se lo decimos nosotros,
+        // para que las barras del lector no queden debajo de la hora ni de los botones de Android.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(web) { _, ins ->
+            val d = resources.displayMetrics.density
+            val sys = ins.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            safeTop = sys.top / d; safeBottom = sys.bottom / d
+            pushInsets()
+            ins
+        }
         bars(false)
+    }
+
+    private var safeTop = 0f
+    private var safeBottom = 0f
+
+    private fun pushInsets() {
+        if (!::web.isInitialized) return
+        web.evaluateJavascript(
+            "document.documentElement.style.setProperty('--safe-top','${safeTop}px');" +
+                "document.documentElement.style.setProperty('--safe-bottom','${safeBottom}px')", null
+        )
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
