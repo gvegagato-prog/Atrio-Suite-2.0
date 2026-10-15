@@ -10,6 +10,27 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio en el escritorio: la revista
+
+Atrio en el PC se abre ahora con **la revista**: la misma estética de papel y tinta que la app del móvil, pensada
+para ratón, teclado y pantalla ancha (maqueta de periódico, hasta ~1400 px de ancho, y bien también en ventana
+estrecha). El lanzador de siempre (pantalla grande y mando) sigue ahí: se cambia de una a otra en
+Ajustes → «Abrir el lanzador clásico» y, desde el lanzador, Ajustes → «Volver a la revista». Atrio recuerda la última.
+
+- **Portada:** «ATRIO» enorme, el número del día, «En portada» con lo que estás jugando, leyendo o viendo (la única
+  imagen, con el arte del PC si es el mismo juego), «Ahora mismo», las notas más altas, lo último que has terminado
+  y el sumario. Sin cuenta, invita a entrar y Tu PC funciona igual.
+- **Secciones** (Videojuegos, Libros y tus categorías): En curso / En lista / Terminados / Dejados, buscador, orden
+  y «+ Añadir» (videojuegos con SteamGridDB; el resto, a mano, con el mismo id que les da el móvil).
+- **Fichas en casillas:** nota gigante con criterios, opinión con capitular, datos, apuntes, apuntes rápidos, horas,
+  partes, «Jugar en el PC» y capturas. Apuntar, valorar partidas, terminar, cambiar de estado, favorito, borrar…
+  Todo se sincroniza con el móvil al momento.
+- **Diario** (calendario de periódico), **Cifras** (estadísticas) y **Tu PC** (la biblioteca del lanzador).
+- **Ajustes:** tema claro, oscuro o automático; acento (rojo, azul, verde, mostaza, morado, naranja, rosa o tinta);
+  cuenta; clave de SteamGridDB.
+- Teclado: `Esc` vuelve, `/` busca, `F11` pantalla completa.
+- Para abrir una u otra sin tocar la configuración: `--revista` / `--lanzador` (o `ATRIO_UI=revista|lanzador`).
+
 ## Atrio 6.8 (móvil)
 
 - **Apariencia:** de los estilos solo queda lo que hace falta: claro, oscuro o como el móvil, y el color del

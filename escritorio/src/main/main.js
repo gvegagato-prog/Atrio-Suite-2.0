@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, protocol, net, dialog, shell, screen, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, net, dialog, shell, screen, powerMonitor, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -379,7 +379,8 @@ function suiteLibrary() {
       key: g.key, name: named(g).name, cover: art.publicUrl(g, 'cover') || art.publicUrl(g, 'wide'),
       sg: Number(sgdbOf(g)) || 0, fav: !!(cfg.overrides[g.key] || {}).favorite,
       lp: Math.max(st.lastPlayed || 0, g.lastPlayedSource || 0), src: g.source,
-      min: Math.round(Math.max((mins.get(g.key) || 0) / 60000, g.steamPlaytime || 0)),
+      // Las dos en milisegundos: se pasan a minutos (antes Steam iba sin pasar y salían horas infladas)
+      min: Math.round(Math.max(mins.get(g.key) || 0, g.steamPlaytime || 0) / 60000),
       links: Array.isArray((cfg.overrides[g.key] || {}).links) ? cfg.overrides[g.key].links : [],
     };
   });
@@ -559,6 +560,18 @@ function setupIpc() {
   });
 
   ipcMain.handle('launch', (_e, key) => launchGame(key));
+  // Cambiar de interfaz: se guarda la elección (salvo en las capturas automáticas) y se carga la otra página
+  ipcMain.handle('ui:switch', (_e, mode) => {
+    const m = mode === 'lanzador' ? 'lanzador' : 'revista';
+    if (!process.env.ATRIO_SHOTS) config.patch({ ui: m });
+    if (win && !win.isDestroyed()) {
+      try { web.close(); } catch { /* no había ninguna web abierta */ }
+      try { win.setBackgroundColor(uiBackground(m)); } catch { /* */ }
+      // Después de responder, para que la interfaz que se va no se quede esperando la respuesta
+      setImmediate(() => { if (win && !win.isDestroyed()) win.loadFile(uiFile(m)); });
+    }
+    return m;
+  });
   ipcMain.handle('power', (_e, action) => doPower(action));
   setupSuiteIpc();
 
@@ -706,10 +719,35 @@ async function ronronWatch() {
   }
 }
 
+// ---------- Interfaz: la revista (escritorio) o el lanzador clásico (pantalla grande y mando) ----------
+// Se puede forzar con ATRIO_UI=revista|lanzador o con --revista / --lanzador. Las capturas automáticas
+// (ATRIO_SHOTS) usan el lanzador salvo que se pida otra cosa: su plan de pasos (window.__test) es de esa interfaz.
+function uiMode() {
+  const env = process.env.ATRIO_UI;
+  if (env === 'revista' || env === 'lanzador') return env;
+  if (process.argv.includes('--lanzador')) return 'lanzador';
+  if (process.argv.includes('--revista')) return 'revista';
+  if (process.env.ATRIO_SHOTS) return 'lanzador';
+  return config.get().ui === 'lanzador' ? 'lanzador' : 'revista';
+}
+function uiFile(mode) {
+  return mode === 'lanzador'
+    ? path.join(__dirname, '..', 'renderer', 'index.html')
+    : path.join(__dirname, '..', 'renderer', 'revista', 'index.html');
+}
+// Color de la ventana mientras carga (para que la revista en claro no parpadee en negro)
+function uiBackground(mode) {
+  if (mode === 'lanzador') return '#0d0d0f';
+  const tema = (config.get().revista || {}).tema;
+  const dark = tema === 'oscuro' || (tema !== 'claro' && nativeTheme.shouldUseDarkColors);
+  return dark ? '#141210' : '#F3EEE4';
+}
+
 // ---------- Ventana ----------
 function createWindow() {
   const cfg = config.get();
   const shots = !!process.env.ATRIO_SHOTS;
+  const ui = uiMode();
   let size = { width: 1600, height: 900 };
   if (shots && process.env.ATRIO_SIZE) {
     const [w, h] = process.env.ATRIO_SIZE.split('x').map(Number);
@@ -723,7 +761,7 @@ function createWindow() {
     show: false,
     frame: false,
     fullscreen: false,
-    backgroundColor: '#0d0d0f',
+    backgroundColor: uiBackground(ui),
     title: 'Atrio',
     icon: path.join(__dirname, '..', 'renderer', 'icon.png'),
     webPreferences: {
@@ -737,14 +775,17 @@ function createWindow() {
   });
   win.setMenuBarVisibility(false);
   web.attach(win, send);
-  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  win.loadFile(uiFile(ui));
   // La pantalla completa se aplica después de mostrar la ventana: crearla ya a pantalla
   // completa da problemas en algunos compositores Wayland
-  const wantFull = !shots && !!cfg.behavior.fullscreen && !process.argv.includes('--ventana');
+  // La pantalla completa es cosa del lanzador (pantalla grande y mando); la revista abre en ventana grande
+  const wantFull = !shots && ui === 'lanzador' && !!cfg.behavior.fullscreen && !process.argv.includes('--ventana');
   win.once('ready-to-show', () => {
     if (shots) { win.showInactive(); return; }
     if (background) return;
     win.show();
+    // La revista es una app de escritorio: se abre ocupando la pantalla, pero en ventana
+    if (ui === 'revista' && !process.argv.includes('--ventana')) win.maximize();
     if (wantFull) setTimeout(() => { if (win) win.setFullScreen(true); }, 250);
   });
   win.on('show', () => { if (wantFull && win && !win.isFullScreen()) setTimeout(() => { if (win) win.setFullScreen(true); }, 250); });

@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('atrio', {
   patchConfig: (p) => invoke('config:patch', p),
   override: (key, p) => invoke('override', key, p),
   launch: (key) => invoke('launch', key),
+  // Cambiar entre la revista y el lanzador clásico ('revista' | 'lanzador'); se recuerda para la próxima vez
+  switchUi: (mode) => invoke('ui:switch', mode),
   sgdbSearch: (term) => invoke('sgdb:search', term),
   sgdbTest: (key) => invoke('sgdb:test', key),
   sgdbAssets: (key, type, id, page) => invoke('sgdb:assets', key, type, id, page),

@@ -461,6 +461,8 @@
           onclick: () => { section = id; draw(); A.nav.focusFirst(); A.nav.focus(navBox.querySelector(`[data-sec="${id}"]`), { noScroll: true }); },
         }, A.icon(icon), h('span', label))),
         h('div.spacer'),
+        // La revista: la interfaz de escritorio (como la app del móvil). Atrio recuerda cuál usaste la última vez
+        A.api.switchUi ? h('button.menu-item', { 'data-nav': true, 'data-zone': 'setnav', onclick: () => A.api.switchUi('revista') }, A.icon('note'), h('span', 'Volver a la revista')) : null,
         h('button.menu-item', { 'data-nav': true, 'data-zone': 'setnav', onclick: () => A.api.toggleFullscreen() }, A.icon('expand'), h('span', 'Pantalla completa')),
         h('button.menu-item', { 'data-nav': true, 'data-zone': 'setnav', onclick: () => A.api.minimize() }, A.icon('minimize'), h('span', 'Minimizar')),
         h('button.menu-item', { 'data-nav': true, 'data-zone': 'setnav', onclick: () => A.dialogs.power() }, A.icon('power'), h('span', 'Apagar, reiniciar o suspender')),

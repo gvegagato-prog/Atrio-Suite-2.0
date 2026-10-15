@@ -1,0 +1,6 @@
+Letras de la revista de Atrio (las mismas que la app del móvil, res/font):
+
+- Titulares (display_*.ttf): Fraunces (Undercase Type, Phaedra Charles, Flavia Zimbardi).
+- Texto (body_*.ttf): Inter (Rasmus Andersson).
+
+Las dos con licencia SIL Open Font License 1.1 (https://openfontlicense.org).

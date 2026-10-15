@@ -8,6 +8,13 @@ const CONFIG_PATH = path.join(APP_CONFIG_DIR, 'config.json');
 const DEFAULTS = {
   version: 1,
   sgdbKey: '',
+  // Interfaz que se abre: 'revista' (la de escritorio, como la app del móvil) o 'lanzador' (pantalla grande y mando)
+  ui: 'revista',
+  // La revista: tema (claro | oscuro | auto) y color de acento (rojo | azul | verde | mostaza | morado | naranja | rosa | tinta)
+  revista: {
+    tema: 'auto',
+    acento: 'rojo',
+  },
   theme: {
     layout: 'horizonte',   // horizonte | consola | rejilla | lista | carrusel | estante
     scheme: 'noche',       // noche | oled | grafito | papel | arena | niebla
