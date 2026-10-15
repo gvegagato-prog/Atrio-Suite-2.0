@@ -433,6 +433,9 @@ fi
 shot 63b_linea 1
 # El alto de la fila: se arrastra el círculo ⇕ hacia abajo y la fila crece
 seek "Alto de la fila 1"
+# Que el círculo quede a media pantalla (con sitio para arrastrarlo hacia abajo)
+H0=$(pos "Alto de la fila 1")
+if [ -n "$H0" ]; then set -- $H0; if [ $2 -gt 1100 ]; then adb shell input swipe 540 $(( $2 - 160 )) 540 $(( 900 - 160 )) 900; sleep 1.5; fi; fi
 H1=$(pos "Alto de la fila 1"); echo "   alto en $H1" >> "$LOG"
 if [ -n "$H1" ]; then
   set -- $H1; adb shell input swipe $1 $2 $1 $(( $2 + 260 )) 900; sleep 1.5
