@@ -403,6 +403,47 @@ shot 61_revista_biblioteca 1; alive "biblioteca revista"
 must seek "Juego de Prueba"; tap "Juego de Prueba"; sleep 3
 shot 62_revista_ficha 1; alive "ficha revista"
 must see "GUÍAS" 5
+# Modo edición: el diseño de la página
+must tap "EDITAR"; sleep 2
+must see "FILA 1" 6
+shot 63_diseno 1
+# La línea se arrastra: el círculo ⇔ tiene que moverse
+pos() { dump; python3 - "$1" "$OUT/ui.xml" <<'PY'
+import sys, re
+t, f = sys.argv[1], sys.argv[2]
+for m in re.finditer(r'<node [^>]*>', open(f, encoding='utf-8', errors='ignore').read()):
+    n = m.group(0)
+    if f'text="{t}"' in n:
+        b = list(map(int, re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n).groups()))
+        print((b[0]+b[2])//2, (b[1]+b[3])//2); break
+PY
+}
+P1=$(pos "⇔"); echo "   línea en $P1" >> "$LOG"
+if [ -n "$P1" ]; then
+  set -- $P1; adb shell input swipe $1 $2 $(( $1 + 220 )) $2 900; sleep 1.5
+  P2=$(pos "⇔"); echo "   línea movida a $P2" >> "$LOG"; set -- $P1 $P2
+  if [ -n "$P2" ] && [ $(( $3 - $1 )) -gt 60 ]; then echo "   la línea se mueve arrastrándola" | tee -a "$LOG"; else echo "FALLO: la línea no se mueve" | tee -a "$LOG"; exit 1; fi
+fi
+shot 63b_linea 1
+# Texto libre en la casilla de las guías
+must tap "GUÍAS"; sleep 1.5
+must see "¿Qué va aquí?" 5
+must tap "Texto libre (título y texto)"; sleep 1.5
+tap "Título (opcional)" && type "Mi%sveredicto"
+tap "Texto" && type "Lo%smejor%sdel%saño"
+kb
+must tap "Guardar"; sleep 1.5
+must see "MI VEREDICTO" 5
+echo "   texto libre en una casilla" | tee -a "$LOG"
+# Imagen: se abre el selector (en el emulador no hay clave de SteamGridDB)
+must tap "MI VEREDICTO"; sleep 1.5
+must tap "Imagen"; sleep 3; shot 63c_imagen 1
+must see "PORTADA" 5
+tap "Cerrar"; sleep 1
+must tap "LISTO"; sleep 1.5
+shot 63d_diseno_hecho 1; alive "diseño"
+must see "MI VEREDICTO" 5
+echo "   el diseño se guarda" | tee -a "$LOG"
 adb shell input swipe 540 1600 540 700 500; sleep 1; shot 62b_revista_ficha 1
 must seek "EDITAR"
 back; back; sleep 1; alive "volver revista"

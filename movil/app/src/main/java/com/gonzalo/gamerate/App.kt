@@ -670,6 +670,27 @@ fun App(
     var guideSheet by remember { mutableStateOf<PcGame?>(null) }
     // Las guías se abren dentro de la app, encima de lo que estés viendo
     SideEffect { Guides.opener = { g -> guideSheet = null; WebActivity.open(ctx, g) } }
+    // Imágenes para las casillas de las fichas de revista
+    SideEffect {
+        MagImages.categories = { k ->
+            when {
+                k.isGame -> listOf("Portada", "Fondo", "Logo")
+                k.isMovie -> listOf("Póster", "Fondo")
+                k.isTv -> listOf("Póster", "Fondo")
+                k.isBook -> listOf("Portada")
+                else -> emptyList()
+            }
+        }
+        MagImages.load = { k, id, name, cat ->
+            when {
+                k.isGame -> when (cat) { "Fondo" -> Sgdb.heroes(id, key); "Logo" -> Sgdb.logos(id, key); else -> Sgdb.covers(id, key) }
+                k.isMovie && isWebId(id) -> Tmdb.images(id, store.tmdbKey, cat == "Fondo")
+                k.isTv && isWebId(id) -> TvMaze.images(id, cat == "Fondo")
+                k.isBook -> OpenLib.covers(id).ifEmpty { OpenLib.coversByTitle(name) }
+                else -> emptyList()
+            }
+        }
+    }
     var skipped by remember { mutableStateOf(store.segsSkipped) }
 
     /** La ficha en curso de un juego que se está jugando en el PC (si no la tienes, se crea en «Jugando»). */

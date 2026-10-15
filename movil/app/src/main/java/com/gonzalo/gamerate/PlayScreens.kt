@@ -75,6 +75,8 @@ fun PlayDetailScreen(
     var recommend by remember { mutableStateOf(false) }
     // Se abre en modo lectura (como los valorados): los datos se cambian con «Editar»
     var editing by remember(p0.id, startEditing) { mutableStateOf(startEditing) }
+    // Revista: el diseño de la página (qué va en cada casilla)
+    var designing by remember(p0.id) { mutableStateOf(false) }
     LaunchedEffect(viewP) { Mode.pageP = viewP }
     DisposableEffect(Unit) { onDispose { Mode.pageP = false } }
     Crossfade(viewP && partner != null, animationSpec = tween(450), label = "pareja") { pv ->
@@ -88,7 +90,8 @@ fun PlayDetailScreen(
             val ctx = androidx.compose.ui.platform.LocalContext.current
             RevistaTopBar(onBack) {
                 if (partner != null) Text("PAREJA", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable { withReveal { viewP = true } }.padding(8.dp))
-                Text("EDITAR", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable { editing = true }.padding(8.dp))
+                Text(if (designing) "LISTO" else "EDITAR", color = if (designing) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                    modifier = Modifier.clickable { designing = !designing }.padding(8.dp))
             }
             Box(Modifier.padding(horizontal = 18.dp).fillMaxWidth().height(3.dp).background(Charcoal))
             Spacer(Modifier.height(14.dp))
@@ -101,10 +104,25 @@ fun PlayDetailScreen(
             if (deck.isNotBlank()) Text(deck, color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
             partner?.reactsToMe?.get(p.id)?.let { Box(Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) { TheirReaction(partnerName, it) } }
             Spacer(Modifier.height(14.dp))
-            if (kind.isBook) MagFull("Lectura") { BookFileBar(p.id, p.name) }
+            if (designing) DesignHint(onData = { designing = false; editing = true })
 
-            // Fila 1: Guías / Crítica / Capítulos | Estado y nota
-            val estado: @Composable ColumnScope.() -> Unit = {
+            val defs = linkedMapOf<String, MagDef>()
+            if (kind.isGame) defs["guias"] = MagDef("Guías") { GuidesSection(p.id, p.name, inCell = true) }
+            if (kind.isMovie || kind.isTv) defs["critica"] = MagDef("Crítica") { MagCritics(kind, p.id, p.name) }
+            if (kind.isBook) defs["lectura"] = MagDef("Lectura") { BookFileBar(p.id, p.name) }
+            if (kind.isBook) defs["capitulos"] = MagDef("Capítulos") {
+                if (p.status == 1) {
+                    Text(if (p.chapter > 0) "${p.chapter}" else "—", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 56.sp, lineHeight = 56.sp)
+                    Text("CAPÍTULO ACTUAL", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("− 1", fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.clickable { upd(p.copy(chapter = maxOf(0, p.chapter - 1))) }.padding(6.dp))
+                        Text("+ 1", color = ColGeneral, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.clickable { upd(p.copy(chapter = p.chapter + 1)) }.padding(6.dp))
+                    }
+                    Text(if (due) "Llevas ${p.pending()} capítulos sin apuntar." else "Apuntas cada ${p.every} cap.", color = if (due) ColGeneral else Muted, fontSize = 13.sp)
+                } else Text("Márcalo como «${kind.statuses[1]}» para llevar la cuenta.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
+            }
+            defs["estado"] = MagDef(if (b != null) "Nota" else "Estado") {
                 if (b != null) MagScore(b.general, b.scores(), kind)
                 else Text(kind.statuses.getOrElse(p.status) { "" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 32.sp)
                 if (b == null) Text("Aún sin nota", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
@@ -112,55 +130,30 @@ fun PlayDetailScreen(
                 MagLink("Apuntar notas", if (b != null) "media de ${p.entries.size} apuntes" else null, accent = due) { onNote(p, null) }
                 MagLink(if (b != null) "Pasar a valorados" else "Terminado: valorar") { onFinish(p) }
             }
-            when {
-                kind.isGame -> MagSplit("Guías", if (b != null) "Nota" else "Estado", { GuidesSection(p.id, p.name, inCell = true) }, estado, 1.1f, 1f)
-                kind.isMovie || kind.isTv -> MagSplit("Crítica", if (b != null) "Nota" else "Estado", { MagCritics(kind, p.id, p.name) }, estado)
-                kind.isBook -> MagSplit("Capítulos", if (b != null) "Nota" else "Estado", {
-                    if (p.status == 1) {
-                        Text(if (p.chapter > 0) "${p.chapter}" else "—", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 56.sp, lineHeight = 56.sp)
-                        Text("CAPÍTULO ACTUAL", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Text("− 1", fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.clickable { upd(p.copy(chapter = maxOf(0, p.chapter - 1))) }.padding(6.dp))
-                            Text("+ 1", color = ColGeneral, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.clickable { upd(p.copy(chapter = p.chapter + 1)) }.padding(6.dp))
-                        }
-                        Text(if (due) "Llevas ${p.pending()} capítulos sin apuntar." else "Apuntas cada ${p.every} cap.", color = if (due) ColGeneral else Muted, fontSize = 13.sp)
-                    } else Text("Márcalo como «${kind.statuses[1]}» para llevar la cuenta.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
-                }, estado)
-                else -> MagFull(if (b != null) "Nota" else "Estado", content = estado)
-            }
-
-            // Fila 2 (juegos): Sesión | Jugar
-            if (kind.isGame) {
-                val sesion: @Composable ColumnScope.() -> Unit = {
-                    if (p.status != 1) Text("Márcalo como «${kind.statuses[1]}» para empezar una sesión.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
-                    else if (sessId == p.id) {
-                        var now by remember { mutableStateOf(System.currentTimeMillis()) }
-                        LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
-                        val mins = ((now - sessStart) / 60_000L).toInt().coerceAtLeast(0)
-                        Text(hoursText(mins), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 34.sp)
-                        Text("EN MARCHA · AVISO CADA $sessHours H", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                        MagLink("Terminar sesión", accent = true) { onStop() }
-                    } else {
-                        Text("Empezar con aviso cada:", color = Muted, fontSize = 13.sp)
-                        MagLink("1 hora") { onStart(p, 1) }
-                        MagLink("2 horas") { onStart(p, 2) }
-                        MagLink("3 horas") { onStart(p, 3) }
-                    }
+            if (kind.isGame) defs["sesion"] = MagDef("Sesión") {
+                if (p.status != 1) Text("Márcalo como «${kind.statuses[1]}» para empezar una sesión.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
+                else if (sessId == p.id) {
+                    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+                    LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
+                    val mins = ((now - sessStart) / 60_000L).toInt().coerceAtLeast(0)
+                    Text(hoursText(mins), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 34.sp)
+                    Text("EN MARCHA · AVISO CADA $sessHours H", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    MagLink("Terminar sesión", accent = true) { onStop() }
+                } else {
+                    Text("Empezar con aviso cada:", color = Muted, fontSize = 13.sp)
+                    MagLink("1 hora") { onStart(p, 1) }
+                    MagLink("2 horas") { onStart(p, 2) }
+                    MagLink("3 horas") { onStart(p, 3) }
                 }
-                val hasPc = remember(p.id, p.name, Suite.libs) { Guides.pcGameFor(p.id, p.name) != null }
-                if (hasPc) MagSplit("Sesión", "Jugar", sesion, { FichaPlayButtons(p.id, p.name) })
-                else MagFull("Sesión", content = sesion)
             }
-
-            // Progreso (capítulos, episodios, actos) a todo lo ancho
-            if (!kind.isBook) MagFull(null) {
+            val hasPc = remember(p.id, p.name, Suite.libs) { Guides.pcGameFor(p.id, p.name) != null }
+            if (kind.isGame && hasPc) defs["jugar"] = MagDef("Jugar") { FichaPlayButtons(p.id, p.name) }
+            if (!kind.isBook) defs["progreso"] = MagDef(null) {
                 val fe = findEpisodes
                 if (kind.isGame) ProgressPanel(p, kind, readOnly = true, find = findTtb, onPartDone = { onPartDone(p, it) }) { upd(it) }
                 else ProgressPanel(p, kind, readOnly = true, episodes = if (fe != null) ({ fe(p.id, p.name) }) else null, onPartDone = { onPartDone(p, it) }) { upd(it) }
             }
-            // Partes, apuntes rápidos y capturas
-            MagFull(null) {
+            defs["partes"] = MagDef(null) {
                 PlaySuitePanel(
                     p, kind,
                     onRate = { onRateSeg(p, it) }, onOpenEntry = { onNote(p, it) }, onAddSeg = { onAddSeg(p) },
@@ -168,8 +161,8 @@ fun PlayDetailScreen(
                     onParts = { on -> upd(p.copy(noParts = !on, updated = System.currentTimeMillis())) }
                 )
             }
-            // Apuntes
-            if (p.entries.isNotEmpty()) MagFull("Apuntes", "Nuevo", { onNote(p, null) }) {
+            defs["apuntes"] = MagDef("Apuntes", "Nuevo" to { onNote(p, null) }) {
+                if (p.entries.isEmpty()) Text("Aún no has apuntado nada.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
                 p.entries.sortedByDescending { it.time }.forEach { e ->
                     val vals = e.scores()
                     Column(Modifier.fillMaxWidth().clickable { onNote(p, e) }.padding(vertical = 8.dp)) {
@@ -181,15 +174,20 @@ fun PlayDetailScreen(
                     }
                 }
             }
-            // Horas | Enlaces
-            val enlaces: @Composable ColumnScope.() -> Unit = {
+            if (kind.isGame) defs["horas"] = MagDef("Horas") { MagHours(p.minutes, p.ttbMain, p.ttbExtra, p.ttbFull) }
+            defs["enlaces"] = MagDef("Enlaces") {
                 if (kind.hasSoundtrack) MagLink("Banda sonora", "YouTube Music") { openSoundtrack(ctx, p.name) }
                 if (onRecommend != null) MagLink("Recomendar", "a $partnerName", accent = true) { recommend = true }
-                MagLink("Editar ficha") { editing = true }
+                MagLink("Datos de la ficha") { editing = true }
             }
-            if (kind.isGame) MagSplit("Horas", "Enlaces", { MagHours(p.minutes, p.ttbMain, p.ttbExtra, p.ttbFull) }, enlaces)
-            else MagFull("Enlaces", content = enlaces)
-            MagFooter { editing = true }
+            val defaults = when {
+                kind.isGame -> magRows(listOf("guias", "estado"), listOf("sesion", "jugar"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("horas", "enlaces"))
+                kind.isMovie || kind.isTv -> magRows(listOf("critica", "estado"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
+                kind.isBook -> magRows(listOf("lectura"), listOf("capitulos", "estado"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
+                else -> magRows(listOf("estado"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
+            }
+            MagPage("p:${kind.id}:${p.id}", "tpl:p:${kind.id}", kind.title, defaults, defs, kind, p.id, p.name, designing)
+            if (designing) MagFooter("Listo") { designing = false } else MagFooter { designing = true }
         } else {
         HeroHeader(
             p.cover, p.hero, p.name, listOfNotNull(kind.title, p.creator.ifBlank { null }).joinToString(" · "), coverKey(kind.id, p.id), onBack,

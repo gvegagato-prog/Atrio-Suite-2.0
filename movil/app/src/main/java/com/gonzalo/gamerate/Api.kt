@@ -46,6 +46,10 @@ object Sgdb {
     suspend fun heroes(id: Long, key: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         pairs(get("/heroes/game/$id", key))
     }
+
+    suspend fun logos(id: Long, key: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+        pairs(get("/logos/game/$id", key))
+    }
 }
 
 object OpenLib {

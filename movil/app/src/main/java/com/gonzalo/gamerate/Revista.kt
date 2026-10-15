@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -161,7 +161,7 @@ fun MagFooter(text: String = "Editar", onClick: () -> Unit) {
     }
 }
 
-/** Ficha de revista de algo ya valorado (modo lectura). */
+/** Ficha de revista de algo ya valorado (modo lectura; «Editar» abre el diseño de la página). */
 @Composable
 fun RevistaGameRead(
     g: Game, kind: Kind, partnerName: String, theirs: String?, ttbMsg: String,
@@ -169,10 +169,13 @@ fun RevistaGameRead(
     onExport: (Game, ExportMode) -> Unit, onRecommend: (() -> Unit)?, onEdit: () -> Unit
 ) {
     val ctx = LocalContext.current
+    var designing by remember(g.id) { mutableStateOf(false) }
     RevistaTopBar(onBack) {
-        if (onPartner != null) Text("PAREJA", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable(onClick = onPartner).padding(8.dp))
-        Text(if (g.fav) "★ FAVORITO" else "☆ FAVORITO", color = if (g.fav) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+        if (onPartner != null && !designing) Text("PAREJA", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable(onClick = onPartner).padding(8.dp))
+        if (!designing) Text(if (g.fav) "★" else "☆", color = if (g.fav) ColGeneral else Charcoal, fontSize = 18.sp, fontWeight = FontWeight.Black,
             modifier = Modifier.clickable(onClick = onFav).padding(8.dp))
+        Text(if (designing) "LISTO" else "EDITAR", color = if (designing) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            modifier = Modifier.clickable { designing = !designing }.padding(8.dp))
     }
     Box(Modifier.padding(horizontal = 18.dp).fillMaxWidth().height(3.dp).background(Charcoal))
     Spacer(Modifier.height(14.dp))
@@ -183,23 +186,20 @@ fun RevistaGameRead(
     ).joinToString(" · ")
     if (deck.isNotBlank()) Text(deck, color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
     if (theirs != null) Box(Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) { TheirReaction(partnerName, theirs) }
+    if (designing) DesignHint(onData = onEdit)
     Spacer(Modifier.height(14.dp))
 
-    // Fila 1: Guías (o lo que toque según la categoría) | Nota
-    val nota: @Composable ColumnScope.() -> Unit = { MagScore(g.general, g.scores(), kind) }
-    when {
-        kind.isGame -> MagSplit("Guías", "Nota", { GuidesSection(g.id, g.name, inCell = true) }, nota, 1.1f, 1f)
-        kind.isMovie || kind.isTv -> MagSplit("Crítica", "Nota", { MagCritics(kind, g.id, g.name) }, nota)
-        else -> MagSplit("Datos", "Nota", { GameFacts(g, kind) }, nota)
-    }
-    if (kind.isBook) MagFull("Lectura") { BookFileBar(g.id, g.name) }
-    // Opinión, a todo lo ancho
-    MagFull("Opinión", "Escribir", onEdit) {
+    val defs = linkedMapOf<String, MagDef>()
+    if (kind.isGame) defs["guias"] = MagDef("Guías") { GuidesSection(g.id, g.name, inCell = true) }
+    defs["nota"] = MagDef("Nota") { MagScore(g.general, g.scores(), kind) }
+    if (kind.isMovie || kind.isTv) defs["critica"] = MagDef("Crítica") { MagCritics(kind, g.id, g.name) }
+    if (kind.isBook) defs["lectura"] = MagDef("Lectura") { BookFileBar(g.id, g.name) }
+    defs["opinion"] = MagDef("Opinión", "Escribir" to onEdit) {
         if (g.review.isNotBlank()) MagBody(g.review)
         else Text("Aún no has escrito nada.", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp)
     }
-    // Horas | Enlaces
-    val enlaces: @Composable ColumnScope.() -> Unit = {
+    if (kind.isGame) defs["horas"] = MagDef("Horas") { MagHours(g.minutes, g.ttbMain, g.ttbExtra, g.ttbFull, ttbMsg) }
+    defs["enlaces"] = MagDef("Enlaces") {
         if (kind.isGame) FichaPlayButtons(g.id, g.name, Modifier.padding(bottom = 6.dp))
         if (kind.hasSoundtrack) MagLink("Banda sonora", "YouTube Music") { openSoundtrack(ctx, g.name) }
         MagLink("Compartir") { onExport(g, ExportMode.Share) }
@@ -207,13 +207,25 @@ fun RevistaGameRead(
         MagLink("Exportar", "PDF") { onExport(g, ExportMode.Pdf) }
         if (onRecommend != null) MagLink("Recomendar", "a $partnerName", accent = true, onClick = onRecommend)
     }
-    if (kind.isGame) {
-        MagSplit("Horas", "Enlaces", { MagHours(g.minutes, g.ttbMain, g.ttbExtra, g.ttbFull, ttbMsg) }, enlaces)
-        MagFull("Datos") { GameFacts(g, kind) }
-    } else if (kind.isMovie || kind.isTv) {
-        MagSplit("Datos", "Enlaces", { GameFacts(g, kind) }, enlaces)
-    } else MagFull("Enlaces", content = enlaces)
-    MagFooter(onClick = onEdit)
+    defs["datos"] = MagDef("Datos") { GameFacts(g, kind) }
+    val defaults = when {
+        kind.isGame -> magRows(listOf("guias", "nota"), listOf("opinion"), listOf("horas", "enlaces"), listOf("datos"))
+        kind.isMovie || kind.isTv -> magRows(listOf("critica", "nota"), listOf("opinion"), listOf("datos", "enlaces"))
+        kind.isBook -> magRows(listOf("datos", "nota"), listOf("lectura"), listOf("opinion"), listOf("enlaces"))
+        else -> magRows(listOf("datos", "nota"), listOf("opinion"), listOf("enlaces"))
+    }
+    MagPage("v:${kind.id}:${g.id}", "tpl:v:${kind.id}", kind.title, defaults, defs, kind, g.id, g.name, designing)
+    if (designing) MagFooter("Listo") { designing = false } else MagFooter { designing = true }
+}
+
+/** Aviso del modo edición: qué se puede hacer y el enlace a los datos (nota, horas, fechas…). */
+@Composable
+fun DesignHint(onData: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp).background(Sand).padding(12.dp)) {
+        Text("Toca una casilla para elegir qué va en ella (o texto libre, o una imagen). Arrastra el círculo de la línea para moverla.",
+            fontSize = 13.sp, lineHeight = 18.sp)
+        Text("DATOS Y NOTA →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable(onClick = onData).padding(top = 8.dp))
+    }
 }
 
 /** Los datos de la ficha con puntos guía. */

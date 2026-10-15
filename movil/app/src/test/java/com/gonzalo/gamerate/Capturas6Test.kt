@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -154,6 +156,24 @@ class Capturas6Test {
         rule.onAllNodesWithText("Videojuegos")[0].performClick(); shoot("r3_biblioteca")
         rule.onAllNodesWithText("Pasados")[0].performClick(); shoot("r3b_biblioteca_pasados")
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r4_ficha_valorado")
+        // Modo edición: el diseño de la página
+        rule.onAllNodesWithText("EDITAR")[0].performClick(); shoot("r8_diseno")
+        rule.onAllNodesWithText("⇔")[0].performTouchInput { swipeRight() }; shoot("r8b_linea_movida")
+        rule.onAllNodesWithText("Ninguna todavía.")[0].performClick(); shoot("r8c_elegir")
+        // Elegir «Opinión» para la casilla de las guías
+        rule.onAllNodesWithText("Opinión")[0].performClick(); shoot("r8d_elegida")
+        // (Los diálogos con campos de texto no se quedan quietos en Robolectric: el texto libre se mete directamente)
+        rule.runOnUiThread {
+            MagLayouts.save(ctx, "v:0:102", listOf(
+                MagRowSpec(listOf(MagCell("texto", "Mi veredicto", "El mejor roguelike que he jugado. Cada partida cuenta una historia distinta y la música no se olvida."), MagCell("nota")), 0.62f),
+                MagRowSpec(listOf(MagCell("horas"), MagCell("enlaces")), 0.4f),
+                MagRowSpec(listOf(MagCell("datos")))
+            ))
+        }
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r8e_texto_libre")
+        rule.onAllNodesWithText("EDITAR")[0].performClick()
+        rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r8f_resultado")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("r4b_ficha_valorado_2")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("r4c_ficha_valorado_3")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
