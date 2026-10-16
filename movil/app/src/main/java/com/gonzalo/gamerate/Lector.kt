@@ -289,7 +289,11 @@ class ReaderActivity : ComponentActivity() {
         )
     }
 
+    /** Las teclas de volumen pasan página (no leyendo PDF/cómics hacia abajo: ahí suben y bajan el volumen). */
+    @Volatile private var volumeTurns = true
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (!volumeTurns) return super.onKeyDown(keyCode, event)
         // Volumen para pasar página
         if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) { web.evaluateJavascript("window.atrioPage && atrioPage(1)", null); return true }
         if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) { web.evaluateJavascript("window.atrioPage && atrioPage(-1)", null); return true }
@@ -365,6 +369,9 @@ class ReaderActivity : ComponentActivity() {
         fun setBrightness(v: Double) = runOnUiThread {
             window.attributes = window.attributes.apply { screenBrightness = if (v < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else v.toFloat().coerceIn(0.01f, 1f) }
         }
+
+        @JavascriptInterface
+        fun volumeKeys(on: Boolean) { volumeTurns = on }
 
         @JavascriptInterface
         fun keepScreenOn(on: Boolean) = runOnUiThread {

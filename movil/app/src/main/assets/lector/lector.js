@@ -92,6 +92,8 @@ async function abrir() {
     // Desde la ficha del libro se puede abrir directamente en un subrayado
     await view.init({ lastLocation: st.goto || st.location || null, showTextStart: !st.location && !st.goto })
     paso = 'listo'
+    // Leyendo hacia abajo, los botones de volumen no pasan página (son el volumen de siempre)
+    try { A.volumeKeys?.(!haciaAbajo()) } catch (e) { }
     $('#carga').classList.add('fuera')
     showChrome(true)
     setTimeout(() => showChrome(false), 1600)
@@ -752,7 +754,7 @@ function openSettings() {
         ${S.pdfFlow === 'pages' ? `
         <h3>Tamaño de la página</h3>
         <div class="fila">${chips([['fit-width', 'Ajustar al ancho'], ['fit-page', 'Página entera']], S.zoom, 'zoom')}</div>` : `
-        <p class="sub" style="margin-top:8px">Las páginas, una debajo de otra y al ancho de la pantalla. Los botones de volumen bajan una pantalla.</p>`}
+        <p class="sub" style="margin-top:8px">Las páginas, una debajo de otra y al ancho de la pantalla. Solo se avanza desplazando: ni deslizar de lado ni los botones de volumen pasan página.</p>`}
       ` : `
         <h3>Tamaño de letra</h3>
         <div class="paso"><button data-step="size" data-d="-10">−</button><b>${S.size}%</b><button data-step="size" data-d="10">+</button></div>
@@ -1183,6 +1185,6 @@ window.atrioBack = () => {
     return false
 }
 // Teclas de volumen para pasar página (las manda la app)
-window.atrioPage = d => { if (d > 0) view?.goRight(); else view?.goLeft() }
+window.atrioPage = d => { if (haciaAbajo()) return; if (d > 0) view?.goRight(); else view?.goLeft() }
 
 open()

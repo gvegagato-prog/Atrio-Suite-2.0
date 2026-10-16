@@ -240,7 +240,7 @@ const log = [];
         state: () => JSON.stringify({ title: 'Manga de prueba', file: 'manga.pdf', location: null, settings: { pdfFlow: 'scroll' }, annotations: [], bookmarks: [], stats: {} }),
         saveProgress: (cfi, f, l) => { store.saved.progress = { cfi, f, l }; }, saveSettings: (j) => { store.saved.settings = JSON.parse(j); },
         saveAnnotations: noop, saveBookmarks: noop, setBrightness: noop, keepScreenOn: noop, setTheme: noop, systemBars: noop, copy: noop, share: noop,
-        openUrl: noop, close: noop, buzz: noop, saveStats: noop, speak: noop, stopSpeaking: noop, lookup: noop, translate: noop,
+        openUrl: noop, close: noop, buzz: noop, saveStats: noop, speak: noop, stopSpeaking: noop, lookup: noop, translate: noop, volumeKeys: (on) => { store.vol = on; },
       };
     });
     await page.goto(`http://localhost:${port}/assets/lector/index.html`);
@@ -269,11 +269,12 @@ const log = [];
     const f1 = await page.evaluate(() => window.__atrio.saved.progress?.f || 0);
     ok(/Página [3-9] de 12/.test(tras) && f1 > 0.15, `${name}: deslizando hacia arriba se baja por el libro («${tras}», ${Math.round(f1 * 100)} %)`);
     await page.screenshot({ path: path.join(out, name + '-2-bajando.png') });
-    // Botones de volumen: una pantalla más
+    // Botones de volumen: no pasan página (la app los deja para el volumen)
     const y0 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
     await page.evaluate(() => window.atrioPage(1)); await page.waitForTimeout(600);
     const y1 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
-    ok(y1 > y0 + 300, `${name}: el botón de volumen baja una pantalla (${Math.round(y0)} → ${Math.round(y1)})`);
+    const vol = await page.evaluate(() => window.__atrio.vol);
+    ok(y1 === y0 && vol === false, `${name}: los botones de volumen no pasan página (${Math.round(y0)} → ${Math.round(y1)}, volumen para la app: ${vol})`);
     // Deslizar de lado: no pasa de página (leyendo hacia abajo solo se desplaza)
     {
       const pg0 = await pagina();
@@ -296,6 +297,7 @@ const log = [];
     await page.click('[data-k="pdfFlow"][data-v="pages"]');
     await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2500);
     const r2 = await page.evaluate(() => document.querySelector('foliate-view').renderer.localName);
+    ok((await page.evaluate(() => window.__atrio.vol)) === true, `${name}: en «Página a página» los botones de volumen vuelven a pasar página`);
     ok(r2 === 'foliate-fxl' && (await pagina()) === antes, `${name}: «Página a página» reabre en la misma página (${r2}, «${await pagina()}»)`);
     await page.mouse.click(206, 430); await page.waitForTimeout(600);
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
