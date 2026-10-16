@@ -913,3 +913,8 @@ textarea.entrada:focus { border-color: var(--acento); }
 .enlace-texto:hover { color: var(--acento); }
 .esp-fila { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 @media (max-width: 1100px) { .esp-fila { grid-template-columns: minmax(0, 1fr); } .esp-fila > :last-child { padding-top: 18px; } }
+
+/* Fila de sección con «Jugar →» (el juego está instalado en este PC) */
+.item-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; border-bottom: 1px solid var(--linea); }
+.item-fila > .item { border-bottom: 0; }
+.item-fila > .enlace { white-space: nowrap; }

@@ -44,13 +44,16 @@
     const pct = t === 'p' ? D.porcentaje(item) : null;
     const nota = D.nota(item, t);
     const pcg = D.pcDe(k, item);
-    return h('button.item', { type: 'button', onclick: () => RV.ir({ v: 'ficha', k: k.id, t, id: item.id }) },
+    const fila = h('button.item', { type: 'button', onclick: () => RV.ir({ v: 'ficha', k: k.id, t, id: item.id }) },
       h('span',
         h('span.item-tit.ajusta', { 'data-min': '16' }, t === 'g' && item.fav ? h('span.estrella', { 'aria-label': 'Favorito' }, '★') : null, item.name),
         h('span.versal', { style: { display: 'block' } }, sub.filter(Boolean).join(' · ') || (t === 'g' ? k.doneOne : D.estado(k, item, t))),
         pct !== null && pct > 0 ? h('span.hecho', { style: { display: 'block' } }, `${pct} % HECHO`) : null,
         pcg && D.activoPc(pcg.key) ? h('span.en-marcha', { style: { display: 'block' } }, '● Abierto en este PC') : null),
       nota != null ? h(`span.cifra${t === 'p' ? '.media' : ''}`, String(nota), t === 'p' ? h('small', 'Media') : null) : h('span'));
+    // Instalado en este PC: «Jugar →» al lado, sin entrar en la ficha
+    if (!pcg || D.activoPc(pcg.key)) return fila;
+    return h('div.item-fila', fila, h('button.enlace.acento.grande', { type: 'button', onclick: () => RV.jugar(pcg), title: `Jugar a ${pcg.name}` }, 'Jugar →'));
   }
 
   RV.vistas.seccion = (ruta) => {

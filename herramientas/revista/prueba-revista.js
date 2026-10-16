@@ -58,6 +58,7 @@ const pc = {
   config: { ui: 'revista', revista: { tema: process.env.TEMA || 'claro', acento: 'rojo' } },
   games: [
     { key: 'steam:1422450', name: 'Deadlock', sourceLabel: 'Steam', lastPlayed: Date.now() - 3600e3, steamPlaytime: 3120 * 60000, art: {} },
+    { key: 'steam:2622380', name: 'ELDEN RING NIGHTREIGN', sourceLabel: 'Steam', lastPlayed: Date.now() - 5 * 86400e3, steamPlaytime: 900 * 60000, art: {} },
     { key: 'steam:1145360', name: 'Hades II', sourceLabel: 'Steam', lastPlayed: Date.now() - 40 * 86400e3, steamPlaytime: 2400 * 60000, art: {} },
   ],
   play: { sessions: [], active: [] },
@@ -88,7 +89,7 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
       window.atrio = {
         state: async () => p, ronron: async () => c, on: (ev, fn) => { (ls[ev] ||= []).push(fn); },
         ronronEdit: async (op) => { edits.push(op); return c; }, ronronArt: async () => ({ cover: '', hero: '', logo: '' }),
-        patchConfig: async (x) => { Object.assign(p.config, x); return p.config; }, log: () => {}, launch: async () => ({}),
+        patchConfig: async (x) => { Object.assign(p.config, x); return p; }, log: () => {}, launch: async (k) => { (window.__lanzados ||= []).push(k); return {}; },
         netJson: async (url) => {
           if (url.includes('/platforms/lists/parents')) return { results: [{ slug: 'pc', id: 1 }, { slug: 'playstation', id: 2 }, { slug: 'nintendo', id: 7 }] };
           if (url.includes('api.rawg.io/api/games/')) return { description_raw: 'Resumen de prueba.', metacritic: 88 };
@@ -128,6 +129,14 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     for (const [k, n] of [[0, 'juegos'], [1, 'libros'], [2, 'pelis']]) {
       await ir({ v: 'seccion', k }); await shot(`03-seccion-${n}`);
       ok(!(await errorPagina()), `${tema}: sección ${n}`);
+      if (k === 0) {
+        // Los juegos instalados en el PC: «Jugar →» en su fila
+        const b = await page.$('.item-fila > .enlace');
+        ok(!!b, `${tema}: «Jugar →» en la sección de videojuegos`);
+        if (b) { await b.click(); await page.waitForTimeout(300); }
+        const l = await page.evaluate(() => window.__lanzados || []);
+        ok(l.includes('steam:1145360') || l.includes('steam:1422450'), `${tema}: «Jugar →» lanza el juego (${l.join(', ')})`);
+      }
     }
     await ir({ v: 'ficha', k: 0, t: 'g', id: 1 }); await shot('04-ficha-valorado');
     ok(!(await errorPagina()) && (await texto()).includes('Clair Obscur'), `${tema}: ficha valorada`);
@@ -142,6 +151,17 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     await ir({ v: 'pc' }); await shot('08-pc');
     ok(!(await errorPagina()), `${tema}: tu PC`);
     await ir({ v: 'ajustes' }); await shot('09-ajustes');
+    {
+      await page.click('button.opcion:has-text("El lanzador")'); await page.waitForTimeout(300);
+      const ui = await page.evaluate(() => window.RV.D.config().ui);
+      ok(ui === 'lanzador', `${tema}: «Al abrir Atrio» guarda el lanzador (${ui})`);
+      await page.click('button.opcion:has-text("La revista")'); await page.waitForTimeout(300);
+    }
+    {
+      await ir({ v: 'portada' });
+      const n = await page.$$eval('ol.numerada li .enlace', (l) => l.filter((b) => /Jugar/.test(b.textContent)).length);
+      ok(n === 1, `${tema}: portada, «Jugar →» en «Ahora mismo» solo en lo instalado (${n})`);
+    }
     ok(!(await errorPagina()), `${tema}: ajustes`);
 
     // Descubrir un juego: intro con filtros, siete preguntas con el teclado y resultados

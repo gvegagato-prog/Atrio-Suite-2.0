@@ -133,7 +133,14 @@
 
     root.append(bloque('SteamGridDB', 'Para buscar videojuegos al añadirlos (el mismo buscador que el móvil) y para la portada, el fondo y el logo de cada ficha.', steamgriddb()));
 
-    root.append(bloque('Lanzador clásico', 'La interfaz de pantalla grande y mando: bibliotecas, emuladores, juegos propios, el mando, el móvil y el streaming se ajustan allí. Atrio recordará cuál usaste la última vez.',
+    const ui = D.config().ui === 'lanzador' ? 'lanzador' : 'revista';
+    root.append(bloque('Al abrir Atrio', 'Qué se abre al encender: la revista (ratón y teclado) o el lanzador (pantalla grande y mando). En las dos se juega.',
+      h('div.opciones', [['revista', 'La revista'], ['lanzador', 'El lanzador']].map(([id, n]) => h('button.opcion', {
+        type: 'button', 'aria-pressed': String(ui === id),
+        onclick: async () => { try { D.setPc(await RV.api.patchConfig({ ui: id })); RV.aviso(id === 'lanzador' ? 'La próxima vez se abrirá el lanzador' : 'La próxima vez se abrirá la revista'); RV.refrescar(); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); } },
+      }, n)))));
+
+    root.append(bloque('Lanzador clásico', 'La interfaz de pantalla grande y mando: bibliotecas, emuladores, juegos propios, el mando, el móvil y el streaming se ajustan allí.',
       h('button.boton-tinta', { type: 'button', onclick: () => RV.lanzador() }, 'Abrir el lanzador clásico (pantalla grande y mando) →')));
     return root;
   };

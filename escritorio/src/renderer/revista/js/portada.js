@@ -145,10 +145,15 @@
     if (resto.length) {
       const box = h('section', RV.seccion('Ahora mismo'));
       const ol = h('ol.numerada');
-      resto.slice(0, 8).forEach((e, i) => ol.append(h('li', h('button', { type: 'button', onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'p', id: e.item.id }) },
-        h('span.num', String(i + 1).padStart(2, '0')),
-        h('span', h('span.tit.ajusta', { 'data-min': '14' }, e.item.name),
-          h('span.versal', [e.kind.short, e.item.creator].filter(Boolean).join(' · ')))))));
+      resto.slice(0, 8).forEach((e, i) => {
+        const pcg = D.pcDe(e.kind, e.item);
+        ol.append(h('li', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+          h('button', { type: 'button', style: { flex: '1', minWidth: '0' }, onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'p', id: e.item.id }) },
+            h('span.num', String(i + 1).padStart(2, '0')),
+            h('span', h('span.tit.ajusta', { 'data-min': '14' }, e.item.name),
+              h('span.versal', [e.kind.short, e.item.creator].filter(Boolean).join(' · ')))),
+          pcg && !D.activoPc(pcg.key) ? h('button.enlace.acento', { type: 'button', style: { width: 'auto' }, onclick: () => RV.jugar(pcg) }, 'Jugar →') : null));
+      });
       if (resto.length > 8) ol.append(h('li', h('p.versal', { style: { padding: '10px 0' } }, `Y ${resto.length - 8} más`)));
       box.append(ol);
       fila1.append(box);
