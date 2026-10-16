@@ -44,7 +44,7 @@ import kotlin.math.hypot
 sealed interface Screen {
     object Home : Screen
     object Settings : Screen
-    class Search(val forPlay: Boolean, val manual: Boolean = false) : Screen
+    class Search(val forPlay: Boolean, val manual: Boolean = false, val name: String = "") : Screen
     class Art(val game: Game, val hero: Boolean, val isNew: Boolean, val chain: Boolean, val play: Play?, val home: Boolean = false) : Screen
     /** editing: abrir directamente en edición (si no, las ya valoradas se abren en modo lectura). */
     class Edit(val game: Game, val isNew: Boolean, val editing: Boolean = false) : Screen

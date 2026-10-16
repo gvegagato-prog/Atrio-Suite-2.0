@@ -270,6 +270,36 @@ class Capturas6Test {
         org.junit.Assert.assertEquals("The Witcher 3", back[0]?.items?.first()?.title)
     }
 
+    /** Buscar un libro que no aparece: la primera fila lo añade tal cual lo has escrito. */
+    @Test
+    fun anadirTalCual() {
+        org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
+        Skin.load(ctx)
+        Mode.dark = true
+        Mode.themeMode = 2
+        Skin.applyShell(2, ctx)
+        var manualName by mutableStateOf<String?>(null)
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    val n = manualName
+                    if (n != null) CustomAddScreen(BOOKS, true, initialName = n, onPhoto = { _, _ -> }, onCreate = { _, _, _, _ -> }) {}
+                    else SearchScreen(
+                        needsKey = false, key = "", owned = { null },
+                        search = { listOf(Hit(1, "나 혼자만 레벨 업 1 (novel)", "추공 · 2018 · 322 págs."), Hit(2, "SOLO LEVELING 02", "Dubu · 2021")) },
+                        onPick = {}, onBack = {}, title = "Libros", onManual = { manualName = it }
+                    )
+                }
+            }
+        }
+        rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("Solo Leveling")
+        rule.waitForIdle(); Thread.sleep(900); shoot("y1_buscar_tal_cual")
+        rule.onAllNodesWithText("Añadir «Solo Leveling» tal cual")[0].performClick()
+        org.junit.Assert.assertEquals("Solo Leveling", manualName)
+        shoot("y2_a_mano_con_nombre")
+        org.junit.Assert.assertTrue(rule.onAllNodesWithText("Solo Leveling").fetchSemanticsNodes().isNotEmpty())
+    }
+
     /** Elegir portada y fondo: pestañas Portadas · Fondos · Archivo; y añadir a mano un juego con portada y fondo. */
     @Test
     fun imagenesPropias() {

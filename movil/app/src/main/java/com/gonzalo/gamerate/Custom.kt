@@ -55,12 +55,14 @@ import coil.compose.AsyncImage
 @Composable
 fun CustomAddScreen(
     kind: Kind, forPlay: Boolean,
+    /** El nombre que habías escrito en el buscador. */
+    initialName: String = "",
     /** Elegir una imagen: de tus archivos (true) o de la galería (false). */
     onPhoto: (files: Boolean, (String) -> Unit) -> Unit,
     onCreate: (name: String, creator: String, cover: String, hero: String) -> Unit,
     onBack: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialName) }
     var creator by remember { mutableStateOf("") }
     var cover by remember { mutableStateOf("") }
     var hero by remember { mutableStateOf("") }

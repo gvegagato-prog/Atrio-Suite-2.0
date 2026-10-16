@@ -274,6 +274,18 @@ const log = [];
     await page.evaluate(() => window.atrioPage(1)); await page.waitForTimeout(600);
     const y1 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
     ok(y1 > y0 + 300, `${name}: el botón de volumen baja una pantalla (${Math.round(y0)} → ${Math.round(y1)})`);
+    // Deslizar de lado: no pasa de página (leyendo hacia abajo solo se desplaza)
+    {
+      const pg0 = await pagina();
+      const s0 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
+      const pts = [[330, 430], [280, 432], [200, 434], [120, 436]];
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: pts[0][0], y: pts[0][1] }] });
+      for (const p of pts.slice(1)) { await page.waitForTimeout(16); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p[0], y: p[1] }] }); }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await page.waitForTimeout(900);
+      const s1 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
+      ok((await pagina()) === pg0 && Math.abs(s1 - s0) < 30, `${name}: deslizar de lado no pasa de página («${await pagina()}», ${Math.round(s0)} → ${Math.round(s1)})`);
+    }
     // Tocar el centro: el menú (no pasa nada más)
     await page.mouse.click(206, 430); await page.waitForTimeout(700);
     ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar abre el menú`);

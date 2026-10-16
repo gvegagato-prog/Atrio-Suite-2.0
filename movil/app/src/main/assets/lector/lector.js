@@ -320,7 +320,8 @@ function onLoad({ detail: { doc, index } }) {
         // (el touchend sí le llega a foliate: así la página vuelve a su sitio si se llegó a mover un poco al empezar)
         if (glow !== null) { glow = null; edge = false; swiped = true; saveSettings(); holding = false; return }
         // PDF: se pasa de página deslizando (foliate no lo hace solo en los PDF)
-        if (isPDF && t0 && t && !holding) {
+        // (leyendo hacia abajo no se pasa de página deslizando de lado: solo se desplaza)
+        if (isPDF && !haciaAbajo() && t0 && t && !holding) {
             const dx = t.clientX - t0.x, dy = t.clientY - t0.y
             if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4 && e.timeStamp - t0.time < 900) {
                 swiped = true

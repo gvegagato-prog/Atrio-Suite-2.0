@@ -1252,7 +1252,7 @@ fun App(
                 ) { screen = Screen.Profile }
 
                 is Screen.Search -> if (s.manual || (kind.custom && !kind.online)) CustomAddScreen(
-                    kind, s.forPlay, onPhoto = { files, cb -> pickImage(files, cb) },
+                    kind, s.forPlay, initialName = s.name, onPhoto = { files, cb -> pickImage(files, cb) },
                     onCreate = { name, creator, cover, hero ->
                         val id = customItemId(name)
                         val had = myGames.find { it.id == id }
@@ -1274,7 +1274,7 @@ fun App(
                     hint = when { kind.isGame -> "Título del juego"; kind.isBook -> "Título o autor"; kind.isMovie -> "Título de la película"; else -> "Título de la serie" },
                     keyMsg = if (kind.isMovie) "Para buscar películas, añade tu clave gratuita de TMDB en Ajustes → Servicios." else "Antes de buscar, añade tu API key en Ajustes.",
                     // Si no aparece en la búsqueda, a mano (con fotos de tus archivos), en cualquier categoría
-                    onManual = { screen = Screen.Search(s.forPlay, true) },
+                    onManual = { name -> screen = Screen.Search(s.forPlay, true, name) },
                     manualText = if (kind.isMovie || kind.isTv) "¿No aparece? Añádela a mano con una foto" else "¿No aparece? Añádelo a mano con una foto",
                     owned = { id ->
                         when {

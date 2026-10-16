@@ -549,8 +549,8 @@ fun SearchScreen(
     title: String = if (needsKey) "Videojuegos" else "Libros",
     hint: String = if (needsKey) "Título del juego" else "Título o autor",
     keyMsg: String = "Antes de buscar, añade tu API key en Ajustes.",
-    /** Categorías propias con buscador: si no aparece, añadirlo a mano. */
-    onManual: (() -> Unit)? = null,
+    /** Si no aparece, añadirlo a mano (con lo que has escrito como nombre). */
+    onManual: ((String) -> Unit)? = null,
     manualText: String = "¿No aparece? Añádelo a mano con una foto"
 ) {
     var q by remember { mutableStateOf("") }
@@ -596,8 +596,8 @@ fun SearchScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             SearchPill(q, hint, Modifier.weight(1f), onSearch = { now++ }) { q = it }
         }
-        if (onManual != null) {
-            TextButton(onManual) { Text(manualText, color = UiSoft, fontSize = 13.sp) }
+        if (onManual != null && q.isBlank()) {
+            TextButton({ onManual("") }) { Text(manualText, color = UiSoft, fontSize = 13.sp) }
         }
         if (msg.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
@@ -605,6 +605,21 @@ fun SearchScreen(
         }
         Spacer(Modifier.height(8.dp))
         LazyColumn(contentPadding = PaddingValues(bottom = 40.dp)) {
+            // Lo primero: añadirlo tal cual lo has escrito (si no es ninguno de los resultados)
+            if (onManual != null && q.isNotBlank()) item {
+                Row(
+                    Modifier.fillMaxWidth().pop { onManual(q.trim()) }.padding(vertical = 14.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Add, null, tint = ColGeneral, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Añadir «${q.trim()}» tal cual", fontWeight = FontWeight.Medium, color = ColGeneral)
+                        Text("A mano, con portada y fondo de tus archivos", color = UiSoft, fontSize = 12.sp)
+                    }
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+            }
             itemsIndexed(results) { i, h ->
                 val have = owned(h.id)
                 if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
