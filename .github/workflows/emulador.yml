@@ -9,6 +9,8 @@ on:
         default: '29'
 jobs:
   humo:
+    # Solo cada pocas versiones o con cambios grandes: a mano, o si el commit lleva «[emulador]»
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[emulador]')
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
