@@ -869,7 +869,7 @@
         'data-nav': true, 'aria-pressed': String(A.app.state().config.behavior.ronronAuto !== false),
         onclick: async () => { await A.app.patchConfig({ behavior: { ronronAuto: A.app.state().config.behavior.ronronAuto === false } }, { render: false }); redraw(); },
       }, h('span.tx', h('span', 'Lo que juegues pasa a «Jugando»'),
-        h('small', 'Cuando Atrio ve que llevas 10 minutos con un juego que no tienes en curso, lo pone en Jugando desde ese día. Así sale en el calendario cada día hasta que lo marques como terminado. Los que ya tienes valorados no se tocan.')),
+        h('small', 'Cuando Atrio ve que llevas 2 minutos con un juego que no tienes en curso, lo pone en Jugando desde ese día. Así sale en el calendario cada día hasta que lo marques como terminado. Los que ya tienes valorados no se tocan.')),
       h('span.knob')),
       h('p.note', 'La contraseña no se guarda: Atrio guarda un pase de sesión en tu carpeta de configuración, solo legible por tu usuario.'));
     return wrap;

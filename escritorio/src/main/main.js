@@ -701,8 +701,22 @@ function setupIpc() {
   });
 }
 
+// La clave de SteamGridDB: la de este PC o, si no tiene, la de tu cuenta (la que pusiste en el móvil)
+function sgdbKeyAny() {
+  return config.get().sgdbKey || String(((ronron.data() || {}).keys || {}).sgdb || '').trim();
+}
+// Id de una ficha a mano: el mismo que customItemId() del móvil (FNV-1a de 64 bits sobre el nombre normalizado)
+function customItemId(name) {
+  const s = String(name || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/[^\p{L}\p{Nd}]+/gu, '');
+  if (!s) return 0;
+  const M = (1n << 64n) - 1n;
+  let x = 0xcbf29ce484222325n;
+  for (let i = 0; i < s.length; i++) { x ^= BigInt(s.charCodeAt(i)); x = (x * 0x100000001b3n) & M; }
+  return Number((x & 0x7fffffffffffffffn) % 9000000000000n + 100000000000n);
+}
+
 async function ronronArt(sgdbId) {
-  const key = config.get().sgdbKey;
+  const key = sgdbKeyAny();
   if (!key || !sgdbId) return { cover: '', hero: '', logo: '' };
   const fake = { key: `ronron:${sgdbId}`, name: '' };
   const pick = async (type) => {
@@ -716,27 +730,36 @@ async function ronronArt(sgdbId) {
   return { cover, hero, logo };
 }
 
-// Lo que Atrio ve que juegas pasa a «Jugando» en Ronrón (tras 10 minutos seguidos, para no contar
+// Lo que Atrio ve que juegas pasa a «Jugando» en tu cuenta (tras 2 minutos seguidos, para no contar
 // lanzamientos de prueba). Se puede desactivar en Ajustes, Ronrón.
 const ronronSeen = new Map(); // clave -> día en que ya se comprobó
 async function ronronWatch() {
   if (!tracker || config.get().behavior.ronronAuto === false || !ronron.status().signed) return;
   const now = Date.now();
   const day = new Date().toDateString();
-  const min = Number(process.env.ATRIO_RONRON_AUTO_MIN || 10) * 60 * 1000;
+  const min = Number(process.env.ATRIO_RONRON_AUTO_MIN || 2) * 60 * 1000;
   for (const a of tracker.state().active || []) {
     if (now - a.s < min || ronronSeen.get(a.k) === day) continue;
-    ronronSeen.set(a.k, day);
     const g = library.get(a.k);
     if (!g) continue;
     const ng = named(g);
     let id = (config.get().overrides[g.key] || {}).sgdbId || art.knownId(g.key) || null;
-    if (!id && config.get().sgdbKey) { try { id = await art.gameId(config.get().sgdbKey, ng); } catch { id = null; } }
-    if (!id || ronron.knows(id)) continue;
-    const pics = await ronronArt(id).catch(() => ({}));
+    const key = sgdbKeyAny();
+    let looked = !key;
+    if (!id && key) { try { id = await art.gameId(key, ng); looked = true; } catch { id = null; } }
+    // SteamGridDB no lo conoce (o no hay clave): se añade igual, como una ficha a mano con su nombre.
+    // Si la búsqueda falló por la red, se reintenta en el siguiente minuto.
+    if (!id && !looked) continue;
+    const sg = !!id;
+    if (!id) id = customItemId(ng.name);
+    if (!id) { ronronSeen.set(a.k, day); continue; }
+    if (ronron.knows(id)) { ronronSeen.set(a.k, day); continue; }
+    const pics = sg ? await ronronArt(id).catch(() => ({})) : {};
     // Con las partes jugadas activadas, los minutos se suman al cerrar el juego (no se cuentan dos veces)
     const segsOn = (config.get().suite || {}).autoSeg !== false;
-    const what = await ronron.autoPlay({ id, name: ng.name, ...pics, minutes: segsOn ? 0 : (now - a.s) / 60000 }).catch(() => null);
+    const what = await ronron.autoPlay({ id, name: ng.name, ...pics, minutes: segsOn ? 0 : (now - a.s) / 60000 }).catch(() => undefined);
+    // Solo se da por visto si se ha podido guardar (si falló, se reintenta)
+    if (what !== undefined) ronronSeen.set(a.k, day);
     if (what) send('notice', what === 'nuevo' ? `${ng.name} está ahora en «Jugando»` : `${ng.name} vuelve a «Jugando»`);
   }
 }
