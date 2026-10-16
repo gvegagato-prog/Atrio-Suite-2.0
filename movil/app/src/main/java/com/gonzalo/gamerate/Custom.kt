@@ -49,19 +49,32 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
 /**
- * Añadir algo a una categoría tuya: no hay buscador en internet, así que se escribe el nombre
- * y se elige una foto de la galería como portada.
+ * Añadir algo a mano: en una categoría tuya sin buscador, o cuando lo que buscas no aparece (juegos, libros,
+ * películas, series). Se escribe el nombre y se eligen portada y fondo de tus archivos o de la galería.
  */
 @Composable
 fun CustomAddScreen(
     kind: Kind, forPlay: Boolean,
-    onPhoto: ((String) -> Unit) -> Unit,
-    onCreate: (name: String, creator: String, cover: String) -> Unit,
+    /** Elegir una imagen: de tus archivos (true) o de la galería (false). */
+    onPhoto: (files: Boolean, (String) -> Unit) -> Unit,
+    onCreate: (name: String, creator: String, cover: String, hero: String) -> Unit,
     onBack: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var creator by remember { mutableStateOf("") }
     var cover by remember { mutableStateOf("") }
+    var hero by remember { mutableStateOf("") }
+    // Para qué se está eligiendo imagen ahora (null: nada): false portada, true fondo
+    var asking by remember { mutableStateOf<Boolean?>(null) }
+    asking?.let { forHero ->
+        AlertDialog(
+            onDismissRequest = { asking = null },
+            title = { Text(if (forHero) "Foto de fondo" else "Foto de portada", fontFamily = Display) },
+            text = { Text("¿De dónde la sacas?") },
+            confirmButton = { TextButton({ asking = null; onPhoto(true) { if (forHero) hero = it else cover = it } }) { Text("De mis archivos") } },
+            dismissButton = { TextButton({ asking = null; onPhoto(false) { if (forHero) hero = it else cover = it } }) { Text("De la galería") } }
+        )
+    }
     Column(
         Modifier.fillMaxSize().imePadding().wrapContentWidth().widthIn(max = 560.dp).statusBarsPadding()
             .verticalScroll(rememberScrollState()).padding(16.dp)
@@ -77,7 +90,7 @@ fun CustomAddScreen(
         val shape = shp(12.dp)
         Box(
             Modifier.align(Alignment.CenterHorizontally).width(150.dp).aspectRatio(2f / 3f).clip(shape)
-                .background(Sand).border(1.dp, Line, shape).pop { onPhoto { cover = it } },
+                .background(Sand).border(1.dp, Line, shape).pop { asking = false },
             contentAlignment = Alignment.Center
         ) {
             if (cover.isNotEmpty()) {
@@ -87,6 +100,20 @@ fun CustomAddScreen(
                     Icon(Icons.Rounded.AddPhotoAlternate, null, tint = Muted, modifier = Modifier.size(30.dp))
                     Spacer(Modifier.height(6.dp))
                     Text("Foto de portada", color = Muted, fontSize = 12.sp)
+                }
+            }
+        }
+        if (kind.hasHero) {
+            Spacer(Modifier.height(12.dp))
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(3.1f).clip(shape).background(Sand).border(1.dp, Line, shape).pop { asking = true },
+                contentAlignment = Alignment.Center
+            ) {
+                if (hero.isNotEmpty()) AsyncImage(hero, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.AddPhotoAlternate, null, tint = Muted, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Foto de fondo (opcional)", color = Muted, fontSize = 12.sp)
                 }
             }
         }
@@ -102,13 +129,13 @@ fun CustomAddScreen(
         )
         Spacer(Modifier.height(20.dp))
         Button(
-            { if (name.isNotBlank()) onCreate(name.trim(), creator.trim(), cover) },
+            { if (name.isNotBlank()) onCreate(name.trim(), creator.trim(), cover, hero) },
             enabled = name.isNotBlank(), shape = pillShape(),
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) { Text(if (forPlay) "Añadir a la lista" else "Valorar ahora") }
         Spacer(Modifier.height(10.dp))
         Text(
-            "Las fotos de tu galería solo se ven en este móvil: no se suben a internet, así que tu pareja verá la ficha sin portada.",
+            "Las fotos que elijas solo se ven en este móvil: no se suben a internet, así que tu pareja y el PC verán la ficha sin ellas.",
             color = Muted, fontSize = 12.sp
         )
     }

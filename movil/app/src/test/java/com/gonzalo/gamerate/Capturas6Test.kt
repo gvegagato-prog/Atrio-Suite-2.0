@@ -1,5 +1,8 @@
 package com.gonzalo.gamerate
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -185,6 +188,12 @@ class Capturas6Test {
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r9_imagen")
         rule.onAllNodesWithText("EDITAR")[0].performClick(); shoot("r9a_diseno_imagen")
+        // Cambiar la imagen: pestañas Portada · Fondo · Logo y, la última, Archivo (de tus archivos o la galería)
+        rule.onNodeWithContentDescription("Casilla Imagen").performClick()
+        rule.onAllNodesWithText("Cambiar la imagen")[0].performClick(); shoot("r9f_imagen_pestanas")
+        rule.onAllNodesWithText("ARCHIVO")[0].performClick(); shoot("r9g_imagen_archivo")
+        org.junit.Assert.assertTrue(rule.onAllNodesWithText("ELEGIR DE MIS ARCHIVOS →").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Cerrar")[0].performClick(); rule.waitForIdle()
         rule.onNodeWithContentDescription("Casilla Imagen").performClick()
         rule.onAllNodesWithText("Encuadrar la imagen")[0].performClick(); shoot("r9b_encuadre")
         rule.onAllNodesWithText("+ AMPLIAR")[0].performClick(); rule.onAllNodesWithText("+ AMPLIAR")[0].performClick()
@@ -259,6 +268,45 @@ class Capturas6Test {
         org.junit.Assert.assertEquals(listOf("The Witcher 3"), quizMatches(mine, theirs.items).map { it.title })
         val back = quizRunsFromJson(org.json.JSONObject().put("0", quizRunToJson(theirs)))
         org.junit.Assert.assertEquals("The Witcher 3", back[0]?.items?.first()?.title)
+    }
+
+    /** Elegir portada y fondo: pestañas Portadas · Fondos · Archivo; y añadir a mano un juego con portada y fondo. */
+    @Test
+    fun imagenesPropias() {
+        org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
+        Skin.load(ctx)
+        Mode.dark = false
+        Mode.themeMode = 1
+        Skin.applyShell(2, ctx)
+        var heroTab by mutableStateOf(false)
+        var manual by mutableStateOf(false)
+        val picked = mutableListOf<String>()
+        val g = Game(4242, "Control Resonant", cover("Control", 0xFF8E2DE2.toInt(), 0xFF4A00E0.toInt()), hero = "")
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    if (manual) CustomAddScreen(GAMES, true, onPhoto = { f, _ -> picked += if (f) "archivos" else "galeria" }, onCreate = { _, _, _, _ -> }) {}
+                    else ArtScreen(
+                        g, heroTab,
+                        load = { List(6) { i -> cover("C$i", 0xFF000000.toInt() + i * 0x202020, 0xFF336699.toInt()).let { it to it } } },
+                        onPick = {}, onSkip = {}, onBack = {},
+                        hasHero = true, onTab = { heroTab = it }, onLocal = { h, f -> picked += "$h/$f" }
+                    )
+                }
+            }
+        }
+        shoot("x1_portadas")
+        rule.onAllNodesWithText("FONDOS")[0].performClick(); shoot("x2_fondos")
+        rule.onAllNodesWithText("ARCHIVO")[0].performClick(); shoot("x3_archivo")
+        rule.onAllNodesWithText("Elegir de mis archivos")[0].performClick()
+        rule.onAllNodesWithText("La portada")[0].performClick()
+        rule.onAllNodesWithText("Desde la galería")[0].performClick()
+        org.junit.Assert.assertEquals(listOf("true/true", "false/false"), picked)
+        picked.clear()
+        manual = true; rule.waitForIdle(); shoot("x4_a_mano")
+        rule.onAllNodesWithText("Foto de fondo (opcional)")[0].performClick(); shoot("x5_de_donde")
+        rule.onAllNodesWithText("De mis archivos")[0].performClick()
+        org.junit.Assert.assertEquals(listOf("archivos"), picked)
     }
 
     /** Apariencia (se abre desde MainActivity, fuera de App): claro u oscuro y el acento. */

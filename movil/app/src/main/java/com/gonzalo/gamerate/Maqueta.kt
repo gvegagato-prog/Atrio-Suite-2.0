@@ -125,6 +125,9 @@ object MagImages {
     var categories: (Kind) -> List<String> = { emptyList() }
     /** Carga las imágenes (miniatura, imagen) de una categoría. */
     var load: suspend (Kind, Long, String, String) -> List<Pair<String, String>> = { _, _, _, _ -> emptyList() }
+    /** Una imagen del móvil: de tus archivos (true) o de la galería (false). Es la última pestaña, «Archivo». */
+    var pick: ((files: Boolean, (String) -> Unit) -> Unit)? = null
+    const val FILE = "Archivo"
     /** Proporción (ancho / alto) de cada imagen ya cargada, para la forma «la de la foto». */
     val ratios = androidx.compose.runtime.mutableStateMapOf<String, Float>()
 }
@@ -335,7 +338,7 @@ fun MagPage(
                         ChoiceRow(d.label ?: MAG_NAMES[t] ?: t, cur?.type == t) { setCell(p, MagCell(t)); choosing = null }
                     }
                     ChoiceRow("Texto libre (título y texto)", cur?.type == "texto") { choosing = null; editingText = p }
-                    if (MagImages.categories(kind).isNotEmpty()) ChoiceRow("Imagen", cur?.type == "imagen") { choosing = null; pickingImage = p }
+                    if (MagImages.categories(kind).isNotEmpty() || MagImages.pick != null) ChoiceRow("Imagen", cur?.type == "imagen") { choosing = null; pickingImage = p }
                     ChoiceRow("Vacía", cur?.type == "vacio") { setCell(p, MagCell("vacio")); choosing = null }
                 }
             },
@@ -377,12 +380,15 @@ fun MagPage(
     }
     // Imagen
     pickingImage?.let { p ->
-        val cats = MagImages.categories(kind)
-        var cat by remember(p) { mutableStateOf(cats.firstOrNull() ?: "") }
+        val pick = MagImages.pick
+        val cats = MagImages.categories(kind) + listOfNotNull(if (pick != null) MagImages.FILE else null)
+        // Lo creado a mano no tiene imágenes en internet: se empieza en «Archivo»
+        var cat by remember(p) { mutableStateOf(if (pick != null && !isWebId(itemId)) MagImages.FILE else cats.firstOrNull() ?: "") }
         var list by remember(p, cat) { mutableStateOf<List<Pair<String, String>>?>(null) }
         var err by remember(p, cat) { mutableStateOf("") }
         LaunchedEffect(p, cat) {
             list = null
+            if (cat == MagImages.FILE) return@LaunchedEffect
             list = try { MagImages.load(kind, itemId, itemName, cat) } catch (e: Exception) { err = e.message ?: "No se han podido cargar."; emptyList() }
         }
         AlertDialog(
@@ -396,6 +402,16 @@ fun MagPage(
                     Spacer(Modifier.height(10.dp))
                     val l = list
                     when {
+                        cat == MagImages.FILE && pick != null -> Column {
+                            Text("Una imagen de tu móvil para esta casilla.", color = Muted, fontSize = 13.sp)
+                            Spacer(Modifier.height(12.dp))
+                            val use: (String) -> Unit = { url -> setCell(p, MagCell("imagen", image = url, shape = "llenar")); pickingImage = null }
+                            Tool("ELEGIR DE MIS ARCHIVOS →", accent = true) { pick(true, use) }
+                            Spacer(Modifier.height(12.dp))
+                            Tool("DESDE LA GALERÍA →") { pick(false, use) }
+                            Spacer(Modifier.height(12.dp))
+                            Text("Se guarda en este móvil: tu pareja y el PC no la verán. Luego puedes encuadrarla.", color = Muted, fontSize = 12.sp)
+                        }
                         l == null -> Text("Cargando…", color = Muted)
                         l.isEmpty() -> Text(err.ifBlank { "No hay imágenes de este tipo." }, color = Muted)
                         else -> LazyVerticalGrid(GridCells.Fixed(if (cat == cats.firstOrNull() && cats.size > 1 && !kind.isBook) 3 else 2), Modifier.heightIn(max = 420.dp),

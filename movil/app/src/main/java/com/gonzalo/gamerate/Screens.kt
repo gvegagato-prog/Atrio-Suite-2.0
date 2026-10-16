@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Add
@@ -634,14 +635,27 @@ fun SearchScreen(
 @Composable
 fun ArtScreen(
     game: Game, hero: Boolean, load: suspend () -> List<Pair<String, String>>, onPick: (String) -> Unit, onSkip: () -> Unit,
-    onBack: () -> Unit, onGallery: (() -> Unit)? = null,
+    onBack: () -> Unit,
     /** Libros: buscar portadas con otro título (p. ej. el original en inglés). */
     search: (suspend (String) -> List<Pair<String, String>>)? = null,
     /** Pasa el título al inglés: (título, de dónde sale). */
-    translate: (suspend (String) -> Pair<String, String>?)? = null
+    translate: (suspend (String) -> Pair<String, String>?)? = null,
+    /** Tiene fondo (juegos, películas, series): pestaña «Fondos» y, en «Archivo», elegir para qué es. */
+    hasHero: Boolean = false,
+    /** Cambiar a la pestaña de portadas (false) o de fondos (true). */
+    onTab: ((Boolean) -> Unit)? = null,
+    /** Una imagen del móvil: para el fondo o la portada; de tus archivos (true) o de la galería (false). */
+    onLocal: ((hero: Boolean, files: Boolean) -> Unit)? = null,
+    /** Empezar en «Archivo» (lo creado a mano no tiene imágenes en internet). */
+    startLocal: Boolean = false
 ) {
     var list by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var msg by remember { mutableStateOf("Cargando…") }
+    // Pestañas: 0 portadas, 1 fondos, 2 archivo (la última)
+    var tab by remember { mutableStateOf(if (startLocal && onLocal != null) 2 else if (hero) 1 else 0) }
+    var localHero by remember { mutableStateOf(hero) }
+    // Al pasar de la portada al fondo (al añadir algo nuevo), «Archivo» elige ya para el fondo
+    LaunchedEffect(hero) { localHero = hero }
     var query by remember { mutableStateOf(game.name) }
     var searched by remember { mutableStateOf("") }
     var translating by remember { mutableStateOf(false) }
@@ -649,6 +663,8 @@ fun ArtScreen(
     val scope = rememberCoroutineScope()
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
     LaunchedEffect(game.id, hero) {
+        list = emptyList()
+        msg = "Cargando…"
         try {
             var l = load()
             if (!hero && game.cover.isNotBlank() && l.none { it.second == game.cover }) {
@@ -657,7 +673,7 @@ fun ArtScreen(
             list = l
             msg = if (l.isEmpty()) {
                 if (search != null) "No hay portadas con este título. Prueba con el título original."
-                else if (onGallery != null) "Elige una foto de tu galería." else "No hay imágenes disponibles."
+                else if (onLocal != null) "No hay imágenes en internet: elige una en «Archivo»." else "No hay imágenes disponibles."
             } else ""
         } catch (e: Exception) { msg = e.message ?: "Error de conexión" }
     }
@@ -680,15 +696,42 @@ fun ArtScreen(
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BackButton(onBack)
-            if (onGallery != null) ActionPill(Icons.Rounded.PhotoLibrary, "Desde tu galería", dark = true) { onGallery() }
             if (hero) Text("Omitir fondo", color = Charcoal, fontWeight = FontWeight.Medium, fontSize = 14.sp,
                 modifier = Modifier.pop(onSkip).border(1.dp, Line, pillShape()).padding(horizontal = 16.dp, vertical = 9.dp))
         }
         Spacer(Modifier.height(8.dp))
         Overline(game.name, Modifier.padding(start = 4.dp, top = 4.dp))
-        Text(if (hero) "Elige el fondo" else "Elige la portada",
+        Text(if (tab == 2) "Una imagen tuya" else if (hero) "Elige el fondo" else "Elige la portada",
             fontFamily = Display, fontSize = 26.sp, modifier = Modifier.padding(start = 4.dp))
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
+        // Pestañas: Portadas · Fondos · Archivo
+        val tabs = buildList {
+            add(0 to "Portadas")
+            if (hasHero) add(1 to "Fondos")
+            if (onLocal != null) add(2 to "Archivo")
+        }
+        if (tabs.size > 1) {
+            Row(Modifier.fillMaxWidth().padding(start = 4.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                tabs.forEach { (t, label) ->
+                    val on = tab == t
+                    Column(Modifier.clickable {
+                        if (t == 2) { localHero = hero; tab = 2 }
+                        else { tab = t; if ((t == 1) != hero) onTab?.invoke(t == 1) }
+                    }.padding(vertical = 8.dp)) {
+                        Text(label.uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp,
+                            color = if (on) Charcoal else Muted)
+                        Spacer(Modifier.height(5.dp))
+                        Box(Modifier.width(if (on) 26.dp else 0.dp).height(2.dp).background(ColGeneral))
+                    }
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+            Spacer(Modifier.height(10.dp))
+        }
+        if (tab == 2 && onLocal != null) {
+            LocalArt(game, hasHero, localHero, { localHero = it }) { files -> onLocal(localHero, files) }
+            return@Column
+        }
         if (search != null && !hero) {
             // Solo cambia lo que se busca: el libro conserva su nombre.
             OutlinedTextField(
@@ -747,6 +790,50 @@ fun ArtScreen(
                     contentScale = ContentScale.Crop)
             }
         }
+    }
+}
+
+/** La pestaña «Archivo»: una imagen del móvil (de tus archivos o de la galería) como portada o como fondo. */
+@Composable
+private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boolean) -> Unit, onPick: (files: Boolean) -> Unit) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
+        if (hasHero) {
+            Text("PARA", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SoftChip("La portada", !hero) { onTarget(false) }
+                SoftChip("El fondo", hero) { onTarget(true) }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+        // Lo que tiene ahora
+        val now = if (hero) game.hero else game.cover
+        val shape = shp(12.dp)
+        Box(
+            Modifier.then(if (hero) Modifier.fillMaxWidth().aspectRatio(3.1f) else Modifier.width(150.dp).aspectRatio(2f / 3f))
+                .clip(shape).background(Sand).border(1.dp, Line, shape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (now.isNotBlank()) AsyncImage(now, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            else Text(if (hero) "Sin fondo" else "Sin portada", color = Muted, fontSize = 13.sp)
+        }
+        Text(if (now.isNotBlank()) "Ahora" else "", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+        Spacer(Modifier.height(14.dp))
+        Button({ onPick(true) }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Rounded.FolderOpen, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+            Text("Elegir de mis archivos")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton({ onPick(false) }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+            Text("Desde la galería")
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            (if (hero) "Se recorta a lo ancho, como los fondos. " else "Se recorta en vertical, como las portadas. ") +
+                "La imagen se guarda en este móvil: no se sube a internet, así que tu pareja y el PC no la verán.",
+            color = Muted, fontSize = 12.sp
+        )
     }
 }
 

@@ -684,6 +684,7 @@ fun App(
         }
         MagImages.load = { k, id, name, cat ->
             when {
+                !isWebId(id) -> emptyList()
                 k.isGame -> when (cat) { "Fondo" -> Sgdb.heroes(id, key); "Logo" -> Sgdb.logos(id, key); else -> Sgdb.covers(id, key) }
                 k.isMovie && isWebId(id) -> Tmdb.images(id, store.tmdbKey, cat == "Fondo")
                 k.isTv && isWebId(id) -> TvMaze.images(id, cat == "Fondo")
@@ -800,6 +801,21 @@ fun App(
         galleryCb = cb
         gallery.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
+    // De tus archivos (Descargas, Drive, la tarjeta…): el selector de archivos de Android, solo imágenes
+    val imageFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val cb = galleryCb
+        galleryCb = null
+        if (uri != null && cb != null) scope.launch {
+            try { cb(Photos.import(ctx, uri)) } catch (e: Exception) { say("No se pudo usar esa imagen: ${e.message}") }
+        }
+    }
+    fun pickImage(files: Boolean, cb: (String) -> Unit) {
+        if (!files) { pickPhoto(cb); return }
+        galleryCb = cb
+        try { imageFile.launch(arrayOf("image/*")) } catch (e: Exception) { galleryCb = null; say("No hay un selector de archivos en este móvil") }
+    }
+    // La pestaña «Archivo» de las imágenes de las casillas de la revista
+    SideEffect { MagImages.pick = { files, cb -> pickImage(files, cb) } }
 
     // ---- Cambiar entre tu app y la de tu pareja ----
     fun togglePartner() {
@@ -1235,20 +1251,20 @@ fun App(
                     onSteam = { k, u -> steamHours(k, u) }
                 ) { screen = Screen.Profile }
 
-                is Screen.Search -> if (kind.custom && (!kind.online || s.manual)) CustomAddScreen(
-                    kind, s.forPlay, onPhoto = { cb -> pickPhoto(cb) },
-                    onCreate = { name, creator, cover ->
+                is Screen.Search -> if (s.manual || (kind.custom && !kind.online)) CustomAddScreen(
+                    kind, s.forPlay, onPhoto = { files, cb -> pickImage(files, cb) },
+                    onCreate = { name, creator, cover, hero ->
                         val id = customItemId(name)
                         val had = myGames.find { it.id == id }
                         if (myGames.any { it.id == id } || myPlays.any { it.id == id }) {
                             say("Ya tenías $name")
                             screen = myPlays.find { it.id == id }?.let { Screen.PlayDetail(it) } ?: had?.let { Screen.Edit(it, false) } ?: Screen.Home
                         } else if (s.forPlay) {
-                            val np = Play(id, name, cover, "", 0, emptyList(), creator = creator, updated = now())
+                            val np = Play(id, name, cover, hero, 0, emptyList(), creator = creator, updated = now())
                             setPlays(kind, playsOf(kind) + np)
                             screen = Screen.PlayDetail(np, editing = true)
                         } else {
-                            screen = Screen.Edit(Game(id, name, cover, creator = creator), true)
+                            screen = Screen.Edit(Game(id, name, cover, hero = hero, creator = creator), true)
                         }
                     },
                     onBack = { screen = if (s.manual) Screen.Search(s.forPlay) else Screen.Home }
@@ -1257,7 +1273,8 @@ fun App(
                     title = kind.title,
                     hint = when { kind.isGame -> "Título del juego"; kind.isBook -> "Título o autor"; kind.isMovie -> "Título de la película"; else -> "Título de la serie" },
                     keyMsg = if (kind.isMovie) "Para buscar películas, añade tu clave gratuita de TMDB en Ajustes → Servicios." else "Antes de buscar, añade tu API key en Ajustes.",
-                    onManual = if (kind.custom) ({ screen = Screen.Search(s.forPlay, true) }) else null,
+                    // Si no aparece en la búsqueda, a mano (con fotos de tus archivos), en cualquier categoría
+                    onManual = { screen = Screen.Search(s.forPlay, true) },
                     manualText = if (kind.isMovie || kind.isTv) "¿No aparece? Añádela a mano con una foto" else "¿No aparece? Añádelo a mano con una foto",
                     owned = { id ->
                         when {
@@ -1296,8 +1313,10 @@ fun App(
                 is Screen.Art -> ArtScreen(
                     game = s.game, hero = s.hero,
                     load = {
-                        if (kind.isMovie && isWebId(s.game.id)) Tmdb.images(s.game.id, store.tmdbKey, s.hero)
-                        else if (kind.isTv && isWebId(s.game.id)) TvMaze.images(s.game.id, s.hero)
+                        // Lo creado a mano no está en ninguna web: sus imágenes, de «Archivo»
+                        if (!isWebId(s.game.id)) emptyList()
+                        else if (kind.isMovie) Tmdb.images(s.game.id, store.tmdbKey, s.hero)
+                        else if (kind.isTv) TvMaze.images(s.game.id, s.hero)
                         else if (kind.custom) emptyList()
                         // Libros importados que Open Library no reconoció: portadas de lo que sale al buscar su título.
                         else if (kind.isBook) OpenLib.covers(s.game.id).ifEmpty { OpenLib.coversByTitle(s.game.name) }
@@ -1323,9 +1342,12 @@ fun App(
                     },
                     search = if (kind.isBook && !s.hero) ({ q -> OpenLib.coversFor(q) }) else null,
                     translate = if (kind.isBook && !s.hero) ({ q -> TitleEn.translate(q)?.let { it.title to it.source } }) else null,
-                    onGallery = {
-                        pickPhoto { url ->
-                            if (!s.hero) {
+                    hasHero = kind.hasHero,
+                    startLocal = kind.custom || !isWebId(s.game.id),
+                    onTab = { h -> screen = Screen.Art(s.game, h, s.isNew, s.chain, s.play, s.home) },
+                    onLocal = { h, files ->
+                        pickImage(files) { url ->
+                            if (!h) {
                                 val g = s.game.copy(cover = url)
                                 if (s.chain && kind.hasHero) screen = Screen.Art(g, true, s.isNew, true, s.play) else toEdit(s, g)
                             } else toEdit(s, s.game.copy(hero = url))
