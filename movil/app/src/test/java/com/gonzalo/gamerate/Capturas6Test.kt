@@ -188,6 +188,10 @@ class Capturas6Test {
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r9_imagen")
         rule.onAllNodesWithText("EDITAR")[0].performClick(); shoot("r9a_diseno_imagen")
+        // Eliminar de la app (por si lo añadiste por error): pide confirmación
+        rule.onAllNodesWithText("ELIMINAR DE LA APP")[0].performClick(); shoot("r9h_eliminar")
+        org.junit.Assert.assertTrue(rule.onAllNodesWithText("¿Eliminar «Hades II»?").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Cancelar")[0].performClick(); rule.waitForIdle()
         // Cambiar la imagen: pestañas Portada · Fondo · Logo y, la última, Archivo (de tus archivos o la galería)
         rule.onNodeWithContentDescription("Casilla Imagen").performClick()
         rule.onAllNodesWithText("Cambiar la imagen")[0].performClick(); shoot("r9f_imagen_pestanas")

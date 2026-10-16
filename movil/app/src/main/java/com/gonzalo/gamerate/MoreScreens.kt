@@ -168,7 +168,8 @@ fun EditScreen(
                 onFav = { g = g.copy(fav = !g.fav); onQuiet(g) },
                 onPartner = if (partner != null) ({ withReveal { viewP = true } }) else null,
                 onExport = onExport,
-                onRecommend = if (onRecommend != null) ({ recommend = true }) else null
+                onRecommend = if (onRecommend != null) ({ recommend = true }) else null,
+                onDelete = if (!isNew) onDelete else null
             ) {
                 reading = false
                 scope.launch { scroll.animateScrollTo(0) }

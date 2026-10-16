@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -169,7 +171,8 @@ fun MagFooter(text: String = "Editar", onClick: () -> Unit) {
 fun RevistaGameRead(
     g: Game, kind: Kind, partnerName: String, theirs: String?, ttbMsg: String,
     onBack: () -> Unit, onFav: () -> Unit, onPartner: (() -> Unit)?,
-    onExport: (Game, ExportMode) -> Unit, onRecommend: (() -> Unit)?, onEdit: () -> Unit
+    onExport: (Game, ExportMode) -> Unit, onRecommend: (() -> Unit)?,
+    onDelete: (() -> Unit)? = null, onEdit: () -> Unit
 ) {
     val ctx = LocalContext.current
     var designing by remember(g.id) { mutableStateOf(false) }
@@ -189,7 +192,7 @@ fun RevistaGameRead(
     ).joinToString(" · ")
     if (deck.isNotBlank()) Text(deck, color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
     if (theirs != null) Box(Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) { TheirReaction(partnerName, theirs) }
-    if (designing) DesignHint(onData = onEdit)
+    if (designing) DesignHint(onData = onEdit, name = g.name, onDelete = onDelete)
     Spacer(Modifier.height(14.dp))
 
     val defs = linkedMapOf<String, MagDef>()
@@ -224,12 +227,27 @@ fun RevistaGameRead(
 
 /** Aviso del modo edición: qué se puede hacer y el enlace a los datos (nota, horas, fechas…). */
 @Composable
-fun DesignHint(onData: () -> Unit) {
+fun DesignHint(onData: () -> Unit, name: String = "", onDelete: (() -> Unit)? = null) {
+    var sure by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp).background(Sand).padding(12.dp)) {
         Text("Toca una casilla para elegir qué va en ella (o texto libre, o una imagen). Arrastra el círculo de la línea para moverla.",
             fontSize = 13.sp, lineHeight = 18.sp)
-        Text("DATOS Y NOTA →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable(onClick = onData).padding(top = 8.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("DATOS Y NOTA →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable(onClick = onData).padding(vertical = 4.dp))
+            Spacer(Modifier.weight(1f))
+            // Por si lo añadiste por error
+            if (onDelete != null) Text("ELIMINAR DE LA APP", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                modifier = Modifier.clickable { sure = true }.padding(vertical = 4.dp))
+        }
     }
+    if (sure && onDelete != null) AlertDialog(
+        onDismissRequest = { sure = false },
+        title = { Text(if (name.isNotBlank()) "¿Eliminar «$name»?" else "¿Eliminar esta ficha?", fontFamily = Display) },
+        text = { Text("Se quita de tu colección con sus notas y apuntes, también en tus otros dispositivos. No se puede deshacer.") },
+        confirmButton = { TextButton({ sure = false; onDelete() }) { Text("Eliminar", color = ColGeneral, fontWeight = FontWeight.Bold) } },
+        dismissButton = { TextButton({ sure = false }) { Text("Cancelar") } },
+        containerColor = Paper, shape = shp(4.dp)
+    )
 }
 
 /** Los datos de la ficha con puntos guía. */
