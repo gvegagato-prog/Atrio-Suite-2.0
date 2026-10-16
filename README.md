@@ -10,32 +10,33 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
-## Atrio en el escritorio: la revista
+## Atrio en el escritorio (2.0): el lanzador y la revista
 
-Atrio en el PC se abre ahora con **la revista**: la misma estética de papel y tinta que la app del móvil, pensada
-para ratón, teclado y pantalla ancha (maqueta de periódico, hasta ~1400 px de ancho, y bien también en ventana
-estrecha). El lanzador de siempre (pantalla grande y mando) sigue ahí: se cambia de una a otra en
-Ajustes → «Abrir el lanzador clásico» y, desde el lanzador, Ajustes → «Volver a la revista». Atrio recuerda la última.
+Atrio en el PC se abre siempre **a pantalla completa en el modo Juegos**: el lanzador, con la estética de la
+revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** (LB y RB pasan de una a otra).
 
-- **Portada:** «ATRIO» enorme, el número del día, «En portada» con lo que estás jugando, leyendo o viendo (la única
-  imagen, con el arte del PC si es el mismo juego), «Ahora mismo», las notas más altas, lo último que has terminado
-  y el sumario. Sin cuenta, invita a entrar y Tu PC funciona igual.
-- **Tal día como hoy** (en la portada) y **Tu año, número especial**: cifras, la portada del año, lo mejor, mes a mes,
-  tu nota media y la decepción; se puede ir a años anteriores.
-- **Secciones** (Videojuegos, Libros y tus categorías): En curso / En lista / Terminados / Dejados, buscador, orden
-  y «+ Añadir»: videojuegos con SteamGridDB, libros con Open Library, películas con TMDB y series con TVmaze (los
-  mismos ids que usa el móvil, así la ficha es la misma en los dos), o a mano.
-- **Descubrir** un juego, un libro o una peli o serie: las mismas preguntas que el móvil (teclas A–E, espacio para
-  saltar), filtros de año y plataforma para juegos y «A mi lista +». Usa las claves de RAWG y TMDB de tu cuenta.
-- **Fichas en casillas:** nota gigante con criterios, opinión con capitular, datos, apuntes, apuntes rápidos, horas,
-  partes, «Jugar en el PC» y capturas. Apuntar, valorar partidas, terminar, cambiar de estado, favorito, borrar…
-  Todo se sincroniza con el móvil al momento.
-- **Diario** (calendario de periódico), **Cifras** (estadísticas) y **Tu PC** (la biblioteca del lanzador).
-- **Ajustes:** tema claro, oscuro o automático; acento (rojo, azul, verde, mostaza, morado, naranja, rosa o tinta);
-  cuenta; clave de SteamGridDB.
-- Teclado: `Esc` vuelve, `/` busca, `F11` pantalla completa.
-- Prueba sin Electron: `node herramientas/revista/prueba-revista.js carpeta` (Chromium con una cuenta de ejemplo).
-- Para abrir una u otra sin tocar la configuración: `--revista` / `--lanzador` (o `ATRIO_UI=revista|lanzador`).
+- **Juegos:** en portada, lo que estás jugando o lo último (su fondo a lo grande, el título y «Jugar →» ya
+  enfocado: una pulsación de A y a jugar), «Seguir jugando», tus favoritos y toda la biblioteca en portadas
+  (ordenada por recientes, nombre u horas; filtrada por tienda). Cada juego tiene su página: Jugar, guías,
+  favorito, sus datos (horas, última vez, estudio, género, Metacritic) y, si está en tu cuenta, tu nota y tu
+  crítica o tu último apunte. Y abre las opciones (favorito, ocultar, su ficha, guías).
+- **Valorados:** tus juegos terminados con la nota en grande; los instalados se abren para jugar.
+- **Revista:** toda tu colección (libros, películas, series, el diario, las cifras, Descubrir…) como antes,
+  ahora también con mando.
+- **Mando** (también el Steam Controller con Steam Input), **teclado y ratón** a la vez. Cruceta o stick para
+  moverse, A elegir, B volver, X buscar, Y opciones, LB/RB secciones, Vista (⧉) cambia entre Juegos y Revista,
+  Menú (☰) abre el menú (ajustes, suspender, reiniciar, apagar —con confirmación—, salir) y el stick derecho
+  desplaza. Con el teclado: flechas, Intro, Esc, /, RePág/AvPág, C y S (lo mismo que el Steam Controller en
+  modo escritorio con la configuración de Ajustes → Mando). El marco del foco solo se ve con mando o teclado.
+- **Guías** a pantalla completa (también las que mandas desde el móvil): B cierra, LB/RB atrás y adelante.
+- **Ajustes**, todos con la misma estética: la revista (tema y acento), cuenta y SteamGridDB, bibliotecas,
+  juegos añadidos, emuladores, juegos ocultos, mando (prueba en vivo y configurar botones), comportamiento
+  (al abrir un juego, al iniciar sesión, animaciones), móvil y streaming.
+- Animaciones ligeras (120–260 ms: el foco, las portadas, el cambio de modo); se quitan en Ajustes →
+  Comportamiento o si el sistema pide menos movimiento.
+- El lanzador clásico ya no se ve; sigue dentro solo para las pruebas automáticas (`--lanzador`).
+- Prueba sin Electron: `node herramientas/revista/prueba-revista.js carpeta` (Chromium con una cuenta de
+  ejemplo y un mando simulado).
 
 ## Atrio 6.8 (móvil)
 

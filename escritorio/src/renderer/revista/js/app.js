@@ -9,28 +9,65 @@
 
   // ---------------------------------------------------------------- Navegación
   // Una ruta es { v: vista, …datos }. «Volver» desanda las rutas (y la posición en la página).
-  let ruta = { v: 'portada' };
+  // Dos modos: «juegos» (el lanzador: con lo que arranca Atrio) y «revista» (toda tu colección)
+  RV.modo = 'juegos';
+  const raiz = () => (RV.modo === 'juegos' ? { v: 'juegos' } : { v: 'portada' });
+  let ruta = raiz();
   const pila = [];
   const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   RV.ruta = () => ruta;
   RV.ir = (r, opts = {}) => {
-    if (!opts.reemplazar && !igual(r, ruta)) pila.push({ ruta, y: window.scrollY });
+    if (!opts.reemplazar && !igual(r, ruta)) pila.push({ ruta, y: window.scrollY, foco: claveFoco() });
     if (pila.length > 60) pila.shift();
     ruta = { ...r };
     pintar({ y: 0 });
   };
   RV.volver = () => {
     const prev = pila.pop();
-    if (prev) { ruta = prev.ruta; pintar({ y: prev.y }); return true; }
-    if (ruta.v !== 'portada') { ruta = { v: 'portada' }; pintar({ y: 0 }); return true; }
+    if (prev) { ruta = prev.ruta; pintar({ y: prev.y, foco: prev.foco }); return true; }
+    if (!igual(ruta, raiz())) { ruta = raiz(); pintar({ y: 0 }); return true; }
     return false;
   };
+  // Cambiar de modo: cada uno empieza en su portada (y «volver» no cruza de uno a otro)
+  RV.cambiarModo = (m) => {
+    const nuevo = m || (RV.modo === 'juegos' ? 'revista' : 'juegos');
+    if (nuevo === RV.modo && igual(ruta, raiz())) return;
+    RV.modo = nuevo;
+    document.body.dataset.modo = nuevo;
+    pila.length = 0;
+    ruta = raiz();
+    document.body.classList.add('cambia-modo');
+    pintar({ y: 0 });
+    setTimeout(() => document.body.classList.remove('cambia-modo'), 260);
+  };
+  // El elemento enfocado, para volver a él al redibujar o al volver atrás
+  function claveFoco() {
+    const a = document.activeElement;
+    if (!a || a === document.body) return null;
+    const pag = document.getElementById('pagina');
+    if (!pag || !pag.contains(a)) return null;
+    if (a.dataset && a.dataset.clave) return { clave: a.dataset.clave };
+    const todos = [...pag.querySelectorAll('button, a[href], input, textarea, select, summary')];
+    const i = todos.indexOf(a);
+    return i >= 0 ? { i, txt: a.textContent.slice(0, 40) } : null;
+  }
+  function restaurarFoco(f) {
+    const pag = document.getElementById('pagina');
+    let el = null;
+    if (f && f.clave) el = pag.querySelector(`[data-clave="${CSS.escape(f.clave)}"]`);
+    if (!el && f && f.i != null) {
+      const todos = [...pag.querySelectorAll('button, a[href], input, textarea, select, summary')];
+      el = todos[f.i] && todos[f.i].textContent.slice(0, 40) === f.txt ? todos[f.i] : null;
+    }
+    if (el) el.focus({ preventScroll: true });
+    return !!el;
+  }
   RV.lanzador = () => {
     if (api.switchUi) api.switchUi('lanzador').catch((e) => RV.aviso(RV.limpiaError(e), 'error'));
     else RV.aviso('Esta versión de Atrio no puede cambiar de interfaz.', 'error');
   };
 
-  const TITULOS = { portada: 'Portada', diario: 'Diario', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes', descubrir: 'Descubrir', especial: 'Número especial' };
+  const TITULOS = { juegos: 'Juegos', 'j-valorados': 'Valorados', 'j-juego': 'Juego', portada: 'Portada', diario: 'Diario', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes', descubrir: 'Descubrir', especial: 'Número especial' };
   function pintar(o = {}) {
     const pag = document.getElementById('pagina');
     // Lo que estabas escribiendo (y dónde), para no perderlo al redibujar con datos nuevos
@@ -43,6 +80,8 @@
       try { foco.a = act.selectionStart; foco.b = act.selectionEnd; } catch { /* campos sin selección */ }
     }
     const y = o.y != null ? o.y : window.scrollY;
+    // El foco (mando o teclado) se conserva al redibujar con datos nuevos
+    const focoAntes = o.foco !== undefined ? o.foco : (act && pag.contains(act) && !foco ? claveFoco() : null);
     let nodo;
     try {
       nodo = (RV.vistas[ruta.v] || RV.vistas.portada)(ruta);
@@ -57,6 +96,15 @@
     cabecera();
     RV.ajustar(document);
     window.scrollTo(0, y);
+    // Con mando o teclado siempre hay algo enfocado: lo de antes o lo principal de la página
+    if (!foco && !RV.hayDialogo()) {
+      const ok = focoAntes ? restaurarFoco(focoAntes) : false;
+      if (!ok && RV.mando && (RV.mando.entrada() === 'mando' || RV.modo === 'juegos')) {
+        const auto = pag.querySelector('[data-autofocus]');
+        if (auto) auto.focus({ preventScroll: true });
+        else if (RV.mando.entrada() === 'mando') RV.mando.primero(pag);
+      }
+    }
     if (foco) {
       const el = pag.querySelector(`[data-foco="${CSS.escape(foco.k)}"]`);
       if (el) {
@@ -74,6 +122,7 @@
   // ---------------------------------------------------------------- Cabecera de periódico
   function cabecera() {
     const cab = document.getElementById('cabecera');
+    if (RV.modo === 'juegos' && RV.cabeceraJuegos) { RV.cabeceraJuegos(cab, ruta); return; }
     const hoy = new Date();
     const item = (texto, r, activo, extra) => h('button.cab-item', {
       type: 'button', 'aria-current': activo ? 'page' : null, onclick: () => RV.ir(r),
@@ -90,13 +139,12 @@
       item('Tu PC', { v: 'pc' }, v === 'pc'),
       item('Ajustes', { v: 'ajustes' }, v === 'ajustes'));
     const folio = h('div.cab-folio',
+      h('button.enlace.acento', { type: 'button', onclick: () => RV.cambiarModo('juegos'), title: 'Botón Vista del mando (o C)' }, '⧉ Modo Juegos'),
       h('span.versal', `Nº ${RV.diaDelAno(hoy)} · ${RV.fmtLargo(hoy)}`),
       pila.length || v !== 'portada' ? h('button.enlace', { type: 'button', onclick: () => RV.volver(), title: 'Esc' }, '← Volver') : null,
       h('span.hueco'),
       h('button.enlace', { type: 'button', onclick: () => atajoBuscar(), title: 'Tecla /' }, 'Buscar /'),
-      h('button.enlace.apagado', { type: 'button', onclick: () => api.toggleFullscreen(), title: 'F11' }, 'Pantalla completa'),
-      h('button.enlace.apagado', { type: 'button', onclick: () => api.minimize() }, 'Minimizar'),
-      h('button.enlace.apagado', { type: 'button', onclick: () => api.quit() }, 'Salir'));
+      h('button.enlace.apagado', { type: 'button', onclick: () => RV.menu(), title: 'Botón Menú del mando (o S)' }, '☰ Menú'));
     cab.replaceChildren(h('div.hoja', folio, menu, h('div.filete')));
   }
 
@@ -137,6 +185,7 @@
     const d = RV.dialogo({ ante: 'Buscar', titulo: 'En toda la colección', ancho: true, cuerpo: [h('label.buscador', { style: { maxWidth: 'none' } }, h('span.lupa', 'Buscar'), input), ul] });
   };
   function atajoBuscar() {
+    if (RV.modo === 'juegos' && RV.buscarJuegos) { RV.buscarJuegos(); return; }
     const propio = ruta.v === 'seccion' ? RV.buscadorSeccion() : ruta.v === 'pc' ? RV.buscadorPc() : null;
     if (propio) { propio.focus(); propio.select(); window.scrollTo({ top: 0 }); } else RV.buscarTodo();
   }
@@ -167,7 +216,7 @@
 
   // ---------------------------------------------------------------- Lo que llega de Atrio en directo
   api.on('ronron', (s) => { D.setCuenta(s); RV.refrescar(); });
-  api.on('library', (s) => { D.setPc(s); RV.refrescar(); });
+  api.on('library', (s) => { D.setPc(s); if (s && s.config) RV.mando.config(s.config.behavior); RV.refrescar(); });
   // El arte llega juego a juego (al arrancar, de toda la biblioteca): se redibuja despacio
   api.on('art', (g) => { D.setJuegoPc(g); if (ruta.v === 'portada' || ruta.v === 'pc' || ruta.v === 'ficha') refrescarDespacio(); });
   api.on('play', (p) => { D.setPlay(p); refrescarDespacio(); });
@@ -186,21 +235,51 @@
     window.requestAnimationFrame(() => f.classList.add('ya'));
     setTimeout(() => f.remove(), 700);
   });
-  // Órdenes del móvil: abrir un juego en Atrio; las guías (webs) son cosa del lanzador clásico
+  // Órdenes del móvil: abrir un juego en Atrio o una guía (una web) para ese juego
   api.on('remote', (r) => {
     if (!r || !r.key) return;
-    if (r.op === 'page') { while (RV.cerrarDialogo()) { /* cerrar todo */ } RV.abrirJuegoPc(r.key); }
-    if (r.op === 'guide') RV.aviso('Las guías se abren en el lanzador clásico (Ajustes → Abrir el lanzador clásico).');
+    if (r.op === 'page') { while (RV.cerrarDialogo()) { /* cerrar todo */ } RV.abrirJuego(r.key); }
+    if (r.op === 'guide' && RV.guia) { while (RV.cerrarDialogo()) { /* */ } RV.guia(r.key, r.url || null); }
   });
+  // El foco de la ventana (jugando, Atrio queda detrás): el mando se mira menos y no navega
+  api.on('winfocus', (v) => { if (RV.mando) RV.mando.foco(v); });
+
+  // ---------------------------------------------------------------- Mando: lo que hace cada botón
+  RV.mando.al({
+    // LB / RB: la sección anterior o siguiente de la cabecera
+    prev: () => (RV.secciones ? RV.secciones(-1) : null),
+    next: () => (RV.secciones ? RV.secciones(1) : null),
+    start: () => { if (!RV.hayDialogo()) RV.menu(); else RV.cerrarDialogo(); },
+    select: () => { while (RV.cerrarDialogo()) { /* */ } RV.cambiarModo(); },
+    x: () => { if (!RV.hayDialogo()) atajoBuscar(); },
+    // Y: las opciones de lo que está enfocado (un juego, por ejemplo)
+    y: (el) => { if (RV.guiaY && RV.guiaY()) return; const o = el && el.closest('[data-opciones]'); if (o && typeof o.__opciones === 'function') o.__opciones(); },
+  });
+  // LB / RB en la revista: recorrer las secciones de la cabecera
+  RV.secciones = (paso) => {
+    if (RV.guiaNav && RV.guiaNav(paso)) return;
+    if (RV.hayDialogo()) return;
+    if (ruta.v === 'ajustes' && RV.seccionAjustes) { RV.seccionAjustes(paso); return; }
+    if (RV.modo === 'juegos' && RV.seccionesJuegos) { RV.seccionesJuegos(paso); return; }
+    const items = RV.$$('#cabecera .cab-item');
+    if (!items.length) return;
+    let i = items.findIndex((b) => b.getAttribute('aria-current') === 'page');
+    i = (i + paso + items.length) % items.length;
+    items[i].click();
+    requestAnimationFrame(() => { const b = RV.$$('#cabecera .cab-item')[i]; if (b && RV.mando.entrada() === 'mando') b.focus({ preventScroll: true }); });
+  };
   // En «Automático», si el sistema cambia de claro a oscuro, las muestras de color se redibujan
   try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => RV.refrescar()); } catch { /* */ }
 
   // ---------------------------------------------------------------- Arranque
   async function arrancar() {
+    document.body.dataset.modo = RV.modo;
+    document.body.dataset.entrada = 'raton';
     try {
       const s = await api.state();
       D.setPc(s);
       RV.aplicarTema((s.config || {}).revista);
+      RV.mando.config((s.config || {}).behavior);
     } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
     try { D.setCuenta(await api.ronron()); } catch { /* sin cuenta */ }
     pintar({ y: 0 });
@@ -213,6 +292,7 @@
   arrancar();
   // Para las capturas automáticas (ATRIO_SHOTS): cada paso del plan puede ir a una página o cambiar de interfaz
   window.__test = async (paso) => {
+    if (paso && paso.modo) RV.cambiarModo(paso.modo);
     if (paso && paso.ir) RV.ir(paso.ir);
     if (paso && paso.ui && api.switchUi) await api.switchUi(paso.ui);
     return RV.ruta().v;

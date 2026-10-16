@@ -773,7 +773,9 @@ function uiMode() {
   if (process.argv.includes('--lanzador')) return 'lanzador';
   if (process.argv.includes('--revista')) return 'revista';
   if (process.env.ATRIO_SHOTS) return 'lanzador';
-  return config.get().ui === 'lanzador' ? 'lanzador' : 'revista';
+  // Atrio 2: siempre la revista (que empieza en su modo Juegos, el lanzador). El lanzador clásico solo
+  // se abre a propósito (--lanzador o ATRIO_UI=lanzador) y lo usan las pruebas automáticas.
+  return 'revista';
 }
 function uiFile(mode) {
   return mode === 'lanzador'
@@ -823,8 +825,8 @@ function createWindow() {
   win.loadFile(uiFile(ui));
   // La pantalla completa se aplica después de mostrar la ventana: crearla ya a pantalla
   // completa da problemas en algunos compositores Wayland
-  // La pantalla completa es cosa del lanzador (pantalla grande y mando); la revista abre en ventana grande
-  const wantFull = !shots && ui === 'lanzador' && !!cfg.behavior.fullscreen && !process.argv.includes('--ventana');
+  // Siempre a pantalla completa (la revista con su modo Juegos es el lanzador). --ventana para depurar
+  const wantFull = !shots && !process.argv.includes('--ventana') && (ui === 'revista' || !!cfg.behavior.fullscreen);
   win.once('ready-to-show', () => {
     if (shots) { win.showInactive(); return; }
     if (background) return;

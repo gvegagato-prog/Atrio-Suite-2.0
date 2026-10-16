@@ -130,6 +130,10 @@ window.RV = window.RV || {};
     const acento = RV.ACENTOS.some(([id]) => id === (rev && rev.acento)) ? rev.acento : 'rojo';
     document.documentElement.dataset.tema = tema;
     document.documentElement.dataset.acento = acento;
+    // Sin animaciones si lo pides (Ajustes → Comportamiento) o si el sistema pide menos movimiento
+    let menos = false;
+    try { menos = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { /* */ }
+    if (document.body) document.body.classList.toggle('quieto', !!(rev && rev.quieto) || menos);
     // Copia local solo para el arranque (tema-inicial.js); la de verdad está en la configuración de Atrio
     try { localStorage.setItem('revista:tema', JSON.stringify({ tema, acento })); } catch { /* */ }
   };

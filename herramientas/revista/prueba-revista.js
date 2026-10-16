@@ -57,9 +57,11 @@ const cuenta = {
 const pc = {
   config: { ui: 'revista', revista: { tema: process.env.TEMA || 'claro', acento: 'rojo' } },
   games: [
-    { key: 'steam:1422450', name: 'Deadlock', sourceLabel: 'Steam', lastPlayed: Date.now() - 3600e3, steamPlaytime: 3120 * 60000, art: {} },
-    { key: 'steam:2622380', name: 'ELDEN RING NIGHTREIGN', sourceLabel: 'Steam', lastPlayed: Date.now() - 5 * 86400e3, steamPlaytime: 900 * 60000, art: {} },
-    { key: 'steam:1145360', name: 'Hades II', sourceLabel: 'Steam', lastPlayed: Date.now() - 40 * 86400e3, steamPlaytime: 2400 * 60000, art: {} },
+    { key: 'steam:1422450', name: 'Deadlock', source: 'steam', sourceLabel: 'Steam', lastPlayed: Date.now() - 3600e3, steamPlaytime: 3120 * 60000, art: { hero: tapa('Deadlock', '#e08a1c', '#8a4a08'), cover: tapa('D', '#e08a1c', '#5a2a04') }, meta: { description: 'Un shooter de héroes por equipos de Valve.', developers: ['Valve'], genres: ['Acción'] } },
+    { key: 'steam:2622380', name: 'ELDEN RING NIGHTREIGN', source: 'steam', sourceLabel: 'Steam', lastPlayed: Date.now() - 5 * 86400e3, steamPlaytime: 900 * 60000, art: { hero: tapa('Nightreign', '#334', '#889'), cover: tapa('E', '#223', '#667') }, links: [{ u: 'https://example.com/guia', n: 'Guía de prueba' }] },
+    { key: 'steam:1145360', name: 'Hades II', source: 'steam', sourceLabel: 'Steam', lastPlayed: Date.now() - 40 * 86400e3, steamPlaytime: 2400 * 60000, art: { cover: tapa('H', '#904e95', '#e96443') }, favorite: true },
+    ...Array.from({ length: 14 }, (_, i) => ({ key: `heroic:${i}`, name: `Juego de Heroic ${i + 1}`, source: 'heroic', sourceLabel: 'Heroic', lastPlayed: 0, steamPlaytime: 0, art: { cover: tapa(String(i + 1), `hsl(${i * 25},50%,40%)`, '#222') } })),
+    { key: 'custom:x', name: 'Juego oculto', source: 'custom', sourceLabel: 'Tuyo', hidden: true, art: {} },
   ],
   play: { sessions: [], active: [] },
 };
@@ -101,6 +103,15 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
         switchUi: async () => {}, toggleFullscreen: async () => {}, minimize: async () => {}, quit: async () => {}, rescan: async () => p,
         openExternal: async () => {}, sgdbSearch: async () => [], sgdbTest: async () => ({ ok: true }), suiteShots: async () => [], suiteShotShow: async () => true,
         ronronLogin: async () => c, ronronLogout: async () => c, ronronSync: async () => c,
+        override: async (key, patch) => { const g = p.games.find((x) => x.key === key); Object.assign(g, patch); return { ...g }; },
+        pickFile: async () => '/home/gonzalo/Juegos/juego.AppImage', protonList: async () => [{ name: 'GE-Proton10', path: '/proton/ge10' }],
+        autostart: async () => ({ available: true, mode: 'visible', installed: true, path: '/home/gonzalo/Applications/Atrio.AppImage', steam: true }),
+        setAutostart: async () => ({}), suiteMethods: async () => ['spectacle', 'grim'], refetchArt: async () => {},
+        streamInfo: async () => ({ installed: true, running: false, creds: false, ts: { installed: false }, ips: ['192.168.1.20'] }),
+        streamStart: async () => ({}), streamCheck: async () => ({ ok: true, msg: 'Bien' }), streamWeb: async () => {},
+        power: async (a) => { window.__energia = a; },
+        webOpen: async (u) => { window.__web = u; return { open: true, url: u, title: 'Guía', loading: false }; },
+        webHide: async () => {}, webShow: async () => ({}), webClose: async () => { window.__webCerrada = true; return { open: false }; }, webNav: async () => {}, webBounds: async () => {},
       };
     }, { cuenta, pc, juegos: RAWG_JUEGOS, tema });
     await page.goto(`http://localhost:${port}/`);
@@ -109,6 +120,8 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     const ir = async (r) => { await page.evaluate((x) => window.RV.ir(x), r); await page.waitForTimeout(400); };
     const texto = async () => page.evaluate(() => document.getElementById('pagina').innerText);
     const errorPagina = async () => /Fe de erratas|No se ha podido mostrar/.test(await texto());
+    // Atrio arranca en el modo Juegos; esta pasada es la de la revista
+    await page.evaluate(() => window.RV.cambiarModo('revista')); await page.waitForTimeout(500);
 
     await shot('01-portada');
     let t = await texto();
@@ -151,12 +164,18 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     await ir({ v: 'pc' }); await shot('08-pc');
     ok(!(await errorPagina()), `${tema}: tu PC`);
     await ir({ v: 'ajustes' }); await shot('09-ajustes');
-    {
-      await page.click('button.opcion:has-text("El lanzador")'); await page.waitForTimeout(300);
-      const ui = await page.evaluate(() => window.RV.D.config().ui);
-      ok(ui === 'lanzador', `${tema}: «Al abrir Atrio» guarda el lanzador (${ui})`);
-      await page.click('button.opcion:has-text("La revista")'); await page.waitForTimeout(300);
+    // Todas las secciones de Ajustes (las del PC, traídas del lanzador clásico)
+    for (const sec of ['revista', 'cuenta', 'bibliotecas', 'propios', 'emuladores', 'ocultos', 'mando', 'comportamiento', 'movil', 'streaming']) {
+      await ir({ v: 'ajustes', sec }); await page.waitForTimeout(250);
+      if (tema === 'claro') await shot(`09-ajustes-${sec}`);
+      ok(!(await errorPagina()) && (await page.$$('.ajuste')).length > 0, `${tema}: Ajustes → ${sec}`);
     }
+    await ir({ v: 'ajustes', sec: 'propios' });
+    await page.click('button:has-text("+ Añadir un juego")'); await page.waitForTimeout(300);
+    await page.click('.dialogo .ruta button'); await page.waitForTimeout(200);
+    const nom = await page.$eval('.dialogo input', (i) => i.value);
+    ok(nom === 'juego', `${tema}: añadir un juego propio, al elegir el archivo se rellena el nombre («${nom}»)`);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
     {
       await ir({ v: 'portada' });
       const n = await page.$$eval('ol.numerada li .enlace', (l) => l.filter((b) => /Jugar/.test(b.textContent)).length);
@@ -197,6 +216,127 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(ancho <= 1, `${tema}: sin desplazamiento lateral en ventana estrecha (${ancho}px)`);
 
     ok(!log.length, `${tema}: sin errores en la página${log.length ? `: ${log.slice(0, 5).join(' | ')}` : ''}`);
+    await ctx.close();
+  }
+  // ---------------- El modo Juegos (el lanzador) con un mando simulado
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+    const page = await ctx.newPage();
+    const log = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) log.push(m.text()); });
+    page.on('pageerror', (e) => log.push(`pageerror ${e.message}`));
+    await page.addInitScript(({ cuenta: c, pc: p }) => {
+      p.config.revista.tema = 'claro';
+      const boton = () => ({ pressed: false, value: 0 });
+      window.__fakePads = [{ id: 'Mando de prueba (STANDARD GAMEPAD)', mapping: 'standard', connected: true, buttons: Array.from({ length: 17 }, boton), axes: [0, 0, 0, 0] }];
+      window.__pulsar = async (i) => {
+        const pad = window.__fakePads[0];
+        pad.buttons[i] = { pressed: true, value: 1 };
+        await new Promise((r) => setTimeout(r, 70));
+        pad.buttons[i] = { pressed: false, value: 0 };
+        await new Promise((r) => setTimeout(r, 70));
+      };
+      const n = async () => {};
+      window.atrio = {
+        state: async () => p, ronron: async () => c, on: () => {}, ronronEdit: async () => c, log: n, patchConfig: async (x) => { Object.assign(p.config, x); return p; },
+        launch: async (k) => { (window.__lanzados ||= []).push(k); return {}; }, switchUi: n, toggleFullscreen: n, minimize: n, quit: n, rescan: async () => p,
+        override: async (key, patch) => { const g = p.games.find((x) => x.key === key); Object.assign(g, patch); return { ...g }; },
+        power: async (a) => { window.__energia = a; },
+        webOpen: async (u) => { window.__web = u; return { open: true, url: u, title: 'Guía', loading: false }; },
+        webHide: n, webShow: async () => ({}), webClose: async () => { window.__webCerrada = true; return { open: false }; }, webNav: n, webBounds: n,
+        autostart: async () => ({ available: false }), suiteMethods: async () => [], streamInfo: async () => null, protonList: async () => [],
+      };
+    }, { cuenta, pc });
+    await page.goto(`http://localhost:${port}/`);
+    await page.waitForTimeout(1600);
+    const shot = async (n) => { await page.waitForTimeout(450); await page.screenshot({ path: path.join(out, `juegos-${n}.png`) }); };
+    const btn = (i) => page.evaluate((x) => window.__pulsar(x), i);
+    const A = 0, B = 1, Y = 3, LB = 4, RB = 5, VISTA = 8, MENU = 9, ABAJO = 13, DER = 15;
+    const estado = () => page.evaluate(() => ({ v: window.RV.ruta().v, modo: window.RV.modo, foco: (document.activeElement && document.activeElement.textContent || '').trim().slice(0, 40), entrada: document.body.dataset.entrada }));
+    let e = await estado();
+    ok(e.modo === 'juegos' && e.v === 'juegos', `juegos: Atrio arranca en el modo Juegos (${e.modo}/${e.v})`);
+    await shot('01-portada');
+    const txt = await page.evaluate(() => document.body.innerText);
+    ok(/Deadlock/.test(txt) && /SEGUIR JUGANDO/i.test(txt) && /LA BIBLIOTECA/i.test(txt), 'juegos: portada con el último jugado, seguir jugando y la biblioteca');
+    ok(!/Juego oculto/.test(txt), 'juegos: los juegos ocultos no salen');
+    // A: Jugar (lo enfocado al empezar)
+    await btn(A); await page.waitForTimeout(300);
+    let lanz = await page.evaluate(() => window.__lanzados || []);
+    ok(lanz[0] === 'steam:1422450', `juegos: A en «Jugar →» lanza el juego de portada (${lanz.join(', ')})`);
+    e = await estado();
+    ok(e.entrada === 'mando', 'juegos: con el mando se ve el foco (entrada «mando»)');
+    // Bajar hasta la biblioteca y abrir un juego
+    for (let i = 0; i < 4; i++) { await btn(ABAJO); await page.waitForTimeout(120); }
+    await btn(DER); await page.waitForTimeout(150);
+    e = await estado();
+    await shot('02-foco-biblioteca');
+    ok(e.foco.length > 0, `juegos: la cruceta mueve el foco («${e.foco}»)`);
+    // Y: opciones del juego enfocado
+    await btn(Y); await page.waitForTimeout(300);
+    const opc = await page.evaluate(() => !!document.querySelector('#capa .dialogo') && document.querySelector('#capa .dialogo').innerText);
+    ok(!!opc && /favoritos/i.test(opc), 'juegos: Y abre las opciones del juego');
+    await shot('03-opciones');
+    await btn(B); await page.waitForTimeout(250);
+    ok(!(await page.$('#capa .dialogo')), 'juegos: B cierra las opciones');
+    // A: su página
+    await btn(A); await page.waitForTimeout(400);
+    e = await estado();
+    ok(e.v === 'j-juego', `juegos: A abre la página del juego (${e.v})`);
+    await shot('04-pagina-juego');
+    await btn(B); await page.waitForTimeout(400);
+    e = await estado();
+    ok(e.v === 'juegos', `juegos: B vuelve a la portada (${e.v})`);
+    // LB: Valorados; RB, RB: Revista
+    await btn(LB); await page.waitForTimeout(400);
+    e = await estado();
+    ok(e.v === 'j-valorados', `juegos: LB pasa a Valorados (${e.v})`);
+    await shot('05-valorados');
+    ok(/96/.test(await page.evaluate(() => document.getElementById('pagina').innerText)), 'juegos: Valorados con las notas');
+    await btn(RB); await page.waitForTimeout(300);
+    await btn(RB); await page.waitForTimeout(500);
+    e = await estado();
+    ok(e.modo === 'revista' && e.v === 'portada', `juegos: RB hasta «Revista» abre la revista (${e.modo}/${e.v})`);
+    await shot('06-revista');
+    // En la revista: RB recorre las secciones y Vista vuelve a Juegos
+    await btn(RB); await page.waitForTimeout(400);
+    e = await estado();
+    ok(e.v === 'seccion', `revista con mando: RB pasa a la siguiente sección (${e.v})`);
+    await btn(ABAJO); await page.waitForTimeout(150); await btn(ABAJO); await page.waitForTimeout(150);
+    e = await estado();
+    await shot('07-revista-foco');
+    ok(e.foco.length > 0, `revista con mando: la cruceta recorre la página («${e.foco}»)`);
+    await btn(VISTA); await page.waitForTimeout(500);
+    e = await estado();
+    ok(e.modo === 'juegos' && e.v === 'juegos', `juegos: Vista cambia de modo (${e.modo}/${e.v})`);
+    // Menú: energía con confirmación (la opción segura enfocada)
+    await btn(MENU); await page.waitForTimeout(300);
+    await shot('08-menu');
+    ok(/Apagar/.test(await page.evaluate(() => (document.querySelector('#capa') || {}).innerText || '')), 'juegos: Menú con apagar, reiniciar y suspender');
+    await page.click('#capa button:has-text("Apagar")'); await page.waitForTimeout(300);
+    await btn(A); await page.waitForTimeout(300);
+    ok(!(await page.evaluate(() => window.__energia)), 'juegos: al pedir apagar, A en lo enfocado (Cancelar) no apaga');
+    // Guías: desde la página de Nightreign (con una guía guardada se abre directamente)
+    await page.evaluate(() => window.RV.ir({ v: 'j-juego', key: 'steam:2622380' })); await page.waitForTimeout(400);
+    await page.click('button:has-text("Guías")'); await page.waitForTimeout(400);
+    ok((await page.evaluate(() => window.__web)) === 'https://example.com/guia', 'juegos: Guías abre la web guardada');
+    await shot('09-guia');
+    await btn(B); await page.waitForTimeout(300);
+    ok(await page.evaluate(() => window.__webCerrada === true), 'juegos: B cierra la guía');
+    // Teclado: flechas e Intro
+    await page.evaluate(() => window.RV.ir({ v: 'juegos' })); await page.waitForTimeout(400);
+    await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.waitForTimeout(200);
+    e = await estado();
+    ok(e.foco.length > 0, `teclado: las flechas mueven el foco («${e.foco}»)`);
+    // Ratón: al moverlo, el marco del foco desaparece
+    await page.mouse.move(400, 400); await page.mouse.move(460, 470); await page.waitForTimeout(100);
+    e = await estado();
+    ok(e.entrada === 'raton', 'ratón: al moverlo se usa el ratón (sin marco de foco)');
+    // Ventana estrecha y alta (un monitor vertical o media pantalla)
+    await page.setViewportSize({ width: 900, height: 1200 }); await page.waitForTimeout(300);
+    await shot('10-estrecha');
+    const ancho = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    ok(ancho <= 1, `juegos: sin desplazamiento lateral en ventana estrecha (${ancho}px)`);
+    ok(!log.length, `juegos: sin errores en la página${log.length ? `: ${log.slice(0, 5).join(' | ')}` : ''}`);
     await ctx.close();
   }
   await browser.close();

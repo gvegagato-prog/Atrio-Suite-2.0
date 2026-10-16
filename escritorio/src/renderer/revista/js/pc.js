@@ -60,11 +60,11 @@
               RV.refrescar();
             },
           }, 'Volver a leer'),
-          h('button.enlace.acento', { type: 'button', onclick: () => RV.lanzador() }, 'Abrir el lanzador clásico →'))),
+          h('button.enlace.acento', { type: 'button', onclick: () => RV.cambiarModo('juegos') }, '⧉ Modo Juegos →'))),
       h('div.filete')));
 
     if (!todos.length) {
-      root.append(RV.vacio('No he encontrado juegos en este PC. En el lanzador clásico (Ajustes → Bibliotecas) puedes elegir dónde buscar y añadir los tuyos.', true));
+      root.append(RV.vacio('No he encontrado juegos en este PC. En Ajustes → Bibliotecas eliges dónde buscar y añades los tuyos.', true));
       return root;
     }
 

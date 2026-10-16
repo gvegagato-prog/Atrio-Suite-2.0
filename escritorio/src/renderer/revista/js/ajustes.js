@@ -1,7 +1,6 @@
 'use strict';
-/* global window */
-// Ajustes de la revista: tema y acento, la cuenta, la clave de SteamGridDB y el paso al lanzador clásico.
-// Lo demás (bibliotecas, mando, móvil, streaming…) sigue en los Ajustes del lanzador clásico.
+/* global window, document, requestAnimationFrame */
+// Ajustes: la revista (tema y acento) y la cuenta; las secciones del PC (bibliotecas, mando, móvil…) están en sistema.js.
 (function (RV) {
   const h = RV.h;
   const D = RV.D;
@@ -112,36 +111,58 @@
     ];
   }
 
-  RV.vistas.ajustes = () => {
+  RV.guardarRevista = guardarRevista;
+  if (RV.ajustesPc) RV.ajustesPc.guardarRevista = guardarRevista;
+
+  // Las secciones de Ajustes (LB / RB pasan de una a otra)
+  const SECCIONES = [
+    ['revista', 'La revista'], ['cuenta', 'Cuenta'], ['bibliotecas', 'Bibliotecas'], ['propios', 'Juegos añadidos'],
+    ['emuladores', 'Emuladores'], ['ocultos', 'Ocultos'], ['mando', 'Mando'], ['comportamiento', 'Comportamiento'],
+    ['movil', 'Móvil'], ['streaming', 'Streaming'],
+  ];
+  let seccion = 'revista';
+  RV.seccionAjustes = (paso) => {
+    let i = SECCIONES.findIndex(([id]) => id === seccion);
+    i = (i + paso + SECCIONES.length) % SECCIONES.length;
+    seccion = SECCIONES[i][0];
+    RV.ir({ v: 'ajustes', sec: seccion }, { reemplazar: true });
+    requestAnimationFrame(() => { const b = document.querySelector(`.ajustes .pestana[data-sec="${seccion}"]`); if (b) b.focus({ preventScroll: true }); });
+  };
+
+  function laRevista() {
     const rev = { tema: 'auto', acento: 'rojo', ...(D.config().revista || {}) };
+    return [
+      bloque('Tema', 'Papel claro, papel oscuro o lo que diga el sistema.',
+        h('div.opciones', RV.TEMAS.map(([id, n]) => h('button.opcion', {
+          type: 'button', 'aria-pressed': String(rev.tema === id), onclick: () => guardarRevista({ tema: id }),
+        }, n)))),
+      bloque('Acento', 'El color de imprenta: antetítulos, capitulares, enlaces y lo que está elegido.',
+        h('div.muestras', RV.ACENTOS.map(([id, n, claro, oscuro]) => h('button.muestra', {
+          type: 'button', 'aria-pressed': String(rev.acento === id), onclick: () => guardarRevista({ acento: id }), 'aria-label': `Acento ${n}`,
+        }, h('span.color', { style: { background: RV.oscuro() ? oscuro : claro } }), h('span.nombre', n))))),
+    ];
+  }
+
+  RV.vistas.ajustes = (ruta) => {
+    if (ruta && ruta.sec && SECCIONES.some(([id]) => id === ruta.sec)) seccion = ruta.sec;
     const root = h('div.hoja.ajustes');
     root.append(h('header.cabeza',
-      h('div.ante', 'La revista, a tu gusto'),
-      h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, 'Ajustes'))));
-
-    root.append(bloque('Tema', 'Papel claro, papel oscuro o lo que diga el sistema.',
-      h('div.opciones', RV.TEMAS.map(([id, n]) => h('button.opcion', {
-        type: 'button', 'aria-pressed': String(rev.tema === id), onclick: () => guardarRevista({ tema: id }),
+      h('div.ante', 'Atrio, a tu gusto · LB y RB cambian de sección'),
+      h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, 'Ajustes')),
+      h('div.pestanas', { role: 'tablist' }, SECCIONES.map(([id, n]) => h('button.pestana', {
+        type: 'button', role: 'tab', 'data-sec': id, 'aria-selected': String(seccion === id), 'data-autofocus': seccion === id ? true : null,
+        onclick: () => { seccion = id; RV.ir({ v: 'ajustes', sec: id }, { reemplazar: true }); },
       }, n)))));
-
-    root.append(bloque('Acento', 'El color de imprenta: antetítulos, capitulares, enlaces y lo que está elegido.',
-      h('div.muestras', RV.ACENTOS.map(([id, n, claro, oscuro]) => h('button.muestra', {
-        type: 'button', 'aria-pressed': String(rev.acento === id), onclick: () => guardarRevista({ acento: id }), 'aria-label': `Acento ${n}`,
-      }, h('span.color', { style: { background: RV.oscuro() ? oscuro : claro } }), h('span.nombre', n))))));
-
-    root.append(bloque('Cuenta', 'Tu cuenta de Atrio: las mismas fichas que en el móvil. Atrio es un dispositivo más: lo que cambies aquí llega al móvil en unos segundos, y al revés.', cuenta()));
-
-    root.append(bloque('SteamGridDB', 'Para buscar videojuegos al añadirlos (el mismo buscador que el móvil) y para la portada, el fondo y el logo de cada ficha.', steamgriddb()));
-
-    const ui = D.config().ui === 'lanzador' ? 'lanzador' : 'revista';
-    root.append(bloque('Al abrir Atrio', 'Qué se abre al encender: la revista (ratón y teclado) o el lanzador (pantalla grande y mando). En las dos se juega.',
-      h('div.opciones', [['revista', 'La revista'], ['lanzador', 'El lanzador']].map(([id, n]) => h('button.opcion', {
-        type: 'button', 'aria-pressed': String(ui === id),
-        onclick: async () => { try { D.setPc(await RV.api.patchConfig({ ui: id })); RV.aviso(id === 'lanzador' ? 'La próxima vez se abrirá el lanzador' : 'La próxima vez se abrirá la revista'); RV.refrescar(); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); } },
-      }, n)))));
-
-    root.append(bloque('Lanzador clásico', 'La interfaz de pantalla grande y mando: bibliotecas, emuladores, juegos propios, el mando, el móvil y el streaming se ajustan allí.',
-      h('button.boton-tinta', { type: 'button', onclick: () => RV.lanzador() }, 'Abrir el lanzador clásico (pantalla grande y mando) →')));
+    const P = RV.ajustesPc || {};
+    let partes;
+    if (seccion === 'revista') partes = laRevista();
+    else if (seccion === 'cuenta') {
+      partes = [
+        bloque('Cuenta', 'Tu cuenta de Atrio: las mismas fichas que en el móvil. Lo que cambies aquí llega al móvil en unos segundos, y al revés.', cuenta()),
+        bloque('SteamGridDB', 'Para buscar videojuegos al añadirlos y para la portada, el fondo y el logo de cada juego. Si no la pones aquí, se usa la de tu cuenta.', steamgriddb()),
+      ];
+    } else partes = P[seccion] ? P[seccion]() : [RV.vacio('Esta sección no está disponible.')];
+    root.append(h('div.ajustes-cuerpo', partes));
     return root;
   };
 })(window.RV);

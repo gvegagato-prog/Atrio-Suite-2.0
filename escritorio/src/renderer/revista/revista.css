@@ -918,3 +918,162 @@ textarea.entrada:focus { border-color: var(--acento); }
 .item-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; border-bottom: 1px solid var(--linea); }
 .item-fila > .item { border-bottom: 0; }
 .item-fila > .enlace { white-space: nowrap; }
+
+/* ================================================================ Mando y teclado */
+/* El foco se ve solo con mando o teclado: un marco del acento, sin sombras */
+body[data-entrada="raton"] :focus-visible { outline: none; }
+body[data-entrada="mando"] :focus { outline: 3px solid var(--acento); outline-offset: 5px; }
+body[data-entrada="mando"] { cursor: none; }
+body[data-entrada="mando"] .pestana:focus, body[data-entrada="mando"] .cab-item:focus, body[data-entrada="mando"] .j-sec:focus { outline-offset: 2px; }
+#ayuda-mando {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: none; justify-content: center; flex-wrap: wrap; gap: 6px 26px;
+  padding: 9px var(--margen) 11px; background: var(--papel); border-top: 1px solid var(--tinta);
+  font-size: 11px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--gris);
+}
+body[data-entrada="mando"] #ayuda-mando { display: flex; }
+body[data-entrada="mando"] #pagina { padding-bottom: 46px; }
+.pista-boton b { display: inline-block; min-width: 20px; padding: 1px 5px; margin-right: 7px; border: 1px solid var(--tinta); color: var(--tinta); font-weight: 900; text-align: center; letter-spacing: 0.5px; }
+
+/* Movimiento: ligero (120–240 ms) y fuera si se pide */
+#pagina > * { animation: entra .22s ease-out both; }
+@keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+body.cambia-modo #pagina > * { animation: entra-modo .26s ease-out both; }
+@keyframes entra-modo { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+body.quieto *, body.quieto *::before, body.quieto *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+
+/* ================================================================ Modo Juegos: cabecera */
+.j-cab { padding-top: 14px; }
+.j-cab-fila { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; padding-bottom: 12px; }
+.j-marca { font-family: var(--serif); font-weight: 700; font-size: 30px; letter-spacing: -0.03em; justify-self: start; }
+.j-marca:hover { color: var(--acento); }
+.j-secciones { display: flex; gap: clamp(22px, 4vw, 64px); }
+.j-sec {
+  font-family: var(--serif); font-weight: 600; font-size: clamp(22px, 2.2vw, 34px); letter-spacing: -0.01em; color: var(--gris);
+  padding: 4px 2px 6px; border-bottom: 3px solid transparent; transition: color .14s, border-color .14s;
+}
+.j-sec:hover { color: var(--tinta); }
+.j-sec[aria-current="page"] { color: var(--tinta); border-bottom-color: var(--acento); }
+.j-cab-der { justify-self: end; display: flex; align-items: center; gap: 22px; }
+.j-reloj { font-family: var(--serif); font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
+.j-directo { font-size: 11px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; color: var(--acento); max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.j-cab-der .enlace { font-size: 20px; letter-spacing: 0; }
+body[data-modo="juegos"] #cabecera { position: sticky; top: 0; z-index: 30; background: var(--papel); }
+
+/* ================================================================ Modo Juegos: páginas */
+.j-pag { padding-top: 26px; padding-bottom: 40px; }
+.j-pag .ante { color: var(--acento); }
+.j-portada { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 0 36px; align-items: center; }
+.j-portada-img { display: block; width: 100%; }
+.j-heroe { margin: 0; width: 100%; aspect-ratio: 16 / 7.2; background: var(--arena); overflow: hidden; }
+.j-heroe img { width: 100%; height: 100%; object-fit: cover; }
+.j-heroe.sin-imagen, .j-img.sin-imagen, .j-img-ancha.sin-imagen { background: var(--arena); }
+.j-portada-txt .titular { margin: 6px 0 10px; }
+.j-portada-txt .meta, .j-juego-txt .meta { color: var(--gris); font-size: 16px; }
+.j-acciones { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 28px; margin-top: 22px; }
+.j-jugar { font-size: 16px; letter-spacing: 2.4px; padding: 16px 34px; }
+.j-en-marcha { font-size: 13px; font-weight: 900; letter-spacing: 1.6px; text-transform: uppercase; color: var(--acento); }
+.j-acciones .enlace { font-size: 13px; letter-spacing: 1.8px; }
+.j-bloque { margin-top: 34px; }
+.j-fila-ancha { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 22px; }
+.j-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 26px 22px; }
+.j-carta { display: flex; flex-direction: column; gap: 7px; text-align: left; min-width: 0; transition: transform .14s ease-out; }
+.j-img { margin: 0; aspect-ratio: 2 / 3; background: var(--arena); overflow: hidden; border: 1px solid var(--linea); }
+.j-img-ancha { margin: 0; aspect-ratio: 16 / 7.5; background: var(--arena); overflow: hidden; border: 1px solid var(--linea); }
+.j-img img, .j-img-ancha img { width: 100%; height: 100%; object-fit: cover; transition: filter .14s; }
+.j-carta-tit { font-family: var(--serif); font-weight: 600; font-size: 18px; line-height: 1.15; letter-spacing: -0.01em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.j-carta .versal { font-size: 10px; }
+.j-carta:hover .j-carta-tit, .j-carta:focus .j-carta-tit { color: var(--acento); }
+.j-carta:hover, .j-carta:focus { transform: translateY(-3px); }
+body[data-entrada="mando"] .j-carta:focus { outline: none; }
+body[data-entrada="mando"] .j-carta:focus .j-img, body[data-entrada="mando"] .j-carta:focus .j-img-ancha { outline: 3px solid var(--acento); outline-offset: 4px; }
+.estrella { color: var(--acento); font-size: 0.75em; vertical-align: 0.2em; margin-right: 5px; }
+.j-controles { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 26px; margin: 4px 0 18px; }
+.j-grupo { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.j-opt { font-size: 11px; font-weight: 900; letter-spacing: 1.6px; text-transform: uppercase; color: var(--gris); padding: 5px 0; border-bottom: 2px solid transparent; }
+.j-opt:hover { color: var(--tinta); }
+.j-opt[aria-pressed="true"] { color: var(--tinta); border-bottom-color: var(--acento); }
+/* La página de un juego */
+.j-pag-juego { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 0 36px; align-items: start; }
+.j-juego-txt .titular { margin: 6px 0 12px; }
+.j-juego-txt .entradilla { font-family: var(--serif); font-style: italic; font-size: 19px; line-height: 1.45; color: var(--gris); max-width: 56ch; }
+.j-dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 2px solid var(--tinta); margin-top: 34px; padding-top: 18px; }
+.j-dos > * { padding: 0 30px 20px 0; min-width: 0; }
+.j-dos > * + * { padding: 0 0 20px 30px; border-left: 1px solid var(--tinta); }
+.j-nota { display: flex; align-items: baseline; gap: 10px; }
+.j-nota .cifra { font-family: var(--serif); font-weight: 700; font-size: 92px; line-height: 0.9; letter-spacing: -0.045em; color: var(--acento); }
+.j-nota small { color: var(--gris); font-size: 13px; }
+.j-cuenta .cita { margin-top: 16px; }
+/* Valorados */
+.j-valorados { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); column-gap: 40px; }
+.j-valorados li { border-bottom: 1px solid var(--linea); }
+.j-valorado { display: grid; grid-template-columns: 116px minmax(0, 1fr); align-items: center; width: 100%; padding: 12px 0; text-align: left; transition: transform .14s ease-out; }
+.j-valorado .cifra { font-family: var(--serif); font-weight: 700; font-size: 64px; line-height: 1; letter-spacing: -0.04em; }
+.j-valorado .tit { font-family: var(--serif); font-weight: 600; font-size: 24px; line-height: 1.15; }
+.j-valorado .versal { display: block; margin-top: 3px; }
+.j-valorado:hover .tit, .j-valorado:focus .tit { color: var(--acento); }
+.j-valorado:focus { transform: translateX(4px); }
+.j-opciones { list-style: none; }
+.j-opciones li { border-bottom: 1px solid var(--linea); }
+
+/* ================================================================ Guías (una web encima) */
+.g-capa { position: fixed; inset: 0; z-index: 60; background: var(--papel); display: flex; flex-direction: column; }
+.g-barra { padding: 14px var(--margen) 0; }
+.g-cab { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; }
+.g-juego { font-family: var(--serif); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; }
+.g-cab .hueco { flex: 1; }
+.g-cab .enlace { font-size: 11px; letter-spacing: 1.6px; }
+.g-pestanas { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 8px; }
+.g-pestana { font-size: 12px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gris); padding: 5px 0; border-bottom: 2px solid transparent; }
+.g-pestana[aria-pressed="true"] { color: var(--tinta); border-bottom-color: var(--acento); }
+.g-dir { margin-top: 6px; min-height: 16px; }
+.g-barra .filete { margin-top: 8px; }
+.g-hueco { flex: 1; display: flex; align-items: center; justify-content: center; }
+.g-inicio { padding-top: 26px; overflow-y: auto; flex: 1; width: 100%; }
+.g-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px 24px; }
+.g-tarjeta { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 10px 0; border-bottom: 1px solid var(--linea); }
+.g-tarjeta .tit { font-family: var(--serif); font-weight: 600; font-size: 20px; }
+.g-tarjeta:hover .tit, .g-tarjeta:focus .tit { color: var(--acento); }
+
+/* ================================================================ Ajustes del PC */
+.ajustes .pestanas { border-bottom: 1px solid var(--linea); margin-top: 6px; }
+.ajustes-cuerpo { margin-top: 22px; }
+.interruptor, .fila-ajuste { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 24px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--linea); }
+.interruptor .t, .fila-ajuste .t { display: block; font-family: var(--serif); font-weight: 600; font-size: 19px; line-height: 1.2; }
+.interruptor small, .fila-ajuste small { display: block; color: var(--gris); font-size: 13px; margin-top: 3px; line-height: 1.45; overflow-wrap: anywhere; }
+.fila-ajuste .lado { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+h3.sub { font-size: 11px; font-weight: 900; letter-spacing: 1.6px; text-transform: uppercase; margin: 18px 0 8px; }
+h3.sub:first-child { margin-top: 0; }
+.ruta { display: flex; align-items: center; gap: 16px; }
+.ruta .entrada { flex: 1; min-width: 0; }
+.pad-vivo { display: flex; flex-wrap: wrap; gap: 6px; }
+.pad-tecla { font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 5px 9px; border: 1px solid var(--linea); color: var(--gris); transition: background .08s, color .08s; }
+.pad-tecla.on { background: var(--acento); border-color: var(--acento); color: var(--papel); }
+.pasos { padding-left: 20px; display: grid; gap: 8px; font-size: 14.5px; line-height: 1.5; }
+.cal-tecla { font-family: var(--serif); font-weight: 700; font-size: 84px; line-height: 1; color: var(--acento); }
+.estado-punto { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 14.5px; }
+.estado-punto::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--linea); flex: none; }
+.estado-punto[data-on="true"]::before { background: var(--acento); }
+
+/* ================================================================ Pantallas grandes (TV) y estrechas */
+@media (min-width: 2200px) {
+  :root { font-size: 17px; }
+  .j-rejilla { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .j-carta-tit { font-size: 21px; }
+}
+@media (max-width: 1100px) {
+  .j-portada, .j-pag-juego { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .j-dos { grid-template-columns: minmax(0, 1fr); }
+  .j-dos > * + * { border-left: 0; padding-left: 0; border-top: 1px solid var(--tinta); padding-top: 16px; }
+  .j-cab-fila { grid-template-columns: auto 1fr auto; }
+  .j-secciones { justify-content: center; }
+}
+@media (max-width: 780px) {
+  .j-sec { font-size: 20px; }
+  .j-valorados { grid-template-columns: minmax(0, 1fr); }
+  .interruptor, .fila-ajuste { grid-template-columns: minmax(0, 1fr); }
+  .fila-ajuste .lado { justify-content: flex-start; }
+}
+/* Modo Juegos: la página y la cabecera, del mismo ancho; titulares grandes, para verlos desde el sofá */
+body[data-modo="juegos"] { --ancho: 1760px; }
+.j-pag .gran-titular { font-size: calc(var(--k, 1) * clamp(60px, 5.8vw, 132px)); }
+.j-pag-juego .gran-titular { font-size: calc(var(--k, 1) * clamp(56px, 5.2vw, 120px)); }
