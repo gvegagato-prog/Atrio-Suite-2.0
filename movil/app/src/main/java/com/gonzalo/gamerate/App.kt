@@ -10,6 +10,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.WindowInsets
@@ -970,6 +972,9 @@ fun App(
     }
     CompositionLocalProvider(LocalContentColor provides Charcoal) {
     Box(Modifier.fillMaxSize().then(bgMod).then(touchWatcher)) {
+    // Revista en tableta (OPPO Pad Mini en horizontal…): la página, centrada y con un ancho de lectura,
+    // como una revista abierta sobre la mesa; en el móvil y en vertical, a todo lo ancho
+    Box(if (Skin.revista) Modifier.fillMaxSize().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 1080.dp) else Modifier.fillMaxSize()) {
         androidx.compose.animation.SharedTransitionLayout {
         val sharedScope = this
         AnimatedContent(
@@ -1495,6 +1500,7 @@ fun App(
             }
         }
         }
+    } // ancho de la revista
         // Dock: solo en las pantallas principales
         androidx.compose.animation.AnimatedVisibility(
             dockOn, Modifier.align(Alignment.BottomCenter),

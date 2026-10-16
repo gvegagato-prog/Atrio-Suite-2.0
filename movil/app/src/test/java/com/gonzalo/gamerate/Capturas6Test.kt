@@ -46,7 +46,9 @@ import java.time.LocalDate
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
-class Capturas6Test {
+open class Capturas6Test {
+    /** Delante del nombre de cada captura (las de la tableta llevan el suyo). */
+    open val prefijo: String get() = ""
     @get:Rule val rule = createComposeRule()
 
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
@@ -94,7 +96,7 @@ class Capturas6Test {
         Thread.sleep(400)
         rule.waitForIdle()
         // Pantalla entera con el renderizado por hardware (las capas de Compose no se dibujan por software)
-        com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/$name.png")
+        com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/$prefijo$name.png")
     }
 
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onRoot() = this.onNode(androidx.compose.ui.test.isRoot())
@@ -244,7 +246,7 @@ class Capturas6Test {
                 }
             }
         }
-        rule.onAllNodesWithText("El nombre del viento")[0].performClick(); shoot("s1_libro")
+        rule.onAllNodesWithText("El nombre del viento")[0].let { n -> runCatching { n.performScrollTo() }; n.performClick() }; shoot("s1_libro")
         rule.onAllNodesWithText("SUBRAYADOS Y NOTAS")[0].performScrollTo(); shoot("s2_libro_subrayados")
     }
 

@@ -121,8 +121,11 @@ private fun RevistaHome(m: ShellModel) {
             if (m.partner != null) RevLink("Pareja", m.partner)
             if (m.profile != null) RevLink("Perfil", m.profile)
         }
+        // Tableta (OPPO Pad Mini…): con sitio de sobra, cabecera más grande y «En portada» a dos columnas
+        val ancho = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp, 1080)
+        val ancha = ancho >= 900
         // Cabecera de revista
-        Text("ATRIO", color = Ink2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 92.sp, lineHeight = 92.sp, letterSpacing = (-3).sp, modifier = Modifier.padding(top = 8.dp))
+        Text("ATRIO", color = Ink2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = if (ancho >= 700) 132.sp else 92.sp, lineHeight = if (ancho >= 700) 132.sp else 92.sp, letterSpacing = (-3).sp, modifier = Modifier.padding(top = 8.dp))
         Rule(3.dp)
         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
             Text("Nº ${today.dayOfYear}", color = Ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
@@ -147,23 +150,37 @@ private fun RevistaHome(m: ShellModel) {
             Spacer(Modifier.height(22.dp))
             RevSection("En portada")
             val art = e.hero.ifBlank { e.cover }
-            if (art.isNotBlank()) AsyncImage(art, e.name, Modifier.fillMaxWidth().aspectRatio(1.35f).press { m.open(e) }, contentScale = ContentScale.Crop)
-            else Box(Modifier.fillMaxWidth().aspectRatio(1.35f).background(Sand).press { m.open(e) }, contentAlignment = Alignment.Center) {
-                Text("Sin imagen", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 18.sp)
+            val imagen: @Composable (Modifier) -> Unit = { mod ->
+                if (art.isNotBlank()) AsyncImage(art, e.name, mod.press { m.open(e) }, contentScale = ContentScale.Crop)
+                else Box(mod.background(Sand).press { m.open(e) }, contentAlignment = Alignment.Center) {
+                    Text("Sin imagen", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 18.sp)
+                }
             }
-            if (!m.readOnly) Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                if (m.pickImage != null) Text("CAMBIAR IMAGEN", color = Ink2, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { m.pickImage.invoke(o) }.padding(vertical = 4.dp))
-                if (m.ongoing.size > 1) Text("CAMBIAR TÍTULO", color = Ink2, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { choosing = true }.padding(vertical = 4.dp))
+            val textos: @Composable ColumnScope.() -> Unit = {
+                if (!m.readOnly) Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    if (m.pickImage != null) Text("CAMBIAR IMAGEN", color = Ink2, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { m.pickImage.invoke(o) }.padding(vertical = 4.dp))
+                    if (m.ongoing.size > 1) Text("CAMBIAR TÍTULO", color = Ink2, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { choosing = true }.padding(vertical = 4.dp))
+                }
+                val (fs, lh) = headlineSize(e.name)
+                FitTitle(e.name, fs, lh, color = Ink2, letterSpacing = (-1.5).sp, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).press { m.open(e) })
+                Text(
+                    listOf(kindShort(e.kind), e.creator, if (e.minutes > 0 && !e.kind.isBook) hoursText(e.minutes) else "").filter { it.isNotBlank() }.joinToString(" · "),
+                    color = Grey2, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)
+                )
+                if (!m.readOnly) {
+                    val (label, _) = m.primaryLabel(o)
+                    Text("$label →", color = Red2, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
+                }
             }
-            val (fs, lh) = headlineSize(e.name)
-            FitTitle(e.name, fs, lh, color = Ink2, letterSpacing = (-1.5).sp, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).press { m.open(e) })
-            Text(
-                listOf(kindShort(e.kind), e.creator, if (e.minutes > 0 && !e.kind.isBook) hoursText(e.minutes) else "").filter { it.isNotBlank() }.joinToString(" · "),
-                color = Grey2, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp)
-            )
-            if (!m.readOnly) {
-                val (label, _) = m.primaryLabel(o)
-                Text("$label →", color = Red2, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
+            if (ancha) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    imagen(Modifier.weight(1.35f).aspectRatio(1.45f))
+                    Spacer(Modifier.width(28.dp))
+                    Column(Modifier.weight(1f), content = textos)
+                }
+            } else {
+                imagen(Modifier.fillMaxWidth().aspectRatio(if (ancho >= 700) 1.6f else 1.35f))
+                Column(Modifier.fillMaxWidth(), content = textos)
             }
         }
         if (choosing) androidx.compose.material3.AlertDialog(
