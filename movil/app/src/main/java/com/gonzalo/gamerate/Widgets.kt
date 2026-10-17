@@ -60,7 +60,7 @@ import kotlin.math.sqrt
  */
 
 /** Los widgets que hay. */
-enum class WTipo { LEYENDO, ESTANTE, CALENDARIO, PORTADA, ANO, CITA, EFEMERIDE }
+enum class WTipo { LEYENDO, ESTANTE, CALENDARIO, PORTADA, ANO, CITA, EFEMERIDE, MARCA, SIGUIENTE, ACTIVIDAD }
 
 abstract class WBase(private val tipo: WTipo) : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) = Widgets.pintar(ctx, tipo, ids, goAsync())
@@ -83,6 +83,9 @@ class WPortada : WBase(WTipo.PORTADA)
 class WAno : WBase(WTipo.ANO)
 class WCita : WBase(WTipo.CITA)
 class WEfemeride : WBase(WTipo.EFEMERIDE)
+class WMarca : WBase(WTipo.MARCA)
+class WSiguiente : WBase(WTipo.SIGUIENTE)
+class WActividad : WBase(WTipo.ACTIVIDAD)
 
 /** Una zona que se puede tocar (en dp, desde la esquina de arriba a la izquierda); con [celdas], una rejilla. */
 class Zona(
@@ -118,7 +121,10 @@ class Zona(
 
 /** Un widget listo para dibujar: sus zonas y cómo se pinta (igual en claro que en oscuro). */
 class Pagina(val zonas: List<Zona>, val dibujo: Hoja.() -> Unit) {
-    fun bitmap(ctx: Context, w: Float, h: Float, noche: Boolean, s: Float): Bitmap = Hoja(ctx, w, h, noche, s).apply { dibujo(); terminar() }.bm
+    /** Sin papel ni esquinas: solo lo dibujado, sobre el fondo de pantalla. */
+    var sinFondo = false
+    fun transparente() = apply { sinFondo = true }
+    fun bitmap(ctx: Context, w: Float, h: Float, noche: Boolean, s: Float): Bitmap = Hoja(ctx, w, h, noche, s).apply { dibujo(); if (!sinFondo) terminar() }.bm
 }
 
 private val ES = Locale("es", "ES")
@@ -285,6 +291,9 @@ object Widgets {
         WTipo.ANO -> WAno::class.java
         WTipo.CITA -> WCita::class.java
         WTipo.EFEMERIDE -> WEfemeride::class.java
+        WTipo.MARCA -> WMarca::class.java
+        WTipo.SIGUIENTE -> WSiguiente::class.java
+        WTipo.ACTIVIDAD -> WActividad::class.java
     }
 
     @Synchronized fun fuente(ctx: Context, id: Int): Typeface =
@@ -370,6 +379,7 @@ object Widgets {
         WTipo.CALENDARIO -> 330f to 340f
         WTipo.ANO -> 165f to 165f
         WTipo.PORTADA -> 330f to 250f
+        WTipo.MARCA -> 330f to 80f
         else -> 330f to 165f
     }
 
@@ -406,6 +416,9 @@ object Widgets {
             WTipo.ANO -> ano(d, w, h)
             WTipo.CITA -> cita(d, id, w, h)
             WTipo.EFEMERIDE -> efemeride(d, id, w, h)
+            WTipo.MARCA -> marca(d, w, h)
+            WTipo.SIGUIENTE -> siguiente(d, id, w, h)
+            WTipo.ACTIVIDAD -> actividad(d, w, h)
         }
     }
 
@@ -529,7 +542,7 @@ object Widgets {
                     val pie = 30f
                     val autor = if (e.creator.isNotBlank() && h >= 130f) 17f else 0f
                     val y0 = pad + 20f
-                    val l = titular(e.name, rw, h - y0 - pad - pie - autor, 30f, 13f, 3)
+                    val l = titular(e.name, rw, h - y0 - pad - pie - autor, (h * 0.19f).coerceIn(30f, 46f), 13f, 3)
                     pon(l, x0, y0)
                     if (autor > 0f) pon(capa(e.creator, tp(fCursiva, 12.5f, gris), rw, 1), x0, y0 + l.height + 4f)
                     val pct = av?.let { "${(it * 100).roundToInt()} %" }.orEmpty()
@@ -901,6 +914,192 @@ object Widgets {
             val l = titular(e.name, rw, h - yT - pad - pie, 24f, 12f, 3)
             pon(l, x0, yT)
             ante(listOfNotNull(verbo, e.score?.let { "nota $it" }).joinToString(" · "), x0, h - pad - 11f, rw, acento, 8.5f)
+        }
+    }
+
+    // ------------------------------------------------------------------ ATRIO (la cabecera de la revista)
+
+    private fun marca(d: WDatos, w: Float, h: Float): Pagina {
+        val ctx = d.ctx
+        val hoy = LocalDate.now()
+        val fecha = "${hoy.dayOfWeek.getDisplayName(TextStyle.FULL, ES)} ${hoy.dayOfMonth} de ${hoy.month.getDisplayName(TextStyle.FULL, ES)}"
+        val nombre = runCatching { d.store.myName }.getOrDefault("").trim()
+        return Pagina(listOf(Zona(0f, 0f, w, h, abrir(ctx, "home"), "Abrir la revista"))) {
+            // Solo la palabra, sobre el fondo de pantalla (con una sombra suave para que se lea en cualquiera)
+            val color = if (noche) 0xFFF6F1E7.toInt() else tinta
+            val sombra = if (noche) 0x99000000.toInt() else 0x55FFFFFF
+            val pie = if (h >= 84f) 16f else 0f
+            val p = tp(fTitular, 10f, color, -0.03f)
+            // El tamaño que llena el ancho (y cabe en alto)
+            val ancho = p.measureText("ATRIO")
+            val cuadro = 0.16f
+            var s = min((w - 8f) / (ancho / 10f * (1f + cuadro)), (h - pie - 4f) / 0.95f)
+            s = s.coerceAtLeast(10f)
+            val tpa = tp(fTitular, s, color, -0.03f).apply { setShadowLayer(s * 0.06f, 0f, s * 0.02f, sombra) }
+            val fm = tpa.fontMetrics
+            val tw = tpa.measureText("ATRIO")
+            val total = tw + s * cuadro
+            val x = (w - total) / 2
+            val capH = s * 0.72f
+            val base = (h - pie) / 2 + capH / 2
+            c.drawText("ATRIO", x, base, tpa)
+            // El punto de la revista: un cuadradito de acento
+            val q = s * 0.12f
+            c.drawRect(x + tw + s * 0.03f, base - q, x + tw + s * 0.03f + q, base, lleno(acento).apply { setShadowLayer(s * 0.04f, 0f, s * 0.015f, sombra) })
+            if (pie > 0f) {
+                val texto = (if (nombre.isNotEmpty()) "La revista de $nombre · " else "") + fecha
+                val l = capa(texto.uppercase(ES), tp(fNegrita, 8.5f, color, 0.2f).apply { setShadowLayer(2f, 0f, 0.6f, sombra) }, w - 8f, 1, 1f, Layout.Alignment.ALIGN_CENTER)
+                pon(l, 4f, min(h - l.height - 2f, base + fm.descent * 0.4f + 2f))
+            }
+        }.transparente()
+    }
+
+    // ------------------------------------------------------------------ ¿Y ahora qué? (algo de tu lista)
+
+    private suspend fun siguiente(d: WDatos, id: Int, w: Float, h: Float): Pagina {
+        val ctx = d.ctx
+        val lista = d.todas.filter { it.play?.status == 0 }.sortedBy { (it.id * 2654435761L xor it.kind.id.toLong()) and 0xFFFFFF }
+        if (lista.isEmpty()) return vacio(ctx, "¿Y ahora qué?", "Tu lista está vacía", "Apunta lo que quieras jugar, leer o ver y aquí te propondré qué empezar.", abrir(ctx, "home"), w, h)
+        // Una propuesta distinta cada día (y la que quieras con «Otra»)
+        val i = Math.floorMod(LocalDate.now().toEpochDay() + estado(ctx, id, "i", 0), lista.size.toLong()).toInt()
+        val e = lista[i]
+        val compacto = w < 200f && h < 200f
+        val img = imagen(ctx, e.cover, px(ctx, if (compacto) max(w, h) else h))
+        val pad = 14f
+        val zonas = mutableListOf(
+            Zona(0f, 0f, w, h, abrir(ctx, "item:${e.kind.id}:${e.id}"), e.name),
+            Zona(0f, h - 40f, w * 0.55f, 40f, abrir(ctx, "empezar:${e.kind.id}:${e.id}"), "Empezar ${e.name}")
+        )
+        if (lista.size > 1) zonas += Zona(w - 86f, h - 40f, 86f, 40f, op(ctx, WTipo.SIGUIENTE, id, "sig"), "Otra propuesta")
+        val empezar = when { e.kind.isBook -> "Empezar a leer"; e.kind.isGame -> "Empezar a jugar"; e.kind.isMovie || e.kind.isTv -> "Ver ahora"; else -> "Empezar" }
+        return Pagina(zonas) {
+            if (compacto) {
+                portada(img, RectF(0f, 0f, w, h), e.name, 0f, false)
+                velo(h * 0.15f, h, 0x00000000, 0xF0000000.toInt(), 0x99000000.toInt())
+                velo(0f, 46f, 0xA0000000.toInt(), 0x00000000)
+                seccion("¿Y ahora qué?", pad, pad, w - 2 * pad, 0xFFFFFFFF.toInt(), acentoFoto)
+                val l = titular(e.name, w - 2 * pad, h * 0.42f, 24f, 12f, 3, 0xFFFFFFFF.toInt())
+                pon(l, pad, h - pad - 22f - l.height)
+                ante("Empezar  →", pad, h - pad - 11f, w * 0.6f, acentoFoto, 8.5f)
+                if (lista.size > 1) ante("Otra  ›", w - pad - 60f, h - pad - 11f, 60f, 0xCCFFFFFF.toInt(), 8.5f, Layout.Alignment.ALIGN_OPPOSITE)
+                return@Pagina
+            }
+            fondo()
+            val ch = h - 2 * pad
+            val cw = min(ch * 0.68f, w * 0.34f)
+            portada(img, RectF(pad, pad, pad + cw, pad + ch), e.name)
+            val x0 = pad + cw + 14f
+            val rw = w - x0 - pad
+            seccion("¿Y ahora qué?", x0, pad + 1f, rw)
+            val meta = listOf(e.kind.title, e.creator).filter { it.isNotBlank() }.joinToString(" · ")
+            val y0 = pad + 20f
+            val l = titular(e.name, rw, h - y0 - pad - 30f - 16f, (h * 0.19f).coerceIn(30f, 46f), 13f, 3)
+            pon(l, x0, y0)
+            pon(capa(meta, tp(fCursiva, 12f, gris), rw, 1), x0, y0 + l.height + 4f)
+            c.drawRect(x0, h - pad - 22f, w - pad, h - pad - 21.4f, lleno(linea))
+            ante("$empezar  →", x0, h - pad - 12f, rw * 0.7f, acento)
+            if (lista.size > 1) ante("Otra  ›", w - pad - 70f, h - pad - 12f, 70f, gris, 9f, Layout.Alignment.ALIGN_OPPOSITE)
+        }
+    }
+
+    // ------------------------------------------------------------------ Tu actividad (racha y mapa de días)
+
+    /** Minutos de cada día: partidas, lectura (lo que cuenta el lector) y apuntes. */
+    fun minutosPorDia(d: WDatos): Map<LocalDate, Int> {
+        val m = HashMap<LocalDate, Int>()
+        val zona = ZoneId.systemDefault()
+        fun dia(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(zona).toLocalDate()
+        d.kinds.forEach { k ->
+            d.store.loadPlays(k.id).forEach { p ->
+                p.segs.forEach { sg -> if (sg.s > 0) m.merge(dia(sg.s), max(1, sg.min), Int::plus) }
+                p.entries.forEach { en -> if (en.time > 0) m.merge(dia(en.time), 5, Int::plus) }
+            }
+            if (k.isBook) d.de(k).forEach { e ->
+                val st = BookFiles.state(d.ctx, e.id).optJSONObject("stats")?.optJSONObject("days")
+                st?.keys()?.forEach { key ->
+                    runCatching { LocalDate.parse(key) }.getOrNull()?.let { m.merge(it, (st.optLong(key) / 60_000L).toInt().coerceAtLeast(1), Int::plus) }
+                }
+            }
+        }
+        return m
+    }
+
+    /** Días seguidos con algo (si hoy aún no, cuenta desde ayer). */
+    fun racha(m: Map<LocalDate, Int>, hoy: LocalDate = LocalDate.now()): Int {
+        var dia = if ((m[hoy] ?: 0) > 0) hoy else hoy.minusDays(1)
+        var n = 0
+        while ((m[dia] ?: 0) > 0) { n++; dia = dia.minusDays(1) }
+        return n
+    }
+
+    private fun actividad(d: WDatos, w: Float, h: Float): Pagina {
+        val ctx = d.ctx
+        val m = minutosPorDia(d)
+        val hoy = LocalDate.now()
+        val r = racha(m, hoy)
+        val lunes = hoy.minusDays((hoy.dayOfWeek.value - 1).toLong())
+        val semana = (0..6).sumOf { m[lunes.plusDays(it.toLong())] ?: 0 }
+        return Pagina(listOf(Zona(0f, 0f, w, h, abrir(ctx, "diario:0"), "Tu actividad: $r días seguidos"))) {
+            fondo()
+            val pad = 14f
+            val ancho = w >= 250f
+            val colW = if (ancho) 104f else w - 2 * pad
+            seccion("Tu actividad", pad, pad, colW)
+            val big = capa("$r", tp(fTitular, if (h < 150f) 40f else (h * 0.3f).coerceIn(52f, 80f), if (r > 0) acento else gris, -0.02f), colW, 1)
+            pon(big, pad, pad + 14f)
+            ante(if (r == 1) "día seguido" else "días seguidos", pad, pad + 16f + big.height, colW, tinta, 8.5f)
+            val sem = if (semana >= 60) "${semana / 60} h esta semana" else "$semana min esta semana"
+            if (ancho) ante(sem, pad, h - pad - 11f, colW, gris, 8f)
+            fun color(v: Int) = when {
+                v <= 0 -> linea
+                v < 20 -> (acento and 0x00FFFFFF) or 0x55000000
+                v < 60 -> (acento and 0x00FFFFFF) or 0x99000000.toInt()
+                v < 120 -> (acento and 0x00FFFFFF) or 0xCC000000.toInt()
+                else -> acento
+            }
+            if (!ancho) {
+                // Pequeño: las dos últimas semanas, de lunes a domingo
+                val cel = min((w - 2 * pad) / 7f, 16f)
+                val y0 = h - pad - cel * 2
+                for (f in 0..1) for (k in 0..6) {
+                    val dia = lunes.minusWeeks((1 - f).toLong()).plusDays(k.toLong())
+                    val x = pad + k * cel
+                    val y = y0 + f * cel
+                    val g = cel * 0.16f
+                    if (dia.isAfter(hoy)) { c.drawRoundRect(x + g, y + g, x + cel - g, y + cel - g, cel * 0.22f, cel * 0.22f, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 0.8f; color = linea }); continue }
+                    c.drawRoundRect(x + g, y + g, x + cel - g, y + cel - g, cel * 0.22f, cel * 0.22f, lleno(color(m[dia] ?: 0)))
+                    if (dia == hoy) c.drawRoundRect(x + g, y + g, x + cel - g, y + cel - g, cel * 0.22f, cel * 0.22f, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.2f; this.color = tinta })
+                }
+                return@Pagina
+            }
+            // El mapa: una columna por semana, de lunes a domingo, como un cuaderno de cuadrícula
+            val gx = if (ancho) pad + colW + 12f else pad
+            val gy = pad + 2f
+            val gw = w - pad - gx
+            val gh = h - pad - 14f - gy
+            if (gh < 20f) return@Pagina
+            val celda = min(gh / 7f, 26f)
+            val semanas = (gw / celda).toInt().coerceIn(4, 53)
+            val cel = min(celda, gw / semanas)
+            val g = max(1.2f, cel * 0.16f)
+            val x1 = w - pad - semanas * cel
+            val inicio = lunes.minusWeeks((semanas - 1).toLong())
+            for (sm in 0 until semanas) for (dd in 0 until 7) {
+                val dia = inicio.plusDays((sm * 7 + dd).toLong())
+                if (dia.isAfter(hoy)) continue
+                val v = m[dia] ?: 0
+                val tono = color(v)
+                val x = x1 + sm * cel
+                val y = gy + dd * cel
+                c.drawRoundRect(x + g / 2, y + g / 2, x + cel - g / 2, y + cel - g / 2, cel * 0.22f, cel * 0.22f, lleno(tono))
+                if (dia == hoy) c.drawRoundRect(x + g / 2, y + g / 2, x + cel - g / 2, y + cel - g / 2, cel * 0.22f, cel * 0.22f,
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1.2f; color = tinta })
+            }
+            if (ancho) {
+                val mes = inicio.month.getDisplayName(TextStyle.SHORT, ES).trimEnd('.')
+                ante(mes, x1, h - pad - 10f, 60f, gris, 7.5f)
+                ante("hoy", w - pad - 40f, h - pad - 10f, 40f, gris, 7.5f, Layout.Alignment.ALIGN_OPPOSITE)
+            }
         }
     }
 }

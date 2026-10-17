@@ -369,27 +369,25 @@ fun SettingsScreen(
         SettingsSection("Portadas de juegos (SteamGridDB)", 120) {
             OutlinedTextField(k, { k = it }, label = { Text("API key de SteamGridDB") }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
-            Text("Se genera en tu perfil de steamgriddb.com, en Preferencias > API. Se guarda solo en este dispositivo.", color = UiSoft, modifier = Modifier.padding(vertical = 8.dp))
+            Plegado("Se genera en tu perfil de steamgriddb.com, en Preferencias > API. Se guarda solo en este dispositivo.")
             Button({ onSaveKey(k) }, shape = pillShape()) { Text("Guardar clave") }
         }
 
         SettingsSection("Servicios", 380) {
             Text("RAWG (estudios y recomendaciones de juegos)", fontWeight = FontWeight.SemiBold)
-            Text(
+            Plegado(
                 "Con una clave gratuita de rawg.io/apidocs, «Descubrir» te propone juegos según tus respuestas y se detectan mejor los estudios. " +
-                    "Sin ella, los estudios se buscan en Wikidata y Descubrir solo funciona con libros, pelis y series.",
-                color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
+                    "Sin ella, los estudios se buscan en Wikidata y Descubrir solo funciona con libros, pelis y series."
             )
             OutlinedTextField(rk, { rk = it }, label = { Text("Clave de RAWG") }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             Text("IGDB (cuánto dura cada juego)", fontWeight = FontWeight.SemiBold)
-            Text(
+            Plegado(
                 "Da el tiempo que tardan sus jugadores en pasarse cada juego: deprisa, normal y al 100 %. Es gratis y va con una cuenta de Twitch " +
                     "(con verificación en dos pasos): en dev.twitch.tv/console registra una aplicación con cualquier nombre, " +
                     "URL de redirección «http://localhost», categoría «Application Integration» y tipo «Confidencial». Copia aquí su Client ID y un secreto nuevo. " +
-                    "Sin esto se usa la media de horas de RAWG, o la pones a mano.",
-                color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
+                    "Sin esto se usa la media de horas de RAWG, o la pones a mano."
             )
             OutlinedTextField(iid, { iid = it }, label = { Text("Client ID de Twitch") }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
@@ -400,11 +398,10 @@ fun SettingsScreen(
             Button({ onSaveServices(rk, iid, isec) }, shape = pillShape()) { Text("Guardar claves") }
             Spacer(Modifier.height(16.dp))
             Text("TMDB (películas)", fontWeight = FontWeight.SemiBold)
-            Text(
+            Plegado(
                 "Para buscar películas con sus pósters en español, sus fondos y su director. Es gratis: crea una cuenta en themoviedb.org " +
                     "desde el ordenador, entra en los ajustes de tu cuenta → API y pide una clave para uso personal. " +
-                    "Pega aquí la «API Key» o el «API Read Access Token» (vale cualquiera de los dos). Las series no necesitan clave.",
-                color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
+                    "Pega aquí la «API Key» o el «API Read Access Token» (vale cualquiera de los dos). Las series no necesitan clave."
             )
             OutlinedTextField(tk, { tk = it }, label = { Text("Clave de TMDB") }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
@@ -420,32 +417,29 @@ fun SettingsScreen(
 
         SettingsSection("Traer de otras apps", 390) {
             Text("Goodreads", fontWeight = FontWeight.SemiBold)
-            Text(
+            Plegado(
                 "En goodreads.com: Mis libros → Importar y exportar → Exportar biblioteca. Descarga el CSV y elígelo aquí. " +
                     "Los leídos pasan a valorados (cada estrella son 20 puntos), los que estás leyendo a Leyendo y el resto a En lista. " +
-                    "Lo que ya tengas no se duplica.",
-                color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
+                    "Lo que ya tengas no se duplica."
             )
             OutlinedButton(onGoodreads, shape = pillShape()) { Text("Importar CSV de Goodreads") }
             if (importMsg.isNotEmpty() && "Steam" !in importMsg && "Bookmory" !in importMsg) ImportNote(importMsg)
             Spacer(Modifier.height(14.dp))
             Text("Bookmory", fontWeight = FontWeight.SemiBold)
-            Text(
+            Plegado(
                 "Exporta tus datos desde Bookmory (un .zip con un .txt por libro) y elige aquí ese .zip tal cual. " +
                     "Los terminados pasan a Leídos con tu nota (cada estrella son 20 puntos), tus fechas, favoritos, comentarios, relecturas y citas; " +
                     "los que estás leyendo o tienes en pausa, a Leyendo, y los de leer más tarde, a En lista. " +
-                    "Lo que ya tengas no se duplica: solo se completa lo que le falte, sin tocar tus notas. Se puede deshacer en Copia de seguridad.",
-                color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
+                    "Lo que ya tengas no se duplica: solo se completa lo que le falte, sin tocar tus notas. Se puede deshacer en Copia de seguridad."
             )
             OutlinedButton(onBookmory, shape = pillShape()) { Text("Importar ZIP de Bookmory") }
             if (importMsg.isNotEmpty() && "Bookmory" in importMsg) ImportNote(importMsg)
             Spacer(Modifier.height(14.dp))
             Text("Horas de Steam", fontWeight = FontWeight.SemiBold)
-            Text(
+            Plegado(
                 "Copia las horas jugadas de tu biblioteca de Steam en todos tus juegos, también los valorados (solo si Steam tiene más). " +
                     "Una vez guardado, se actualiza solo al abrir la app. " +
-                    "Necesitas una clave en steamcommunity.com/dev/apikey y que los detalles de juego de tu perfil sean públicos.",
-                color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)
+                    "Necesitas una clave en steamcommunity.com/dev/apikey y que los detalles de juego de tu perfil sean públicos."
             )
             OutlinedTextField(sk, { sk = it }, label = { Text("Clave de Steam") }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
@@ -886,3 +880,18 @@ private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boo
 @Composable
 private fun ImportNote(msg: String) =
     Text(msg, color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+
+/** Una explicación larga, plegada: «Cómo funciona ›» y, al tocarlo, el texto. Así Ajustes se lee de un vistazo. */
+@Composable
+fun Plegado(texto: String, titulo: String = "Cómo funciona") {
+    var abierto by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(
+            (if (abierto) "$titulo ⌃" else "$titulo ›").uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+            modifier = Modifier.clickable { abierto = !abierto }.padding(vertical = 8.dp)
+        )
+        androidx.compose.animation.AnimatedVisibility(abierto) {
+            Text(texto, color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+        }
+    }
+}

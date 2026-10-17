@@ -250,6 +250,18 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_efemeride" />
         </receiver>
+        <receiver android:name=".WMarca" android:label="@string/w_marca" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_marca" />
+        </receiver>
+        <receiver android:name=".WSiguiente" android:label="@string/w_siguiente" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_siguiente" />
+        </receiver>
+        <receiver android:name=".WActividad" android:label="@string/w_actividad" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_actividad" />
+        </receiver>
         <!-- Para compartir y abrir las capturas del PC guardadas en la app -->
         <provider
             android:name="androidx.core.content.FileProvider"

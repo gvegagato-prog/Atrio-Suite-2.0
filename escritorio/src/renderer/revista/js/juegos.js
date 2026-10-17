@@ -1,5 +1,5 @@
 'use strict';
-/* global window, document, setInterval, setTimeout, clearTimeout, requestAnimationFrame */
+/* global window, document, setInterval, clearInterval, setTimeout, clearTimeout, requestAnimationFrame */
 // Modo Juegos: el lanzador de Atrio con la estética de la revista. Es con lo que arranca Atrio, a pantalla
 // completa. Arriba, la cabecera con tres secciones (Valorados · Juegos · Revista: LB y RB cambian de una a
 // otra); en Juegos, el último que has jugado en portada, «Seguir jugando» y toda la biblioteca en portadas.
@@ -143,7 +143,7 @@
       img.src = src;
       return box;
     }
-    function poner(g, animar) {
+    function poner(g, animar, antetitulo) {
       if (!g || (cur && cur.key === g.key && !animar)) return;
       cur = g;
       est.heroe = g.key;
@@ -162,7 +162,7 @@
       const jugar = activo
         ? h('span.j-en-marcha', '● Abierto ahora mismo')
         : h('button.boton-tinta.j-jugar', { type: 'button', 'data-autofocus': true, 'data-clave': 'portada:jugar', onclick: () => RV.jugar(g) }, 'Jugar →');
-      const ante = activo ? 'En directo' : g.lastPlayed ? `Seguir jugando · ${visto(g)}` : g.favorite ? 'De tus favoritos · sin estrenar' : 'Sin estrenar';
+      const ante = antetitulo || (activo ? 'En directo' : g.lastPlayed ? `Seguir jugando · ${visto(g)}` : g.favorite ? 'De tus favoritos · sin estrenar' : 'Sin estrenar');
       txt.replaceChildren(...[
         h('div.ante', ante),
         h(`h1.titular.ajusta.gran-titular${RV.tallaTitular(g.name)}`, { 'data-min': '34' }, g.name),
@@ -171,12 +171,45 @@
         h('div.j-acciones', { 'data-recuerda': '' },
           jugar,
           h('button.enlace', { type: 'button', 'data-clave': 'portada:pagina', onclick: () => RV.ir({ v: 'j-juego', key: g.key }) }, 'Su página →'),
+          h('button.enlace', { type: 'button', 'data-clave': 'portada:sorpresa', onclick: sorprender, title: 'Un juego tuyo que tienes olvidado' }, 'Sorpréndeme'),
           h('button.enlace.apagado', { type: 'button', 'data-clave': 'portada:opciones', onclick: () => opciones(g) }, 'Opciones')),
       ].filter(Boolean));
       if (animar) { txt.classList.remove('cambia'); void txt.offsetWidth; txt.classList.add('cambia'); }
       if (txt.isConnected) RV.ajustar(txt);
     }
+    // «Sorpréndeme»: uno de tus juegos que llevas tiempo sin abrir (o sin estrenar); pulsando otra vez, otro
+    const MES = 30 * 86400e3;
+    function sorprender() {
+      const todos = D.juegosPc().filter((g) => !D.activoPc(g.key) && (!cur || g.key !== cur.key));
+      if (!todos.length) return;
+      const olvidados = todos.filter((g) => !g.lastPlayed || Date.now() - g.lastPlayed > MES);
+      const pool = olvidados.length ? olvidados : todos;
+      const g = pool[Math.floor(Math.random() * pool.length)];
+      poner(g, true, g.lastPlayed ? `Sorpresa · última vez ${RV.hace(g.lastPlayed)}` : 'Sorpresa · aún sin estrenar');
+      const b = txt.querySelector('[data-clave="portada:sorpresa"]');
+      if (b) b.focus({ preventScroll: true });
+    }
+    sec.sorprender = sorprender;
     poner(inicial, false);
+    // Escaparate solo: si dejas el mando un rato, la portada va pasando tus juegos sin prisa (como una revista
+    // expuesta); con cualquier botón se queda quieta en el que esté
+    const desde = Date.now();
+    sec.girar = (lista) => {
+      const ls = lista.filter(Boolean);
+      if (ls.length < 2) return;
+      let ultimoGiro = 0;
+      const reloj = setInterval(() => {
+        if (!sec.isConnected) { clearInterval(reloj); return; }
+        const ult = (RV.mando && RV.mando.ultima && RV.mando.ultima()) || null;
+        const quieto = Date.now() - Math.max(desde, ult ? ult.t : 0);
+        const capa = document.getElementById('capa');
+        if (document.visibilityState !== 'visible' || quieto < (window.__quietoMs || 60000) || (capa && capa.childElementCount) || window.scrollY > 120) return;
+        if (Date.now() - ultimoGiro < (window.__giroMs || 9000)) return;
+        ultimoGiro = Date.now();
+        const i = cur ? ls.findIndex((g) => g.key === cur.key) : -1;
+        poner(ls[(i + 1) % ls.length], true);
+      }, 1000);
+    };
     // Al enfocar una portada de las filas, el escaparate pasa a ese juego (sin prisa: al recorrerlas rápido
     // con la cruceta no se cambia la imagen en cada paso)
     let t = null;
@@ -236,6 +269,7 @@
       root.append(fv.sec);
       esc.seguir(fv.fila);
     }
+    esc.girar([...new Map([...seguir, ...favs].map((g) => [g.key, g])).values()].slice(0, 12));
 
     // La biblioteca
     const origenes = [...new Map(todos.map((g) => [g.source, g.sourceLabel || g.source])).entries()];

@@ -80,6 +80,7 @@ class WidgetsTest {
         s.savePlays(listOf(
             Play(301, "El nombre del viento", cover("Viento", 0xFF603813.toInt(), 0xFFB29F94.toInt()), "", 1, emptyList(), chapter = 34, pages = 880,
                 creator = "Patrick Rothfuss", start = mes + 2, updated = System.currentTimeMillis() - 7200_000),
+            Play(303, "Klara y el Sol", cover("Klara", 0xFF3E5151.toInt(), 0xFFDECBA4.toInt()), "", 0, emptyList(), creator = "Kazuo Ishiguro"),
             Play(302, "Proyecto Hail Mary", cover("Hail", 0xFF0F2027.toInt(), 0xFF2C5364.toInt()), "", 1, emptyList(), creator = "Andy Weir",
                 updated = System.currentTimeMillis() - 86_400_000)
         ), 1)
@@ -88,6 +89,11 @@ class WidgetsTest {
         // El libro que se está leyendo tiene su archivo, lo leído y dos subrayados
         BookFiles.put(ctx, 301, JSONObject().put("uri", "content://prueba/viento.epub").put("name", "viento.epub").put("fraction", 0.43)
             .put("read", System.currentTimeMillis())
+            .put("stats", JSONObject().put("days", JSONObject().apply {
+                // Lectura de los últimos días (para «Tu actividad»): racha de 6 días
+                for (k in 0..5) put(hoy.minusDays(k.toLong()).toString(), (10 + k * 17) * 60_000L)
+                for (k in listOf(9, 12, 20, 33, 40)) put(hoy.minusDays(k.toLong()).toString(), 45 * 60_000L)
+            }))
             .put("notes", JSONArray()
                 .put(JSONObject().put("value", "epubcfi(/6/4)").put("text", "Hay tres cosas que todo hombre sabio teme: el mar en una tormenta, una noche sin luna y la ira de un hombre amable.").put("created", 1L).put("index", 1))
                 .put(JSONObject().put("value", "epubcfi(/6/8)").put("text", "Las palabras son pálidas sombras de nombres olvidados.").put("created", 2L).put("index", 2))))
@@ -99,23 +105,28 @@ class WidgetsTest {
     fun todos() = runBlocking {
         seed()
         val tamanos = mapOf(
-            WTipo.LEYENDO to listOf(330f to 165f, 165f to 165f, 165f to 330f),
-            WTipo.ESTANTE to listOf(330f to 165f, 330f to 120f),
-            WTipo.CALENDARIO to listOf(330f to 340f, 330f to 250f),
-            WTipo.PORTADA to listOf(330f to 250f, 165f to 165f),
+            WTipo.LEYENDO to listOf(480f to 220f, 330f to 165f, 165f to 165f, 165f to 330f),
+            WTipo.ESTANTE to listOf(480f to 220f, 330f to 165f, 330f to 120f),
+            WTipo.CALENDARIO to listOf(480f to 460f, 330f to 340f, 330f to 250f),
+            WTipo.PORTADA to listOf(480f to 340f, 330f to 250f, 165f to 165f),
             WTipo.ANO to listOf(165f to 165f, 330f to 165f),
-            WTipo.CITA to listOf(330f to 165f, 330f to 250f),
-            WTipo.EFEMERIDE to listOf(330f to 165f, 165f to 165f)
+            WTipo.CITA to listOf(480f to 220f, 330f to 165f, 330f to 250f),
+            WTipo.EFEMERIDE to listOf(330f to 165f, 165f to 165f),
+            WTipo.MARCA to listOf(330f to 80f, 330f to 165f, 165f to 60f),
+            WTipo.SIGUIENTE to listOf(480f to 220f, 330f to 165f, 165f to 165f),
+            WTipo.ACTIVIDAD to listOf(480f to 220f, 330f to 165f, 165f to 165f)
         )
         val prev = System.getenv("WPREV")?.let { File(it).apply { mkdirs() } }
         for ((t, ls) in tamanos) for ((w, h) in ls) {
             val p = Widgets.componer(ctx, t, 1, w, h)
             assertTrue("$t sin zonas", p.zonas.isNotEmpty())
             for (noche in listOf(false, true)) guardar("${t.name.lowercase()}_${w.toInt()}x${h.toInt()}_${if (noche) "oscuro" else "claro"}", p.bitmap(ctx, w, h, noche, 3f))
-            if (prev != null && (w to h) == ls.first()) File(prev, "w_prev_${t.name.lowercase().replace("ano", "ano")}.png").outputStream().use {
+            if (prev != null && (w to h) == ls.first { it.first < 400f }) File(prev, "w_prev_${t.name.lowercase().replace("ano", "ano")}.png").outputStream().use {
                 p.bitmap(ctx, w, h, false, 1.6f).compress(Bitmap.CompressFormat.PNG, 100, it)
             }
         }
+        // La racha: 6 días seguidos de lectura
+        assertEquals(6, Widgets.racha(Widgets.minutosPorDia(WDatos(ctx))))
         // Las esquinas quedan recortadas (transparentes) y el centro, pintado
         val b = Widgets.componer(ctx, WTipo.LEYENDO, 1, 330f, 165f).bitmap(ctx, 330f, 165f, false, 2f)
         assertEquals(0, Color.alpha(b.getPixel(0, 0)))

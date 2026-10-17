@@ -80,7 +80,6 @@ fun ProfileScreen(
                     listOf(t.general, t.gfx, t.story, t.music).forEach { c -> Box(Modifier.size(18.dp).clip(CircleShape).background(Color(c))) }
                 }
             }
-            Text("Claro u oscuro y el color del acento.", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
         Spacer(Modifier.height(12.dp))
 

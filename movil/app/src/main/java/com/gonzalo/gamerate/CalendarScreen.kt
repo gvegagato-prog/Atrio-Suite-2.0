@@ -262,8 +262,16 @@ fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: M
             Text("$day", color = when { isToday -> ColGeneral; cs.isEmpty() -> Muted; else -> Charcoal }, fontFamily = Display,
                 fontWeight = if (isToday || cs.isNotEmpty()) FontWeight.Bold else FontWeight.Normal, fontSize = 15.sp)
             if (cs.isNotEmpty()) {
-                Text(cs[0].name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 9.sp, lineHeight = 10.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                if (cs.size > 1) Text("+${cs.size - 1}", color = ColGeneral, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                // Lo que terminaste ese día, con su portada (como en el widget del Diario); si no, el título
+                val fin = cs.firstOrNull { it.realEnd > 0L && it.e == ep && it.cover.isNotBlank() }
+                if (fin != null) Box(Modifier.weight(1f).fillMaxWidth().padding(top = 2.dp, bottom = 3.dp).clip(shp(5.dp))) {
+                    AsyncImage(fin.cover, fin.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    if (cs.size > 1) Text("+${cs.size - 1}", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.BottomEnd).background(ColGeneral, shp(4.dp)).padding(horizontal = 4.dp))
+                } else {
+                    Text(cs[0].name, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 9.sp, lineHeight = 10.sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if (cs.size > 1) Text("+${cs.size - 1}", color = ColGeneral, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
         return

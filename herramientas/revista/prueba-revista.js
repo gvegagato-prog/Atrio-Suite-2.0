@@ -292,6 +292,20 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     e = await estado();
     ok(/NIGHTREIGN/i.test(e.foco), `juegos: al volver a la fila, se vuelve a la portada de antes («${e.foco}»)`);
     await btn(ARRIBA); await page.waitForTimeout(150);
+    // «Sorpréndeme»: un juego olvidado en portada; y el escaparate solo, que va pasando juegos si no tocas nada
+    const titular = () => page.evaluate(() => ({ t: (document.querySelector('.j-escaparate .titular') || {}).textContent, a: (document.querySelector('.j-escaparate .ante') || {}).textContent }));
+    const antes = await titular();
+    await page.evaluate(() => document.querySelector('[data-clave="portada:sorpresa"]').focus());
+    await btn(A); await page.waitForTimeout(500);
+    let ah = await titular();
+    e = await estado();
+    ok(ah.t !== antes.t && /Sorpresa/.test(ah.a) && /Sorpréndeme/.test(e.foco), `juegos: «Sorpréndeme» pone otro juego en portada («${ah.t}», ${ah.a}) y sigue en el botón`);
+    await page.evaluate(() => { window.__quietoMs = 300; window.__giroMs = 500; });
+    await page.waitForTimeout(2600);
+    const solo = await titular();
+    ok(solo.t !== ah.t, `juegos: sin tocar nada, la portada pasa sola a otro juego («${ah.t}» → «${solo.t}»)`);
+    await page.evaluate(() => { window.__quietoMs = 1e12; });
+    await btn(ABAJO); await page.waitForTimeout(150); await btn(ARRIBA); await page.waitForTimeout(150);
     // Bajar hasta la biblioteca y abrir un juego
     for (let i = 0; i < 4; i++) { await btn(ABAJO); await page.waitForTimeout(120); }
     await btn(DER); await page.waitForTimeout(150);

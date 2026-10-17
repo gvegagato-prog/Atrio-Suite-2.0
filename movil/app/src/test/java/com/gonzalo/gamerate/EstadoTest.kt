@@ -63,7 +63,7 @@ class EstadoTest {
         com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/estado_2_editar.png")
         rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
         // Desde la página, sin pasar por «Editar»: la casilla Estado lo cambia
-        rule.onAllNodesWithText("Marcar «Leyendo»", substring = true)[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("LEYENDO")[0].performScrollTo().performClick(); rule.waitForIdle()
         com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/estado_3_tras.png")
         org.junit.Assert.assertTrue("sigue en la ficha", rule.onAllNodesWithText("Proyecto Hail Mary").fetchSemanticsNodes().isNotEmpty())
         org.junit.Assert.assertEquals(1, Store(ctx).loadPlays(1).single().status)
@@ -75,7 +75,7 @@ class EstadoTest {
         org.junit.Assert.assertTrue(rule.onAllNodesWithText("Proyecto Hail Mary").fetchSemanticsNodes().isNotEmpty())
         // Y vuelve a la lista igual de fácil
         rule.onAllNodesWithText("Proyecto Hail Mary")[0].performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("Volver a «En lista»", substring = true)[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("EN LISTA")[0].performScrollTo().performClick(); rule.waitForIdle()
         org.junit.Assert.assertEquals(0, Store(ctx).loadPlays(1).single().status)
     }
 

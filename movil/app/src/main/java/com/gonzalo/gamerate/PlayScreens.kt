@@ -133,11 +133,15 @@ fun PlayDetailScreen(
                 if (b == null) Text("Aún sin nota", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
                 Spacer(Modifier.height(8.dp))
                 // Cambiar de estado aquí mismo (En lista → Leyendo/Jugando, Abandonado…)
-                if (p.status != 1) MagLink("Marcar «${kind.statuses[1]}»", accent = true) { empezar() }
+                MagChoice(kind.statuses, p.status) { i ->
+                    when (i) {
+                        0 -> upd(p.copy(status = 0))
+                        1 -> empezar()
+                        else -> upd(p.copy(status = 2, end = if (p.end == 0L) today() else p.end))
+                    }
+                }
                 MagLink("Apuntar notas", if (b != null) "media de ${p.entries.size} apuntes" else null, accent = due) { onNote(p, null) }
                 MagLink(if (b != null) "Pasar a valorados" else "Terminado: valorar") { onFinish(p) }
-                if (p.status != 0) MagLink("Volver a «${kind.statuses[0]}»") { upd(p.copy(status = 0)) }
-                if (p.status != 2) MagLink("Marcar «${kind.statuses[2]}»") { upd(p.copy(status = 2, end = if (p.end == 0L) today() else p.end)) }
             }
             if (kind.isGame) defs["sesion"] = MagDef("Sesión") {
                 if (p.status != 1) {
@@ -152,10 +156,9 @@ fun PlayDetailScreen(
                     Text("EN MARCHA · AVISO CADA $sessHours H", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     MagLink("Terminar sesión", accent = true) { onStop() }
                 } else {
-                    Text("Empezar con aviso cada:", color = Muted, fontSize = 13.sp)
-                    MagLink("1 hora") { onStart(p, 1) }
-                    MagLink("2 horas") { onStart(p, 2) }
-                    MagLink("3 horas") { onStart(p, 3) }
+                    var horas by remember { mutableStateOf(sessHours.coerceIn(1, 3)) }
+                    MagLink("Empezar sesión", accent = true) { onStart(p, horas) }
+                    MagChoice(listOf("1 h", "2 h", "3 h"), horas - 1, "Aviso cada") { horas = it + 1 }
                 }
             }
             val hasPc = remember(p.id, p.name, Suite.libs) { Guides.pcGameFor(p.id, p.name) != null }

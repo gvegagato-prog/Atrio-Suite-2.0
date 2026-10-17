@@ -546,8 +546,7 @@ fun CoupleSettings(store: Store, onPartner: (Partner?) -> Unit, onRestored: () -
     Column(Modifier.fillMaxWidth()) {
         if (!signed) {
             Text(
-                "Con una cuenta de Atrio tus datos se guardan en la nube con tu usuario: los ves y los editas desde cualquier " +
-                    "dispositivo (este móvil, otro, o Atrio en el ordenador) y todo se junta solo. Tu pareja te encuentra por tu usuario.",
+                "Tus datos en todos tus dispositivos (móvil, tableta y el PC), siempre al día. Tu pareja te encuentra por tu usuario.",
                 color = UiSoft, modifier = Modifier.padding(bottom = 10.dp)
             )
             OutlinedTextField(

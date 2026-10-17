@@ -895,7 +895,7 @@ fun App(
 
     LaunchedEffect(openId, openPartner, openGo) {
         // Los de los widgets (una ficha, el Diario) van más abajo, donde ya se sabe abrir cada cosa
-        if (openGo.startsWith("item:") || openGo.startsWith("diario:")) return@LaunchedEffect
+        if (openGo.startsWith("item:") || openGo.startsWith("diario:") || openGo.startsWith("empezar:") || openGo == "home") return@LaunchedEffect
         // Atajos y avisos abren siempre lo tuyo (nunca se edita nada desde la vista de tu pareja).
         if ((openGo.isNotEmpty() || openId != 0L) && Mode.viewP) { Mode.viewP = false; Mode.calP = false }
         if (openGo.isNotEmpty()) {
@@ -979,10 +979,21 @@ fun App(
     // Desde un widget: una ficha ("item:<categoría>:<id>") o el Diario de una categoría ("diario:<categoría>")
     LaunchedEffect(openGo) {
         val a = openGo.split(':')
-        if (a[0] != "item" && a[0] != "diario") return@LaunchedEffect
+        if (a[0] != "item" && a[0] != "diario" && a[0] != "empezar" && a[0] != "home") return@LaunchedEffect
         if (Mode.viewP) { Mode.viewP = false; Mode.calP = false }
         val k = myKinds.find { it.id == a.getOrNull(1)?.toIntOrNull() } ?: GAMES
-        if (a[0] == "diario") { diaryKind = k.id; go(4) }
+        if (a[0] == "home") go(0)
+        else if (a[0] == "diario") { diaryKind = k.id; go(4) }
+        else if (a[0] == "empezar") {
+            // «¿Y ahora qué?»: se empieza y se abre su ficha
+            val id = a.getOrNull(2)?.toLongOrNull() ?: 0L
+            playsOf(k).find { it.id == id }?.let { p0 ->
+                val p = p0.copy(status = 1, start = if (p0.start == 0L) today() else p0.start, end = 0L, updated = now())
+                setPlays(k, playsOf(k).map { if (it.id == id) p else it })
+                section = k.id; screen = Screen.PlayDetail(p)
+                say("¡A por ${p.name}!")
+            }
+        }
         else {
             val id = a.getOrNull(2)?.toLongOrNull() ?: 0L
             val p = playsOf(k).find { it.id == id }

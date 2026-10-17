@@ -87,6 +87,25 @@ fun MagLink(text: String, sub: String? = null, accent: Boolean = false, onClick:
     }
 }
 
+/** Elegir una de pocas opciones en una casilla: mayúsculas pequeñas, la elegida en acento y subrayada. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun MagChoice(options: List<String>, selected: Int, label: String? = null, onPick: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        if (label != null) Text(label.uppercase(), color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            options.forEachIndexed { i, o ->
+                val on = i == selected
+                Text(
+                    o.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+                    modifier = Modifier.clickable(enabled = !on) { onPick(i) }.padding(vertical = 8.dp)
+                        .drawBehind { if (on) drawRect(ColGeneral, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - 6.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width, 1.5.dp.toPx())) }
+                )
+            }
+        }
+    }
+}
+
 /** Una línea dato · valor con puntos guía (como el índice de una revista). */
 @Composable
 fun MagFact(label: String, value: String) {
@@ -215,8 +234,9 @@ fun RevistaGameRead(
         if (kind.isGame) FichaPlayButtons(g.id, g.name, Modifier.padding(bottom = 6.dp))
         if (kind.hasSoundtrack) MagLink("Banda sonora", "YouTube Music") { openSoundtrack(ctx, g.name) }
         MagLink("Compartir") { onExport(g, ExportMode.Share) }
-        MagLink("Exportar", "JPG") { onExport(g, ExportMode.Jpg) }
-        MagLink("Exportar", "PDF") { onExport(g, ExportMode.Pdf) }
+        // Exportar la ficha: un solo enlace y debajo el formato
+        Text("Exportar", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 5.dp))
+        MagChoice(listOf("JPG", "PDF"), -1) { onExport(g, if (it == 0) ExportMode.Jpg else ExportMode.Pdf) }
         if (onRecommend != null) MagLink("Recomendar", "a $partnerName", accent = true, onClick = onRecommend)
     }
     defs["datos"] = MagDef("Datos") { GameFacts(g, kind) }
