@@ -924,6 +924,7 @@ textarea.entrada:focus { border-color: var(--acento); }
 body[data-entrada="raton"] :focus-visible { outline: none; }
 body[data-entrada="mando"] :focus { outline: 3px solid var(--acento); outline-offset: 5px; }
 body[data-entrada="mando"] { cursor: none; }
+body[data-entrada="mando"] input:focus, body[data-entrada="mando"] textarea:focus { outline-offset: 1px; }
 body[data-entrada="mando"] .pestana:focus, body[data-entrada="mando"] .cab-item:focus, body[data-entrada="mando"] .j-sec:focus { outline-offset: 2px; }
 #ayuda-mando {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: none; justify-content: center; flex-wrap: wrap; gap: 6px 26px;
@@ -936,9 +937,14 @@ body[data-entrada="mando"] #pagina { padding-bottom: 46px; }
 
 /* Movimiento: ligero (120–240 ms) y fuera si se pide */
 #pagina > * { animation: entra .22s ease-out both; }
+#pagina > .sin-entrada { animation: none; }
 @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 body.cambia-modo #pagina > * { animation: entra-modo .26s ease-out both; }
 @keyframes entra-modo { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+body[data-dir="der"] #pagina > :not(.sin-entrada) { animation: entra-der .24s cubic-bezier(.2, .7, .3, 1) both; }
+body[data-dir="izq"] #pagina > :not(.sin-entrada) { animation: entra-izq .24s cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes entra-der { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes entra-izq { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
 body.quieto *, body.quieto *::before, body.quieto *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 
 /* ================================================================ Modo Juegos: cabecera */
@@ -957,6 +963,8 @@ body.quieto *, body.quieto *::before, body.quieto *::after { animation: none !im
 .j-reloj { font-family: var(--serif); font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
 .j-directo { font-size: 11px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; color: var(--acento); max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .j-cab-der .enlace { font-size: 20px; letter-spacing: 0; }
+/* El modo Juegos, sin barra de desplazamiento (a pantalla completa, como una consola) */
+html:has(body[data-modo="juegos"]) { scrollbar-width: none; }
 body[data-modo="juegos"] #cabecera { position: sticky; top: 0; z-index: 30; background: var(--papel); }
 
 /* ================================================================ Modo Juegos: páginas */
@@ -967,6 +975,36 @@ body[data-modo="juegos"] #cabecera { position: sticky; top: 0; z-index: 30; back
 .j-heroe { margin: 0; width: 100%; aspect-ratio: 16 / 7.2; background: var(--arena); overflow: hidden; }
 .j-heroe img { width: 100%; height: 100%; object-fit: cover; }
 .j-heroe.sin-imagen, .j-img.sin-imagen, .j-img-ancha.sin-imagen { background: var(--arena); }
+/* Portada de tipografía (un juego sin imagen) */
+.j-tapa { display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding: 14px 14px 16px; color: var(--tinta); border: 1px solid var(--linea); background: var(--arena); overflow: hidden; }
+.j-tapa-ante { font-size: 9.5px; font-weight: 900; letter-spacing: 1.6px; text-transform: uppercase; color: var(--acento); }
+.j-tapa-tit { font-family: var(--serif); font-weight: 700; font-size: 23px; line-height: 1.02; letter-spacing: -0.025em; overflow-wrap: anywhere; border-top: 2px solid var(--tinta); padding-top: 8px; }
+.j-capa.j-tapa, .j-heroe.j-tapa { padding: 34px 38px 38px; }
+.j-capa.j-tapa .j-tapa-tit, .j-heroe.j-tapa .j-tapa-tit { font-size: clamp(44px, 5vw, 96px); border-top-width: 3px; padding-top: 14px; }
+.j-capa.j-tapa .j-tapa-ante, .j-heroe.j-tapa .j-tapa-ante { font-size: 12px; }
+.j-img-ancha.j-tapa .j-tapa-tit { font-size: 26px; }
+/* El escaparate: la imagen cambia fundiéndose y el texto entra con un deslizamiento corto */
+.j-capas { position: relative; }
+.j-capas > .j-capa { position: absolute; inset: 0; margin: 0; }
+.j-capas > figure.j-capa img { width: 100%; height: 100%; object-fit: cover; }
+.j-capa.entra { animation: funde .3s ease-out both; }
+@keyframes funde { from { opacity: 0; } to { opacity: 1; } }
+.j-portada-txt.cambia > * { animation: entra-texto .24s ease-out both; }
+.j-portada-txt.cambia > :nth-child(2) { animation-delay: .02s; }
+.j-portada-txt.cambia > :nth-child(n+3) { animation-delay: .04s; }
+@keyframes entra-texto { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+.j-escaparate .j-portada-txt { min-width: 0; }
+.j-entradilla { font-family: var(--serif); font-style: italic; font-size: 18px; line-height: 1.42; color: var(--gris); max-width: 52ch; margin: 0 0 10px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+/* Filas de portadas que se recorren de lado */
+.j-tira { display: flex; gap: clamp(16px, 1.3vw, 26px); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 10px 8px 6px; margin: -10px -8px 0; scroll-padding: 0 8px; }
+.j-tira::-webkit-scrollbar { display: none; }
+.j-tira.mas-der { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent); }
+.j-tira.mas-izq { -webkit-mask-image: linear-gradient(to right, transparent, #000 72px); mask-image: linear-gradient(to right, transparent, #000 72px); }
+.j-tira.mas-izq.mas-der { -webkit-mask-image: linear-gradient(to right, transparent, #000 72px, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(to right, transparent, #000 72px, #000 calc(100% - 72px), transparent); }
+.j-tira > .j-carta { flex: 0 0 clamp(128px, 9.1vw, 200px); }
+.j-tira .j-carta-tit { font-size: 16.5px; -webkit-line-clamp: 1; }
+.j-tira .j-tapa-tit { font-size: 20px; }
+.j-controles .j-sep { width: 1px; height: 16px; background: var(--linea); }
 .j-portada-txt .titular { margin: 6px 0 10px; }
 .j-portada-txt .meta, .j-juego-txt .meta { color: var(--gris); font-size: 16px; }
 .j-acciones { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 28px; margin-top: 22px; }
@@ -975,7 +1013,7 @@ body[data-modo="juegos"] #cabecera { position: sticky; top: 0; z-index: 30; back
 .j-acciones .enlace { font-size: 13px; letter-spacing: 1.8px; }
 .j-bloque { margin-top: 34px; }
 .j-fila-ancha { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 22px; }
-.j-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 26px 22px; }
+.j-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 30px 22px; }
 .j-carta { display: flex; flex-direction: column; gap: 7px; text-align: left; min-width: 0; transition: transform .14s ease-out; }
 .j-img { margin: 0; aspect-ratio: 2 / 3; background: var(--arena); overflow: hidden; border: 1px solid var(--linea); }
 .j-img-ancha { margin: 0; aspect-ratio: 16 / 7.5; background: var(--arena); overflow: hidden; border: 1px solid var(--linea); }
@@ -993,7 +1031,7 @@ body[data-entrada="mando"] .j-carta:focus .j-img, body[data-entrada="mando"] .j-
 .j-opt:hover { color: var(--tinta); }
 .j-opt[aria-pressed="true"] { color: var(--tinta); border-bottom-color: var(--acento); }
 /* La página de un juego */
-.j-pag-juego { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 0 36px; align-items: start; }
+.j-pag-juego { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 0 36px; align-items: center; }
 .j-juego-txt .titular { margin: 6px 0 12px; }
 .j-juego-txt .entradilla { font-family: var(--serif); font-style: italic; font-size: 19px; line-height: 1.45; color: var(--gris); max-width: 56ch; }
 .j-dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 2px solid var(--tinta); margin-top: 34px; padding-top: 18px; }
@@ -1006,14 +1044,18 @@ body[data-entrada="mando"] .j-carta:focus .j-img, body[data-entrada="mando"] .j-
 /* Valorados */
 .j-valorados { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); column-gap: 40px; }
 .j-valorados li { border-bottom: 1px solid var(--linea); }
-.j-valorado { display: grid; grid-template-columns: 116px minmax(0, 1fr); align-items: center; width: 100%; padding: 12px 0; text-align: left; transition: transform .14s ease-out; }
+.j-valorado { display: grid; grid-template-columns: 112px 52px minmax(0, 1fr); column-gap: 20px; align-items: center; width: 100%; padding: 12px 0; text-align: left; transition: transform .14s ease-out; }
 .j-valorado .cifra { font-family: var(--serif); font-weight: 700; font-size: 64px; line-height: 1; letter-spacing: -0.04em; }
 .j-valorado .tit { font-family: var(--serif); font-weight: 600; font-size: 24px; line-height: 1.15; }
 .j-valorado .versal { display: block; margin-top: 3px; }
+.j-mini { margin: 0; width: 52px; aspect-ratio: 2 / 3; overflow: hidden; background: var(--arena); border: 1px solid var(--linea); }
+.j-mini img { width: 100%; height: 100%; object-fit: cover; }
+.j-mini.j-tapa { padding: 0; } .j-mini .j-tapa-tit, .j-mini .j-tapa-ante { display: none; }
 .j-valorado:hover .tit, .j-valorado:focus .tit { color: var(--acento); }
 .j-valorado:focus { transform: translateX(4px); }
 .j-opciones { list-style: none; }
 .j-opciones li { border-bottom: 1px solid var(--linea); }
+.j-opciones li.j-op-sep { padding: 18px 0 6px; border-bottom: 2px solid var(--tinta); }
 
 /* ================================================================ Guías (una web encima) */
 .g-capa { position: fixed; inset: 0; z-index: 60; background: var(--papel); display: flex; flex-direction: column; }

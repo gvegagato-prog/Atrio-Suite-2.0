@@ -10,17 +10,19 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
-## Atrio en el escritorio (2.0): el lanzador y la revista
+## Atrio en el escritorio (2.1): el lanzador y la revista
 
 Atrio en el PC se abre siempre **a pantalla completa en el modo Juegos**: el lanzador, con la estética de la
 revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** (LB y RB pasan de una a otra).
 
-- **Juegos:** en portada, lo que estás jugando o lo último (su fondo a lo grande, el título y «Jugar →» ya
-  enfocado: una pulsación de A y a jugar), «Seguir jugando», tus favoritos y toda la biblioteca en portadas
-  (ordenada por recientes, nombre u horas; filtrada por tienda). Cada juego tiene su página: Jugar, guías,
-  favorito, sus datos (horas, última vez, estudio, género, Metacritic) y, si está en tu cuenta, tu nota y tu
-  crítica o tu último apunte. Y abre las opciones (favorito, ocultar, su ficha, guías).
-- **Valorados:** tus juegos terminados con la nota en grande; los instalados se abren para jugar.
+- **Juegos:** arriba, el escaparate: un juego a lo grande (su fondo, el titular, la descripción de la tienda y
+  «Jugar →» ya enfocado: una pulsación de A y a jugar). Debajo, «Seguir jugando» y «Favoritos» en filas de
+  portadas que se recorren de lado: el escaparate pasa al juego que enfoques (la imagen se funde), subes y
+  juegas. Cada fila recuerda dónde la dejaste. Después, toda la biblioteca en portadas (por recientes, A–Z u
+  horas; filtrada por tienda); un juego sin imagen tiene una portada de tipografía. Cada juego tiene su
+  página: Jugar, guías, favorito, sus datos (horas, última vez, estudio, género, Metacritic) y, si está en tu
+  cuenta, tu nota y tu crítica o tu último apunte. Y abre las opciones (favorito, ocultar, su ficha, guías).
+- **Valorados:** tus juegos terminados con la nota en grande y su portada; los instalados se abren para jugar.
 - **Revista:** toda tu colección (libros, películas, series, el diario, las cifras, Descubrir…) como antes,
   ahora también con mando.
 - **Mando** (también el Steam Controller con Steam Input), **teclado y ratón** a la vez. Cruceta o stick para
@@ -32,11 +34,14 @@ revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** 
 - **Ajustes**, todos con la misma estética: la revista (tema y acento), cuenta y SteamGridDB, bibliotecas,
   juegos añadidos, emuladores, juegos ocultos, mando (prueba en vivo y configurar botones), comportamiento
   (al abrir un juego, al iniciar sesión, animaciones), móvil y streaming.
-- Animaciones ligeras (120–260 ms: el foco, las portadas, el cambio de modo); se quitan en Ajustes →
+- Animaciones ligeras (120–300 ms: el foco, las portadas, el escaparate, las secciones entran desde el lado al
+  que vas con LB/RB, el cambio de modo); se quitan en Ajustes →
   Comportamiento o si el sistema pide menos movimiento.
 - El lanzador clásico ya no se ve; sigue dentro solo para las pruebas automáticas (`--lanzador`).
 - Prueba sin Electron: `node herramientas/revista/prueba-revista.js carpeta` (Chromium con una cuenta de
-  ejemplo y un mando simulado).
+  ejemplo y un mando simulado). Capturas para revisar el diseño a varios tamaños:
+  `node herramientas/revista/escaparate.js carpeta 1920x1080,1280x800 claro,oscuro` (con `ATRIO_ARTE=carpeta`
+  usa imágenes de verdad).
 
 ## Atrio 6.8 (móvil)
 

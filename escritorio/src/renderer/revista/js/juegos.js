@@ -1,5 +1,5 @@
 'use strict';
-/* global window, document, setInterval */
+/* global window, document, setInterval, setTimeout, clearTimeout, requestAnimationFrame */
 // Modo Juegos: el lanzador de Atrio con la estética de la revista. Es con lo que arranca Atrio, a pantalla
 // completa. Arriba, la cabecera con tres secciones (Valorados · Juegos · Revista: LB y RB cambian de una a
 // otra); en Juegos, el último que has jugado en portada, «Seguir jugando» y toda la biblioteca en portadas.
@@ -9,7 +9,7 @@
   const D = RV.D;
   const num = RV.num;
   RV.vistas = RV.vistas || {};
-  const est = { orden: 'recientes', origen: 'todos' };
+  const est = { orden: 'recientes', origen: 'todos', heroe: null, tiras: {} };
 
   const SECCIONES = [['j-valorados', 'Valorados'], ['juegos', 'Juegos'], ['revista', 'Revista']];
   const remota = (u) => (u && /^(https?|atrio|data):/i.test(u) ? u : '');
@@ -64,14 +64,6 @@
   };
 
   // ---------------------------------------------------------------- Piezas
-  function imagen(src, cls, alt) {
-    if (!src) return h(`div.${cls}.sin-imagen`);
-    const img = h('img', { alt: alt || '', decoding: 'async', loading: 'lazy', draggable: 'false' });
-    const box = h(`figure.${cls}`, img);
-    img.addEventListener('error', () => box.classList.add('sin-imagen'));
-    img.src = src;
-    return box;
-  }
   const horas = (g) => { const ms = D.msPc(g); return ms >= 60000 ? RV.horas(ms / 60000) : ''; };
   const visto = (g) => (g.lastPlayed ? `jugado ${RV.hace(g.lastPlayed)}` : 'sin estrenar');
 
@@ -99,18 +91,111 @@
     } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
   }
 
+  // Sin imagen: una portada de tipografía (el nombre en grande, como una tapa de la revista)
+  function tapa(g, cls) {
+    return h(`div.${cls}.sin-imagen.j-tapa`, h('span.j-tapa-ante', g.sourceLabel || g.source || ''), h('span.j-tapa-tit', g.name));
+  }
+  function arte(g, src, cls) {
+    if (!src) return tapa(g, cls);
+    const img = h('img', { alt: '', decoding: 'async', loading: 'lazy', draggable: 'false' });
+    const box = h(`figure.${cls}`, img);
+    img.addEventListener('error', () => box.replaceWith(tapa(g, cls)));
+    img.src = src;
+    return box;
+  }
+
   // Una portada de la biblioteca (vertical, con el título debajo)
   function carta(g, o = {}) {
     const activo = D.activoPc(g.key);
     const b = h(`button.j-carta${o.ancha ? '.ancha' : ''}`, {
-      type: 'button', 'data-clave': `${o.zona || 'b'}:${g.key}`, 'data-opciones': '', onclick: () => RV.ir({ v: 'j-juego', key: g.key }),
-      'aria-label': g.name,
+      type: 'button', 'data-clave': `${o.zona || 'b'}:${g.key}`, 'data-key': g.key, 'data-opciones': '', onclick: () => RV.ir({ v: 'j-juego', key: g.key }),
+      'aria-label': g.name, 'data-inicio': o.inicio ? '' : null,
     },
-    imagen(o.ancha ? fondoDe(g) : portadaDe(g), o.ancha ? 'j-img-ancha' : 'j-img'),
+    arte(g, o.ancha ? fondoDe(g) : portadaDe(g), o.ancha ? 'j-img-ancha' : 'j-img'),
     h('span.j-carta-tit', g.favorite ? h('span.estrella', '★') : null, g.name),
     h('span.versal', activo ? '● Abierto ahora' : [g.sourceLabel || g.source, horas(g)].filter(Boolean).join(' · ')));
     b.__opciones = () => opciones(g);
     return b;
+  }
+
+  // ---------------------------------------------------------------- El escaparate (la portada del lanzador)
+  // Arriba, un juego en grande (imagen, titular y «Jugar →»). Cambia con lo que enfoques en las filas de
+  // debajo: recorres «Seguir jugando» con la cruceta, subes y juegas.
+  function escaparate(inicial) {
+    const fig = h('div.j-heroe.j-capas');
+    const txt = h('div.j-portada-txt');
+    const sec = h('section.j-portada.j-escaparate',
+      h('button.j-portada-img', { type: 'button', tabindex: '-1', 'aria-hidden': 'true', onclick: () => { if (est.heroe) RV.ir({ v: 'j-juego', key: est.heroe }); } }, fig),
+      txt);
+    let cur = null;
+    function capa(g) {
+      const src = fondoDe(g);
+      if (!src) return tapa(g, 'j-capa');
+      const img = h('img', { alt: '', decoding: 'async', draggable: 'false' });
+      const box = h('figure.j-capa', img);
+      img.addEventListener('error', () => box.replaceWith(tapa(g, 'j-capa')));
+      img.src = src;
+      return box;
+    }
+    function poner(g, animar) {
+      if (!g || (cur && cur.key === g.key && !animar)) return;
+      cur = g;
+      est.heroe = g.key;
+      // La imagen: la nueva entra fundiéndose sobre la anterior
+      const nueva = capa(g);
+      if (animar) nueva.classList.add('entra');
+      fig.append(nueva);
+      const viejas = [...fig.children].slice(0, -1);
+      if (!animar) viejas.forEach((v) => v.remove());
+      else setTimeout(() => viejas.forEach((v) => v.remove()), 320);
+      // El texto
+      const f = fichaDe(g);
+      const activo = D.activoPc(g.key);
+      const nota = f ? D.nota(f.item, f.t) : null;
+      const m = g.meta || {};
+      const jugar = activo
+        ? h('span.j-en-marcha', '● Abierto ahora mismo')
+        : h('button.boton-tinta.j-jugar', { type: 'button', 'data-autofocus': true, 'data-clave': 'portada:jugar', onclick: () => RV.jugar(g) }, 'Jugar →');
+      const ante = activo ? 'En directo' : g.lastPlayed ? `Seguir jugando · ${visto(g)}` : g.favorite ? 'De tus favoritos · sin estrenar' : 'Sin estrenar';
+      txt.replaceChildren(...[
+        h('div.ante', ante),
+        h(`h1.titular.ajusta.gran-titular${RV.tallaTitular(g.name)}`, { 'data-min': '34' }, g.name),
+        m.description ? h('p.j-entradilla', m.description) : null,
+        h('p.meta', [g.sourceLabel || g.source, horas(g) ? `${horas(g)} jugadas` : '', nota != null ? `tu nota ${nota}` : ''].filter(Boolean).join(' · ')),
+        h('div.j-acciones', { 'data-recuerda': '' },
+          jugar,
+          h('button.enlace', { type: 'button', 'data-clave': 'portada:pagina', onclick: () => RV.ir({ v: 'j-juego', key: g.key }) }, 'Su página →'),
+          h('button.enlace.apagado', { type: 'button', 'data-clave': 'portada:opciones', onclick: () => opciones(g) }, 'Opciones')),
+      ].filter(Boolean));
+      if (animar) { txt.classList.remove('cambia'); void txt.offsetWidth; txt.classList.add('cambia'); }
+      if (txt.isConnected) RV.ajustar(txt);
+    }
+    poner(inicial, false);
+    // Al enfocar una portada de las filas, el escaparate pasa a ese juego (sin prisa: al recorrerlas rápido
+    // con la cruceta no se cambia la imagen en cada paso)
+    let t = null;
+    sec.seguir = (fila) => {
+      fila.addEventListener('focusin', (e) => {
+        const c = e.target.closest('[data-key]');
+        if (!c) return;
+        clearTimeout(t);
+        t = setTimeout(() => { const g = juego(c.dataset.key); if (g && (!cur || g.key !== cur.key)) poner(g, true); }, 110);
+      });
+    };
+    return sec;
+  }
+  function tira(titulo, lista, o = {}) {
+    const fila = h('div.j-tira', { 'data-recuerda': '' }, lista.map((g) => carta(g, { zona: o.zona, inicio: g.key === o.inicio })));
+    // Los bordes se difuminan donde quedan más portadas por ver
+    const bordes = () => {
+      fila.classList.toggle('mas-izq', fila.scrollLeft > 4);
+      fila.classList.toggle('mas-der', fila.scrollLeft + fila.clientWidth < fila.scrollWidth - 4);
+    };
+    // Al redibujar (llegan datos nuevos), cada fila sigue por donde la dejaste
+    const zona = o.zona || 'b';
+    fila.addEventListener('scroll', () => { est.tiras[zona] = fila.scrollLeft; bordes(); }, { passive: true });
+    requestAnimationFrame(() => { if (est.tiras[zona]) fila.scrollLeft = est.tiras[zona]; bordes(); });
+    return { sec: h('section.j-bloque', RV.seccion(titulo), fila), fila };
   }
 
   // ---------------------------------------------------------------- Juegos (la portada del lanzador)
@@ -125,50 +210,43 @@
     }
     const recientes = [...todos].filter((g) => g.lastPlayed > 0).sort((a, b) => b.lastPlayed - a.lastPlayed);
     const ahora = D.jugandoAhora();
-    const front = (ahora && ahora.game) || recientes[0] || todos.find((g) => g.favorite) || todos[0];
+    const front = (ahora && ahora.game && (juego(ahora.game.key) || ahora.game)) || recientes[0] || todos.find((g) => g.favorite) || todos[0];
+    const enEscaparate = (est.heroe && juego(est.heroe)) || front;
 
-    // En portada: el que estás jugando o el último
-    const f = fichaDe(front);
-    const activo = D.activoPc(front.key);
-    const nota = f ? D.nota(f.item, f.t) : null;
-    const jugar = activo
-      ? h('span.j-en-marcha', '● Abierto ahora mismo')
-      : h('button.boton-tinta.j-jugar', { type: 'button', 'data-autofocus': true, 'data-clave': 'portada:jugar', onclick: () => RV.jugar(front) }, 'Jugar →');
-    root.append(h('section.j-portada',
-      h('button.j-portada-img', { type: 'button', tabindex: '-1', onclick: () => RV.ir({ v: 'j-juego', key: front.key }), 'aria-label': front.name }, imagen(fondoDe(front), 'j-heroe')),
-      h('div.j-portada-txt',
-        h('div.ante', activo ? 'En directo' : front.lastPlayed ? `En portada · ${visto(front)}` : 'En portada'),
-        h(`h1.titular.ajusta.gran-titular${RV.tallaTitular(front.name)}`, { 'data-min': '34' }, front.name),
-        h('p.meta', [front.sourceLabel || front.source, horas(front), nota != null ? `tu nota ${nota}` : ''].filter(Boolean).join(' · ')),
-        h('div.j-acciones',
-          jugar,
-          h('button.enlace', { type: 'button', 'data-clave': 'portada:pagina', onclick: () => RV.ir({ v: 'j-juego', key: front.key }) }, 'Su página →'),
-          h('button.enlace.apagado', { type: 'button', onclick: () => opciones(front) }, 'Opciones')))));
+    // En portada: el que estás jugando o el último (o el que enfocaste la última vez)
+    const esc = escaparate(enEscaparate);
+    root.append(esc);
 
-    // Seguir jugando: los siguientes más recientes, en apaisado
-    const seguir = recientes.filter((g) => g !== front).slice(0, 6);
-    if (seguir.length) {
-      root.append(h('section.j-bloque', RV.seccion('Seguir jugando'), h('div.j-fila-ancha', seguir.map((g) => carta(g, { ancha: true, zona: 's' })))));
+    // Seguir jugando y Favoritos: filas de portadas que se recorren de lado
+    const nombre = (a, b) => String(a.sortName || a.name).localeCompare(String(b.sortName || b.name), 'es', { sensitivity: 'base', numeric: true });
+    const favs = todos.filter((g) => g.favorite).sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0) || nombre(a, b));
+    const seguir = recientes.slice(0, 14);
+    const primera = seguir.length ? tira('Seguir jugando', seguir, { zona: 's', inicio: enEscaparate.key })
+      : tira('Tus juegos', (favs.length ? favs : [...todos].sort(nombre)).slice(0, 14), { zona: 's', inicio: enEscaparate.key });
+    root.append(primera.sec);
+    esc.seguir(primera.fila);
+    if (favs.length && seguir.length) {
+      const fv = tira(`Favoritos · ${favs.length}`, favs, { zona: 'f', inicio: enEscaparate.key });
+      root.append(fv.sec);
+      esc.seguir(fv.fila);
     }
 
     // La biblioteca
     const origenes = [...new Map(todos.map((g) => [g.source, g.sourceLabel || g.source])).entries()];
     if (est.origen !== 'todos' && !origenes.some(([s]) => s === est.origen)) est.origen = 'todos';
-    const nombre = (a, b) => String(a.sortName || a.name).localeCompare(String(b.sortName || b.name), 'es', { sensitivity: 'base', numeric: true });
     let lista = todos.filter((g) => est.origen === 'todos' || g.source === est.origen);
     if (est.orden === 'nombre') lista.sort(nombre);
     else if (est.orden === 'horas') lista.sort((a, b) => D.msPc(b) - D.msPc(a) || nombre(a, b));
     else lista.sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0) || nombre(a, b));
-    const favs = lista.filter((g) => g.favorite);
-    if (favs.length) root.append(h('section.j-bloque', RV.seccion(`Favoritos · ${favs.length}`), h('div.j-rejilla', favs.map((g) => carta(g, { zona: 'f' })))));
-    const opt = (actual, valor, texto, fn) => h('button.j-opt', { type: 'button', 'aria-pressed': String(actual === valor), onclick: fn }, texto);
-    root.append(h('section.j-bloque',
+    const opt = (actual, valor, texto, fn) => h('button.j-opt', { type: 'button', 'aria-pressed': String(actual === valor), 'data-clave': `opt:${valor}`, onclick: fn }, texto);
+    root.append(h('section.j-bloque.j-biblioteca',
       RV.seccion(`La biblioteca · ${RV.plural(lista.length, 'juego', 'juegos')}`),
       h('div.j-controles',
-        h('div.j-grupo', [['recientes', 'Recientes'], ['nombre', 'Nombre'], ['horas', 'Horas']].map(([v, t]) => opt(est.orden, v, t, () => { est.orden = v; RV.refrescar(); }))),
-        h('span.hueco'),
+        h('div.j-grupo', [['recientes', 'Recientes'], ['nombre', 'A–Z'], ['horas', 'Horas']].map(([v, t]) => opt(est.orden, v, t, () => { est.orden = v; RV.refrescar(); }))),
+        h('span.j-sep'),
         h('div.j-grupo', [['todos', 'Todo'], ...origenes].map(([v, t]) => opt(est.origen, v, t, () => { est.origen = v; RV.refrescar(); }))),
-        h('button.enlace', { type: 'button', onclick: () => RV.buscarJuegos(), title: 'X (o /)' }, 'Buscar')),
+        h('span.hueco'),
+        h('button.enlace', { type: 'button', onclick: () => RV.buscarJuegos(), title: 'X (o /)' }, 'Buscar un juego')),
       h('div.j-rejilla', lista.map((g) => carta(g)))));
     root.append(h('p.pie', 'Atrio · ⧉ Vista para la revista · ☰ Menú'));
     return root;
@@ -213,7 +291,7 @@
         cita ? h('blockquote.cita', `«${cita.length > 300 ? `${cita.slice(0, 297).trim()}…` : cita}»`, h('span.de.versal', f.t === 'g' ? 'Tu crítica' : 'Tu último apunte')) : null);
     }
     root.append(h('section.j-pag-juego',
-      imagen(fondoDe(g), 'j-heroe'),
+      arte(g, fondoDe(g), 'j-heroe'),
       h('div.j-juego-txt',
         h('div.ante', [activo ? 'En directo' : 'Juego', g.platform || ''].filter(Boolean).join(' · ')),
         h(`h1.titular.ajusta.gran-titular${RV.tallaTitular(g.name)}`, { 'data-min': '34' }, g.name),
@@ -248,8 +326,10 @@
         if (pcg) RV.ir({ v: 'j-juego', key: pcg.key });
         else { RV.cambiarModo('revista'); RV.ir({ v: 'ficha', k: 0, t: 'g', id: g.id }); }
       };
+      const tapaV = (pcg && portadaDe(pcg)) || remota(g.cover);
       const b = h('button.j-valorado', { type: 'button', 'data-clave': `v:${g.id}`, 'data-autofocus': i === 0 ? true : null, onclick: abrir },
         h('span.cifra', String(num(g.general))),
+        tapaV ? arte({ name: g.name }, tapaV, 'j-mini') : h('span.j-mini.sin-imagen'),
         h('span', h('span.tit.ajusta', { 'data-min': '16' }, g.fav ? h('span.estrella', '★') : null, g.name),
           h('span.versal', [num(g.end) > 0 ? RV.fmtDia(g.end) : '', g.creator, pcg ? 'en este PC' : ''].filter(Boolean).join(' · '))));
       if (pcg) { b.dataset.opciones = ''; b.__opciones = () => opciones(pcg); }
@@ -320,9 +400,11 @@
     op(RV.modo === 'juegos' ? 'La revista' : 'Modo Juegos', () => RV.cambiarModo(), 'Vista');
     op('Ajustes', () => RV.ir({ v: 'ajustes' }));
     op('Buscar', () => (RV.modo === 'juegos' ? RV.buscarJuegos() : RV.buscarTodo()), 'X');
+    ul.append(h('li.j-op-sep', h('span.versal', 'Energía')));
     op('Suspender', () => RV.energia('suspender'));
     op('Reiniciar', () => RV.energia('reiniciar'));
     op('Apagar', () => RV.energia('apagar'));
+    ul.append(h('li.j-op-sep', h('span.versal', 'Atrio')));
     op('Minimizar Atrio', () => RV.api.minimize());
     op('Salir de Atrio', () => RV.api.quit());
     const d = RV.dialogo({ ante: 'Atrio', titulo: 'Menú', cuerpo: ul });

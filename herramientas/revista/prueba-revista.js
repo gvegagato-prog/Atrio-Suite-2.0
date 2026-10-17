@@ -265,6 +265,24 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(lanz[0] === 'steam:1422450', `juegos: A en «Jugar →» lanza el juego de portada (${lanz.join(', ')})`);
     e = await estado();
     ok(e.entrada === 'mando', 'juegos: con el mando se ve el foco (entrada «mando»)');
+    // El escaparate cambia con la fila de portadas: abajo, derecha, arriba y A juega al de la portada enfocada
+    const ARRIBA = 12;
+    await btn(ABAJO); await page.waitForTimeout(150);
+    e = await estado();
+    ok(/Deadlock/.test(e.foco), `juegos: abajo entra en «Seguir jugando» por el juego de portada («${e.foco}»)`);
+    await btn(DER); await page.waitForTimeout(450);
+    const tit = await page.evaluate(() => (document.querySelector('.j-escaparate .titular') || {}).textContent);
+    ok(tit === 'ELDEN RING NIGHTREIGN', `juegos: al recorrer la fila, el escaparate pasa al juego enfocado («${tit}»)`);
+    await btn(ARRIBA); await page.waitForTimeout(150);
+    e = await estado();
+    ok(/Jugar/.test(e.foco), `juegos: arriba vuelve a «Jugar →» («${e.foco}»)`);
+    await btn(A); await page.waitForTimeout(300);
+    lanz = await page.evaluate(() => window.__lanzados || []);
+    ok(lanz[1] === 'steam:2622380', `juegos: «Jugar →» juega al juego del escaparate (${lanz.join(', ')})`);
+    await btn(ABAJO); await page.waitForTimeout(150);
+    e = await estado();
+    ok(/NIGHTREIGN/i.test(e.foco), `juegos: al volver a la fila, se vuelve a la portada de antes («${e.foco}»)`);
+    await btn(ARRIBA); await page.waitForTimeout(150);
     // Bajar hasta la biblioteca y abrir un juego
     for (let i = 0; i < 4; i++) { await btn(ABAJO); await page.waitForTimeout(120); }
     await btn(DER); await page.waitForTimeout(150);

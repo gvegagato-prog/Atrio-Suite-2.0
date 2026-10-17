@@ -1,5 +1,5 @@
 'use strict';
-/* global window, document, CSS */
+/* global window, document, CSS, setTimeout, clearTimeout, requestAnimationFrame */
 // La revista: la cabecera de periódico, la navegación entre páginas (con «volver»), los atajos de teclado,
 // lo que llega de Atrio en directo (cuenta, biblioteca, partidas, avisos) y el arranque.
 (function (RV) {
@@ -89,6 +89,8 @@
       nodo = h('div.hoja', h('div.cabeza', h('div.ante', 'Fe de erratas')), RV.vacio(`No se ha podido mostrar esta página: ${RV.limpiaError(e)}`, true));
       try { api.log(`revista: ${e && e.stack ? e.stack : e}`); } catch { /* */ }
     }
+    // Al redibujar con datos nuevos, la página no vuelve a entrar con su animación (solo al cambiar de página)
+    if (o.refresco && nodo && nodo.classList) nodo.classList.add('sin-entrada');
     pag.replaceChildren(nodo);
     for (const el of RV.$$('[data-foco]', pag)) {
       if (campos.has(el.dataset.foco) && el.value !== campos.get(el.dataset.foco)) el.value = campos.get(el.dataset.foco);
@@ -116,8 +118,8 @@
     document.title = `Atrio · ${ruta.v === 'ficha' ? ((k && D.buscar(k, ruta.t, ruta.id)) || {}).name || 'Ficha' : k ? k.title : TITULOS[ruta.v] || 'Revista'}`;
   }
   // Redibujar con los datos nuevos, sin perder el sitio (agrupando avisos seguidos)
-  RV.refrescar = RV.debounce(() => pintar(), 50);
-  const refrescarDespacio = RV.debounce(() => pintar(), 1200);
+  RV.refrescar = RV.debounce(() => pintar({ refresco: true }), 50);
+  const refrescarDespacio = RV.debounce(() => pintar({ refresco: true }), 1200);
 
   // ---------------------------------------------------------------- Cabecera de periódico
   function cabecera() {
@@ -218,7 +220,7 @@
   api.on('ronron', (s) => { D.setCuenta(s); RV.refrescar(); });
   api.on('library', (s) => { D.setPc(s); if (s && s.config) RV.mando.config(s.config.behavior); RV.refrescar(); });
   // El arte llega juego a juego (al arrancar, de toda la biblioteca): se redibuja despacio
-  api.on('art', (g) => { D.setJuegoPc(g); if (ruta.v === 'portada' || ruta.v === 'pc' || ruta.v === 'ficha') refrescarDespacio(); });
+  api.on('art', (g) => { D.setJuegoPc(g); if (['portada', 'pc', 'ficha', 'juegos', 'j-juego', 'j-valorados'].includes(ruta.v)) refrescarDespacio(); });
   api.on('play', (p) => { D.setPlay(p); refrescarDespacio(); });
   api.on('game-ended', () => RV.refrescar());
   api.on('notice', (m) => RV.aviso(m));
@@ -256,9 +258,14 @@
     y: (el) => { if (RV.guiaY && RV.guiaY()) return; const o = el && el.closest('[data-opciones]'); if (o && typeof o.__opciones === 'function') o.__opciones(); },
   });
   // LB / RB en la revista: recorrer las secciones de la cabecera
+  let dirT = null;
   RV.secciones = (paso) => {
     if (RV.guiaNav && RV.guiaNav(paso)) return;
     if (RV.hayDialogo()) return;
+    // La página nueva entra desde el lado hacia el que vas
+    document.body.dataset.dir = paso < 0 ? 'izq' : 'der';
+    clearTimeout(dirT);
+    dirT = setTimeout(() => { delete document.body.dataset.dir; }, 320);
     if (ruta.v === 'ajustes' && RV.seccionAjustes) { RV.seccionAjustes(paso); return; }
     if (RV.modo === 'juegos' && RV.seccionesJuegos) { RV.seccionesJuegos(paso); return; }
     const items = RV.$$('#cabecera .cab-item');
