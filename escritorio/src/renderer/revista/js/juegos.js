@@ -93,7 +93,8 @@
 
   // Sin imagen: una portada de tipografía (el nombre en grande, como una tapa de la revista)
   function tapa(g, cls) {
-    return h(`div.${cls}.sin-imagen.j-tapa`, h('span.j-tapa-ante', g.sourceLabel || g.source || ''), h('span.j-tapa-tit', g.name));
+    return h(`div.${cls}.sin-imagen.j-tapa`, h('span.j-tapa-ini', String(g.name || '?').trim().charAt(0).toUpperCase()),
+      h('span.j-tapa-ante', g.sourceLabel || g.source || ''), h('span.j-tapa-tit', g.name));
   }
   function arte(g, src, cls) {
     if (!src) return tapa(g, cls);
@@ -112,8 +113,9 @@
       'aria-label': g.name, 'data-inicio': o.inicio ? '' : null,
     },
     arte(g, o.ancha ? fondoDe(g) : portadaDe(g), o.ancha ? 'j-img-ancha' : 'j-img'),
-    h('span.j-carta-tit', g.favorite ? h('span.estrella', '★') : null, g.name),
-    h('span.versal', activo ? '● Abierto ahora' : [g.sourceLabel || g.source, horas(g)].filter(Boolean).join(' · ')));
+    h('span.j-carta-txt',
+      h('span.j-carta-tit', g.favorite ? h('span.estrella', '★') : null, g.name),
+      h('span.versal', activo ? '● Abierto ahora' : [g.sourceLabel || g.source, horas(g)].filter(Boolean).join(' · '))));
     b.__opciones = () => opciones(g);
     return b;
   }

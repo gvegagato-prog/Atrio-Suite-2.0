@@ -1117,14 +1117,23 @@ h3.sub:first-child { margin-top: 0; }
 body[data-modo="juegos"] { --ancho: 1760px; }
 .j-pag .gran-titular { font-size: calc(var(--k, 1) * clamp(60px, 5.8vw, 132px)); }
 .j-pag-juego .gran-titular { font-size: calc(var(--k, 1) * clamp(56px, 5.2vw, 120px)); }
-/* El titular manda: a la izquierda y en grande; la imagen, a la derecha y más pequeña (como una portada de revista) */
-.j-escaparate, .j-pag-juego { grid-template-columns: minmax(0, 8fr) minmax(0, 3fr); gap: 0 56px; }
-.j-escaparate .j-portada-txt, .j-pag-juego .j-juego-txt { order: -1; }
-.j-escaparate .j-heroe, .j-pag-juego .j-heroe { aspect-ratio: 4 / 3; }
-.j-pag .j-escaparate .gran-titular { font-size: calc(var(--k, 1) * clamp(80px, 9.6vw, 220px)); line-height: 0.9; letter-spacing: -0.035em; margin: 10px 0 20px; }
-.j-pag-juego .gran-titular { font-size: calc(var(--k, 1) * clamp(72px, 8.4vw, 196px)); line-height: 0.9; letter-spacing: -0.035em; }
-.j-escaparate .j-entradilla { font-size: 20px; }
-@media (max-width: 1100px) {
-  .j-escaparate, .j-pag-juego { grid-template-columns: minmax(0, 1fr); }
-  .j-escaparate .j-heroe, .j-pag-juego .j-heroe { aspect-ratio: 16 / 7; }
-}
+
+/* Las tarjetas de juego: manda el titular. La portada, pequeña a la izquierda; el nombre, grande en la letra de
+   la revista, con un filete encima (como una entrada del índice de una revista) */
+.j-carta:not(.ancha) { display: grid; grid-template-columns: clamp(64px, 4.6vw, 92px) minmax(0, 1fr); gap: 0 16px; align-items: end;
+  padding-top: 12px; border-top: 2px solid var(--tinta); }
+.j-carta:not(.ancha) .j-img { border: 0; }
+.j-carta-txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-bottom: 2px; }
+.j-carta:not(.ancha) .j-carta-tit, .j-tira .j-carta-tit { font-size: clamp(21px, 1.55vw, 30px); line-height: 1.02; font-weight: 700; letter-spacing: -0.02em; -webkit-line-clamp: 3; }
+.j-tira > .j-carta { flex-basis: clamp(250px, 16.5vw, 330px); }
+.j-rejilla { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px 34px; }
+.j-carta:hover, .j-carta:focus { transform: none; }
+.j-carta:not(.ancha):hover, .j-carta:not(.ancha):focus { border-top-color: var(--acento); }
+body[data-entrada="mando"] .j-carta:focus .j-img { outline: none; }
+body[data-entrada="mando"] .j-carta:not(.ancha):focus { outline: 3px solid var(--acento); outline-offset: 8px; }
+/* Sin imagen, en pequeño: solo la inicial */
+.j-tapa-ini { display: none; }
+.j-carta .j-img.j-tapa { padding: 0; justify-content: center; align-items: center; }
+.j-carta .j-img.j-tapa .j-tapa-ante, .j-carta .j-img.j-tapa .j-tapa-tit { display: none; }
+.j-carta .j-img.j-tapa .j-tapa-ini { display: block; font-family: var(--serif); font-weight: 700; font-size: 40px; line-height: 1; color: var(--gris); }
+.j-tira { padding: 14px 12px 14px; margin: -14px -12px -8px; scroll-padding: 0 12px; }
