@@ -164,6 +164,13 @@ open class Capturas6Test {
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r4_ficha_valorado")
         // Modo edición: el diseño de la página
         rule.onAllNodesWithText("EDITAR")[0].performClick(); shoot("r8_diseno")
+        // En «Editar»: cambiar la portada y el fondo de la ficha, directamente
+        org.junit.Assert.assertTrue(rule.onAllNodesWithText("Cambiar portada").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Cambiar fondo")[0].performClick(); rule.waitForIdle(); shoot("r8z_cambiar_fondo")
+        org.junit.Assert.assertTrue("se abre el selector de fondos", rule.onAllNodesWithText("Elige el fondo").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("VOLVER")[0].performClick(); rule.waitForIdle()
+        org.junit.Assert.assertTrue("vuelve a la página de la ficha", rule.onAllNodesWithText("EDITAR").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("EDITAR")[0].performClick(); rule.waitForIdle()
         rule.onAllNodesWithText("⇔")[0].performTouchInput { swipeRight() }; shoot("r8b_linea_movida")
         rule.onAllNodesWithText("Ninguna todavía.")[0].performClick(); shoot("r8c_elegir")
         // Elegir «Opinión» para la casilla de las guías

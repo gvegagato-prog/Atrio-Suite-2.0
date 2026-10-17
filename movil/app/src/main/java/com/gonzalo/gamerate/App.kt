@@ -783,8 +783,12 @@ fun App(
         if (p != null) {
             val np = p.copy(cover = g.cover, hero = g.hero)
             savePlay(np)
-            // Imagen de «En portada»: se vuelve a Inicio
-            screen = if (s.home) Screen.Home else Screen.PlayDetail(np, editing = true)
+            // Imagen de «En portada»: se vuelve a Inicio. En la revista, a la página de la ficha (ya guardada)
+            screen = if (s.home) Screen.Home else Screen.PlayDetail(np, editing = !Skin.revista)
+        } else if (Skin.revista && !s.isNew && gamesOf(kind).any { it.id == g.id }) {
+            // Revista (desde «Editar» de la página): se guarda al momento y se vuelve a la página
+            setGames(kind, gamesOf(kind).map { if (it.id == g.id) g else it })
+            screen = Screen.Edit(g, false, editing = false)
         } else {
             screen = Screen.Edit(g, s.isNew, editing = true)
         }
@@ -1343,7 +1347,8 @@ fun App(
                     onSkip = { toEdit(s, s.game) },
                     onBack = {
                         val p = s.play
-                        screen = if (s.chain || s.home) Screen.Home else if (p != null) Screen.PlayDetail(p, editing = true) else Screen.Edit(s.game, s.isNew, editing = true)
+                        // Sin cambiar nada: de vuelta a donde estabas (en la revista, a la página de la ficha)
+                        screen = if (s.chain || s.home) Screen.Home else if (p != null) Screen.PlayDetail(p, editing = !Skin.revista) else Screen.Edit(s.game, s.isNew, editing = s.isNew || !Skin.revista)
                     },
                     search = if (kind.isBook && !s.hero) ({ q -> OpenLib.coversFor(q) }) else null,
                     translate = if (kind.isBook && !s.hero) ({ q -> TitleEn.translate(q)?.let { it.title to it.source } }) else null,

@@ -169,7 +169,8 @@ fun EditScreen(
                 onPartner = if (partner != null) ({ withReveal { viewP = true } }) else null,
                 onExport = onExport,
                 onRecommend = if (onRecommend != null) ({ recommend = true }) else null,
-                onDelete = if (!isNew) onDelete else null
+                onDelete = if (!isNew) onDelete else null,
+                onArt = { hero -> onArt(g, hero) }
             ) {
                 reading = false
                 scope.launch { scroll.animateScrollTo(0) }

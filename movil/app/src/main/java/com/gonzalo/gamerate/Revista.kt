@@ -6,6 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -172,7 +177,7 @@ fun RevistaGameRead(
     g: Game, kind: Kind, partnerName: String, theirs: String?, ttbMsg: String,
     onBack: () -> Unit, onFav: () -> Unit, onPartner: (() -> Unit)?,
     onExport: (Game, ExportMode) -> Unit, onRecommend: (() -> Unit)?,
-    onDelete: (() -> Unit)? = null, onEdit: () -> Unit
+    onDelete: (() -> Unit)? = null, onArt: ((hero: Boolean) -> Unit)? = null, onEdit: () -> Unit
 ) {
     val ctx = LocalContext.current
     var designing by remember(g.id) { mutableStateOf(false) }
@@ -192,7 +197,7 @@ fun RevistaGameRead(
     ).joinToString(" · ")
     if (deck.isNotBlank()) Text(deck, color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
     if (theirs != null) Box(Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) { TheirReaction(partnerName, theirs) }
-    if (designing) DesignHint(onData = onEdit, name = g.name, onDelete = onDelete)
+    if (designing) DesignHint(onData = onEdit, name = g.name, onDelete = onDelete, onArt = onArt, hasHero = kind.hasHero)
     Spacer(Modifier.height(14.dp))
 
     val defs = linkedMapOf<String, MagDef>()
@@ -227,9 +232,20 @@ fun RevistaGameRead(
 
 /** Aviso del modo edición: qué se puede hacer y el enlace a los datos (nota, horas, fechas…). */
 @Composable
-fun DesignHint(onData: () -> Unit, name: String = "", onDelete: (() -> Unit)? = null) {
+fun DesignHint(onData: () -> Unit, name: String = "", onDelete: (() -> Unit)? = null, onArt: ((hero: Boolean) -> Unit)? = null, hasHero: Boolean = true) {
     var sure by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp).background(Sand).padding(12.dp)) {
+        // La portada y el fondo de la ficha (de internet, de tus archivos, de la galería o de otro dispositivo tuyo)
+        if (onArt != null) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton({ onArt(false) }, shape = shp(4.dp), modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Rounded.Image, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Cambiar portada")
+                }
+                if (hasHero) OutlinedButton({ onArt(true) }, shape = shp(4.dp), modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Rounded.Wallpaper, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Cambiar fondo")
+                }
+            }
+        }
         Text("Toca una casilla para elegir qué va en ella (o texto libre, o una imagen). Arrastra el círculo de la línea para moverla.",
             fontSize = 13.sp, lineHeight = 18.sp)
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
