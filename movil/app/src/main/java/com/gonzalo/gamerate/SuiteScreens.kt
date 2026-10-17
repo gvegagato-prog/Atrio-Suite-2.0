@@ -131,7 +131,7 @@ fun LiveCard(
                 }
             }
         } else {
-            SuiteIntro("Conecta tu PC", "Instala Atrio 1.0 en el PC y entra con esta misma cuenta (en el PC: Ajustes → Cuenta). Al abrirlo aparecerá aquí en directo: capturas, apuntes, partidas para valorar y el mando del PC.", onRemote)
+            SuiteIntro("Conecta tu PC", "Instala Atrio 1.0 en el PC y entra con esta misma cuenta (en el PC: Ajustes → Cuenta). Al abrirlo aparecerá aquí en directo: capturas, apuntes y el mando del PC.", onRemote)
         }
         return
     }
@@ -244,32 +244,6 @@ fun ago(t: Long): String {
         m < 24 * 60 -> "hace ${m / 60} h"
         m < 48 * 60 -> "ayer"
         else -> "hace ${m / (24 * 60)} días"
-    }
-}
-
-/** Partes jugadas pendientes de valorar (de cualquier juego en curso). */
-@Composable
-fun PendingParts(items: List<Pair<Play, Seg>>, onRate: (Play, Seg) -> Unit, onDismiss: (Play, Seg) -> Unit) {
-    if (items.isEmpty()) return
-    Column(Modifier.fillMaxWidth().animateContentSize()) {
-        Overline("Por valorar")
-        Spacer(Modifier.height(8.dp))
-        items.take(4).forEachIndexed { i, (p, sg) ->
-            if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
-            Row(Modifier.fillMaxWidth().clickable { onRate(p, sg) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                MiniCover(p.cover, 40.dp)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(p.name, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${sg.label()} · ${hoursText(sg.min)} · ${fmt(sg.e)}", color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Spacer(Modifier.width(8.dp))
-                ActionPill(Icons.Rounded.Star, "Valorar", dark = true) { onRate(p, sg) }
-                Spacer(Modifier.width(4.dp))
-                IconButton({ onDismiss(p, sg) }) { Icon(Icons.Rounded.Close, "Sin valorar", tint = Muted, modifier = Modifier.size(18.dp)) }
-            }
-        }
-        if (items.size > 4) Text("y ${items.size - 4} más en sus fichas", color = Muted, fontSize = 12.sp)
     }
 }
 
@@ -425,47 +399,6 @@ fun MemoDialog(title: String, canShot: Boolean, presetShot: Shot? = null, onSave
     )
 }
 
-/** Añadir a mano una parte jugada (una partida en la consola, en otro sitio…) para valorarla. */
-@Composable
-fun AddSegDialog(kind: Kind, onSave: (Seg) -> Unit, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var mins by remember { mutableStateOf(60) }
-    var daysAgo by remember { mutableStateOf(0) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Añadir una parte", fontFamily = Display) },
-        text = {
-            Column {
-                OutlinedTextField(name, { name = it }, label = { Text(if (kind.isGame) "Qué has jugado (opcional)" else "Qué parte (opcional)") },
-                    singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
-                if (kind.isGame) {
-                    Spacer(Modifier.height(12.dp))
-                    Text("Duración", color = UiSoft, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Spacer(Modifier.height(6.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(30, 60, 90, 120, 180, 240).forEach { m -> SoftChip(hoursText(m), mins == m) { mins = m } }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Text("Cuándo", color = UiSoft, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Spacer(Modifier.height(6.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(0 to "Hoy", 1 to "Ayer", 2 to "Anteayer").forEach { (d, t) -> SoftChip(t, daysAgo == d) { daysAgo = d } }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton({
-                val e = System.currentTimeMillis() - daysAgo * 86_400_000L
-                val m = if (kind.isGame) mins else 0
-                onSave(Seg("m$e", e - m * 60_000L, e, m, "manual", "", name.trim()))
-            }) { Text("Añadir y valorar") }
-        },
-        dismissButton = { TextButton(onDismiss) { Text("Cancelar") } },
-        shape = shp(24.dp)
-    )
-}
-
 /** Qué son los apuntes rápidos en cada categoría (en los libros no se juega). */
 fun memoHint(kind: Kind): String = when {
     kind.isGame -> "Ideas sueltas mientras juegas (también desde Atrio)"
@@ -475,53 +408,12 @@ fun memoHint(kind: Kind): String = when {
     else -> "Ideas sueltas sobre la marcha"
 }
 
-/** En la ficha de algo en curso: partes por valorar, apuntes rápidos y capturas. */
+/** En la ficha de algo en curso: apuntes rápidos y capturas. */
 @Composable
 fun PlaySuitePanel(
     p: Play, kind: Kind,
-    onRate: (Seg) -> Unit, onOpenEntry: (Entry) -> Unit, onAddSeg: () -> Unit,
-    onMemo: () -> Unit, onDeleteMemo: (Memo) -> Unit, onOpenShot: (Shot) -> Unit,
-    /** Encender o apagar «Valorar por partes» en esta ficha. */
-    onParts: (Boolean) -> Unit = {}
+    onMemo: () -> Unit, onDeleteMemo: (Memo) -> Unit, onOpenShot: (Shot) -> Unit
 ) {
-    val shape = shp(16.dp)
-    Column(Modifier.fillMaxWidth().surface(20.dp, Crudo).padding(16.dp).animateContentSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Overline("Valorar por partes")
-                Text(
-                    when {
-                        p.noParts -> if (kind.isGame) "Apagado: las partidas suman horas, pero no piden nota ni avisan" else "Apagado: no se pide nota por partes"
-                        p.segs.isEmpty() -> if (kind.isGame) "Cada partida en el PC aparece aquí al cerrar el juego" else "Añade las partes que vas terminando"
-                        else -> "${p.segs.count { !it.q }} · ${p.unrated().size} sin valorar"
-                    },
-                    color = Muted, fontSize = 14.sp
-                )
-            }
-            Switch(!p.noParts, { onParts(it) })
-        }
-        if (p.noParts) return@Column
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.End) {
-            IconPill(Icons.Rounded.Add, "Añadir parte") { onAddSeg() }
-        }
-        val list = p.segs.filter { !it.q }.sortedByDescending { it.e }.take(12)
-        if (list.isNotEmpty()) Spacer(Modifier.height(8.dp))
-        list.forEachIndexed { i, sg ->
-            if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
-            val entry = p.entries.find { it.seg == sg.id }
-            Row(Modifier.fillMaxWidth().clickable { if (entry != null) onOpenEntry(entry) else onRate(sg) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (sg.src == "atrio") Icons.Rounded.Computer else if (sg.src == "timer") Icons.Rounded.SportsEsports else Icons.Rounded.Add, null, tint = Muted, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(sg.label(), fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text((if (sg.min > 0) hoursText(sg.min) + " · " else "") + fmt(sg.e), color = Muted, fontSize = 12.sp)
-                }
-                if (entry != null) Ring(entry.general, ColGeneral, 34.dp, entry.general.toString())
-                else Text("Valorar", color = LiveColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-            }
-        }
-    }
-    Spacer(Modifier.height(14.dp))
     val memos = p.liveMemos.sortedByDescending { it.t }
     Column(Modifier.fillMaxWidth().surface(20.dp, Crudo).padding(16.dp).animateContentSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {

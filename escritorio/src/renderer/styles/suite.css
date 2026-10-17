@@ -47,18 +47,10 @@ body.no-motion .suite-btn.live .suite-dot { animation: none; }
 .shot-meta small { color: rgba(255, 255, 255, .65); }
 
 /* Ficha de Ronrón: partidas para valorar y apuntes rápidos */
-.rr-notes li.rr-seg { border-left: 3px solid var(--live); background: var(--live-soft); }
-.rr-notes .s.todo { color: var(--live); font-weight: 700; font-size: .85rem; letter-spacing: .02em; }
 .rr-notes li.rr-memo { opacity: .92; }
 .rr-notes li.rr-memo .d { font-style: italic; }
 .rr-notes .s.cam { background: none; }
 .note.warn { color: var(--live); }
-
-/* Juegos en curso con partidas por valorar */
-.rv-todo {
-  position: absolute; right: .55rem; bottom: .55rem; min-width: 1.6rem; height: 1.6rem; padding: 0 .45rem; border-radius: .8rem;
-  display: grid; place-items: center; background: var(--live); color: #fff; font-weight: 700; font-size: .85rem; box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
-}
 
 /* Ajustes → Streaming */
 .st-status { display: flex; flex-direction: column; gap: .55rem; margin: 1rem 0 1.2rem; padding: 1rem 1.2rem; border-radius: var(--radius); background: var(--surface); }

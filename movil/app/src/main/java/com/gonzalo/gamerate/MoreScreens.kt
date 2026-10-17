@@ -364,20 +364,15 @@ private fun ColumnScope.ReadCard(
 
 @Composable
 fun NoteScreen(
-    play: Play, entry: Entry?, kind: Kind, onSave: (Entry) -> Unit, onDelete: () -> Unit, onBack: () -> Unit,
-    /** Valorar una parte jugada concreta o un capítulo recién acabado. */
-    seg: Seg? = null, part: String = ""
+    play: Play, entry: Entry?, kind: Kind, onSave: (Entry) -> Unit, onDelete: () -> Unit, onBack: () -> Unit
 ) {
     val last = play.entries.maxByOrNull { it.time }
     var e by remember {
         mutableStateOf(
             entry ?: Entry(System.currentTimeMillis(), last?.general ?: 50, last?.gfx ?: 50,
-                last?.story ?: 50, last?.music ?: 50, last?.gameplay ?: 50, "", play.chapter,
-                seg = seg?.id ?: "", part = part)
+                last?.story ?: 50, last?.music ?: 50, last?.gameplay ?: 50, "", play.chapter)
         )
     }
-    val forSeg = seg ?: play.segs.find { it.id == e.seg && e.seg.isNotEmpty() }
-    val forPart = e.part
     Column(Modifier.fillMaxSize().imePadding().wrapContentWidth().widthIn(max = 760.dp).statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
         if (Skin.revista) TopBar(if (entry != null) "Apunte" else "Nuevo apunte", onBack, play.name) else {
             BackButton(onBack)
@@ -391,19 +386,6 @@ fun NoteScreen(
             Text(if (Skin.revista) fmt(e.time).uppercase() else fmt(e.time), color = UiSoft, fontSize = if (Skin.revista) 11.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
                 fontWeight = if (Skin.revista) FontWeight.Black else null, letterSpacing = if (Skin.revista) 1.6.sp else androidx.compose.ui.unit.TextUnit.Unspecified)
             if (kind.isBook) Text("Capítulo ${e.chapter}", color = UiSoft)
-            if (forSeg != null || forPart.isNotBlank()) {
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    Modifier.background(Sand, pillShape()).padding(horizontal = 14.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        if (forSeg != null) "Valorando: ${forSeg.label()}" + (if (forSeg.min > 0) " · ${hoursText(forSeg.min)}" else "") + " · ${fmt(forSeg.e)}"
-                        else "Valorando: $forPart",
-                        fontSize = 13.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center
-                    )
-                }
-            }
             Spacer(Modifier.height(16.dp))
             ScoresFor(e.scores(), kind.labels) { i, v -> e = e.setScore(i, v) }
             Spacer(Modifier.height(16.dp))
@@ -414,7 +396,7 @@ fun NoteScreen(
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button({ onSave(e) }, shape = pillShape(), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
-                    Text(if (forSeg != null || forPart.isNotBlank()) "Guardar valoración" else "Guardar apunte", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    Text("Guardar apunte", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 }
                 if (entry != null) TextButton(onDelete) { Text("Eliminar", color = UiSoft) }
             }
@@ -439,7 +421,7 @@ fun MenuScreen(
     onSettings: (() -> Unit)?, onEnter: (Int) -> Unit,
     onNewKind: (() -> Unit)? = null, onEditKind: ((Kind) -> Unit)? = null,
     onRecAdd: (Rec) -> Unit, onRecDismiss: (Rec) -> Unit, onAct: (Activity) -> Unit,
-    /** Lo de la suite (en directo, por valorar, capturas): va entre el título y las secciones. */
+    /** Lo de la suite (en directo y capturas): va entre el título y las secciones. */
     top: @Composable () -> Unit = {}
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current

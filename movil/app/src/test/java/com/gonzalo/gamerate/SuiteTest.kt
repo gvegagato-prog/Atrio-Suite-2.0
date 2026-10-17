@@ -74,33 +74,36 @@ class SuiteTest {
         scope.cancel()
     }
 
-    @Test fun apuntesYPartesSeSumanAlMezclar() {
-        val a = playToJson(Play(1, "Juego", "", "", 1, emptyList(), memos = listOf(Memo(10, "uno", u = 10)), segs = listOf(Seg("a1", 1, 2, 30, "atrio"))))
-        val b = playToJson(Play(1, "Juego", "", "", 1, emptyList(), memos = listOf(Memo(10, "", del = true, u = 20), Memo(30, "tres")), segs = listOf(Seg("t5", 5, 6, 10, "timer"))))
+    @Test fun apuntesSeSumanAlMezclar() {
+        val a = playToJson(Play(1, "Juego", "", "", 1, emptyList(), memos = listOf(Memo(10, "uno", u = 10))))
+        val b = playToJson(Play(1, "Juego", "", "", 1, emptyList(), memos = listOf(Memo(10, "", del = true, u = 20), Memo(30, "tres"))))
         val m = playFromJson(uniteLists(JSONObject(a.toString()), JSONObject(b.toString())))
-        assertEquals(listOf("a1", "t5"), m.segs.map { it.id })
         assertEquals(listOf(30L), m.liveMemos.map { it.t }) // el borrado gana y no revive
         assertEquals(2, m.memos.size)
     }
 
-    @Test fun lasValoracionesDePartesSeConservan() {
-        val e = Entry(5, 70, 60, 50, 40, 30, "bien", 0, seg = "a1", part = "Acto 2")
-        val p = Play(9, "X", "", "", 1, listOf(e), segs = listOf(Seg("a1", 1, 2, 30, "atrio", "pc"), Seg("a2", 3, 4, 15, "atrio")))
-        val back = playFromJson(JSONObject(playToJson(p).toString()))
-        assertEquals("a1", back.entries[0].seg)
-        assertEquals("Acto 2", back.entries[0].part)
-        assertEquals(listOf("a2"), back.unrated().map { it.id })
-        assertEquals("Partida en pc", back.segs[0].label())
+    @Test fun lasPartidasDeVersionesAntiguasSeDescartan() {
+        // Una ficha de antes, con partidas para valorar y apuntes que valoraban una de ellas
+        val old = JSONObject().put("id", 4).put("name", "Antiguo").put("cover", "").put("hero", "").put("status", 1).put("minutes", 90)
+            .put("entries", JSONArray().put(JSONObject().put("time", 1).put("general", 70).put("gfx", 50).put("story", 50).put("music", 50).put("gameplay", 50).put("note", "bien").put("seg", "a1").put("part", "Acto 2")))
+            .put("segs", JSONArray().put(JSONObject().put("id", "a1").put("s", 1).put("e", 2).put("min", 30).put("src", "atrio")))
+            .put("noParts", true)
+        val p = playFromJson(old)
+        assertEquals(90, p.minutes)
+        assertEquals("bien", p.entries.single().note)
+        val back = playToJson(p)
+        assertTrue(!back.has("segs") && !back.has("noParts") && !back.getJSONArray("entries").getJSONObject(0).has("seg") && !back.getJSONArray("entries").getJSONObject(0).has("part"))
+        // Y al mezclar con otro dispositivo que aún las tenga, tampoco vuelven
+        assertTrue(!uniteLists(JSONObject(back.toString()), JSONObject(old.toString())).has("segs"))
     }
 
     @Test fun fichasAntiguasSinCamposNuevos() {
         val old = JSONObject().put("id", 3).put("name", "Viejo").put("cover", "").put("hero", "").put("status", 1)
             .put("entries", JSONArray().put(JSONObject().put("time", 1).put("general", 50).put("gfx", 50).put("story", 50).put("music", 50).put("gameplay", 50).put("note", "")))
         val p = playFromJson(old)
-        assertTrue(p.memos.isEmpty() && p.segs.isEmpty())
-        assertEquals("", p.entries[0].seg)
+        assertTrue(p.memos.isEmpty())
         assertNotNull(playToJson(p))
-        // Si no hay apuntes rápidos ni partes, la ficha se guarda igual que antes
-        assertTrue(!playToJson(p).has("memos") && !playToJson(p).has("segs"))
+        // Si no hay apuntes rápidos, la ficha se guarda igual que antes
+        assertTrue(!playToJson(p).has("memos"))
     }
 }

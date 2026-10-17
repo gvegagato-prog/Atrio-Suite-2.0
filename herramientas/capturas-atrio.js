@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // Capturas de la interfaz de Atrio con la suite conectada (Firebase de mentira, un «móvil» conectado,
-// un juego en curso con partidas por valorar y apuntes rápidos). Uso: node herramientas/capturas-atrio.js [carpeta]
+// un juego en curso con apuntes y apuntes rápidos). Uso: node herramientas/capturas-atrio.js [carpeta]
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -34,11 +34,7 @@ async function j(method, url, body) {
   const play = {
     id: 4242, name: 'Juego de Prueba', cover: '', hero: '', status: 1, chapter: 0, every: 3, start: 0, end: 0, creator: 'Estudio', platform: 'PC',
     pages: 0, minutes: 754, updated: now, ttbMain: 1500, ttbExtra: 0, ttbFull: 0, ttbSrc: '', parts: [], logo: '',
-    entries: [{ time: now - 86400000 * 2, general: 82, gfx: 90, story: 75, music: 80, gameplay: 85, note: 'El segundo acto engancha muchísimo.', chapter: 0, seg: 'a1' }],
-    segs: [
-      { id: 'a1', s: now - 86400000 * 2 - 7200000, e: now - 86400000 * 2, min: 120, src: 'atrio', pc: 'sobremesa' },
-      { id: 'a2', s: now - 5400000, e: now - 600000, min: 80, src: 'atrio', pc: 'sobremesa' },
-    ],
+    entries: [{ time: now - 86400000 * 2, general: 82, gfx: 90, story: 75, music: 80, gameplay: 85, note: 'El segundo acto engancha muchísimo.', chapter: 0 }],
     memos: [{ t: now - 1800000, x: 'El jefe del puente: probar con fuego la próxima vez.', u: now }],
   };
   const data = { games: [], plays: [play], books: [], bplays: [], kinds: [], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {} };

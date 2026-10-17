@@ -64,7 +64,7 @@ private fun greeting(): String = when (LocalTime.now().hour) {
 @Composable
 fun InicioScreen(
     name: String, readOnly: Boolean, partnerName: String?, hint: String?,
-    ongoing: List<Ongoing>, sessId: Long,
+    ongoing: List<Ongoing>,
     collections: List<CollectionInfo>, recs: List<Rec>, acts: List<Activity>,
     goals: List<Triple<String, Int, Int>>,
     onTitleDouble: () -> Unit, onPartner: (() -> Unit)?, onProfile: (() -> Unit)?,
@@ -113,7 +113,7 @@ fun InicioScreen(
                 val o = ongoing[i]
                 val off = ((pager.currentPage - i) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
                 OngoingCard(
-                    o, o.play.id == sessId && o.kind.isGame, readOnly, primaryLabel(o),
+                    o, readOnly, primaryLabel(o),
                     Modifier.graphicsLayer {
                         val s = androidx.compose.ui.util.lerp(1f, 0.9f, off); scaleX = s; scaleY = s; alpha = androidx.compose.ui.util.lerp(1f, 0.6f, off)
                     },
@@ -135,7 +135,7 @@ fun InicioScreen(
             }
         }
 
-        // La suite (PC en directo, partes por valorar, capturas)
+        // La suite (PC en directo y capturas)
         Column(Modifier.padding(horizontal = 20.dp).rise(3)) { Spacer(Modifier.height(18.dp)); top() }
 
         // Descubrir
@@ -228,7 +228,7 @@ fun InicioScreen(
 /** Tarjeta grande del carrusel: arte de fondo, portada, título, progreso y el botón principal. */
 @Composable
 private fun OngoingCard(
-    o: Ongoing, live: Boolean, readOnly: Boolean, primary: Pair<String, androidx.compose.ui.graphics.vector.ImageVector>,
+    o: Ongoing, readOnly: Boolean, primary: Pair<String, androidx.compose.ui.graphics.vector.ImageVector>,
     modifier: Modifier, onOpen: () -> Unit, onPrimary: () -> Unit
 ) {
     val p = o.play
@@ -248,7 +248,6 @@ private fun OngoingCard(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(o.kind.title.uppercase(), color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                    if (live) { Spacer(Modifier.width(8.dp)); LiveDot() }
                 }
                 Text(p.name, color = Color.White, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 24.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 val ctx = androidx.compose.ui.platform.LocalContext.current

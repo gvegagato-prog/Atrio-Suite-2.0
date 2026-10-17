@@ -63,7 +63,7 @@ contextBridge.exposeInMainWorld('atrio', {
   webState: () => invoke('web:state'),
   on: (channel, cb) => {
     const allowed = ['art', 'art-idle', 'library', 'focus', 'game-ended', 'play', 'winfocus', 'notice', 'ronron',
-      'suite', 'shot-start', 'shot-taken', 'seg', 'remote', 'web', 'web-key', 'web-error', 'stream'];
+      'suite', 'shot-start', 'shot-taken', 'remote', 'web', 'web-key', 'web-error', 'stream'];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, payload) => cb(payload));
   },

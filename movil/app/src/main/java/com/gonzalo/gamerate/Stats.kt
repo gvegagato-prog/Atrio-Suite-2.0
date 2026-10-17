@@ -322,7 +322,7 @@ fun StatsScreen(
             if (kind.isGame) {
                 Section("Horas jugadas") {
                     if (st.withMinutes == 0) {
-                        Text("Usa las sesiones o apunta las horas en cada juego para ver estos datos.", color = UiSoft)
+                        Text("Juega en el PC con Atrio o apunta las horas en cada juego para ver estos datos.", color = UiSoft)
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BigNumber("${st.minutes / 60}", "horas en total", Modifier.weight(1f))

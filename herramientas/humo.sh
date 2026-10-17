@@ -275,18 +275,13 @@ tap "Guardar"; sleep 8; alive "apunte"
 must $SIM has gonzalo secreto1 "Apuntedeprueba"
 echo "   el apunte está en la cuenta" | tee -a "$LOG"
 
-step "Suite: al cerrar el juego, la partida llega para valorarla"
+step "Suite: al cerrar el juego, sus horas llegan a la ficha"
 sleep 30
 pkill -f juego-de-prueba || true
-top
-must seek "POR VALORAR"
-shot 42_por_valorar 1; alive "por valorar"
-tap "Valorar"; sleep 3
-must see "Valorando" 10
-shot 43_valorar_partida 1
-seek "Guardar valoración"; tap "Guardar valoración"; sleep 6; alive "valorar"
-must $SIM has gonzalo secreto1 '"seg":"a'
-echo "   la partida tiene su valoración" | tee -a "$LOG"
+H=1; for i in $(seq 1 15); do $SIM mins gonzalo secreto1 4242 1 >> "$LOG" && { H=0; break; }; sleep 3; done
+[ $H -eq 0 ] || { echo "FALLO: las horas no llegan a la ficha" | tee -a "$LOG"; exit 1; }
+top; shot 42_horas 1; alive "horas"
+echo "   lo jugado se suma a las horas de la ficha" | tee -a "$LOG"
 
 step "Guías: compartir una web desde el navegador del móvil a un juego del PC"
 adb shell am start -W -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "https://example.com/" -n "$PKG/.MainActivity" >/dev/null

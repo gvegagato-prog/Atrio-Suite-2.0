@@ -225,7 +225,6 @@
   api.on('play', (p) => { D.setPlay(p); refrescarDespacio(); });
   api.on('game-ended', () => RV.refrescar());
   api.on('notice', (m) => RV.aviso(m));
-  api.on('seg', (x) => { if (x && x.name) RV.aviso(`Partida de ${x.name}: ${RV.horas(x.min)}. Valórala en su ficha.`); });
   api.on('shot-taken', (x) => {
     RV.olvidarCapturas();
     if (x && x.by) RV.aviso(`Captura para ${x.by} · ${x.w}×${x.h}`);

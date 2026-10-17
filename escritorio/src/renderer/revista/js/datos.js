@@ -116,13 +116,6 @@
     return null;
   };
   D.memos = (p) => (p.memos || []).filter((m) => m && !m.del);
-  // Partes jugadas que aún no tienen apunte (y no se guardaron «sin pedir nota»)
-  D.sinValorar = (p) => {
-    if (p.noParts) return [];
-    const hechos = new Set((p.entries || []).map((e) => e.seg).filter(Boolean));
-    return (p.segs || []).filter((s) => s && !s.q && !hechos.has(s.id));
-  };
-  D.etiquetaParte = (s) => s.name || (s.src === 'atrio' ? (s.pc ? `Partida en ${s.pc}` : 'Partida en el PC') : s.src === 'timer' ? 'Sesión con temporizador' : 'Parte añadida a mano');
   D.estado = (kind, item, t) => (t === 'g' ? kind.doneOne : kind.statuses[Math.max(0, Math.min(2, num(item.status)))]);
 
   // Todo junto: [{ kind, t, item }]

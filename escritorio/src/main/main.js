@@ -385,25 +385,23 @@ function suiteLibrary() {
     };
   });
 }
-// Al cerrar un juego: la partida pasa a Ronrón como «parte jugada» para valorarla (en el móvil o aquí)
-async function segFromSession(key) {
-  const cfg = config.get().suite || {};
-  if (cfg.autoSeg === false || !tracker || !ronron.status().signed) return;
+// Al cerrar un juego: lo jugado se suma a las horas de su ficha en tu cuenta (en «Jugando»)
+async function horasAlCerrar(key) {
+  if (!tracker || !ronron.status().signed) return;
   const ses = [...tracker.state().sessions].reverse().find((x) => x[0] === key);
   if (!ses) return;
   const min = Math.round((ses[2] - ses[1]) / 60000);
-  if (min < (Number(cfg.segMin) || 5)) return;
+  if (min < 1) return;
   const g = library.get(key);
-  const id = g ? Number(sgdbOf(g)) : 0;
-  if (!id) return;
-  const p = ((ronron.data() || {}).plays || []).find((o) => Number(o.id) === id && o.status === 1);
+  if (!g) return;
+  // La ficha es la de SteamGridDB o, si no lo conoce, la que se creó a mano con su nombre (como al abrirlo)
+  const plays = (ronron.data() || {}).plays || [];
+  const ids = [Number(sgdbOf(g)) || 0, customItemId(named(g).name)].filter(Boolean);
+  const p = plays.find((o) => ids.includes(Number(o.id)) && o.status === 1);
   if (!p) return;
   try {
-    // «Valorar por partes» apagado en esa ficha: la partida se guarda (horas) sin pedir nota
-    const quiet = !!p.noParts;
-    await ronron.edit({ op: 'addSeg', kind: 0, id, seg: { id: `a${ses[1]}`, s: ses[1], e: ses[2], min, src: 'atrio', pc: os.hostname(), ...(quiet ? { q: 1 } : {}) } });
-    if (!quiet) send('seg', { id, name: p.name, min });
-  } catch (e) { log('parte jugada', e.message); }
+    await ronron.edit({ op: 'addMin', kind: 0, id: Number(p.id), min });
+  } catch (e) { log('horas al cerrar', e.message); }
 }
 
 function setupSuiteIpc() {
@@ -777,9 +775,8 @@ async function ronronWatch() {
     if (!id) { ronronSeen.set(a.k, day); continue; }
     if (ronron.knows(id)) { ronronSeen.set(a.k, day); continue; }
     const pics = sg ? await ronronArt(id).catch(() => ({})) : {};
-    // Con las partes jugadas activadas, los minutos se suman al cerrar el juego (no se cuentan dos veces)
-    const segsOn = (config.get().suite || {}).autoSeg !== false;
-    const what = await ronron.autoPlay({ id, name: ng.name, ...pics, minutes: segsOn ? 0 : (now - a.s) / 60000 }).catch(() => undefined);
+    // Los minutos se suman al cerrar el juego (aquí no, para no contarlos dos veces)
+    const what = await ronron.autoPlay({ id, name: ng.name, ...pics, minutes: 0 }).catch(() => undefined);
     // Solo se da por visto si se ha podido guardar (si falló, se reintenta)
     if (what !== undefined) ronronSeen.set(a.k, day);
     if (what) send('notice', what === 'nuevo' ? `${ng.name} está ahora en «Jugando»` : `${ng.name} vuelve a «Jugando»`);
@@ -1031,7 +1028,7 @@ app.whenReady().then(async () => {
     getUid: () => ronron.uid(),
     onChange: () => { send('play', playState()); ronronWatch().catch(() => {}); hoursSoon(); suite.liveChanged(); },
     onEnd: (key, counted, launchedHere) => {
-      if (counted) segFromSession(key).catch(() => {});
+      if (counted) horasAlCerrar(key).catch(() => {});
       if (!launchedHere || !win || config.get().behavior.returnOnExit === false) return;
       // Lanzado para jugar en streaming: quien juega está en el móvil; Atrio no se pone delante
       if (streamedKeys.has(key)) { streamedKeys.delete(key); return; }

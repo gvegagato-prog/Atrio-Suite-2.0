@@ -17,7 +17,6 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,29 +40,25 @@ fun Stepper(value: Int, suffix: String, onMinus: () -> Unit, onPlus: () -> Unit)
 
 @Composable
 fun PlayDetailScreen(
-    kind: Kind, partner: PartnerSide?, p0: Play, startEditing: Boolean = false, sessId: Long, sessHours: Int, sessStart: Long,
+    kind: Kind, partner: PartnerSide?, p0: Play, startEditing: Boolean = false,
     myReact: String?, onReact: (String?) -> Unit,
     onChange: (Play) -> Unit, onNote: (Play, Entry?) -> Unit,
-    onStart: (Play, Int) -> Unit, onStop: () -> Unit,
     onArt: (Play, Boolean) -> Unit, onFinish: (Play) -> Unit,
     onRecommend: ((Play, String) -> Unit)?,
     onDelete: (Play) -> Unit,
     findTtb: (suspend (String) -> TtbResult)? = null,
     /** Series: episodios emitidos (id y nombre de la ficha). */
     findEpisodes: (suspend (Long, String) -> List<String>)? = null,
-    // La suite: partes jugadas, apuntes rápidos y capturas
-    onRateSeg: (Play, Seg) -> Unit = { _, _ -> },
-    onAddSeg: (Play) -> Unit = {},
+    // La suite: apuntes rápidos y capturas
     onMemo: (Play) -> Unit = {},
     onDeleteMemo: (Play, Memo) -> Unit = { _, _ -> },
     onOpenShot: (Shot) -> Unit = {},
-    onPartDone: (Play, String) -> Unit = { _, _ -> },
     onBack: () -> Unit
 ) {
     var p by remember { mutableStateOf(p0) }
-    // Lo que llega de otro dispositivo (Atrio añade partes y apuntes) se recoge sin perder lo que estás tocando
-    LaunchedEffect(p0.segs, p0.memos, p0.entries) { p = p.copy(segs = p0.segs, memos = p0.memos, entries = p0.entries) }
-    // Si la sesión termina, los minutos los añade la app: hay que recoger el valor nuevo.
+    // Lo que llega de otro dispositivo (Atrio añade apuntes) se recoge sin perder lo que estás tocando
+    LaunchedEffect(p0.memos, p0.entries) { p = p.copy(memos = p0.memos, entries = p0.entries) }
+    // Las horas jugadas en el PC llegan solas: hay que recoger el valor nuevo.
     LaunchedEffect(p0.minutes) { if (p0.minutes != p.minutes) p = p.copy(minutes = p0.minutes) }
     // El director o los creadores llegan de internet poco después de añadirla: se recogen aquí.
     LaunchedEffect(p0.creator) { if (p.creator.isBlank() && p0.creator.isNotBlank()) p = p.copy(creator = p0.creator) }
@@ -143,38 +138,15 @@ fun PlayDetailScreen(
                 MagLink("Apuntar notas", if (b != null) "media de ${p.entries.size} apuntes" else null, accent = due) { onNote(p, null) }
                 MagLink(if (b != null) "Pasar a valorados" else "Terminado: valorar") { onFinish(p) }
             }
-            if (kind.isGame) defs["sesion"] = MagDef("Sesión") {
-                if (p.status != 1) {
-                    Text("Márcalo como «${kind.statuses[1]}» para empezar una sesión.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
-                    MagLink("Marcar «${kind.statuses[1]}»", accent = true) { empezar() }
-                }
-                else if (sessId == p.id) {
-                    var now by remember { mutableStateOf(System.currentTimeMillis()) }
-                    LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
-                    val mins = ((now - sessStart) / 60_000L).toInt().coerceAtLeast(0)
-                    Text(hoursText(mins), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 34.sp)
-                    Text("EN MARCHA · AVISO CADA $sessHours H", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    MagLink("Terminar sesión", accent = true) { onStop() }
-                } else {
-                    var horas by remember { mutableStateOf(sessHours.coerceIn(1, 3)) }
-                    MagLink("Empezar sesión", accent = true) { onStart(p, horas) }
-                    MagChoice(listOf("1 h", "2 h", "3 h"), horas - 1, "Aviso cada") { horas = it + 1 }
-                }
-            }
             val hasPc = remember(p.id, p.name, Suite.libs) { Guides.pcGameFor(p.id, p.name) != null }
             if (kind.isGame && hasPc) defs["jugar"] = MagDef("Jugar") { FichaPlayButtons(p.id, p.name) }
             if (!kind.isBook) defs["progreso"] = MagDef(null) {
                 val fe = findEpisodes
-                if (kind.isGame) ProgressPanel(p, kind, readOnly = true, find = findTtb, onPartDone = { onPartDone(p, it) }) { upd(it) }
-                else ProgressPanel(p, kind, readOnly = true, episodes = if (fe != null) ({ fe(p.id, p.name) }) else null, onPartDone = { onPartDone(p, it) }) { upd(it) }
+                if (kind.isGame) ProgressPanel(p, kind, readOnly = true, find = findTtb) { upd(it) }
+                else ProgressPanel(p, kind, readOnly = true, episodes = if (fe != null) ({ fe(p.id, p.name) }) else null) { upd(it) }
             }
             defs["partes"] = MagDef(null) {
-                PlaySuitePanel(
-                    p, kind,
-                    onRate = { onRateSeg(p, it) }, onOpenEntry = { onNote(p, it) }, onAddSeg = { onAddSeg(p) },
-                    onMemo = { onMemo(p) }, onDeleteMemo = { onDeleteMemo(p, it) }, onOpenShot = onOpenShot,
-                    onParts = { on -> upd(p.copy(noParts = !on, updated = System.currentTimeMillis())) }
-                )
+                PlaySuitePanel(p, kind, onMemo = { onMemo(p) }, onDeleteMemo = { onDeleteMemo(p, it) }, onOpenShot = onOpenShot)
             }
             defs["apuntes"] = MagDef("Apuntes", "Nuevo" to { onNote(p, null) }) {
                 if (p.entries.isEmpty()) Text("Aún no has apuntado nada.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
@@ -196,7 +168,7 @@ fun PlayDetailScreen(
                 MagLink("Datos de la ficha") { editing = true }
             }
             val defaults = when {
-                kind.isGame -> magRows(listOf("guias", "estado"), listOf("sesion", "jugar"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("horas", "enlaces"))
+                kind.isGame -> magRows(listOf("guias", "estado"), listOf("jugar"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("horas", "enlaces"))
                 kind.isMovie || kind.isTv -> magRows(listOf("critica", "estado"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
                 kind.isBook -> magRows(listOf("lectura"), listOf("capitulos", "estado"), listOf("subrayados"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
                 else -> magRows(listOf("estado"), listOf("progreso"), listOf("partes"), listOf("apuntes"), listOf("enlaces"))
@@ -294,54 +266,17 @@ fun PlayDetailScreen(
                 }
             } else if (!kind.isGame) {
                 val fe = findEpisodes
-                ProgressPanel(p, kind, readOnly = !editing, episodes = if (fe != null) ({ fe(p.id, p.name) }) else null, onPartDone = { onPartDone(p, it) }) { upd(it) }
+                ProgressPanel(p, kind, readOnly = !editing, episodes = if (fe != null) ({ fe(p.id, p.name) }) else null) { upd(it) }
             } else {
-                ProgressPanel(p, kind, readOnly = !editing, find = findTtb, onPartDone = { onPartDone(p, it) }) { upd(it) }
+                ProgressPanel(p, kind, readOnly = !editing, find = findTtb) { upd(it) }
                 if (editing) {
                     Spacer(Modifier.height(16.dp))
                     MinutesEditor(p.minutes) { upd(p.copy(minutes = it)) }
                 }
-                Spacer(Modifier.height(14.dp))
-                if (p.status == 1) {
-                    if (sessId == p.id) {
-                        var now by remember { mutableStateOf(System.currentTimeMillis()) }
-                        LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
-                        val mins = ((now - sessStart) / 60_000L).toInt().coerceAtLeast(0)
-                        Row(
-                            Modifier.border(1.dp, Line, shp(14.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Rounded.Timer, null, tint = Charcoal)
-                            Spacer(Modifier.width(8.dp))
-                            Column {
-                                Text("Sesión en marcha: ${hoursText(mins)}", fontWeight = FontWeight.SemiBold)
-                                Text("Aviso cada $sessHours h. Al terminarla se suma a tus horas.", color = UiSoft, fontSize = 14.sp)
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Button({ onStop() }, shape = pillShape()) { Text("Terminar sesión") }
-                    } else {
-                        Text("Empezar sesión con aviso cada:", color = UiSoft, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                        Spacer(Modifier.height(6.dp))
-                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SoftChip("1 hora", false, onPanel = true) { onStart(p, 1) }
-                            SoftChip("2 horas", false, onPanel = true) { onStart(p, 2) }
-                            SoftChip("3 horas", false, onPanel = true) { onStart(p, 3) }
-                        }
-                    }
-                } else {
-                    Text("Marca el juego como «${kind.statuses[1]}» para poder empezar una sesión.",
-                        color = UiSoft, fontSize = 15.sp, textAlign = TextAlign.Center)
-                }
             }
 
             Spacer(Modifier.height(16.dp))
-            PlaySuitePanel(
-                p, kind,
-                onRate = { onRateSeg(p, it) }, onOpenEntry = { onNote(p, it) }, onAddSeg = { onAddSeg(p) },
-                onMemo = { onMemo(p) }, onDeleteMemo = { onDeleteMemo(p, it) }, onOpenShot = onOpenShot,
-                onParts = { on -> upd(p.copy(noParts = !on, updated = System.currentTimeMillis())) }
-            )
+            PlaySuitePanel(p, kind, onMemo = { onMemo(p) }, onDeleteMemo = { onDeleteMemo(p, it) }, onOpenShot = onOpenShot)
 
             Spacer(Modifier.height(18.dp))
             Button({ onNote(p, null) }, shape = pillShape(),

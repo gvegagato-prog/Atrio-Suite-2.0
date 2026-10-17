@@ -57,8 +57,8 @@ function pruneTombs(t) {
   return t;
 }
 
-// Apuntes rápidos y partes jugadas se suman de las dos versiones de una ficha (el móvil y el PC pueden
-// añadirlos a la vez); un apunte borrado queda marcado («del») para que no reviva.
+// Los apuntes rápidos se suman de las dos versiones de una ficha (el móvil y el PC pueden añadirlos a la
+// vez); un apunte borrado queda marcado («del») para que no reviva.
 function unionBy(x, y, key, better) {
   if (!Array.isArray(x) && !Array.isArray(y)) return undefined;
   const m = new Map();
@@ -72,11 +72,10 @@ function unionBy(x, y, key, better) {
 }
 function unite(win, lose) {
   const memos = unionBy(win.memos, lose.memos, 't', (p, q) => (q.del && !p.del ? q : (Number(q.u) || 0) > (Number(p.u) || 0) ? q : p));
-  const segs = unionBy(win.segs, lose.segs, 'id', (p) => p);
   const out = { ...win };
   if (memos) out.memos = memos.sort((p, q) => p.t - q.t);
-  if (segs) out.segs = segs.sort((p, q) => p.s - q.s);
-  return out;
+  // Las partidas para valorar ya no existen: lo que quede de ellas de versiones antiguas se descarta
+  return sinPartidas(out);
 }
 
 function merge(a, b) {
@@ -355,9 +354,16 @@ const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60
 const gk = (kind) => (kind === 0 ? 'games' : kind === 1 ? 'books' : `items_${kind}`);
 const pk = (kind) => (kind === 0 ? 'plays' : kind === 1 ? 'bplays' : `iplays_${kind}`);
 
+// Lo que quede de las partidas para valorar (versiones antiguas) no se vuelve a guardar
+function sinPartidas(item) {
+  if (!item || (!('segs' in item) && !('noParts' in item) && !(item.entries || []).some((e) => e && ('seg' in e || 'part' in e)))) return item;
+  const { segs, noParts, ...r } = item;
+  if (Array.isArray(r.entries)) r.entries = r.entries.map((e) => { if (!e || (!('seg' in e) && !('part' in e))) return e; const { seg, part, ...x } = e; return x; });
+  return r;
+}
 function put(d, list, item) {
   const now = Date.now();
-  item = { ...item, updated: now };
+  item = { ...sinPartidas(item), updated: now };
   d[list] = (d[list] || []).filter((o) => Number(o.id) !== Number(item.id)).concat(item);
   delete d.tombs[`${list}:${item.id}`];
 }
@@ -409,14 +415,11 @@ function edit(op) {
       if (op.scores) Object.assign(g, op.scores);
       put(d, gk(kind), g);
       drop(d, pk(kind), p.id);
-    } else if (op.op === 'addSeg') {
-      // Una parte jugada (sesión de Atrio, del temporizador del móvil o añadida a mano) para valorarla después
+    } else if (op.op === 'addMin') {
+      // Lo jugado en el PC al cerrar el juego: se suma a las horas de la ficha
       const p = (d[pk(kind)] || []).find((o) => Number(o.id) === Number(op.id));
       if (!p) throw new Fail('No encuentro esa ficha.');
-      const segs = [...(p.segs || [])];
-      if (segs.some((x) => x && x.id === op.seg.id)) return false;
-      segs.push(op.seg);
-      put(d, pk(kind), { ...p, segs: segs.slice(-200), minutes: (Number(p.minutes) || 0) + (Number(op.seg.min) || 0) });
+      put(d, pk(kind), { ...p, minutes: (Number(p.minutes) || 0) + Math.max(0, Math.round(Number(op.min) || 0)) });
     } else if (op.op === 'memo') {
       // Apunte rápido (texto, y si quieres una captura) mientras juegas
       const p = (d[pk(kind)] || []).find((o) => Number(o.id) === Number(op.id));
@@ -463,7 +466,7 @@ function autoPlay(base) {
       put(d, 'plays', {
         id, name: base.name, cover: base.cover || '', hero: base.hero || '', logo: base.logo || '', status: 1, entries: [],
         chapter: 0, every: 3, start: today(), end: 0, creator: '', platform: 'PC', pages: 0, minutes: Math.round(base.minutes || 0),
-        ttbMain: 0, ttbExtra: 0, ttbFull: 0, ttbSrc: '', parts: [], segs: [], memos: [],
+        ttbMain: 0, ttbExtra: 0, ttbFull: 0, ttbSrc: '', parts: [], memos: [],
       });
       what = 'nuevo';
     }

@@ -405,7 +405,7 @@
       } else {
         base = { id: x.id, name: x.titulo, cover: x.portada, creator: await RV.red.director(x.id).catch(() => '') };
       }
-      const item = D.completarFicha({ ...base, status: 0, entries: [], memos: [], segs: [] });
+      const item = D.completarFicha({ ...base, status: 0, entries: [], memos: [] });
       if (await RV.editar({ op: 'savePlay', kind: k.id, item }, `${item.name}, a tu lista`)) s.anadidos.add(clave);
     } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
     RV.refrescar();

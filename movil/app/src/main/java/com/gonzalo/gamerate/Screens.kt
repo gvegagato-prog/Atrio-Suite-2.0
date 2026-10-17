@@ -152,7 +152,7 @@ fun statusOrder(status: Int): Int = when (status) {
 
 @Composable
 fun PlayingHome(
-    plays: List<Play>, kind: Kind, sessId: Long, onMenu: () -> Unit, onAdd: (() -> Unit)?, partner: PartnerSide?,
+    plays: List<Play>, kind: Kind, onMenu: () -> Unit, onAdd: (() -> Unit)?, partner: PartnerSide?,
     onStartPlay: (Play) -> Unit, onOpen: (Play) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
@@ -211,13 +211,6 @@ fun PlayingHome(
                         front = {
                             FormTile(p.cover, p.name, "$st · ${p.entries.size} ${if (p.entries.size == 1) "apunte" else "apuntes"}$extra",
                                 alpha = if (p.status == 2) 0.55f else 1f, dot = bc) {
-                                    if (sessId == p.id) {
-                                        Text(
-                                            "En sesión", color = Crudo, fontSize = 11.sp, fontWeight = FontWeight.Medium,
-                                            modifier = Modifier.align(Alignment.BottomCenter).padding(10.dp)
-                                                .background(Charcoal, pillShape()).padding(horizontal = 10.dp, vertical = 3.dp)
-                                        )
-                                    }
                                     val r = partner?.reactsToMe?.get(p.id)
                                     if (r != null) {
                                         Box(

@@ -58,7 +58,6 @@
     const parts = item.parts || [];
     if (parts.length) add('Capítulos hechos', `${parts.filter((x) => x && (x.d || x.done)).length} de ${parts.length}`);
     if (t === 'p') { const pct = D.porcentaje(item); if (pct !== null) add('Hecho', `${pct} %`); }
-    if (t === 'p' && item.noParts) add('Valorar por partes', 'Apagado');
     return ul.children.length ? ul : RV.vacio('Sin datos.');
   }
 
@@ -89,19 +88,12 @@
       D.activoPc(pcg.key) ? h('p.ante', 'Abierto ahora mismo') : h('button.jugar', { type: 'button', onclick: () => RV.jugar(pcg) }, 'Jugar en el PC →'))];
   }
 
-  // Apuntes con nota (y, en videojuegos, las partidas que faltan por valorar, arriba y en el acento)
+  // Apuntes con nota
   function apuntes(kind, item) {
     const ul = h('ul.apuntes.altos');
-    const pend = kind.isGame ? D.sinValorar(item).sort((a, b) => num(b.e) - num(a.e)) : [];
-    for (const s of pend) {
-      ul.append(h('li.pendiente', h('button.ap', { type: 'button', onclick: () => F.apuntar(kind, item, { seg: s }) },
-        h('span', h('span.cuando', `${D.etiquetaParte(s)} · ${RV.fmtMomento(num(s.e))}`),
-          h('span.texto', { style: { display: 'block' } }, `${num(s.min) > 0 ? RV.horas(s.min) : 'Menos de un minuto'} jugando. Falta ponerle nota.`)),
-        h('span.valorar', 'Valorar →'))));
-    }
     const es = [...(item.entries || [])].sort((a, b) => num(b.time) - num(a.time));
     for (const e of es) {
-      const extra = e.seg ? ' · partida' : e.part ? ` · ${e.part}` : kind.isBook && num(e.chapter) > 0 ? ` · capítulo ${e.chapter}` : '';
+      const extra = kind.isBook && num(e.chapter) > 0 ? ` · capítulo ${e.chapter}` : '';
       ul.append(h('li', h('button.ap', { type: 'button', onclick: () => F.apuntar(kind, item, { entry: e }) },
         h('span', h('span.cuando', `${RV.fmtMomento(num(e.time))}${extra}`),
           e.note && e.note.trim() ? h('span.texto', { style: { display: 'block' } }, e.note.trim()) : h('span.cursiva', { style: { display: 'block' } }, 'Solo notas, sin texto.')),
@@ -120,28 +112,6 @@
         h('span', h('span.cuando', `${RV.fmtMomento(num(m.t))}${m.sh ? ' · con captura' : ''}`),
           m.x && m.x.trim() ? h('span.texto', { style: { display: 'block' } }, m.x.trim()) : h('span.cursiva', { style: { display: 'block' } }, 'Sin texto.')),
         h('span'))));
-    }
-    return ul;
-  }
-
-  function partes(kind, item) {
-    const segs = [...(item.segs || [])].filter(Boolean).sort((a, b) => num(b.s) - num(a.s));
-    if (!segs.length) return RV.vacio('Sin partes jugadas. Atrio guarda cada partida al cerrar el juego.');
-    const hechos = new Set((item.entries || []).map((e) => e.seg).filter(Boolean));
-    const ul = h('ul.apuntes.altos');
-    for (const s of segs) {
-      const valorada = hechos.has(s.id);
-      const sinNota = s.q || item.noParts;
-      const estado = valorada ? 'Valorada' : sinNota ? 'Sin nota' : 'Por valorar →';
-      const li = h(`li${!valorada && !sinNota ? '.pendiente' : ''}`, h('button.ap', {
-        type: 'button',
-        onclick: () => {
-          if (valorada) { const e = (item.entries || []).find((x) => x.seg === s.id); if (e) F.apuntar(kind, item, { entry: e }); } else if (!sinNota) F.apuntar(kind, item, { seg: s });
-        },
-      }, h('span', h('span.cuando', `${RV.fmtMomento(num(s.s))} · ${D.etiquetaParte(s)}`),
-        h('span.texto', { style: { display: 'block' } }, num(s.min) > 0 ? RV.horas(s.min) : 'Menos de un minuto')),
-      h(valorada || sinNota ? 'span.versal' : 'span.valorar', estado)));
-      ul.append(li);
     }
     return ul;
   }
@@ -251,7 +221,6 @@
       barra.append(h('span.sep'),
         h('button.enlace', { type: 'button', onclick: () => F.apuntar(kind, item) }, 'Apuntar →'),
         h('button.enlace', { type: 'button', onclick: () => F.rapido(kind, item) }, 'Apunte rápido +'));
-      if (kind.isGame) barra.append(h('button.enlace', { type: 'button', onclick: () => F.parte(kind, item) }, 'Añadir parte +'));
       barra.append(h('span.hueco'), h('button.enlace.acento', { type: 'button', onclick: () => F.terminar(kind, item) }, 'Terminar y valorar →'));
     } else {
       barra.append(
@@ -285,15 +254,13 @@
       const nota = b ? bloqueNota(kind, b, `Media de ${RV.plural((item.entries || []).length, 'apunte', 'apuntes')}`)
         : [RV.vacio('Aún sin nota: apunta algo y aquí saldrá la media.')];
       const nAp = (item.entries || []).length;
-      const pend = kind.isGame ? D.sinValorar(item).length : 0;
       cas.append(fila([
         casilla('Nota', { texto: 'Apuntar', fn: () => F.apuntar(kind, item) }, nota),
-        casilla(`Apuntes${nAp ? ` · ${nAp}` : ''}${pend ? ` · ${pend} por valorar` : ''}`, { texto: '+ Apuntar', fn: () => F.apuntar(kind, item) }, apuntes(kind, item)),
+        casilla(`Apuntes${nAp ? ` · ${nAp}` : ''}`, { texto: '+ Apuntar', fn: () => F.apuntar(kind, item) }, apuntes(kind, item)),
       ], [4, 8]));
       if (kind.isGame) {
         cas.append(fila([
           casilla('Apuntes rápidos', { texto: '+ Añadir', fn: () => F.rapido(kind, item) }, rapidos(kind, item)),
-          casilla('Partes', { texto: '+ Añadir', fn: () => F.parte(kind, item) }, partes(kind, item)),
         ]));
         cas.append(fila([
           casilla('Datos', { texto: 'Editar', fn: () => F.datos(kind, item, t) }, datos(kind, item, t)),
@@ -313,7 +280,7 @@
   };
 
   // ---------------------------------------------------------------- Acciones
-  // Apuntar: un deslizador por criterio y el texto. opts.entry: editar uno; opts.seg: valorar una partida
+  // Apuntar: un deslizador por criterio y el texto. opts.entry: editar uno
   F.apuntar = (kind, play0, opts = {}) => {
     const play = fresca(kind, 'p', play0);
     const entry = opts.entry || null;
@@ -327,15 +294,11 @@
     }
     const nota = RV.areaTexto(entry ? entry.note : '', { placeholder: 'Lo que llevas, lo que te está gustando o no…', rows: '5' });
     const capitulo = kind.isBook ? RV.entrada(String(entry ? num(entry.chapter) || '' : num(play.chapter) || ''), { inputmode: 'numeric', placeholder: 'Capítulo' }) : null;
-    const s = opts.seg;
     const guardar = async (d) => {
       const cur = fresca(kind, 'p', play);
       const list = [...(cur.entries || [])];
       const cap = capitulo ? Math.max(0, parseInt(capitulo.value, 10) || 0) : (entry ? num(entry.chapter) : num(cur.chapter));
       const ne = { time: entry ? num(entry.time) : Date.now(), ...v, note: nota.value.trim(), chapter: cap };
-      const segId = entry ? entry.seg : s ? s.id : '';
-      if (segId) ne.seg = segId;
-      if (entry && entry.part) ne.part = entry.part;
       const i = entry ? list.findIndex((x) => num(x.time) === num(entry.time)) : -1;
       if (i >= 0) list[i] = ne; else list.push(ne);
       const next = { ...cur, entries: list };
@@ -351,10 +314,9 @@
       }),
     } : null;
     RV.dialogo({
-      ante: s ? `Valorar la partida · ${D.etiquetaParte(s)}` : entry ? `Apunte · ${RV.fmtMomento(num(entry.time))}` : 'Apuntar',
+      ante: entry ? `Apunte · ${RV.fmtMomento(num(entry.time))}` : 'Apuntar',
       titulo: play.name, ancho: true,
       cuerpo: [
-        s ? h('p.versal', `${RV.fmtMomento(num(s.s))} · ${num(s.min) > 0 ? RV.horas(s.min) : 'menos de un minuto'}`) : null,
         h('div.criterios', sliders),
         RV.campo('Nota', nota),
         capitulo ? RV.campo('Capítulo', capitulo, 'Por dónde vas (opcional).') : null,
@@ -380,33 +342,6 @@
       ante: memo ? `Apunte rápido · ${RV.fmtMomento(num(memo.t))}` : 'Apunte rápido', titulo: play.name,
       cuerpo: [RV.campo('Texto', area), memo && memo.sh ? h('p.versal', 'Lleva una captura: la ves en el móvil y en Imágenes/Atrio.') : null],
       acciones: [borrar, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: 'Guardar', principal: true, fn: guardar }],
-    });
-  };
-
-  // Añadir una parte a mano (duración y día) y valorarla al momento, como en el móvil
-  F.parte = (kind, play) => {
-    const mins = RV.entrada('60', { inputmode: 'numeric', placeholder: 'Minutos' });
-    const dia = RV.entrada(RV.isoDia(RV.hoy()), { type: 'date' });
-    const msg = h('p.mensaje');
-    const guardar = async (d) => {
-      const min = Math.round(parseFloat(String(mins.value).replace(',', '.')) || 0);
-      if (min <= 0) { msg.textContent = 'Pon cuántos minutos has jugado.'; return; }
-      const dd = RV.deIso(dia.value) || RV.hoy();
-      // Acaba a la hora de ahora si es hoy; si no, a las 22:00 de ese día (hora local)
-      const fecha = new Date(dd * RV.DIA);
-      const local = new Date(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate(), 22, 0, 0);
-      const e = dd === RV.hoy() ? Date.now() : local.getTime();
-      const seg = { id: `m${Date.now()}`, s: e - min * 60000, e, min, src: 'manual' };
-      if (await RV.editar({ op: 'addSeg', kind: kind.id, id: play.id, seg }, 'Parte añadida')) {
-        d.cerrar();
-        F.apuntar(kind, fresca(kind, 'p', play), { seg });
-      }
-    };
-    RV.dialogo({
-      ante: 'Añadir parte', titulo: play.name,
-      cuerpo: [h('div.dos-campos', RV.campo('Minutos jugados', mins), RV.campo('Día', dia)), msg,
-        h('p.versal', 'Se suma a tus horas y después le pones nota.')],
-      acciones: ['hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: 'Añadir y valorar →', principal: true, fn: guardar }],
     });
   };
 
@@ -493,7 +428,7 @@
     const p = D.buscar(kind, 'p', game.id);
     const item = p ? { ...p, status: 1, start: num(p.start) || RV.hoy() } : {
       id: game.id, name: game.name, cover: game.cover || '', hero: game.hero || '', logo: game.logo || '', creator: game.creator || '',
-      platform: game.platform || '', pages: num(game.pages), status: 1, start: RV.hoy(), entries: [], memos: [], segs: [],
+      platform: game.platform || '', pages: num(game.pages), status: 1, start: RV.hoy(), entries: [], memos: [],
       ttbMain: num(game.ttbMain), ttbExtra: num(game.ttbExtra), ttbFull: num(game.ttbFull), ttbSrc: game.ttbSrc || '',
     };
     if (await RV.editar({ op: 'savePlay', kind: kind.id, item: D.completarFicha(item) }, `${game.name}: ${kind.statuses[1].toLowerCase()} otra vez`)) {

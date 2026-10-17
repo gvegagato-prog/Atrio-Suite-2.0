@@ -16,57 +16,6 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 
-object Reminders {
-    fun schedule(ctx: Context, hours: Int) {
-        val wm = WorkManager.getInstance(ctx)
-        wm.cancelUniqueWork("session")
-        val req = PeriodicWorkRequestBuilder<ReminderWorker>(hours.toLong(), TimeUnit.HOURS)
-            .setInitialDelay(hours.toLong(), TimeUnit.HOURS)
-            .build()
-        wm.enqueueUniquePeriodicWork("session", ExistingPeriodicWorkPolicy.KEEP, req)
-    }
-
-    fun cancel(ctx: Context) {
-        WorkManager.getInstance(ctx).cancelUniqueWork("session")
-    }
-}
-
-class ReminderWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
-    override fun doWork(): Result {
-        val app = applicationContext
-        val store = Store(app)
-        val id = store.sessionId
-        if (id == 0L) return Result.success()
-        val play = store.loadPlays().find { it.id == id } ?: return Result.success()
-
-        // Evita avisar de inmediato si el sistema lanza la primera ejecución antes de tiempo.
-        val elapsed = System.currentTimeMillis() - store.sessionStart
-        if (elapsed < store.sessionHours * 3_600_000L - 10 * 60_000L) return Result.success()
-
-        val nm = app.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
-            NotificationChannel("session", "Sesiones de juego", NotificationManager.IMPORTANCE_DEFAULT)
-        )
-        val intent = Intent(app, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("play_id", play.id)
-        }
-        val pi = PendingIntent.getActivity(
-            app, play.id.toInt(), intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val h = elapsed / 3_600_000L
-        val n = Notification.Builder(app, "session")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(play.name)
-            .setContentText("Llevas unas $h h de sesión. Apunta tus notas y anotaciones.")
-            .setContentIntent(pi)
-            .setAutoCancel(true)
-            .build()
-        nm.notify(1001, n)
-        return Result.success()
-    }
-}
 
 /** Comprueba cada media hora (aprox.) si tu pareja tiene novedades. */
 object PartnerWatch {
@@ -143,49 +92,16 @@ class CloudWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
 }
 
 /**
- * La suite: cada cuarto de hora (lo mínimo que deja Android) mira si Atrio ha apuntado partidas nuevas
- * y avisa para valorarlas. Con la app abierta llegan al momento, sin esperar.
+ * Lo que quedó de versiones antiguas (el aviso de las sesiones y el de las partidas para valorar, ya quitados):
+ * sus tareas programadas y sus canales de notificación se borran del móvil.
  */
-object SuiteWatch {
-    fun schedule(ctx: Context) {
-        val req = PeriodicWorkRequestBuilder<SuiteWorker>(15, TimeUnit.MINUTES)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .build()
-        WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("suite", ExistingPeriodicWorkPolicy.KEEP, req)
-    }
-}
-
-class SuiteWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
-    override suspend fun doWork(): Result {
-        val app = applicationContext
-        val store = Store(app)
-        if (!store.paired || !store.notifySegs) return Result.success()
-        try { Couple.syncOwn(store) } catch (e: Exception) { return Result.retry() }
-        val seen = store.segsNotified
-        val skip = store.segsSkipped
-        val now = System.currentTimeMillis()
-        val fresh = store.loadPlays(0).flatMap { p -> p.unrated().map { p to it } }
-            .filter { (_, s) -> s.src == "atrio" && s.id !in seen && s.id !in skip && now - s.e < 12 * 3_600_000L }
-        if (fresh.isEmpty()) return Result.success()
-        store.segsNotified = seen + fresh.map { it.second.id }
-        val nm = app.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel("partes", "Partidas para valorar", NotificationManager.IMPORTANCE_DEFAULT))
-        for ((p, s) in fresh.takeLast(3)) {
-            val intent = Intent(app, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("rate", "${p.id}:${s.id}")
-            }
-            val code = (s.id.hashCode() and 0x7fffffff) % 100000 + 3000
-            val pi = PendingIntent.getActivity(app, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            val n = Notification.Builder(app, "partes")
-                .setSmallIcon(android.R.drawable.star_on)
-                .setContentTitle(p.name)
-                .setContentText("Has jugado ${hoursText(s.min)}${if (s.pc.isNotBlank()) " en ${s.pc}" else ""}. ¿Qué tal esa partida?")
-                .setContentIntent(pi)
-                .setAutoCancel(true)
-                .build()
-            nm.notify(code, n)
-        }
-        return Result.success()
+object Limpieza {
+    fun antiguas(ctx: Context) {
+        val wm = WorkManager.getInstance(ctx)
+        wm.cancelUniqueWork("session")
+        wm.cancelUniqueWork("suite")
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.deleteNotificationChannel("session")
+        nm.deleteNotificationChannel("partes")
     }
 }

@@ -29,7 +29,6 @@ const HOME = path.join(OUT, 'atrio-home');
     customGames: [{ id: 'prueba', name: 'Juego de Prueba', exec: game, runner: 'native' }],
     overrides: { 'custom:prueba': { sgdbId: 4242 } },
     behavior: { autostart: 'off', fullscreen: false, onLaunch: 'none' },
-    suite: { segMin: -1 },
   }));
   const env = { ...process.env, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '5000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'WAYLAND_DISPLAY', 'XDG_CURRENT_DESKTOP']) delete env[k];

@@ -50,7 +50,7 @@ sealed interface Screen {
     class Edit(val game: Game, val isNew: Boolean, val editing: Boolean = false) : Screen
     /** editing: se abre ya en modo edición (recién creada, o al volver de cambiar la portada). */
     class PlayDetail(val play: Play, val editing: Boolean = false) : Screen
-    class Note(val play: Play, val entry: Entry?, val seg: Seg? = null, val part: String = "") : Screen
+    class Note(val play: Play, val entry: Entry?) : Screen
     /** Mando a distancia del PC (la suite con Atrio). */
     object Suite : Screen
     /** Una captura a pantalla completa; [back] es adonde se vuelve. */
@@ -71,8 +71,6 @@ class MainActivity : ComponentActivity() {
     private var openPartner by mutableStateOf(false)
     /** Acceso directo del icono: "add_game", "add_book", "next_game", "next_book", "stats_game", "stats_book". */
     private var openGo by mutableStateOf("")
-    /** Aviso de «partida terminada en el PC»: valorar esa parte ("idDelJuego:idDeLaParte"). */
-    private var openRate by mutableStateOf("")
     private var shareUrl by mutableStateOf("")
     private var shareTitle by mutableStateOf("")
 
@@ -82,7 +80,6 @@ class MainActivity : ComponentActivity() {
         openId = i?.getLongExtra("play_id", 0L) ?: 0L
         openPartner = i?.getBooleanExtra("partner", false) ?: false
         openGo = i?.getStringExtra("go") ?: ""
-        openRate = i?.getStringExtra("rate") ?: ""
         // Compartir → Atrio desde el navegador: una web para guardarla como guía de un juego del PC
         if (i?.action == Intent.ACTION_SEND) {
             val txt = i.getStringExtra(Intent.EXTRA_TEXT) ?: ""
@@ -101,6 +98,7 @@ class MainActivity : ComponentActivity() {
         Mode.themeMode = store.themeMode
         Skin.load(this)
         store.forgetGemini()
+        Limpieza.antiguas(this)
         // Solo para la prueba automática en el emulador: Firebase de mentira en el ordenador que lo ejecuta (10.0.2.2).
         intent?.getStringExtra("fbtest")?.takeIf { it.startsWith("http://10.0.2.2:") }?.let {
             store.authBase = it
@@ -184,7 +182,7 @@ class MainActivity : ComponentActivity() {
                     androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(dens.density, dens.fontScale * Skin.textScale)
                 ) {
                     MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
-                        App(store, openId, openPartner, openGo, openRate, shareUrl, shareTitle, { shareUrl = "" }) { openId = 0L; openPartner = false; openGo = ""; openRate = "" }
+                        App(store, openId, openPartner, openGo, shareUrl, shareTitle, { shareUrl = "" }) { openId = 0L; openPartner = false; openGo = "" }
                         // Fondo propio de la forma (líneas de TV, rejilla, grano, trama): no se puede tocar
                         FormOverlay()
                         // Ajustes → Estilo: encima de todo

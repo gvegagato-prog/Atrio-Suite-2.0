@@ -1,7 +1,7 @@
 'use strict';
 /* global A, document, window */
 // La suite en Atrio: el móvil (Ronrón) conectado en tiempo real. Indicador en la barra, panel con
-// dispositivos y capturas, destello al capturar, partes jugadas para valorar y ajustes de lo que puede hacer el móvil.
+// dispositivos y capturas, destello al capturar y ajustes de lo que puede hacer el móvil.
 (function () {
   const h = A.h;
   const S = {};
@@ -129,11 +129,7 @@
       h('h3', 'Qué se captura'),
       A.dialogs.seg([['juego', 'La pantalla donde juegas'], ['todas', 'Todas las pantallas']], c.shotScope || 'juego', (v) => set({ shotScope: v })),
       tg('Enviarlas al móvil', 'shotUpload', 'Si no, solo se guardan en este PC (Imágenes/Atrio)'),
-      methods,
-      h('h3', 'Partes jugadas'),
-      tg('Guardar cada partida para valorarla', 'autoSeg', 'Al cerrar un juego que tienes en «Jugando»'),
-      A.dialogs.seg([['5', '5 min o más'], ['15', '15 min o más'], ['30', '30 min o más']], String(c.segMin || 5), (v) => set({ segMin: Number(v) })),
-      h('p.note', 'Con Atrio abierto en el móvil, las partes llegan al móvil al momento; con la app cerrada, te avisa en unos minutos (Android revisa cada cuarto de hora). También puedes valorarlas aquí, en la ficha del juego (pestaña Valorados → En curso).'));
+      methods);
   };
 
   // ---------- Eventos del proceso principal ----------
@@ -142,9 +138,6 @@
   A.api.on('shot-taken', (s) => {
     if (s.by) A.app.toast(`📷 Captura para ${s.by} · ${s.w}×${s.h}`);
     if (A.gamepage.isOpen()) A.gamepage.refresh('play');
-  });
-  A.api.on('seg', (x) => {
-    A.app.toast(`Partida de ${x.name} guardada (${x.min} min): valórala en el móvil o en su ficha`);
   });
   A.api.on('remote', (r) => {
     if (r.op === 'page' && r.key && A.app.game(r.key)) { A.dialogs.closeAll(); A.gamepage.open(r.key); }

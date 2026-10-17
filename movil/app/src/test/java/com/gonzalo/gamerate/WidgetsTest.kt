@@ -72,8 +72,7 @@ class WidgetsTest {
         ), 0)
         s.savePlays(listOf(
             Play(201, "Deadlock", cover("Dead", 0xFFF7971E.toInt(), 0xFF7F3800.toInt()), heroes.getOrNull(1)?.let { "file://${it.absolutePath}" } ?: "", 1, emptyList(),
-                creator = "Valve", minutes = 3120, start = mes + 1, updated = System.currentTimeMillis(),
-                segs = listOf(Seg("a", System.currentTimeMillis() - 86_400_000, System.currentTimeMillis(), 600, "atrio"))),
+                creator = "Valve", minutes = 3120, start = mes + 1, updated = System.currentTimeMillis()),
             Play(202, "Elden Ring Nightreign", cover("Elden", 0xFFC9D6FF.toInt(), 0xFF6A5B3B.toInt()), "", 1, emptyList(), creator = "FromSoftware",
                 minutes = 840, ttbMain = 2400, start = mes + 5, updated = System.currentTimeMillis() - 3600_000)
         ), 0)

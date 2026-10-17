@@ -45,7 +45,7 @@ private class Cell(val id: Long, val name: String, val cover: String, val sub: S
 
 @Composable
 fun LibraryScreen(
-    kind: Kind, games: List<Game>, plays: List<Play>, sessId: Long, partner: PartnerSide?, readOnly: Boolean,
+    kind: Kind, games: List<Game>, plays: List<Play>, partner: PartnerSide?, readOnly: Boolean,
     segment: Int, onSegment: (Int) -> Unit,
     onOpenPlay: (Play) -> Unit, onOpenGame: (Game) -> Unit,
     onAdd: ((Boolean) -> Unit)?, onStats: () -> Unit, onDiscover: (() -> Unit)?, onWheel: (() -> Unit)?,
@@ -60,7 +60,7 @@ fun LibraryScreen(
     var favOnly by remember(kind.id) { mutableStateOf(false) }
     val labels = listOf(kind.statuses[1], kind.statuses[0], kind.doneWord, kind.statuses[2])
     val counts = listOf(plays.count { it.status == 1 }, plays.count { it.status == 0 }, games.size, plays.count { it.status == 2 })
-    val cells: List<Cell> = remember(kind.id, games, plays, segment, query, sort, favOnly, sessId) {
+    val cells: List<Cell> = remember(kind.id, games, plays, segment, query, sort, favOnly) {
         when (segment) {
             2 -> {
                 val f = games.filter { (!favOnly || it.fav) && libMatches(query, it.name, it.creator, it.platform) }
@@ -73,10 +73,9 @@ fun LibraryScreen(
             else -> {
                 val st = when (segment) { 0 -> 1; 1 -> 0; else -> 2 }
                 plays.filter { it.status == st && libMatches(query, it.name, it.creator, it.platform) }
-                    .sortedWith(compareByDescending<Play> { it.id == sessId }.thenByDescending { it.activity })
+                    .sortedByDescending { it.activity }
                     .map { p ->
                         val extra = when {
-                            p.id == sessId -> "En sesión ahora"
                             kind.isBook && p.chapter > 0 -> "Capítulo ${p.chapter}"
                             !kind.isBook && p.minutes > 0 -> hoursText(p.minutes)
                             else -> p.creator
@@ -89,7 +88,7 @@ fun LibraryScreen(
     val open: (Cell) -> Unit = { c -> if (c.play != null) onOpenPlay(c.play) else if (c.game != null) onOpenGame(c.game) }
     val lib = LibUi(
         kind, labels, counts, cells, segment, onSegment, query, { query = it }, searching, { searching = it }, sort, { sort = it },
-        favOnly, { favOnly = it }, sessId, readOnly, open, onAdd, onStats, onDiscover, onWheel, titleSwitch, badgeFor, onBack
+        favOnly, { favOnly = it }, readOnly, open, onAdd, onStats, onDiscover, onWheel, titleSwitch, badgeFor, onBack
     )
     if (Skin.revista) { RevistaLibrary(lib); return }
     val grid = rememberLazyGridState()
@@ -141,7 +140,6 @@ fun LibraryScreen(
                         dim = segment == 3,
                         badge = when {
                             c.game != null -> ({ ScoreBadge(c.game.general, ColGeneral) })
-                            c.play?.id == sessId && sessId != 0L -> ({ LiveDot() })
                             else -> null
                         },
                         badgeStart = badgeFor?.let { b -> { b(c.id, c.name) } },
@@ -209,7 +207,7 @@ private class LibUi(
     val segment: Int, val onSegment: (Int) -> Unit,
     val query: String, val setQuery: (String) -> Unit, val searching: Boolean, val setSearching: (Boolean) -> Unit,
     val sort: Int, val setSort: (Int) -> Unit, val favOnly: Boolean, val setFav: (Boolean) -> Unit,
-    val sessId: Long, val readOnly: Boolean, val open: (Cell) -> Unit,
+    val readOnly: Boolean, val open: (Cell) -> Unit,
     val onAdd: ((Boolean) -> Unit)?, val onStats: () -> Unit, val onDiscover: (() -> Unit)?, val onWheel: (() -> Unit)?,
     val titleSwitch: (@Composable () -> Unit)?, val badgeFor: (@Composable BoxScope.(Long, String) -> Unit)?, val onBack: (() -> Unit)?
 )
@@ -265,7 +263,6 @@ private fun RevistaLibrary(l: LibUi) {
                     if (line.isNotBlank()) Text(line.uppercase(), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                     val pct = c.play?.percent()
                     if (pct != null && pct > 0) Text("$pct % HECHO", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                    if (c.play?.id == l.sessId && l.sessId != 0L) Box(Modifier.padding(top = 4.dp)) { LiveDot() }
                     if (l.badgeFor != null) Box(Modifier.padding(top = 4.dp).height(26.dp).width(120.dp)) { l.badgeFor.invoke(this, c.id, c.name) }
                 }
                 if (c.game != null) {

@@ -68,17 +68,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
-private fun current(list: List<Play>, sessId: Long): String? =
-    list.filter { it.status == 1 && it.cover.isNotEmpty() }
-        .maxByOrNull { p -> if (p.id == sessId) Long.MAX_VALUE else p.activity }
-        ?.cover
-
 private fun now() = System.currentTimeMillis()
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun App(
-    store: Store, openId: Long, openPartner: Boolean, openGo: String, openRate: String = "",
+    store: Store, openId: Long, openPartner: Boolean, openGo: String,
     shareUrl: String = "", shareTitle: String = "", onShareHandled: () -> Unit = {}, onOpenHandled: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -95,7 +90,6 @@ fun App(
     var kindEdit by remember { mutableStateOf<Kind?>(null) }
     var kindNew by remember { mutableStateOf(false) }
     var key by remember { mutableStateOf(store.key) }
-    var sessId by remember { mutableStateOf(store.sessionId) }
     var section by remember { mutableStateOf(-1) }
     var tab by remember { mutableStateOf(0) }
     // Atrio 6: destino del dock (0 Inicio, 1 Juegos, 2 Libros, 3 Cine, 4 Diario) y apartado de la biblioteca
@@ -191,7 +185,7 @@ fun App(
         life.lifecycle.addObserver(obs)
         onDispose { life.lifecycle.removeObserver(obs) }
     }
-    LaunchedEffect(store.paired) { if (store.paired) { Suite.start(ctx, store); SuiteWatch.schedule(ctx) } }
+    LaunchedEffect(store.paired) { if (store.paired) Suite.start(ctx, store) }
     LaunchedEffect(Suite.notice) { Suite.notice?.let { say(it); Suite.notice = null } }
 
     // ---- Tu misma cuenta en otro dispositivo: lo que llegue de allí se vuelve a leer aquí ----
@@ -370,42 +364,6 @@ fun App(
         }
     }
 
-    /** Termina la sesión y suma el tiempo (máximo 12 h, por si se te olvidó pararla). */
-    fun stopSession() {
-        val id = store.sessionId
-        if (id != 0L && store.sessionStart > 0L) {
-            val mins = ((now() - store.sessionStart) / 60_000L).toInt().coerceIn(0, 720)
-            if (mins > 0) {
-                // La sesión queda como parte jugada, lista para valorarla
-                // Con «Valorar por partes» apagado se guarda igual (horas), pero sin pedir nota
-                val quiet = plays.find { it.id == id }?.noParts == true
-                val sg = Seg("t${store.sessionStart}", store.sessionStart, now(), mins, "timer", q = quiet)
-                setPlays(GAMES, plays.map { if (it.id == id) it.copy(minutes = it.minutes + mins, segs = it.segs + sg, updated = now()) else it })
-                val pl = plays.find { it.id == id }
-                scope.launch {
-                    if (quiet) { snack.showSnackbar("Sesión terminada: +${hoursText(mins)}", withDismissAction = true); return@launch }
-                    val r = snack.showSnackbar("Sesión terminada: +${hoursText(mins)}", actionLabel = "Valorar", withDismissAction = true, duration = SnackbarDuration.Long)
-                    if (r == SnackbarResult.ActionPerformed && pl != null) { section = 0; screen = Screen.Note(pl, null, sg) }
-                }
-            }
-        }
-        store.sessionId = 0L
-        sessId = 0L
-        Reminders.cancel(ctx)
-    }
-
-    fun startSession(p: Play, hours: Int) {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) perm.launch(Manifest.permission.POST_NOTIFICATIONS)
-        if (sessId != 0L && sessId != p.id) stopSession()
-        store.sessionId = p.id
-        store.sessionStart = now()
-        store.sessionHours = hours
-        sessId = p.id
-        Reminders.schedule(ctx, hours)
-    }
-
     // ---- Traer de otras apps: Goodreads y Steam ----
     var importMsg by remember { mutableStateOf("") }
     var importing by remember { mutableStateOf(false) }
@@ -576,7 +534,6 @@ fun App(
         val k = kind
         val np = p.copy(updated = now())
         setPlays(k, playsOf(k).filter { it.id != p.id } + np)
-        if (!k.isBook && p.status != 1 && sessId == p.id) stopSession()
         if (!k.isBook && p.creator.isBlank()) autoStudio(k, p.id, p.name)
     }
 
@@ -624,7 +581,6 @@ fun App(
 
     fun deletePlay(p: Play) {
         val k = kind
-        if (k.isGame && sessId == p.id) stopSession()
         val old = playsOf(k).find { it.id == p.id } ?: p
         setPlays(k, playsOf(k).filter { it.id != p.id })
         undoable("${p.name} eliminado") { setPlays(k, playsOf(k).filter { it.id != old.id } + old) }
@@ -666,10 +622,9 @@ fun App(
         }
     }
 
-    // ---- La suite: apuntes rápidos, partes jugadas y capturas ----
+    // ---- La suite: apuntes rápidos y capturas ----
     var shooting by remember { mutableStateOf(false) }
     var memoFor by remember { mutableStateOf<Pair<Play, Shot?>?>(null) }
-    var segFor by remember { mutableStateOf<Play?>(null) }
     var guideSheet by remember { mutableStateOf<PcGame?>(null) }
     // Las guías se abren dentro de la app, encima de lo que estés viendo
     SideEffect { Guides.opener = { g -> guideSheet = null; WebActivity.open(ctx, g) } }
@@ -695,7 +650,6 @@ fun App(
             }
         }
     }
-    var skipped by remember { mutableStateOf(store.segsSkipped) }
 
     /** La ficha en curso de un juego que se está jugando en el PC (si no la tienes, se crea en «Jugando»). */
     fun playFor(g: LiveGame): Play? {
@@ -748,27 +702,6 @@ fun App(
         }
     }
 
-    fun addSeg(p: Play, sg: Seg) {
-        val k = kind
-        val cur = playsOf(k).find { it.id == p.id } ?: p
-        val np = cur.copy(segs = cur.segs + sg, minutes = cur.minutes + if (k.isGame) sg.min else 0, updated = now())
-        setPlays(k, playsOf(k).filter { it.id != p.id } + np)
-        screen = Screen.Note(np, null, sg)
-    }
-
-    /** Partes jugadas sin valorar de todo lo que tienes en curso (lo más reciente primero). */
-    val pendingSegs: List<Pair<Play, Seg>> = (listOf(GAMES, BOOKS) + kinds).flatMap { k -> playsOf(k).filter { it.status != 2 }.flatMap { p -> p.unrated().map { p to it } } }
-        .filter { it.second.id !in skipped && now() - it.second.e < 30L * 86_400_000L }
-        .sortedByDescending { it.second.e }
-
-    LaunchedEffect(openRate) {
-        if (openRate.isNotEmpty()) {
-            val pid = openRate.substringBefore(":").toLongOrNull()
-            val sid = openRate.substringAfter(":")
-            plays.find { it.id == pid }?.let { p -> p.segs.find { it.id == sid }?.let { sg -> section = 0; screen = Screen.Note(p, null, sg) } }
-            onOpenHandled()
-        }
-    }
     // Una captura recién llegada se puede abrir desde el aviso
     LaunchedEffect(Suite.arrived) {
         val a = Suite.arrived ?: return@LaunchedEffect
@@ -1042,7 +975,7 @@ fun App(
                 fun Library(k: Kind, onBack: (() -> Unit)?) {
                     val cine = k.isMovie || k.isTv
                     LibraryScreen(
-                        k, myGames, myPlays, if (pv) 0L else sessId, side, pv, segment, { segment = it },
+                        k, myGames, myPlays, side, pv, segment, { segment = it },
                         onOpenPlay = { openPlay(k, it) },
                         onOpenGame = { screen = if (pv) Screen.PartnerItem(k.id, it.id) else Screen.Edit(it, false) },
                         onAdd = if (pv) null else ({ forPlay -> screen = Screen.Search(forPlay) }),
@@ -1090,7 +1023,7 @@ fun App(
                     section >= 0 && (Skin.shell == 0 || shellLib) -> Library(kind) { section = -1; shellLib = false }
                     else -> {
                         val ongoing = sectionKinds.flatMap { k -> ps(k).filter { it.status == 1 }.map { Ongoing(k, it) } }
-                            .sortedWith(compareByDescending<Ongoing> { !pv && it.kind.isGame && it.play.id == sessId }.thenByDescending { it.play.activity })
+                            .sortedByDescending { it.play.activity }
                             .let { l -> if (pv) l.filter { !Photos.isLocal(it.play.cover) } else l }
                         val collections = sectionKinds.filter { it.custom && !it.isMovie && !it.isTv }.map { k ->
                             val g = gs(k); val pl = ps(k)
@@ -1108,14 +1041,6 @@ fun App(
                                         onGuides = { guideSheet = it }
                                     )
                                     Spacer(Modifier.height(16.dp))
-                                    if (pendingSegs.isNotEmpty()) {
-                                        PendingParts(
-                                            pendingSegs,
-                                            onRate = { p, sg -> section = if (plays.any { it.id == p.id }) 0 else kinds.firstOrNull { k -> playsOf(k).any { it.id == p.id } }?.id ?: 1; screen = Screen.Note(p, null, sg) },
-                                            onDismiss = { _, sg -> skipped = skipped + sg.id; store.segsSkipped = skipped }
-                                        )
-                                        Spacer(Modifier.height(16.dp))
-                                    }
                                     if (Suite.localShots.isNotEmpty() || Suite.downloading.isNotEmpty()) {
                                         ShotStrip(Suite.localShots.take(10), "Últimas capturas") { s -> screen = Screen.ShotView(s, Screen.Home) }
                                         Spacer(Modifier.height(16.dp))
@@ -1123,7 +1048,7 @@ fun App(
                                 } else if (!pv) {
                                     SuiteIntro(
                                         "Tu PC en el móvil",
-                                        "Entra en tu cuenta (Perfil → Cuenta y pareja) y en Atrio del PC con la misma: verás en directo a qué juegas, pedirás capturas a calidad original y valorarás cada partida."
+                                        "Entra en tu cuenta (Perfil → Cuenta y pareja) y en Atrio del PC con la misma: verás en directo a qué juegas, pedirás capturas a calidad original y tus horas del PC llegarán solas."
                                     ) { screen = Screen.Profile }
                                 }
                             }
@@ -1167,7 +1092,7 @@ fun App(
                             name = if (pv) p!!.name else store.myName.ifBlank { "Atrio" },
                             readOnly = pv, partnerName = p?.name,
                             hint = if (!pv && p != null && !store.knowsDoubleTap) "Toca a tu pareja (el gato) para ver lo suyo" else null,
-                            ongoing = ongoing, sessId = if (pv) 0L else sessId,
+                            ongoing = ongoing,
                             collections = collections, recs = pendingRecs, acts = acts,
                             goals = listOf(
                                 Triple(GAMES.title, doneYear(GAMES), if (pv) p!!.goalGames else goalG),
@@ -1414,14 +1339,11 @@ fun App(
                     val live = myPlays.find { it.id == s.play.id } ?: s.play
                     ChameleonEffect(live.cover)
                     PlayDetailScreen(
-                        kind = kind, partner = side, p0 = live, startEditing = s.editing, sessId = sessId, sessHours = store.sessionHours,
-                        sessStart = store.sessionStart,
+                        kind = kind, partner = side, p0 = live, startEditing = s.editing,
                         myReact = reacts[reactKey(kind, s.play.id)],
                         onReact = { e -> react(kind, s.play.id, e) },
                         onChange = { savePlay(it) },
                         onNote = { p, e -> screen = Screen.Note(p, e) },
-                        onStart = { p, h -> startSession(p, h) },
-                        onStop = { stopSession() },
                         onArt = { p, hero ->
                             screen = Screen.Art(Game(p.id, p.name, p.cover, hero = p.hero, creator = p.creator), hero, false, false, p)
                         },
@@ -1436,7 +1358,6 @@ fun App(
                                 ttbMain = p.ttbMain, ttbExtra = p.ttbExtra, ttbFull = p.ttbFull, ttbSrc = p.ttbSrc,
                                 logo = p.logo
                             )
-                            if (!kind.isBook && sessId == p.id) stopSession()
                             val withMins = if (!kind.isBook) (plays.find { it.id == p.id }?.minutes ?: p.minutes) else p.minutes
                             // Si ya lo tenías valorado (lo has rejugado o releído), se conserva lo anterior y se suma lo nuevo.
                             val prev = gamesOf(kind).find { it.id == p.id }
@@ -1462,23 +1383,15 @@ fun App(
                         onDelete = { p -> deletePlay(p); screen = Screen.Home },
                         findTtb = { n -> TimeToBeat.find(n, store) },
                         findEpisodes = if (kind.isTv) ({ id, name -> TvMaze.episodes(id, name) }) else null,
-                        onRateSeg = { p, sg -> screen = Screen.Note(p, null, sg) },
-                        onAddSeg = { p -> segFor = p },
                         onMemo = { p -> memoFor = p to null },
                         onDeleteMemo = { p, m -> deleteMemo(p, m) },
                         onOpenShot = { sh -> screen = Screen.ShotView(sh, Screen.PlayDetail(live)) },
-                        onPartDone = { p, name ->
-                            if (!p.noParts) scope.launch {
-                                val r = snack.showSnackbar("«$name» completado", actionLabel = "Valorar", withDismissAction = true)
-                                if (r == SnackbarResult.ActionPerformed) screen = Screen.Note(myPlays.find { it.id == p.id } ?: p, null, null, name)
-                            }
-                        },
                         onBack = { screen = Screen.Home }
                     )
                 }
 
                 is Screen.Note -> NoteScreen(
-                    play = s.play, entry = s.entry, kind = kind, seg = s.seg, part = s.part,
+                    play = s.play, entry = s.entry, kind = kind,
                     onSave = { e ->
                         // Sobre la versión más reciente (puede haber llegado algo de Atrio mientras escribías)
                         val base = myPlays.find { it.id == s.play.id } ?: s.play
@@ -1602,10 +1515,6 @@ fun App(
                 onSave = { t, w -> memoFor = null; saveMemo(mf.first, t, w, mf.second) },
                 onDismiss = { memoFor = null }
             )
-        }
-        val sf = segFor
-        if (sf != null) {
-            AddSegDialog(kind, onSave = { sg -> segFor = null; addSeg(sf, sg) }, onDismiss = { segFor = null })
         }
 
         if (kindNew || kindEdit != null) {

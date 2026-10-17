@@ -355,9 +355,6 @@
         sub('Qué se captura'), opciones([['juego', 'La pantalla donde juegas'], ['todas', 'Todas las pantallas']], c.shotScope || 'juego', (v) => set({ shotScope: v })),
         si('Enviarlas al móvil', 'shotUpload', 'Si no, solo se guardan en este PC (Imágenes/Atrio)'),
         metodos),
-      bloque('Partes jugadas', 'Cada partida, para valorarla en el móvil o en su ficha.',
-        si('Guardar cada partida para valorarla', 'autoSeg', 'Al cerrar un juego que tienes en «Jugando»'),
-        sub('A partir de'), opciones([['5', '5 min'], ['15', '15 min'], ['30', '30 min']], String(c.segMin || 5), (v) => set({ segMin: Number(v) }))),
     ];
   };
 

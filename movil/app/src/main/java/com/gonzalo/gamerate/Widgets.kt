@@ -788,8 +788,6 @@ object Widgets {
         fun delAno(k: Kind) = d.store.load(k.id).filter { it.end > 0L && LocalDate.ofEpochDay(it.end).year == y }
         val filas = d.kinds.map { k -> Triple(k, delAno(k).size, if (k.id <= 1) d.store.goal(k.id, y) else 0) }
             .filter { it.second > 0 || it.third > 0 || it.first.id <= 1 }
-        val desde = LocalDate.of(y, 1, 1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val minutos = d.store.loadPlays(0).sumOf { p -> p.segs.filter { it.s >= desde }.sumOf { it.min } }
         val ancho = w >= 250f
         val ultimos = if (ancho) d.kinds.flatMap { k -> delAno(k).map { ShellEntry(k, null, it) } }.sortedByDescending { it.game!!.end }.take(3) else emptyList()
         val imgs = imagenes(ctx, ultimos.map { it.cover }, px(ctx, h * 0.7f))
@@ -828,8 +826,7 @@ object Widgets {
                         portada(imgs[k], r, ultimos[k].name, 8f)
                     }
                 }
-                if (minutos >= 60) ante("${minutos / 60} h jugadas", x0, h - pad - 11f, rw, acento, 8.5f, Layout.Alignment.ALIGN_OPPOSITE)
-                else if (ultimos.isEmpty()) ante("Nada terminado aún", x0, h - pad - 11f, rw, gris, 8.5f, Layout.Alignment.ALIGN_OPPOSITE)
+                if (ultimos.isEmpty()) ante("Nada terminado aún", x0, h - pad - 11f, rw, gris, 8.5f, Layout.Alignment.ALIGN_OPPOSITE)
             }
         }
     }
@@ -1052,16 +1049,16 @@ object Widgets {
 
     // ------------------------------------------------------------------ Tu actividad (racha y mapa de días)
 
-    /** Minutos de cada día: partidas, lectura (lo que cuenta el lector) y apuntes. */
+    /** Minutos de cada día: lectura (lo que cuenta el lector), apuntes y lo que terminaste. */
     fun minutosPorDia(d: WDatos): Map<LocalDate, Int> {
         val m = HashMap<LocalDate, Int>()
         val zona = ZoneId.systemDefault()
         fun dia(ms: Long) = java.time.Instant.ofEpochMilli(ms).atZone(zona).toLocalDate()
         d.kinds.forEach { k ->
             d.store.loadPlays(k.id).forEach { p ->
-                p.segs.forEach { sg -> if (sg.s > 0) m.merge(dia(sg.s), max(1, sg.min), Int::plus) }
                 p.entries.forEach { en -> if (en.time > 0) m.merge(dia(en.time), 5, Int::plus) }
             }
+            d.store.load(k.id).forEach { g -> if (g.end > 0L) m.merge(LocalDate.ofEpochDay(g.end), 30, Int::plus) }
             if (k.isBook) d.de(k).forEach { e ->
                 val st = BookFiles.state(d.ctx, e.id).optJSONObject("stats")?.optJSONObject("days")
                 st?.keys()?.forEach { key ->

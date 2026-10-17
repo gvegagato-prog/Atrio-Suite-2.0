@@ -2,7 +2,7 @@
 'use strict';
 // Prueba de la suite de punta a punta, sin móvil: Firebase de mentira + Atrio de verdad (bajo Xvfb) + un «móvil»
 // simulado que hace lo mismo que Atrio en el móvil: ve el PC en directo, pide una captura, la baja, lanza un juego y
-// comprueba que al cerrarlo llega la parte jugada para valorar.
+// comprueba que al cerrarlo sus horas llegan a la ficha.
 // Uso (desde la raíz del repositorio): node herramientas/prueba-suite.js
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -45,7 +45,8 @@ async function until(fn, ms, every = 500) {
   // Lo que «el móvil» ya tiene en su cuenta: un juego en curso con el id de SteamGridDB 4242
   const play = { id: 4242, name: 'Juego de Prueba', cover: '', hero: '', status: 1, entries: [], chapter: 0, every: 3, start: 0, end: 0, creator: '', platform: 'PC', pages: 0, minutes: 0, updated: Date.now(), ttbMain: 0, ttbExtra: 0, ttbFull: 0, ttbSrc: '', parts: [], logo: '' };
   // Y un juego online con «Valorar por partes» apagado
-  const online = { ...play, id: 4343, name: 'Juego Online', noParts: true };
+  // Una ficha de una versión antigua, con partidas para valorar: al volver a guardarse, desaparecen
+  const online = { ...play, id: 4343, name: 'Juego Online', noParts: true, segs: [{ id: 'a1', s: 1, e: 2, min: 30, src: 'atrio' }] };
   const data = { games: [], plays: [play, online], books: [], bplays: [], kinds: [], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {} };
   await db('PUT', `/users/${uid}/dev/mtest`, { name: 'gonzalo', user: 'gonzalo', device: 'android', updated: { '.sv': 'timestamp' }, data: JSON.stringify(data) });
   const ts = await db('GET', `/users/${uid}/dev/mtest/updated`);
@@ -63,7 +64,6 @@ async function until(fn, ms, every = 500) {
     customGames: [{ id: 'prueba', name: 'Juego de Prueba', exec: game, runner: 'native' }, { id: 'online', name: 'Juego Online', exec: game2, runner: 'native' }],
     overrides: { 'custom:prueba': { sgdbId: 4242 }, 'custom:online': { sgdbId: 4343 } },
     behavior: { autostart: 'off', fullscreen: false, onLaunch: 'none' },
-    suite: { segMin: -1 },
   }));
   // Polaris de mentira (streaming): instalado («polaris» en el PATH), en marcha y con su API
   const HPORT = 47300 + Math.floor(Math.random() * 400);
@@ -212,21 +212,21 @@ async function until(fn, ms, every = 500) {
     const playing = await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba`); return v && v.game ? v : null; }, 30000);
     ok(playing && playing.game.name === 'Juego de Prueba' && playing.game.sg === 4242, `El móvil ve «${playing && playing.game.name}» en marcha`);
 
-    console.log('5. Al cerrar el juego llega la parte jugada para valorar');
+    console.log('5. Al cerrar el juego, sus horas llegan a la ficha');
     await wait(33000); // las partidas de menos de 30 s no cuentan (arranques fallidos)
     spawn('pkill', ['-f', game]);
-    const seg = await until(async () => {
+    const horas = await until(async () => {
       const st = await db('GET', `/users/${uid}/stamps`);
       for (const dev of Object.keys(st || {})) {
         if (dev === 'mtest') continue;
         const raw = await db('GET', `/users/${uid}/dev/${dev}/data`);
         const d = JSON.parse(raw || '{}');
         const p = (d.plays || []).find((x) => x.id === 4242);
-        if (p && p.segs && p.segs.length) return p.segs[0];
+        if (p && Number(p.minutes) >= 1) return p;
       }
       return null;
     }, 40000, 1000);
-    ok(seg && seg.src === 'atrio', `Parte jugada en la ficha: ${seg ? JSON.stringify(seg) : '-'}`);
+    ok(horas && !('segs' in horas), `Lo jugado se suma a las horas de la ficha (${horas ? `${horas.minutes} min` : '-'})`);
     const idle = await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba`); return v && !v.game ? v : null; }, 20000);
     ok(!!idle, 'El directo vuelve a «sin jugar»');
 
@@ -244,24 +244,23 @@ async function until(fn, ms, every = 500) {
     ok(((cfgNow.overrides['custom:prueba'] || {}).links || []).length === 1, 'Guardada en la configuración de Atrio');
     const gd = await send('guide', { key: 'custom:prueba', url: 'https://deadlock.wiki/Heroes' });
     ok(gd && gd.ok, `Abrir la guía en el PC desde el móvil: ${gd && gd.msg}`);
-    // «Valorar por partes» apagado: la partida se guarda (horas) pero callada, sin pedir nota
+    // Una ficha de una versión antigua (con partidas para valorar): suma sus horas y las partidas desaparecen
     const lo = await send('launch', { key: 'custom:online' });
     ok(lo && lo.ok, `Lanzado el juego online: ${lo && lo.msg}`);
     await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba`); return v && v.game && v.game.sg === 4343 ? v : null; }, 30000);
     await wait(33000);
     spawn('pkill', ['-f', game2]);
-    const quiet = await until(async () => {
+    const limpia = await until(async () => {
       const st = await db('GET', `/users/${uid}/stamps`);
       for (const dev of Object.keys(st || {})) {
         if (dev === 'mtest') continue;
         const d = JSON.parse((await db('GET', `/users/${uid}/dev/${dev}/data`)) || '{}');
         const p = (d.plays || []).find((x) => x.id === 4343);
-        if (p && p.segs && p.segs.length) return { seg: p.segs[0], p };
+        if (p && Number(p.minutes) >= 1) return p;
       }
       return null;
     }, 40000, 1000);
-    ok(quiet && quiet.seg.q === 1 && quiet.p.noParts === true && quiet.p.minutes >= 0,
-      `Juego con «Valorar por partes» apagado: partida guardada sin pedir nota (${quiet ? JSON.stringify(quiet.seg) : '-'})`);
+    ok(limpia && !('segs' in limpia) && !('noParts' in limpia), `Ficha antigua: suma ${limpia ? limpia.minutes : '-'} min y ya no lleva partidas para valorar`);
 
     // Streaming: el PC publica su Polaris, prepara el streaming y empareja el móvil (código de un solo uso o PIN)
     const liveSt = await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba/st`); return v && v.on && v.run ? v : null; }, 40000);
@@ -292,9 +291,9 @@ async function until(fn, ms, every = 500) {
       const f = path.join(HOME, '.local', 'share', 'atrio', 'ronron-datos.json');
       const d = JSON.parse(fs.readFileSync(f, 'utf8')).data;
       const p = (d.plays || []).find((x) => x.id === 4242);
-      return p && p.memos && p.memos.length && p.segs && p.segs.length ? p : null;
+      return p && p.memos && p.memos.some((m) => m.x === 'Apunte desde el móvil') ? p : null;
     }, 15000, 200);
-    ok(!!merged, `Mezclado en Atrio en ${Date.now() - t2} ms sin perder la parte jugada`);
+    ok(!!merged && !('segs' in merged), `Mezclado en Atrio en ${Date.now() - t2} ms`);
 
   } catch (e) {
     console.log('ERROR', e);

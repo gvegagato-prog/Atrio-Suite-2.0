@@ -38,8 +38,6 @@
       else if (!k.isBook && num(item.minutes) > 0) sub.push(RV.horas(item.minutes));
       const n = (item.entries || []).length;
       if (n) sub.push(RV.plural(n, 'apunte', 'apuntes'));
-      const pend = D.sinValorar(item).length;
-      if (pend) sub.push(`${pend} por valorar`);
     } else if (num(item.end) > 0) sub.push(RV.fmtDia(item.end));
     const pct = t === 'p' ? D.porcentaje(item) : null;
     const nota = D.nota(item, t);
@@ -140,7 +138,7 @@
 
   async function crear(k, base, status) {
     const item = D.completarFicha({
-      ...base, status, entries: [], memos: [], segs: [], start: status === 1 ? RV.hoy() : 0,
+      ...base, status, entries: [], memos: [], start: status === 1 ? RV.hoy() : 0,
     });
     const ok = await RV.editar({ op: 'savePlay', kind: k.id, item }, status === 1 ? `${item.name}: ${k.statuses[1].toLowerCase()} desde hoy` : `${item.name}, a tu lista`);
     if (ok) RV.ir({ v: 'ficha', k: k.id, t: 'p', id: item.id });

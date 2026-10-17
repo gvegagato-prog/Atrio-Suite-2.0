@@ -47,8 +47,6 @@ const DEFAULTS = {
     shotMethod: 'auto',    // auto | spectacle | grim | gnome-screenshot | import | chromium
     shotUpload: true,      // subir al móvil (si no, solo se guardan en este PC)
     shotDir: '',           // '' = Imágenes/Atrio
-    autoSeg: true,         // al cerrar un juego que está en Ronrón, guardar la partida como parte para valorar
-    segMin: 5,             // minutos mínimos para que una partida cuente como parte
   },
   // Streaming al móvil (Polaris en este PC + Nova en el móvil)
   stream: {

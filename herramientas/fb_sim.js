@@ -7,6 +7,7 @@
 //   node fb_sim.js book <usuario> <contraseña> <id> <título>  añade un libro «Por leer» desde otro dispositivo
 //   node fb_sim.js has <usuario> <contraseña> <texto>         ¿lo último del móvil contiene ese texto? (sale con 0 o 1)
 //   node fb_sim.js at <usuario> <contraseña> <sitio> <texto>  ¿/users/<uid>/<sitio> contiene ese texto? (la suite)
+//   node fb_sim.js mins <usuario> <contraseña> <id> <minutos>  ¿la ficha en curso <id> lleva al menos esos minutos? (lo último de cualquier dispositivo)
 const B = process.env.FB || 'http://127.0.0.1:9000';
 const MAIL = (u) => `${u}@ronron.example.com`;
 const DEV = 'atrio-prueba';
@@ -79,6 +80,14 @@ async function upload(s, data, name) {
     const other = await db(s, 'GET', `/usernames/${rest[1]}`);
     await db(s, 'PUT', `/users/${s.localId}/partner`, other);
     console.log('pair ok', other);
+  } else if (cmd === 'mins') {
+    const s = await login(u, p);
+    const l = await latest(s, s.localId, '');
+    const d = l ? JSON.parse(l.data || '{}') : {};
+    const pl = (d.plays || []).find((x) => Number(x.id) === Number(rest[0]));
+    const ok = !!pl && Number(pl.minutes) >= Number(rest[1] || 1) && !('segs' in pl);
+    console.log(ok ? `sí (${pl.minutes} min)` : `no (${pl ? pl.minutes : '-'} min)`);
+    process.exit(ok ? 0 : 1);
   } else if (cmd === 'has') {
     const s = await login(u, p);
     const l = await latest(s, s.localId, DEV);

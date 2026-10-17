@@ -506,7 +506,7 @@ fun FrameEditor(c: MagCell, aspectOf: (MagCell) -> Float, onSave: (MagCell) -> U
 val LocalRowFixed = compositionLocalOf { false }
 
 /** Nombres de los módulos (para el selector, cuando el módulo no trae antetítulo). */
-val MAG_NAMES = mapOf("progreso" to "Progreso", "partes" to "Partes y apuntes rápidos")
+val MAG_NAMES = mapOf("progreso" to "Progreso", "partes" to "Apuntes rápidos")
 
 @Composable
 private fun Tool(t: String, enabled: Boolean = true, accent: Boolean = false, onClick: () -> Unit) =
