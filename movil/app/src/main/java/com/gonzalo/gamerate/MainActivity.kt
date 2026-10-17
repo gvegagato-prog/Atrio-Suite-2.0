@@ -218,6 +218,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Al salir de la app, los widgets se ponen al día (lo que hayas cambiado, el día de hoy)
+    override fun onStop() {
+        super.onStop()
+        Widgets.pedir(this)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         read(intent)

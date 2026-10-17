@@ -894,6 +894,8 @@ fun App(
     }
 
     LaunchedEffect(openId, openPartner, openGo) {
+        // Los de los widgets (una ficha, el Diario) van más abajo, donde ya se sabe abrir cada cosa
+        if (openGo.startsWith("item:") || openGo.startsWith("diario:")) return@LaunchedEffect
         // Atajos y avisos abren siempre lo tuyo (nunca se edita nada desde la vista de tu pareja).
         if ((openGo.isNotEmpty() || openId != 0L) && Mode.viewP) { Mode.viewP = false; Mode.calP = false }
         if (openGo.isNotEmpty()) {
@@ -973,6 +975,22 @@ fun App(
     fun openPlay(k: Kind, p: Play) {
         if (k.id != section) section = k.id
         screen = if (pv) Screen.PartnerItem(k.id, p.id) else Screen.PlayDetail(p)
+    }
+    // Desde un widget: una ficha ("item:<categoría>:<id>") o el Diario de una categoría ("diario:<categoría>")
+    LaunchedEffect(openGo) {
+        val a = openGo.split(':')
+        if (a[0] != "item" && a[0] != "diario") return@LaunchedEffect
+        if (Mode.viewP) { Mode.viewP = false; Mode.calP = false }
+        val k = myKinds.find { it.id == a.getOrNull(1)?.toIntOrNull() } ?: GAMES
+        if (a[0] == "diario") { diaryKind = k.id; go(4) }
+        else {
+            val id = a.getOrNull(2)?.toLongOrNull() ?: 0L
+            val p = playsOf(k).find { it.id == id }
+            val g = gamesOf(k).find { it.id == id }
+            if (p != null) { section = k.id; screen = Screen.PlayDetail(p) }
+            else if (g != null) { section = k.id; screen = Screen.Edit(g, false) }
+        }
+        onOpenHandled()
     }
     CompositionLocalProvider(LocalContentColor provides Charcoal) {
     Box(Modifier.fillMaxSize().then(bgMod).then(touchWatcher)) {

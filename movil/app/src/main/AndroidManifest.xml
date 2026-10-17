@@ -221,6 +221,35 @@
             android:label="Guía"
             android:theme="@android:style/Theme.Material.NoActionBar"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode|density" />
+        <!-- Widgets de la pantalla de inicio (Widgets.kt) -->
+        <receiver android:name=".WLeyendo" android:label="@string/w_leyendo" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_leyendo" />
+        </receiver>
+        <receiver android:name=".WEstante" android:label="@string/w_estante" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_estante" />
+        </receiver>
+        <receiver android:name=".WCalendario" android:label="@string/w_calendario" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_calendario" />
+        </receiver>
+        <receiver android:name=".WPortada" android:label="@string/w_portada" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_portada" />
+        </receiver>
+        <receiver android:name=".WAno" android:label="@string/w_ano" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_ano" />
+        </receiver>
+        <receiver android:name=".WCita" android:label="@string/w_cita" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_cita" />
+        </receiver>
+        <receiver android:name=".WEfemeride" android:label="@string/w_efemeride" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_efemeride" />
+        </receiver>
         <!-- Para compartir y abrir las capturas del PC guardadas en la app -->
         <provider
             android:name="androidx.core.content.FileProvider"

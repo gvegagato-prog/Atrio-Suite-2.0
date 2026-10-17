@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Con el tema «como el sistema», el widget lleva los dos dibujos y se ve el que toca (0 visible, 2 oculto: el orden del atributo visibility) -->
+    <integer name="w_dia">0</integer>
+    <integer name="w_noche">2</integer>
+    <string name="w_leyendo">Leyendo</string>
+    <string name="w_leyendo_d">El libro que estás leyendo, con su portada. Un toque y sigues leyendo.</string>
+    <string name="w_estante">En curso</string>
+    <string name="w_estante_d">Lo que juegas, lees y ves ahora, en fila como una estantería.</string>
+    <string name="w_calendario">Diario</string>
+    <string name="w_calendario_d">El calendario con las portadas de lo que terminaste. Cambia de mes y de categoría.</string>
+    <string name="w_portada">En portada</string>
+    <string name="w_portada_d">La portada de tu revista: lo último, a toda página.</string>
+    <string name="w_ano">Tu año</string>
+    <string name="w_ano_d">Lo que llevas este año y tus objetivos.</string>
+    <string name="w_cita">La cita</string>
+    <string name="w_cita_d">Uno de tus subrayados, distinto cada día. Tócalo y se abre el libro ahí.</string>
+    <string name="w_efemeride">Tal día como hoy</string>
+    <string name="w_efemeride_d">Lo que terminaste esta misma fecha otros años.</string>
+</resources>

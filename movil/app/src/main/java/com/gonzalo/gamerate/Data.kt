@@ -442,7 +442,7 @@ class Store(ctx: Context) {
     /** Tema: 0 como el sistema, 1 claro, 2 oscuro. Desde la 3.1, oscuro por defecto (lo de tu pareja va en claro). */
     var themeMode: Int
         get() = p.getInt("theme31", 2)
-        set(v) { p.edit().putInt("theme31", v).apply() }
+        set(v) { p.edit().putInt("theme31", v).apply(); Widgets.pedir(app) }
 
     /** Ya has usado el doble toque para ver lo de tu pareja (para no repetir la pista). */
     var knowsDoubleTap: Boolean
@@ -966,6 +966,7 @@ class Store(ctx: Context) {
         val ed = p.edit()
         writeList(gk(kind), a, ed)
         ed.apply()
+        Widgets.pedir(app)
     }
 
     fun loadPlays(kind: Int = 0): List<Play> = playsFromJson(JSONArray(p.getString(pk(kind), "[]")))
@@ -976,6 +977,7 @@ class Store(ctx: Context) {
         val ed = p.edit()
         writeList(pk(kind), a, ed)
         ed.apply()
+        Widgets.pedir(app)
     }
 
     private val dataNames = listOf("games", "plays", "books", "bplays")

@@ -427,5 +427,6 @@ object Skin {
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
             .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
             .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putInt("skin_covers", covers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
+        Widgets.pedir(ctx)
     }
 }

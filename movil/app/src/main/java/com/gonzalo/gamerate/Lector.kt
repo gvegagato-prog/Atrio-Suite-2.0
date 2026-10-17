@@ -63,7 +63,7 @@ object BookFiles {
     fun state(ctx: Context, id: Long): JSONObject =
         prefs(ctx).getString("$id", null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
 
-    fun put(ctx: Context, id: Long, o: JSONObject) { prefs(ctx).edit().putString("$id", o.toString()).apply() }
+    fun put(ctx: Context, id: Long, o: JSONObject) { prefs(ctx).edit().putString("$id", o.toString()).apply(); Widgets.pedir(ctx) }
 
     /** El archivo adjunto (su dirección) o null. */
     fun get(ctx: Context, id: Long): String? = state(ctx, id).optString("uri").ifBlank { null }
