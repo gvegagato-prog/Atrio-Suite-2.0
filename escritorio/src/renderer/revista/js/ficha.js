@@ -219,6 +219,7 @@
       top.append(h('button.enlace', { type: 'button', class: item.fav ? 'enlace acento' : 'enlace', onclick: () => F.favorito(kind, item), 'aria-pressed': String(!!item.fav) }, item.fav ? '★ Favorito' : '☆ Favorito'));
     }
     top.append(
+      h('button.enlace', { type: 'button', onclick: () => RV.arteFicha(kind, t, item) }, 'Imágenes'),
       h('button.enlace', { type: 'button', onclick: () => F.datos(kind, item, t) }, 'Editar datos'),
       h('button.enlace.apagado', { type: 'button', onclick: () => F.borrar(kind, item, t) }, 'Borrar'));
 
@@ -567,7 +568,8 @@
       op(`Terminado: valorar`, () => F.terminar(kind, item));
       kind.statuses.forEach((st, i) => { if (i !== num(item.status)) op(`Pasar a «${st}»`, () => F.estado(kind, item, i)); });
     }
-    if (pcg && RV.opcionesJuego) op('Opciones del PC (imágenes, nombre, guías…)', () => RV.opcionesJuego(pcg));
+    if (RV.arteFicha) op('Imágenes de la ficha: portada, fondo, logo', () => RV.arteFicha(kind, t, item));
+    if (pcg && RV.opcionesJuego) op('Opciones del PC (sus imágenes en el lanzador, nombre, guías…)', () => RV.opcionesJuego(pcg));
     op('Editar los datos', () => F.datos(kind, item, t));
     op('Borrar la ficha', () => F.borrar(kind, item, t, { quedarse: true }));
     const d = RV.dialogo({ ante: `Opciones · ${t === 'g' ? kind.doneOne : D.estado(kind, item, t)}`, titulo: item.name, cuerpo: ul });

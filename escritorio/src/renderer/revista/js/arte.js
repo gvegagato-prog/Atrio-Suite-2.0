@@ -13,25 +13,15 @@
   const actualiza = (ng) => { if (ng) D.setJuegoPc(ng); RV.refrescar(); };
   let abierto = null; // { paso(n) } mientras el selector está abierto (LB / RB)
 
-  function sinClave(titulo) {
-    RV.dialogo({
-      ante: 'SteamGridDB', titulo,
-      cuerpo: h('p.texto', 'Para elegir imágenes de SteamGridDB hace falta una clave gratuita de su web. Se pone en Ajustes → Cuenta. Sin clave puedes poner una imagen desde un archivo.'),
-      acciones: [
-        { texto: 'Ir a Ajustes →', principal: true, fn: (d) => { d.cerrar(); RV.ir({ v: 'ajustes', sec: 'cuenta' }); } },
-        'hueco',
-        { texto: 'Cerrar', fn: (d) => d.cerrar() }],
-    });
-  }
-
-  // ---------------------------------------------------------------- Imágenes
-  RV.arteJuego = (key, tipoInicial) => {
-    const g0 = juego(key);
-    if (!g0) return;
-    const conClave = !!D.config().sgdbKey;
-    let tipo = tipoInicial || 'cover';
+  // ---------------------------------------------------------------- El selector (común)
+  // f: { titulo, tipos: [[id, texto]], inicial, actual(tipo) → url, listar(tipo, pagina) → { sgdbId, items },
+  //      poner(tipo, url|ruta) → promesa, quitar(tipo), archivo (bool), url (bool: pegar una dirección),
+  //      equivocado(), sinLista: texto si no se puede buscar }
+  function selector(f) {
+    let tipo = f.inicial || f.tipos[0][0];
     let pagina = 0;
     let turno = 0;
+    const nombreTipo = (t) => f.tipos.find(([x]) => x === t)[1];
     const pestanas = h('div.j-grupo.arte-tipos', { role: 'tablist' });
     const actual = h('div.arte-actual');
     const rejilla = h('div.arte-rejilla');
@@ -39,13 +29,12 @@
     const mas = h('button.enlace', { type: 'button', hidden: true, onclick: () => { pagina++; cargar(true); } }, 'Cargar más');
 
     function pintarPestanas() {
-      pestanas.replaceChildren(...TIPOS.map(([t, txt]) => h('button.j-opt', {
+      pestanas.replaceChildren(...f.tipos.map(([t, txt]) => h('button.j-opt', {
         type: 'button', role: 'tab', 'aria-pressed': String(t === tipo), 'data-autofocus': t === tipo ? true : null, onclick: () => cambiar(t),
       }, txt)));
     }
     function pintarActual() {
-      const g = juego(key);
-      const src = g && (g.art || {})[tipo];
+      const src = f.actual(tipo);
       actual.replaceChildren(h('span.versal', 'Ahora'), src
         ? h(`figure.arte-mini.${tipo}`, h('img', { alt: '', src, decoding: 'sync' }))
         : h(`span.arte-mini.${tipo}.vacia`, 'Sin imagen'));
@@ -57,37 +46,36 @@
       if (enfocar) requestAnimationFrame(() => { const b = pestanas.querySelector('[aria-pressed="true"]'); if (b) b.focus({ preventScroll: true }); });
       cargar(false);
     }
-    async function elegir(item, el) {
-      el.classList.add('cargando');
+    async function poner(src, el, aviso) {
+      if (el) el.classList.add('cargando');
       try {
-        actualiza(await api.setArt(key, tipo, item.url));
-        for (const p of rejilla.querySelectorAll('.elegida')) p.classList.remove('elegida');
-        el.classList.add('elegida');
+        await f.poner(tipo, src);
+        if (el) { for (const p of rejilla.querySelectorAll('.elegida')) p.classList.remove('elegida'); el.classList.add('elegida'); }
         pintarActual();
-        RV.aviso(`${TIPOS.find(([t]) => t === tipo)[1]} cambiada`);
+        RV.aviso(aviso || `${nombreTipo(tipo)}: cambiado`);
       } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
-      el.classList.remove('cargando');
+      if (el) el.classList.remove('cargando');
     }
     async function cargar(seguir) {
       const mio = ++turno;
       if (!seguir) { rejilla.className = `arte-rejilla ${tipo}`; rejilla.replaceChildren(); }
       mas.hidden = true;
-      if (!conClave) { estado.textContent = 'Sin clave de SteamGridDB: puedes poner una imagen desde un archivo (o añadir la clave en Ajustes → Cuenta).'; return; }
+      if (f.sinLista) { estado.textContent = f.sinLista; return; }
       estado.textContent = 'Buscando en SteamGridDB…';
       try {
-        const res = await api.sgdbAssets(key, tipo, null, pagina);
+        const res = await f.listar(tipo, pagina);
         if (mio !== turno) return;
         const items = (tipo === 'hero' || tipo === 'wide') ? [...res.items].sort((a, b) => (b.width || 0) - (a.width || 0)) : res.items;
         if (!items.length && !seguir) {
           estado.textContent = res.sgdbId
-            ? 'SteamGridDB no tiene imágenes de este tipo para este juego. Prueba otro tipo o pon una desde un archivo.'
-            : 'No he encontrado este juego en SteamGridDB. Usa «Juego equivocado» para buscarlo por otro nombre.';
+            ? 'SteamGridDB no tiene imágenes de este tipo para este juego. Prueba otro tipo o pon una a tu gusto.'
+            : `No he encontrado este juego en SteamGridDB.${f.equivocado ? ' Usa «Juego equivocado» para buscarlo por otro nombre.' : ''}`;
           return;
         }
         estado.textContent = '';
         const primero = rejilla.children.length;
         for (const it of items) {
-          const b = h('button.arte-opcion', { type: 'button', title: it.author ? `De ${it.author}` : '', onclick: () => elegir(it, b) },
+          const b = h('button.arte-opcion', { type: 'button', title: it.author ? `De ${it.author}` : '', onclick: () => poner(it.url, b) },
             h('img', { alt: '', loading: 'lazy', decoding: 'async', src: it.thumb }),
             h('span.versal', [it.width && it.height ? `${it.width}×${it.height}` : '', it.author || ''].filter(Boolean).join(' · ')));
           rejilla.append(b);
@@ -101,27 +89,69 @@
     }
     const desdeArchivo = async () => {
       const p = await api.pickFile({ title: 'Elegir una imagen', filters: [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }] });
-      if (!p) return;
-      try { actualiza(await api.setArt(key, tipo, p)); pintarActual(); RV.aviso('Imagen puesta'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
+      if (p) poner(p, null, 'Imagen puesta');
     };
-    const quitar = async () => {
-      try { actualiza(await api.setArt(key, tipo, null)); pintarActual(); RV.aviso('Imagen quitada'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
+    const pegarDireccion = () => {
+      const inp = RV.entrada('', { placeholder: 'https://…/imagen.jpg', 'data-autofocus': true, class: 'entrada mono' });
+      const vale = (u) => /^https:\/\/\S+$/i.test(u);
+      const ok = (d) => { const u = inp.value.trim(); if (!vale(u)) { RV.aviso('Tiene que ser una dirección https://', 'error'); return; } d.cerrar(); poner(u, null, 'Imagen puesta'); };
+      const d = RV.dialogo({
+        ante: nombreTipo(tipo), titulo: 'Una imagen de internet',
+        cuerpo: [RV.campo('Dirección de la imagen', inp), h('p.texto', 'Se guarda en tu cuenta, así que también la verás en el móvil.')],
+        acciones: [{ texto: 'Poner', principal: true, fn: ok }, 'hueco', { texto: 'Cancelar', fn: (x) => x.cerrar() }],
+      });
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(d); } });
     };
     pintarPestanas(); pintarActual();
     RV.dialogo({
-      ante: 'Imágenes · LB y RB cambian de tipo', titulo: g0.name, ancho: true,
+      ante: 'Imágenes · LB y RB cambian de tipo', titulo: f.titulo, ancho: true,
       cuerpo: [h('div.arte-cabeza', pestanas, actual), estado, h('div.arte-scroll.desplaza', rejilla, h('div.fila-botones', mas))],
       acciones: [
-        { texto: 'Desde un archivo', fn: desdeArchivo },
-        { texto: 'Quitar esta', fn: quitar },
-        { texto: 'Juego equivocado', fn: (d) => { d.cerrar(); RV.juegoEquivocado(key); } },
+        f.archivo ? { texto: 'Desde un archivo', fn: desdeArchivo } : null,
+        f.url ? { texto: 'Pegar una dirección', fn: pegarDireccion } : null,
+        { texto: 'Quitar esta', fn: () => poner(null, null, 'Imagen quitada') },
+        f.equivocado ? { texto: 'Juego equivocado', fn: (d) => { d.cerrar(); f.equivocado(); } } : null,
         'hueco',
         { texto: 'Hecho', principal: true, fn: (d) => d.cerrar() }],
       alCerrar: () => { abierto = null; },
     });
-    abierto = { paso: (n) => { const i = TIPOS.findIndex(([t]) => t === tipo); cambiar(TIPOS[(i + n + TIPOS.length) % TIPOS.length][0], true); } };
+    abierto = { paso: (n) => { const i = f.tipos.findIndex(([t]) => t === tipo); cambiar(f.tipos[(i + n + f.tipos.length) % f.tipos.length][0], true); } };
     cargar(false);
+  }
+
+  // ---------------------------------------------------------------- Imágenes de un juego del PC
+  RV.arteJuego = (key, tipoInicial) => {
+    const g0 = juego(key);
+    if (!g0) return;
+    selector({
+      titulo: g0.name, tipos: TIPOS, inicial: tipoInicial, archivo: true,
+      actual: (t) => ((juego(key) || {}).art || {})[t] || '',
+      listar: (t, p) => api.sgdbAssets(key, t, null, p),
+      poner: async (t, src) => actualiza(await api.setArt(key, t, src)),
+      equivocado: () => RV.juegoEquivocado(key),
+    });
   };
+
+  // ---------------------------------------------------------------- Imágenes de una ficha de tu cuenta
+  // (también de los juegos que no están en este PC; se guardan en la cuenta y se ven en el móvil)
+  RV.arteFicha = (kind, t, item0) => {
+    const fresca = () => D.buscar(kind, t, item0.id) || item0;
+    const tipos = [['cover', 'Portada'], ['hero', 'Fondo'], ['logo', 'Logo']];
+    selector({
+      titulo: item0.name, tipos, url: true,
+      actual: (tp) => fresca()[tp] || '',
+      // Los juegos de la cuenta se identifican por su id de SteamGridDB
+      listar: (tp, p) => api.ronronAssets(Number(fresca().id), tp, p),
+      sinLista: kind.isGame ? null : 'Para esta ficha no hay catálogo de imágenes: pega la dirección de una imagen.',
+      poner: async (tp, src) => {
+        const cur = fresca();
+        const next = { ...cur, [tp]: src || '' };
+        const op = t === 'g' ? { op: 'saveGame', kind: kind.id, item: D.completarJuego(next) } : { op: 'savePlay', kind: kind.id, item: D.completarFicha(next) };
+        if (!(await RV.editar(op, null))) throw new Error('No se ha podido guardar');
+      },
+    });
+  };
+
   // LB / RB con el selector abierto (lo llama app.js)
   RV.arteNav = (paso) => { if (!abierto) return false; abierto.paso(paso); return true; };
 
@@ -129,7 +159,6 @@
   RV.juegoEquivocado = (key) => {
     const g = juego(key);
     if (!g) return;
-    if (!D.config().sgdbKey) { sinClave('Corregir el juego'); return; }
     const q = h('input', { type: 'search', value: g.name, 'data-autofocus': true, spellcheck: 'false', 'aria-label': 'Nombre del juego' });
     const ul = h('ul.resultados');
     const buscar = async () => {

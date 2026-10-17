@@ -238,7 +238,8 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
       };
       const n = async () => {};
       window.atrio = {
-        state: async () => p, ronron: async () => c, on: () => {}, ronronEdit: async () => c, log: n, patchConfig: async (x) => { Object.assign(p.config, x); return p; },
+        state: async () => p, ronron: async () => c, on: () => {}, ronronEdit: async (op) => { (window.__edits ||= []).push(op); return c; }, log: n,
+        ronronAssets: async (id, type) => ({ sgdbId: id, items: [{ id: 1, url: `https://cdn.example/${type}.png`, thumb: p.games[0].art.cover, width: 600, height: 900 }] }), patchConfig: async (x) => { Object.assign(p.config, x); return p; },
         launch: async (k) => { (window.__lanzados ||= []).push(k); return {}; }, switchUi: n, toggleFullscreen: n, minimize: n, quit: n, rescan: async () => p,
         override: async (key, patch) => { const g = p.games.find((x) => x.key === key); Object.assign(g, patch); return { ...g }; },
         power: async (a) => { window.__energia = a; },
@@ -329,6 +330,11 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     await btn(Y); await page.waitForTimeout(300);
     const opcV = await page.evaluate(() => (document.querySelector('#capa .dialogo') || {}).innerText || '');
     ok(/Witcher/i.test(opcV) && /favoritos/i.test(opcV) && /Cambiar la nota/.test(opcV), 'juegos: Y abre las opciones de un juego que no está instalado (favorito, nota…)');
+    // Sus imágenes (de la cuenta): elegir una portada la guarda en la ficha
+    await page.click('#capa button:has-text("Imágenes de la ficha")'); await page.waitForTimeout(500);
+    await page.click('#capa .arte-opcion'); await page.waitForTimeout(400);
+    const ed = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
+    ok(ed && ed.op === 'saveGame' && /cover\.png$/.test(ed.item.cover), `juegos: cambiar la portada de un juego no instalado la guarda en la cuenta (${ed && ed.item && ed.item.cover})`);
     await btn(B); await page.waitForTimeout(250);
     await btn(RB); await page.waitForTimeout(300);
     await btn(RB); await page.waitForTimeout(500);

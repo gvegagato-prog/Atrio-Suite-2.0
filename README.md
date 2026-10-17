@@ -24,7 +24,9 @@ revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** 
   página: Jugar, guías, favorito, sus datos (horas, última vez, estudio, género, Metacritic) y, si está en tu
   cuenta, tu nota y tu crítica o tu último apunte. Y abre las opciones (favorito, ocultar, su ficha, guías, **imágenes**: portada, horizontal, fondo y logo de
   SteamGridDB o desde un archivo, **cambiar el nombre** y «juego equivocado»). Y también funciona con los juegos
-  que no están instalados (Valorados, la revista): favorito, nota, opinión, apuntes, estado, datos, borrar.
+  que no están instalados (Valorados, la revista): favorito, nota, opinión, apuntes, estado, datos, borrar y
+  **sus imágenes** (portada, fondo y logo de la ficha, de SteamGridDB o pegando una dirección; se guardan en la
+  cuenta y se ven también en el móvil). En cada ficha de la revista hay un enlace «Imágenes».
 - **Valorados:** tus juegos terminados con la nota en grande y su portada; los instalados se abren para jugar.
 - **Revista:** toda tu colección (libros, películas, series, el diario, las cifras, Descubrir…) como antes,
   ahora también con mando.

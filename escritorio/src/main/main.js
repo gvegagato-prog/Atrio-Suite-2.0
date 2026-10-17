@@ -599,7 +599,7 @@ function setupIpc() {
 
 
   ipcMain.handle('sgdb:search', (_e, term) => {
-    const key = config.get().sgdbKey;
+    const key = sgdbKeyAny();
     if (!key) throw new Error('Añade tu clave de SteamGridDB en Ajustes');
     return art.searchGames(key, term);
   });
@@ -610,7 +610,7 @@ function setupIpc() {
   });
 
   ipcMain.handle('sgdb:assets', async (_e, gameKey, type, sgdbId, page) => {
-    const key = config.get().sgdbKey;
+    const key = sgdbKeyAny();
     if (!key) throw new Error('Añade tu clave de SteamGridDB en Ajustes');
     const g = library.get(gameKey);
     if (!g) throw new Error('Juego no encontrado');
@@ -695,7 +695,7 @@ function setupIpc() {
   ipcMain.handle('ronron:art', (_e, sgdbId) => ronronArt(sgdbId));
   // Lista de arte de SteamGridDB para una ficha de Ronrón (para elegir portada, fondo o logo)
   ipcMain.handle('ronron:assets', async (_e, sgdbId, type, page) => {
-    const key = config.get().sgdbKey;
+    const key = sgdbKeyAny();
     if (!key) throw new Error('Añade tu clave de SteamGridDB en Ajustes');
     return art.listAssets(key, { key: `ronron:${sgdbId}`, name: '' }, type, sgdbId, page || 0);
   });
