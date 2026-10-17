@@ -773,7 +773,7 @@ function openSettings() {
         <div class="fila">${chips([['paginated', 'Páginas'], ['scrolled', 'Desplazamiento continuo']], S.flow, 'flow')}</div>
         <div class="fila" style="margin-top:8px">${chips([[true, 'Con animación'], [false, 'Sin animación']], S.animated, 'animated')}</div>
         <h3>Columnas</h3>
-        <div class="fila">${chips([[false, 'Una'], [true, 'Dos con el móvil en horizontal']], S.columns, 'columns')}</div>
+        <div class="fila">${chips([[false, 'Una'], [true, 'Dos en horizontal']], S.columns, 'columns')}</div>
       `}
       <h3>Abajo de la página</h3>
       <div class="fila">${chips([[true, isPDF ? 'Página y %' : 'Lo que queda del capítulo y %'], [false, 'Nada']], S.status, 'status')}</div>

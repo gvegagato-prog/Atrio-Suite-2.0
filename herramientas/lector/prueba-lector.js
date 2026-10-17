@@ -6,6 +6,11 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require(process.env.PW || 'playwright');
+// Tamaño de la pantalla (en dp): el de un móvil; LECTOR_TAM=1260x840 para la tableta
+const TAM = (() => { const [w, h] = (process.env.LECTOR_TAM || '412x860').split('x').map(Number); return { width: w, height: h }; })();
+// Las coordenadas de los toques están pensadas para 412 × 860: se escalan al tamaño de la pantalla
+const X = (x) => Math.round((x * TAM.width) / 412);
+const Y = (y) => Math.round((y * TAM.height) / 860);
 
 const ASSETS = path.resolve(__dirname, '../../movil/app/src/main/assets');
 const [epub, pdf, out] = process.argv.slice(2);
@@ -29,7 +34,7 @@ const log = [];
   const ok = (c, m) => { console.log((c ? '  ✔ ' : '  ✘ ') + m); if (!c) process.exitCode = 1; };
   for (const [file, name] of [[epub, 'quijote.epub'], [pdf, 'prueba.pdf']]) {
     book = file;
-    const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    const ctx = await browser.newContext({ viewport: TAM, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error') log.push(m.text()); });
     page.on('pageerror', (e) => log.push('pageerror ' + e.message));
@@ -84,15 +89,17 @@ const log = [];
     let f0 = await frac();
     // Tocar el lado derecho de un PDF: abre el menú y no pasa de página
     if (name.endsWith('pdf')) {
-      await touch([[380, 430]]); await page.waitForTimeout(900);
+      // En horizontal (tableta) el PDF va de dos en dos páginas: con el de prueba (5) ya se está al final
+      if (TAM.width > TAM.height) { await page.evaluate(() => window.__view.goTo(0)); await page.waitForTimeout(1200); f0 = await frac(); }
+      await touch([[X(380), Y(430)]]); await page.waitForTimeout(900);
       const menu = await page.$eval('#abajo', (e) => !e.classList.contains('oculta'));
       ok(menu && (await frac()) === f0, `${name}: tocar el borde abre el menú y no pasa de página`);
-      await touch([[206, 430]]); await page.waitForTimeout(700);
+      await touch([[X(206), Y(430)]]); await page.waitForTimeout(700);
       // Deslizar hacia la izquierda: página siguiente
-      await touch([[330, 430], [280, 432], [200, 434], [120, 436]]); await page.waitForTimeout(1300);
+      await touch([[X(330), Y(430)], [X(280), Y(432)], [X(200), Y(434)], [X(120), Y(436)]]); await page.waitForTimeout(1300);
       const f1 = await frac();
       ok(f1 > f0, `${name}: deslizar pasa de página (${Math.round(f0 * 1000) / 10} → ${Math.round(f1 * 1000) / 10} %)`);
-      await touch([[90, 430], [150, 432], [230, 434], [310, 436]]); await page.waitForTimeout(1300);
+      await touch([[X(90), Y(430)], [X(150), Y(432)], [X(230), Y(434)], [X(310), Y(436)]]); await page.waitForTimeout(1300);
       ok((await frac()) < f1, `${name}: deslizar al otro lado vuelve atrás`);
     } else {
       // (Los deslizamientos del EPUB no se pueden simular aquí: foliate usa screenX y las pruebas lo mandan a 0.
@@ -102,7 +109,7 @@ const log = [];
     }
     // Barras (tocar el centro). En el EPUB, en una página de texto: en el índice del libro el centro es un enlace.
     if (name.endsWith('epub')) { await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1500); }
-    await page.mouse.click(206, 430); await page.waitForTimeout(600);
+    await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(600);
     await page.screenshot({ path: path.join(out, name + '-3-barras.png') });
     // Ajustes: tema noche y letra más grande
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
@@ -112,7 +119,7 @@ const log = [];
     await page.waitForTimeout(400);
     const set = await page.evaluate(() => window.__atrio.saved.settings);
     ok(set && set.theme === 'noche', `${name}: guarda los ajustes (${JSON.stringify(set)})`);
-    await page.mouse.click(206, 120); await page.waitForTimeout(700);
+    await page.mouse.click(X(206), Y(120)); await page.waitForTimeout(700);
     await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });
     await page.screenshot({ path: path.join(out, name + '-5-noche.png') });
     // Mantener pulsada una palabra: sale su menú (significado); «Subrayar» y mantener pulsada la última palabra
@@ -191,8 +198,8 @@ const log = [];
       }
     }
     // Índice y búsqueda
-    await page.mouse.click(206, 430); await page.waitForTimeout(500);
-    if (!(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')))) { await page.mouse.click(206, 430); await page.waitForTimeout(500); }
+    await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(500);
+    if (!(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')))) { await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(500); }
     await page.click('#b-indice'); await page.waitForTimeout(600);
     const tocN = await page.$$eval('#panel-cuerpo li', (l) => l.length);
     ok(name.endsWith('pdf') || tocN >= 3, `${name}: índice con ${tocN} entradas`);
@@ -228,7 +235,7 @@ const log = [];
     book = path.join(out, name);
     await tmp.pdf({ path: book, width: '600px', height: '900px', printBackground: true });
     await tmp.close();
-    const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    const ctx = await browser.newContext({ viewport: TAM, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error') log.push(m.text()); });
     page.on('pageerror', (e) => log.push('pageerror ' + e.message));
@@ -258,7 +265,7 @@ const log = [];
     const cdp = await ctx.newCDPSession(page);
     // (Input.synthesizeScrollGesture con «touch» no desplaza nada en Chromium sin pantalla: se usan toques de verdad)
     for (let i = 0; i < 3; i++) {
-      const pts = [[206, 700], [206, 650], [206, 550], [206, 400], [206, 250], [206, 200]];
+      const pts = [[X(206), Y(700)], [X(206), Y(650)], [X(206), Y(550)], [X(206), Y(400)], [X(206), Y(250)], [X(206), Y(200)]];
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: pts[0][0], y: pts[0][1] }] });
       for (const p of pts.slice(1)) { await page.waitForTimeout(16); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p[0], y: p[1] }] }); }
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -267,7 +274,8 @@ const log = [];
     await page.waitForTimeout(1200);
     const tras = await pagina();
     const f1 = await page.evaluate(() => window.__atrio.saved.progress?.f || 0);
-    ok(/Página [3-9] de 12/.test(tras) && f1 > 0.15, `${name}: deslizando hacia arriba se baja por el libro («${tras}», ${Math.round(f1 * 100)} %)`);
+    // (En horizontal cada página es más alta que la pantalla: los mismos deslizamientos avanzan menos)
+    ok((TAM.width > TAM.height ? /Página [2-9] de 12/ : /Página [3-9] de 12/).test(tras) && f1 > (TAM.width > TAM.height ? 0.08 : 0.15), `${name}: deslizando hacia arriba se baja por el libro («${tras}», ${Math.round(f1 * 100)} %)`);
     await page.screenshot({ path: path.join(out, name + '-2-bajando.png') });
     // Botones de volumen: no pasan página (la app los deja para el volumen)
     const y0 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
@@ -279,7 +287,7 @@ const log = [];
     {
       const pg0 = await pagina();
       const s0 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
-      const pts = [[330, 430], [280, 432], [200, 434], [120, 436]];
+      const pts = [[X(330), Y(430)], [X(280), Y(432)], [X(200), Y(434)], [X(120), Y(436)]];
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: pts[0][0], y: pts[0][1] }] });
       for (const p of pts.slice(1)) { await page.waitForTimeout(16); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p[0], y: p[1] }] }); }
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -288,7 +296,7 @@ const log = [];
       ok((await pagina()) === pg0 && Math.abs(s1 - s0) < 30, `${name}: deslizar de lado no pasa de página («${await pagina()}», ${Math.round(s0)} → ${Math.round(s1)})`);
     }
     // Tocar el centro: el menú (no pasa nada más)
-    await page.mouse.click(206, 430); await page.waitForTimeout(700);
+    await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(700);
     ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar abre el menú`);
     // Cambiar a página a página y volver: se queda en la misma página
     const antes = await pagina();
@@ -299,7 +307,7 @@ const log = [];
     const r2 = await page.evaluate(() => document.querySelector('foliate-view').renderer.localName);
     ok((await page.evaluate(() => window.__atrio.vol)) === true, `${name}: en «Página a página» los botones de volumen vuelven a pasar página`);
     ok(r2 === 'foliate-fxl' && (await pagina()) === antes, `${name}: «Página a página» reabre en la misma página (${r2}, «${await pagina()}»)`);
-    await page.mouse.click(206, 430); await page.waitForTimeout(600);
+    await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(600);
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
     await page.click('[data-k="pdfFlow"][data-v="strip"]');
     await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2500);

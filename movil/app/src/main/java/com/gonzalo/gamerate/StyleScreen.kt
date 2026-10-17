@@ -82,7 +82,10 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
         Modifier.fillMaxSize().background(Paper)
             // Los toques no pasan a la pantalla de debajo
             .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
-            .statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)
+            .statusBarsPadding().navigationBarsPadding()
+            // En una tableta, una columna cómoda en el centro (como el resto de ajustes)
+            .wrapContentWidth().widthIn(max = 760.dp)
+            .verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)
     ) {
         TopBar("Ajustes", onClose, "Apariencia")
 

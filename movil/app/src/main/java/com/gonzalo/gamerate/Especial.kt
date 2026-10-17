@@ -151,7 +151,8 @@ fun NumeroEspecial(name: String, kinds: List<Kind>, entries: (Kind) -> List<Shel
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.fillMaxSize().background(Paper).systemBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)
+            Modifier.fillMaxSize().background(Paper).systemBarsPadding().wrapContentWidth().widthIn(max = 900.dp)
+                .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)
         ) {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 EsLink("← CERRAR", Charcoal, onDismiss)

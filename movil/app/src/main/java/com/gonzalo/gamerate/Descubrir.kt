@@ -37,6 +37,7 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -883,7 +884,8 @@ private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?
             }
         }
         Spacer(Modifier.height(36.dp))
-        Spacer(Modifier.weight(1f))
+        // En el móvil, las opciones van abajo (a mano del pulgar); en una tableta, justo debajo (si no, queda un hueco enorme)
+        if (LocalConfiguration.current.screenWidthDp < 600) Spacer(Modifier.weight(1f)) else Spacer(Modifier.height(12.dp))
         if (filters != null) { filters(); Spacer(Modifier.height(22.dp)) }
         Text("¿CUÁNTAS PREGUNTAS?", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
