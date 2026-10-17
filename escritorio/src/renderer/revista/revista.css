@@ -938,13 +938,14 @@ body[data-entrada="mando"] #pagina { padding-bottom: 46px; }
 /* Movimiento: ligero (120–240 ms) y fuera si se pide */
 #pagina > * { animation: entra .22s ease-out both; }
 #pagina > .sin-entrada { animation: none; }
-@keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Sin fundidos desde transparente: la página nueva se ve desde el primer fotograma (si no, parpadea) */
+@keyframes entra { from { transform: translateY(6px); } to { transform: none; } }
 body.cambia-modo #pagina > * { animation: entra-modo .26s ease-out both; }
-@keyframes entra-modo { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes entra-modo { from { transform: scale(.99); } to { transform: none; } }
 body[data-dir="der"] #pagina > :not(.sin-entrada) { animation: entra-der .24s cubic-bezier(.2, .7, .3, 1) both; }
 body[data-dir="izq"] #pagina > :not(.sin-entrada) { animation: entra-izq .24s cubic-bezier(.2, .7, .3, 1) both; }
-@keyframes entra-der { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
-@keyframes entra-izq { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes entra-der { from { transform: translateX(22px); } to { transform: none; } }
+@keyframes entra-izq { from { transform: translateX(-22px); } to { transform: none; } }
 body.quieto *, body.quieto *::before, body.quieto *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 
 /* ================================================================ Modo Juegos: cabecera */
@@ -994,7 +995,7 @@ body[data-modo="juegos"] #cabecera::after { content: ''; position: absolute; lef
 .j-portada-txt.cambia > * { animation: entra-texto .24s ease-out both; }
 .j-portada-txt.cambia > :nth-child(2) { animation-delay: .02s; }
 .j-portada-txt.cambia > :nth-child(n+3) { animation-delay: .04s; }
-@keyframes entra-texto { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+@keyframes entra-texto { from { opacity: 0.35; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 .j-escaparate .j-portada-txt { min-width: 0; }
 .j-entradilla { font-family: var(--serif); font-style: italic; font-size: 18px; line-height: 1.42; color: var(--gris); max-width: 52ch; margin: 0 0 10px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 /* Filas de portadas que se recorren de lado */
@@ -1146,3 +1147,31 @@ body[data-entrada="mando"] .j-carta:not(.ancha):focus { outline: 3px solid var(-
    debajo dentro de la caja recortada */
 .j-carta-tit { line-height: 1.14 !important; padding-bottom: 0.1em; }
 .j-pag .titular { line-height: 1; padding-bottom: 0.06em; }
+
+/* Los títulos de las ventanas (opciones, menú…) también en mayúsculas en el modo Juegos */
+body[data-modo="juegos"] .dialogo h2 { text-transform: uppercase; letter-spacing: -0.01em; }
+/* Imágenes de un juego */
+.arte-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
+.arte-tipos { gap: 6px 22px; }
+.arte-tipos .j-opt { font-size: 12px; }
+.arte-actual { display: flex; align-items: center; gap: 12px; }
+.arte-mini { margin: 0; height: 64px; background: var(--arena); border: 1px solid var(--linea); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.arte-mini img { height: 100%; width: auto; display: block; }
+.arte-mini.vacia { width: 64px; font-size: 10px; color: var(--gris); text-align: center; }
+.arte-scroll { max-height: min(56vh, 620px); overflow-y: auto; padding: 6px; margin: 0 -6px; }
+.arte-rejilla { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.arte-rejilla.wide, .arte-rejilla.hero { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.arte-rejilla.logo { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.arte-opcion { display: flex; flex-direction: column; gap: 5px; text-align: left; min-width: 0; }
+.arte-opcion img { width: 100%; display: block; background: var(--arena); border: 1px solid var(--linea); object-fit: cover; }
+.arte-rejilla.cover .arte-opcion img { aspect-ratio: 2 / 3; }
+.arte-rejilla.wide .arte-opcion img { aspect-ratio: 92 / 43; }
+.arte-rejilla.hero .arte-opcion img { aspect-ratio: 96 / 31; }
+.arte-rejilla.logo .arte-opcion img { aspect-ratio: 2 / 1; object-fit: contain; padding: 10px; background: repeating-conic-gradient(var(--arena) 0 25%, var(--papel) 0 50%) 0 0 / 16px 16px; }
+.arte-opcion .versal { font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arte-opcion:hover img, .arte-opcion:focus img { border-color: var(--acento); }
+.arte-opcion.elegida img { outline: 3px solid var(--acento); outline-offset: 2px; }
+.arte-opcion.cargando { opacity: .5; }
+body[data-entrada="mando"] .arte-opcion:focus { outline: 3px solid var(--acento); outline-offset: 4px; }
+.dialogo [hidden] { display: none !important; }
+.arte-estado:empty { display: none; }

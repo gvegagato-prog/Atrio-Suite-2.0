@@ -214,7 +214,7 @@
       // Donde la página usa sus propias teclas (las preguntas de Descubrir: A–E y espacio), se las deja
       const libres = RV.ruta && RV.ruta().v === 'descubrir';
       // Espacio = Y (opciones) solo si hay opciones para lo enfocado; si no, es el espacio de siempre
-      if (e.key === ' ' && !libres && t && t.closest && t.closest('[data-opciones]')) acc = 'y';
+      if (e.key === ' ' && !libres && t && t.closest && (t.closest('[data-opciones]') || t.closest('[data-ficha]'))) acc = 'y';
       if (e.key === 'Backspace') acc = 'b';
       if (!libres && (e.key === 's' || e.key === 'S')) acc = 'start';
       if (!libres && (e.key === 'c' || e.key === 'C')) acc = 'select';

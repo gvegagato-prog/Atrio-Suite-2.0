@@ -246,7 +246,10 @@ window.RV = window.RV || {};
         pila.splice(i, 1);
         velo.remove();
         if (o.alCerrar) o.alCerrar();
-        if (antes && antes.isConnected && typeof antes.focus === 'function') antes.focus({ preventScroll: true });
+        // Lo que estaba enfocado (si la página se ha redibujado mientras, lo mismo en la página nueva)
+        let vuelta = antes;
+        if (vuelta && !vuelta.isConnected && vuelta.dataset && vuelta.dataset.clave) vuelta = document.querySelector(`[data-clave="${window.CSS.escape(vuelta.dataset.clave)}"]`);
+        if (vuelta && vuelta.isConnected && typeof vuelta.focus === 'function' && !(pila.length && !pila[pila.length - 1].caja.contains(vuelta))) vuelta.focus({ preventScroll: true });
       },
     };
     const acciones = o.acciones || [{ texto: 'Cerrar', fn: () => d.cerrar() }];
@@ -277,7 +280,10 @@ window.RV = window.RV || {};
         pila.splice(i, 1);
         nodo.remove();
         if (alCerrar) alCerrar();
-        if (antes && antes.isConnected && typeof antes.focus === 'function') antes.focus({ preventScroll: true });
+        // Lo que estaba enfocado (si la página se ha redibujado mientras, lo mismo en la página nueva)
+        let vuelta = antes;
+        if (vuelta && !vuelta.isConnected && vuelta.dataset && vuelta.dataset.clave) vuelta = document.querySelector(`[data-clave="${window.CSS.escape(vuelta.dataset.clave)}"]`);
+        if (vuelta && vuelta.isConnected && typeof vuelta.focus === 'function' && !(pila.length && !pila[pila.length - 1].caja.contains(vuelta))) vuelta.focus({ preventScroll: true });
       },
     };
     document.getElementById('capa').append(nodo);

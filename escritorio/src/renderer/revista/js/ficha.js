@@ -538,11 +538,38 @@
     });
   };
 
-  F.borrar = (kind, item, t) => {
+  F.borrar = (kind, item, t, o = {}) => {
     RV.confirmar(`¿Borrar ${item.name}?`,
       `Se borra la ficha ${t === 'g' ? 'con su nota y su opinión' : 'con sus apuntes'} en todos tus dispositivos (también en el móvil). No se puede deshacer.`,
       'Borrar', async () => {
-        if (await RV.editar({ op: t === 'g' ? 'deleteGame' : 'deletePlay', kind: kind.id, id: item.id }, `${item.name}: borrado`)) RV.volver();
+        if (await RV.editar({ op: t === 'g' ? 'deleteGame' : 'deletePlay', kind: kind.id, id: item.id }, `${item.name}: borrado`) && !o.quedarse) RV.volver();
       });
+  };
+
+  // Y (opciones) sobre cualquier ficha de tu cuenta, esté o no instalada en este PC: favorito, nota, apuntes,
+  // estado, datos, borrar… y, si está en el PC, jugar y sus opciones del lanzador
+  RV.opcionesFicha = (kind, t, item0) => {
+    const item = fresca(kind, t, item0) || item0;
+    const pcg = D.pcDe(kind, item);
+    const ul = h('ul.j-opciones');
+    const op = (texto, fn) => ul.append(h('li', h('button.resultado', { type: 'button', style: { width: '100%', textAlign: 'left' }, onclick: () => { d.cerrar(); fn(); } },
+      h('span.tit', texto), h('span'))));
+    const abrir = () => { if (RV.modo === 'juegos') RV.cambiarModo('revista'); RV.ir({ v: 'ficha', k: kind.id, t, id: item.id }); };
+    if (pcg && !D.activoPc(pcg.key)) op('Jugar en el PC', () => RV.jugar(pcg));
+    op('Abrir su ficha', abrir);
+    if (t === 'g') {
+      op(item.fav ? 'Quitar de favoritos' : 'Añadir a favoritos', () => F.favorito(kind, item));
+      op('Cambiar la nota', () => F.valorar(kind, item));
+      op(String(item.review || '').trim() ? 'Editar la opinión' : 'Escribir la opinión', () => F.opinion(kind, item));
+      op(palabraEmpezar(kind), () => F.empezar(kind, item));
+    } else {
+      op('Apuntar', () => F.apuntar(kind, item));
+      op(`Terminado: valorar`, () => F.terminar(kind, item));
+      kind.statuses.forEach((st, i) => { if (i !== num(item.status)) op(`Pasar a «${st}»`, () => F.estado(kind, item, i)); });
+    }
+    if (pcg && RV.opcionesJuego) op('Opciones del PC (imágenes, nombre, guías…)', () => RV.opcionesJuego(pcg));
+    op('Editar los datos', () => F.datos(kind, item, t));
+    op('Borrar la ficha', () => F.borrar(kind, item, t, { quedarse: true }));
+    const d = RV.dialogo({ ante: `Opciones · ${t === 'g' ? kind.doneOne : D.estado(kind, item, t)}`, titulo: item.name, cuerpo: ul });
   };
 })(window.RV);

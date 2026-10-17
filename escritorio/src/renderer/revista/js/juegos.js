@@ -78,6 +78,8 @@
     op(g.favorite ? 'Quitar de favoritos' : 'Añadir a favoritos', () => marcar(g, { favorite: !g.favorite }, g.favorite ? 'Quitado de favoritos' : 'En favoritos'));
     if (f) op('Su ficha en la revista', () => { RV.cambiarModo('revista'); RV.ir({ v: 'ficha', k: 0, t: f.t, id: f.item.id }); });
     op('Guías y webs', () => RV.guia(g.key, null));
+    op('Imágenes: portada, fondo, logo…', () => RV.arteJuego(g.key));
+    op('Cambiar el nombre', () => RV.renombrarJuego(g.key));
     op('Ocultar de la biblioteca', () => marcar(g, { hidden: true }, `${g.name} oculto (lo puedes recuperar en Ajustes → Juegos ocultos)`));
     const d = RV.dialogo({ ante: 'Opciones', titulo: g.name, cuerpo: ul });
   }
@@ -96,9 +98,11 @@
     return h(`div.${cls}.sin-imagen.j-tapa`, h('span.j-tapa-ini', String(g.name || '?').trim().charAt(0).toUpperCase()),
       h('span.j-tapa-ante', g.sourceLabel || g.source || ''), h('span.j-tapa-tit', g.name));
   }
-  function arte(g, src, cls) {
+  // Las portadas se pintan en el mismo fotograma que el resto (decodificación síncrona: ya están en caché);
+  // solo las de la biblioteca, más abajo, se cargan al acercarse
+  function arte(g, src, cls, perezosa) {
     if (!src) return tapa(g, cls);
-    const img = h('img', { alt: '', decoding: 'async', loading: 'lazy', draggable: 'false' });
+    const img = h('img', { alt: '', decoding: 'sync', loading: perezosa ? 'lazy' : null, draggable: 'false' });
     const box = h(`figure.${cls}`, img);
     img.addEventListener('error', () => box.replaceWith(tapa(g, cls)));
     img.src = src;
@@ -112,7 +116,7 @@
       type: 'button', 'data-clave': `${o.zona || 'b'}:${g.key}`, 'data-key': g.key, 'data-opciones': '', onclick: () => RV.ir({ v: 'j-juego', key: g.key }),
       'aria-label': g.name, 'data-inicio': o.inicio ? '' : null,
     },
-    arte(g, o.ancha ? fondoDe(g) : portadaDe(g), o.ancha ? 'j-img-ancha' : 'j-img'),
+    arte(g, o.ancha ? fondoDe(g) : portadaDe(g), o.ancha ? 'j-img-ancha' : 'j-img', o.perezosa),
     h('span.j-carta-txt',
       h('span.j-carta-tit', g.favorite ? h('span.estrella', '★') : null, g.name),
       h('span.versal', activo ? '● Abierto ahora' : [g.sourceLabel || g.source, horas(g)].filter(Boolean).join(' · '))));
@@ -133,7 +137,7 @@
     function capa(g) {
       const src = fondoDe(g);
       if (!src) return tapa(g, 'j-capa');
-      const img = h('img', { alt: '', decoding: 'async', draggable: 'false' });
+      const img = h('img', { alt: '', decoding: 'sync', draggable: 'false' });
       const box = h('figure.j-capa', img);
       img.addEventListener('error', () => box.replaceWith(tapa(g, 'j-capa')));
       img.src = src;
@@ -249,7 +253,7 @@
         h('div.j-grupo', [['todos', 'Todo'], ...origenes].map(([v, t]) => opt(est.origen, v, t, () => { est.origen = v; RV.refrescar(); }))),
         h('span.hueco'),
         h('button.enlace', { type: 'button', onclick: () => RV.buscarJuegos(), title: 'X (o /)' }, 'Buscar un juego')),
-      h('div.j-rejilla', lista.map((g) => carta(g)))));
+      h('div.j-rejilla', lista.map((g) => carta(g, { perezosa: true })))));
     root.append(h('p.pie', 'Atrio · ⧉ Vista para la revista · ☰ Menú'));
     return root;
   };
@@ -334,7 +338,9 @@
         tapaV ? arte({ name: g.name }, tapaV, 'j-mini') : h('span.j-mini.sin-imagen'),
         h('span', h('span.tit.ajusta', { 'data-min': '16' }, g.fav ? h('span.estrella', '★') : null, g.name),
           h('span.versal', [num(g.end) > 0 ? RV.fmtDia(g.end) : '', g.creator, pcg ? 'en este PC' : ''].filter(Boolean).join(' · '))));
-      if (pcg) { b.dataset.opciones = ''; b.__opciones = () => opciones(pcg); }
+      // Y: las opciones de la ficha (estén o no instalados en este PC)
+      b.dataset.opciones = '';
+      b.__opciones = () => RV.opcionesFicha(k, 'g', g);
       ul.append(h('li', b));
     });
     root.append(ul);

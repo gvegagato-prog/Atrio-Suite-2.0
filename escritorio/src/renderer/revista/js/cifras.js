@@ -106,7 +106,7 @@
       if (!l.length) return RV.vacio('Nada todavía.');
       const ul = h('ul.notas-altas');
       for (const e of l) {
-        ul.append(h('li', h('button', { type: 'button', onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'g', id: e.item.id }) },
+        ul.append(h('li', h('button', { type: 'button', 'data-ficha': `${e.kind.id}:g:${e.item.id}`, onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'g', id: e.item.id }) },
           h('span.cifra', String(num(e.item.general))),
           h('span', h('span.tit.ajusta', { 'data-min': '14' }, e.item.name), h('span.ante', [e.kind.short, e.item.end ? RV.fmtDia(e.item.end) : ''].filter(Boolean).join(' · '))))));
       }

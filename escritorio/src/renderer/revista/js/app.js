@@ -256,12 +256,24 @@
     select: () => { while (RV.cerrarDialogo()) { /* */ } RV.cambiarModo(); },
     x: () => { if (!RV.hayDialogo()) atajoBuscar(); },
     // Y: las opciones de lo que está enfocado (un juego, por ejemplo)
-    y: (el) => { if (RV.guiaY && RV.guiaY()) return; const o = el && el.closest('[data-opciones]'); if (o && typeof o.__opciones === 'function') o.__opciones(); },
+    y: (el) => {
+      if (RV.guiaY && RV.guiaY()) return;
+      if (RV.hayDialogo()) return;
+      const o = el && el.closest('[data-opciones]');
+      if (o && typeof o.__opciones === 'function') { o.__opciones(); return; }
+      // Cualquier enlace a una ficha (portada, diario, cifras…) y, dentro de una ficha, la propia ficha
+      const f = el && el.closest('[data-ficha]');
+      const [k, t, id] = f ? f.dataset.ficha.split(':') : ruta.v === 'ficha' ? [ruta.k, ruta.t, ruta.id] : [];
+      const kind = k != null ? D.tipo(Number(k)) : null;
+      const item = kind ? D.buscar(kind, t, Number(id)) || D.buscar(kind, t, id) : null;
+      if (item && RV.opcionesFicha) RV.opcionesFicha(kind, t, item);
+    },
   });
   // LB / RB en la revista: recorrer las secciones de la cabecera
   let dirT = null;
   RV.secciones = (paso) => {
     if (RV.guiaNav && RV.guiaNav(paso)) return;
+    if (RV.arteNav && RV.arteNav(paso)) return;
     if (RV.hayDialogo()) return;
     // La página nueva entra desde el lado hacia el que vas
     document.body.dataset.dir = paso < 0 ? 'izq' : 'der';

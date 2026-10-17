@@ -73,7 +73,7 @@
       cal.append(h(`div.dia${dia === hoy ? '.hoy' : ''}`,
         h('span.num', String(n)),
         h('div', cosas.map(({ kind, item }) => h('button.tit', {
-          type: 'button', onclick: () => RV.ir({ v: 'ficha', k: kind.id, t: 'g', id: item.id }),
+          type: 'button', 'data-ficha': `${kind.id}:g:${item.id}`, onclick: () => RV.ir({ v: 'ficha', k: kind.id, t: 'g', id: item.id }),
         }, est.k === 'todas' ? h('span.que', kind.short) : null, item.name, h('b', String(num(item.general))))))));
     }
     const resto = (7 - ((hueco + diasMes) % 7)) % 7;
@@ -87,7 +87,7 @@
       const ul = h('ul.terminados');
       for (const dia of [...porDia.keys()].sort((a, b) => b - a)) {
         for (const { kind, item } of porDia.get(dia)) {
-          ul.append(h('li', h('button', { type: 'button', onclick: () => RV.ir({ v: 'ficha', k: kind.id, t: 'g', id: item.id }) },
+          ul.append(h('li', h('button', { type: 'button', 'data-ficha': `${kind.id}:g:${item.id}`, onclick: () => RV.ir({ v: 'ficha', k: kind.id, t: 'g', id: item.id }) },
             h('span', h('span.versal', `${RV.fmtDiaCorto(dia)} · ${kind.short}`), h('span.tit.ajusta', { 'data-min': '14' }, item.name)),
             h('span.cifra', String(num(item.general))))));
         }

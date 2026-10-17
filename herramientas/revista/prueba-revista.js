@@ -245,7 +245,10 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
         webOpen: async (u) => { window.__web = u; return { open: true, url: u, title: 'Guía', loading: false }; },
         webHide: n, webShow: async () => ({}), webClose: async () => { window.__webCerrada = true; return { open: false }; }, webNav: n, webBounds: n,
         autostart: async () => ({ available: false }), suiteMethods: async () => [], streamInfo: async () => null, protonList: async () => [],
+        sgdbAssets: async (key, type) => ({ sgdbId: 7, items: [{ id: 1, url: `https://cdn.example/${type}.png`, thumb: p.games[0].art.cover, width: 600, height: 900, author: 'x' }] }),
+        setArt: async (key, type, src) => { (window.__arte ||= []).push([key, type, src]); const g = p.games.find((x) => x.key === key); return { ...g }; },
       };
+      p.config.sgdbKey = 'clave';
     }, { cuenta, pc });
     await page.goto(`http://localhost:${port}/`);
     await page.waitForTimeout(1600);
@@ -294,6 +297,18 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     const opc = await page.evaluate(() => !!document.querySelector('#capa .dialogo') && document.querySelector('#capa .dialogo').innerText);
     ok(!!opc && /favoritos/i.test(opc), 'juegos: Y abre las opciones del juego');
     await shot('03-opciones');
+    ok(/Imágenes/.test(opc) && /Cambiar el nombre/.test(opc), 'juegos: las opciones permiten cambiar las imágenes y el nombre');
+    await page.click('#capa button:has-text("Imágenes")'); await page.waitForTimeout(500);
+    ok(!!(await page.$('#capa .arte-opcion')), 'juegos: el selector de imágenes muestra las de SteamGridDB');
+    await btn(RB); await page.waitForTimeout(400);
+    const tipoArte = await page.evaluate(() => (document.querySelector('#capa .arte-tipos [aria-pressed="true"]') || {}).textContent);
+    ok(tipoArte === 'Horizontal', `juegos: RB cambia el tipo de imagen («${tipoArte}»)`);
+    await page.click('#capa .arte-opcion'); await page.waitForTimeout(400);
+    const arte = await page.evaluate(() => window.__arte || []);
+    ok(arte.length === 1 && arte[0][1] === 'wide' && /wide\.png$/.test(arte[0][2]), `juegos: elegir una imagen la guarda (${JSON.stringify(arte[0] || null)})`);
+    await shot('03b-imagenes');
+    await btn(B); await page.waitForTimeout(250);
+    await btn(Y); await page.waitForTimeout(300);
     await btn(B); await page.waitForTimeout(250);
     ok(!(await page.$('#capa .dialogo')), 'juegos: B cierra las opciones');
     // A: su página
@@ -310,6 +325,11 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(e.v === 'j-valorados', `juegos: LB pasa a Valorados (${e.v})`);
     await shot('05-valorados');
     ok(/96/.test(await page.evaluate(() => document.getElementById('pagina').innerText)), 'juegos: Valorados con las notas');
+    // Y también con los juegos que no están en este PC (The Witcher 3, el primero)
+    await btn(Y); await page.waitForTimeout(300);
+    const opcV = await page.evaluate(() => (document.querySelector('#capa .dialogo') || {}).innerText || '');
+    ok(/Witcher/i.test(opcV) && /favoritos/i.test(opcV) && /Cambiar la nota/.test(opcV), 'juegos: Y abre las opciones de un juego que no está instalado (favorito, nota…)');
+    await btn(B); await page.waitForTimeout(250);
     await btn(RB); await page.waitForTimeout(300);
     await btn(RB); await page.waitForTimeout(500);
     e = await estado();

@@ -44,7 +44,7 @@ const arte = (id, color, n) => (ARTE ? {
   cover: `/arte/${id}_library_600x900.jpg`, hero: `/arte/${id}_library_hero.jpg`, wide: `/arte/${id}_header.jpg`, logo: `/arte/${id}_logo.png`,
 } : { cover: tapa(n, color, '#111'), hero: tapa(n, color, '#222') });
 const pc = {
-  config: { ui: 'revista', revista: { tema: 'claro', acento: 'rojo' }, behavior: {} },
+  config: { ui: 'revista', revista: { tema: 'claro', acento: 'rojo' }, behavior: {}, sgdbKey: 'clave' },
   games: [
     ...BIBLIO.map(([id, name, hrs, hace, fav, color]) => ({
       key: `steam:${id}`, name, source: 'steam', sourceLabel: 'Steam', lastPlayed: hace == null ? 0 : Date.now() - hace * DIA,
@@ -105,7 +105,10 @@ const cuenta = {
           launch: async () => ({}), switchUi: n, toggleFullscreen: n, minimize: n, quit: n, rescan: async () => p, ronronArt: async () => ({}),
           override: async (key, patch) => { const g = p.games.find((x) => x.key === key); Object.assign(g, patch); return { ...g }; },
           power: n, webOpen: async (u) => ({ open: true, url: u, title: 'Guía', loading: false }), webHide: n, webShow: async () => ({}), webClose: async () => ({ open: false }), webNav: n, webBounds: n,
-          autostart: async () => ({ available: false }), suiteMethods: async () => [], suiteShots: async () => [], suiteShotShow: async () => true, sgdbSearch: async () => [], streamInfo: async () => null, protonList: async () => [], netJson: async () => ({ results: [] }),
+          autostart: async () => ({ available: false }), suiteMethods: async () => [], suiteShots: async () => [],
+          sgdbAssets: async (key, type) => ({ sgdbId: 1, items: p.games.filter((x) => x.art && x.art[type]).map((x, i) => ({ id: i, url: x.art[type], thumb: x.art[type], width: type === 'hero' ? 3840 : 600, height: type === 'hero' ? 1240 : 900, author: 'autor' + i })) }),
+          setArt: async (key, type, src) => { const g = p.games.find((x) => x.key === key); g.art = { ...g.art, [type]: src || undefined }; return { ...g }; },
+          pickFile: async () => '/home/gonzalo/portada.png', sgdbSearch: async () => [{ id: 1, name: 'Deadlock', year: 2024, verified: true }], suiteShotShow: async () => true, sgdbSearch: async () => [], streamInfo: async () => null, protonList: async () => [], netJson: async () => ({ results: [] }),
         };
       }, { cuenta, pc, tema });
       await page.goto(`http://localhost:${port}/`);
@@ -115,13 +118,48 @@ const cuenta = {
       const btn = (i) => page.evaluate((x) => window.__pulsar(x), i);
       const ir = async (r) => { await page.evaluate((x) => window.RV.ir(x), r); await page.waitForTimeout(500); };
       const A = 0, B = 1, Y = 3, LB = 4, ABAJO = 13, DER = 15, MENU = 9;
+      // PARPADEO=1: mide, fotograma a fotograma, lo que se ve al cambiar de página (opacidad de la página y
+      // portadas visibles todavía sin pintar)
+      if (process.env.PARPADEO) {
+        const medir = async (nombre, fn) => {
+          await page.evaluate(() => {
+            window.__f = [];
+            const t0 = performance.now();
+            const paso = () => {
+              const p = document.querySelector('#pagina > *');
+              const op = p ? Number(getComputedStyle(p).opacity) : 1;
+              const imgs = [...document.querySelectorAll('#pagina img')].filter((i) => { const r = i.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.width > 0; });
+              const sin = imgs.filter((i) => !i.complete || !i.naturalWidth).length;
+              window.__f.push([Math.round(performance.now() - t0), Math.round(op * 100) / 100, sin, imgs.length]);
+              if (performance.now() - t0 < 700) requestAnimationFrame(paso);
+            };
+            requestAnimationFrame(paso);
+          });
+          await fn();
+          await page.waitForTimeout(800);
+          const f = await page.evaluate(() => window.__f);
+          const malos = f.filter(([, op, sin]) => op < 0.95 || sin > 0);
+          console.log(`${nombre}: ${f.length} fotogramas, ${malos.length} con la página transparente o portadas sin pintar; peor: opacidad ${Math.min(...f.map((x) => x[1]))}, portadas sin pintar ${Math.max(...f.map((x) => x[2]))}`);
+        };
+        await medir('Juegos → Valorados', () => page.evaluate(() => window.RV.secciones(-1)));
+        await medir('Valorados → Juegos', () => page.evaluate(() => window.RV.secciones(1)));
+        await medir('Juegos → Revista', () => page.evaluate(() => window.RV.cambiarModo('revista')));
+        await medir('Revista → Juegos', () => page.evaluate(() => window.RV.cambiarModo('juegos')));
+        await medir('Juegos → página de un juego', () => page.evaluate(() => window.RV.ir({ v: 'j-juego', key: 'steam:1086940' })));
+        await medir('Volver', () => page.evaluate(() => window.RV.volver()));
+        await ctx.close();
+        continue;
+      }
       await shot('j1-portada');
       await btn(DER); await btn(DER);
       await shot('j1b-portada-foco');
       await shot('j1c-portada-entera', true);
       await btn(ABAJO); await btn(ABAJO); await btn(DER);
       await shot('j2-biblioteca-foco');
-      await btn(Y); await shot('j3-opciones'); await btn(B);
+      await btn(Y); await shot('j3-opciones');
+      await page.click('#capa button:has-text("Imágenes")'); await page.waitForTimeout(800); await shot('j3b-imagenes');
+      await btn(5); await page.waitForTimeout(600); await shot('j3c-imagenes-fondo');
+      await btn(B);
       await ir({ v: 'j-juego', key: 'steam:1086940' }); await shot('j4-pagina-juego');
       await ir({ v: 'j-juego', key: 'steam:1422450' }); await shot('j4b-pagina-jugando', true);
       await ir({ v: 'juegos' }); await btn(LB); await page.waitForTimeout(500); await shot('j5-valorados');

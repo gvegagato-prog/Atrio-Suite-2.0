@@ -39,7 +39,7 @@
     const box = h('section.en-portada', RV.seccion('En portada'));
     const src = imagenDe(front);
     if (src) {
-      const img = h('img', { alt: '', decoding: 'async', draggable: 'false' });
+      const img = h('img', { alt: '', decoding: 'sync', draggable: 'false' });
       const fig = h('figure', img);
       img.addEventListener('error', () => fig.remove());
       img.src = src;
@@ -148,7 +148,7 @@
       resto.slice(0, 8).forEach((e, i) => {
         const pcg = D.pcDe(e.kind, e.item);
         ol.append(h('li', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
-          h('button', { type: 'button', style: { flex: '1', minWidth: '0' }, onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'p', id: e.item.id }) },
+          h('button', { type: 'button', 'data-ficha': `${e.kind.id}:p:${e.item.id}`, style: { flex: '1', minWidth: '0' }, onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'p', id: e.item.id }) },
             h('span.num', String(i + 1).padStart(2, '0')),
             h('span', h('span.tit.ajusta', { 'data-min': '14' }, e.item.name),
               h('span.versal', [e.kind.short, e.item.creator].filter(Boolean).join(' · ')))),
@@ -169,7 +169,7 @@
     else {
       const ul = h('ul.notas-altas');
       for (const e of mejores) {
-        ul.append(h('li', h('button', { type: 'button', onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'g', id: e.item.id }) },
+        ul.append(h('li', h('button', { type: 'button', 'data-ficha': `${e.kind.id}:g:${e.item.id}`, onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'g', id: e.item.id }) },
           h('span.cifra', String(num(e.item.general))),
           h('span', h('span.tit.ajusta', { 'data-min': '14' }, e.item.name), h('span.ante', e.kind.short)))));
       }
@@ -181,7 +181,7 @@
     else {
       const ul = h('ul.terminados');
       for (const e of ultimos) {
-        ul.append(h('li', h('button', { type: 'button', onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'g', id: e.item.id }) },
+        ul.append(h('li', h('button', { type: 'button', 'data-ficha': `${e.kind.id}:g:${e.item.id}`, onclick: () => RV.ir({ v: 'ficha', k: e.kind.id, t: 'g', id: e.item.id }) },
           h('span', h('span.versal', `${RV.fmtDia(e.item.end)} · ${e.kind.short}`), h('span.tit.ajusta', { 'data-min': '14' }, e.item.name)),
           h('span.cifra', String(num(e.item.general))))));
       }

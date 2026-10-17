@@ -22,7 +22,9 @@ revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** 
   juegas. Cada fila recuerda dónde la dejaste. Después, toda la biblioteca en portadas (por recientes, A–Z u
   horas; filtrada por tienda); un juego sin imagen tiene una portada de tipografía. Cada juego tiene su
   página: Jugar, guías, favorito, sus datos (horas, última vez, estudio, género, Metacritic) y, si está en tu
-  cuenta, tu nota y tu crítica o tu último apunte. Y abre las opciones (favorito, ocultar, su ficha, guías).
+  cuenta, tu nota y tu crítica o tu último apunte. Y abre las opciones (favorito, ocultar, su ficha, guías, **imágenes**: portada, horizontal, fondo y logo de
+  SteamGridDB o desde un archivo, **cambiar el nombre** y «juego equivocado»). Y también funciona con los juegos
+  que no están instalados (Valorados, la revista): favorito, nota, opinión, apuntes, estado, datos, borrar.
 - **Valorados:** tus juegos terminados con la nota en grande y su portada; los instalados se abren para jugar.
 - **Revista:** toda tu colección (libros, películas, series, el diario, las cifras, Descubrir…) como antes,
   ahora también con mando.
