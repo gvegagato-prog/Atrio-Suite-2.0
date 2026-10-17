@@ -435,7 +435,10 @@ for m in re.finditer(r'<node [^>]*>', open(f, encoding='utf-8', errors='ignore')
         print((b[0]+b[2])//2, (b[1]+b[3])//2); break
 PY
 }
-P1=$(pos "⇔"); echo "   línea en $P1" >> "$LOG"
+P1=$(pos "⇔")
+# Si el círculo queda abajo (o tapado por la barra de navegación), se sube a media pantalla
+if [ -z "$P1" ] || [ "${P1#* }" -gt 1500 ] || [ "${P1#* }" -lt 100 ]; then adb shell input swipe 540 1600 540 900 900; sleep 1.5; P1=$(pos "⇔"); fi
+echo "   línea en $P1" >> "$LOG"
 if [ -n "$P1" ]; then
   set -- $P1; adb shell input swipe $1 $2 $(( $1 + 220 )) $2 900; sleep 1.5
   P2=$(pos "⇔"); echo "   línea movida a $P2" >> "$LOG"; set -- $P1 $P2
