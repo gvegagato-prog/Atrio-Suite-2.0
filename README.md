@@ -37,6 +37,8 @@ revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** 
 - Animaciones ligeras (120–300 ms: el foco, las portadas, el escaparate, las secciones entran desde el lado al
   que vas con LB/RB, el cambio de modo); se quitan en Ajustes →
   Comportamiento o si el sistema pide menos movimiento.
+- Pantallas grandes sin escalar (una tele 4K, un monitor de 1440p al 100 %): todo se amplía solo para verse como
+  en 1920 px (el modo Juegos desde 2300 px de ancho; la revista desde 3000).
 - El lanzador clásico ya no se ve; sigue dentro solo para las pruebas automáticas (`--lanzador`).
 - Prueba sin Electron: `node herramientas/revista/prueba-revista.js carpeta` (Chromium con una cuenta de
   ejemplo y un mando simulado). Capturas para revisar el diseño a varios tamaños:

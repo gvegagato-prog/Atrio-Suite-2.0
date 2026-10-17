@@ -187,6 +187,16 @@ window.RV = window.RV || {};
     if (s.length <= 30 && larga <= 13) return '.t-largo';
     return '.t-muylargo';
   };
+  // Pantallas muy grandes sin escalar (una tele 4K o un monitor de 1440p al 100 %): todo se amplía para que se
+  // vea como en una de 1920 px. El modo Juegos, desde 2300 px (se mira desde el sofá); la revista, desde 3000.
+  RV.escala = () => {
+    const w = window.innerWidth;
+    const juegos = document.body && document.body.dataset.modo === 'juegos';
+    const z = juegos && w >= 2300 ? w / 1920 : w >= 3000 ? w / 2560 : 1;
+    const v = z === 1 ? '' : String(Math.round(z * 1000) / 1000);
+    if (document.documentElement.style.zoom !== v) document.documentElement.style.zoom = v;
+  };
+  window.addEventListener('resize', RV.debounce(RV.escala, 60));
   // Al cambiar el tamaño de la ventana y cuando terminan de cargar las letras, se vuelve a ajustar
   const reajustar = RV.debounce(() => RV.ajustar(document), 80);
   window.addEventListener('resize', reajustar);

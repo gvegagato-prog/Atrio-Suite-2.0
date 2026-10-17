@@ -34,6 +34,7 @@
     if (nuevo === RV.modo && igual(ruta, raiz())) return;
     RV.modo = nuevo;
     document.body.dataset.modo = nuevo;
+    RV.escala();
     pila.length = 0;
     ruta = raiz();
     document.body.classList.add('cambia-modo');
@@ -282,6 +283,7 @@
   async function arrancar() {
     document.body.dataset.modo = RV.modo;
     document.body.dataset.entrada = 'raton';
+    RV.escala();
     try {
       const s = await api.state();
       D.setPc(s);
