@@ -68,6 +68,7 @@ fun PlayDetailScreen(
     // El director o los creadores llegan de internet poco después de añadirla: se recogen aquí.
     LaunchedEffect(p0.creator) { if (p.creator.isBlank() && p0.creator.isNotBlank()) p = p.copy(creator = p0.creator) }
     fun upd(n: Play) { p = n; onChange(n) }
+    fun empezar() = upd(p.copy(status = 1, start = if (p.start == 0L) today() else p.start, end = 0L))
     val b = p.baremo()
     val due = kind.isBook && p.status == 1 && p.pending() >= p.every
     var viewP by remember { mutableStateOf(false) }
@@ -121,18 +122,28 @@ fun PlayDetailScreen(
                         Text("+ 1", color = ColGeneral, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.clickable { upd(p.copy(chapter = p.chapter + 1)) }.padding(6.dp))
                     }
                     Text(if (due) "Llevas ${p.pending()} capítulos sin apuntar." else "Apuntas cada ${p.every} cap.", color = if (due) ColGeneral else Muted, fontSize = 13.sp)
-                } else Text("Márcalo como «${kind.statuses[1]}» para llevar la cuenta.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
+                } else {
+                    Text("Márcalo como «${kind.statuses[1]}» para llevar la cuenta.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
+                    MagLink("Marcar «${kind.statuses[1]}»", accent = true) { empezar() }
+                }
             }
             defs["estado"] = MagDef(if (b != null) "Nota" else "Estado") {
                 if (b != null) MagScore(b.general, b.scores(), kind)
                 else FitTitle(kind.statuses.getOrElse(p.status) { "" }, 30.sp, 32.sp)
                 if (b == null) Text("Aún sin nota", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
                 Spacer(Modifier.height(8.dp))
+                // Cambiar de estado aquí mismo (En lista → Leyendo/Jugando, Abandonado…)
+                if (p.status != 1) MagLink("Marcar «${kind.statuses[1]}»", accent = true) { empezar() }
                 MagLink("Apuntar notas", if (b != null) "media de ${p.entries.size} apuntes" else null, accent = due) { onNote(p, null) }
                 MagLink(if (b != null) "Pasar a valorados" else "Terminado: valorar") { onFinish(p) }
+                if (p.status != 0) MagLink("Volver a «${kind.statuses[0]}»") { upd(p.copy(status = 0)) }
+                if (p.status != 2) MagLink("Marcar «${kind.statuses[2]}»") { upd(p.copy(status = 2, end = if (p.end == 0L) today() else p.end)) }
             }
             if (kind.isGame) defs["sesion"] = MagDef("Sesión") {
-                if (p.status != 1) Text("Márcalo como «${kind.statuses[1]}» para empezar una sesión.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
+                if (p.status != 1) {
+                    Text("Márcalo como «${kind.statuses[1]}» para empezar una sesión.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp)
+                    MagLink("Marcar «${kind.statuses[1]}»", accent = true) { empezar() }
+                }
                 else if (sessId == p.id) {
                     var now by remember { mutableStateOf(System.currentTimeMillis()) }
                     LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }

@@ -454,7 +454,7 @@ if [ -n "$H1" ]; then
   if [ -n "$H2" ] && [ $(( $4 - $2 )) -gt 100 ]; then echo "   la fila cambia de alto arrastrando" | tee -a "$LOG"; else echo "FALLO: la fila no cambia de alto" | tee -a "$LOG"; exit 1; fi
 fi
 shot 63e_alto 1
-tap "ALTO AUTO" || true; sleep 1
+top; tap "ALTO AUTO" || true; sleep 1
 top
 # Texto libre en la casilla de las guías
 must tap "Casilla Guías"; sleep 1.5
@@ -471,7 +471,7 @@ must tap "Casilla Mi veredicto"; sleep 1.5
 must tap "Imagen"; sleep 3; shot 63c_imagen 1
 must see "PORTADA" 5
 tap "Cerrar"; sleep 1
-must tap "LISTO"; sleep 1.5
+top; must tap "LISTO"; sleep 1.5
 shot 63d_diseno_hecho 1; alive "diseño"
 must see "MI VEREDICTO" 5
 echo "   el diseño se guarda" | tee -a "$LOG"
