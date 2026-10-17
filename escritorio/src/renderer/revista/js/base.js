@@ -160,6 +160,7 @@ window.RV = window.RV || {};
         ls: parseFloat(cs.letterSpacing) || 0,
         font: `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`,
         min: parseFloat(el.dataset.min) || 14,
+        mayus: cs.textTransform === 'uppercase',
       };
     });
     if (!lienzo) lienzo = document.createElement('canvas');
@@ -168,7 +169,8 @@ window.RV = window.RV || {};
       if (m.ancho <= 0) continue;
       ctx.font = m.font;
       let ancha = 0;
-      for (const w of (m.el.textContent || '').split(/\s+/)) {
+      // (En mayúsculas por CSS se mide el texto ya en mayúsculas: ocupa más)
+      for (const w of (m.mayus ? (m.el.textContent || '').toLocaleUpperCase('es') : (m.el.textContent || '')).split(/\s+/)) {
         if (!w) continue;
         ancha = Math.max(ancha, ctx.measureText(w).width + m.ls * Math.max(0, w.length - 1));
       }

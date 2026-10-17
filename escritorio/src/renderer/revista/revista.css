@@ -1137,3 +1137,12 @@ body[data-entrada="mando"] .j-carta:not(.ancha):focus { outline: 3px solid var(-
 .j-carta .j-img.j-tapa .j-tapa-ante, .j-carta .j-img.j-tapa .j-tapa-tit { display: none; }
 .j-carta .j-img.j-tapa .j-tapa-ini { display: block; font-family: var(--serif); font-weight: 700; font-size: 40px; line-height: 1; color: var(--gris); }
 .j-tira { padding: 14px 12px 14px; margin: -14px -12px -8px; scroll-padding: 0 12px; }
+
+/* Modo Juegos: todos los títulos en mayúsculas */
+.j-pag .titular, .j-carta-tit, .j-valorado .tit, .j-tapa-tit, .j-tapa-ini { text-transform: uppercase; }
+.j-pag .titular { letter-spacing: -0.015em; }
+.j-carta:not(.ancha) .j-carta-tit, .j-tira .j-carta-tit { letter-spacing: -0.005em; }
+/* Que no se corten las letras con trazo hacia abajo (g, y, p, q, j, la coma…): interlineado y un poco de aire
+   debajo dentro de la caja recortada */
+.j-carta-tit { line-height: 1.14 !important; padding-bottom: 0.1em; }
+.j-pag .titular { line-height: 1; padding-bottom: 0.06em; }

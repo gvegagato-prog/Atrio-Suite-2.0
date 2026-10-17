@@ -257,7 +257,7 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(e.modo === 'juegos' && e.v === 'juegos', `juegos: Atrio arranca en el modo Juegos (${e.modo}/${e.v})`);
     await shot('01-portada');
     const txt = await page.evaluate(() => document.body.innerText);
-    ok(/Deadlock/.test(txt) && /SEGUIR JUGANDO/i.test(txt) && /LA BIBLIOTECA/i.test(txt), 'juegos: portada con el último jugado, seguir jugando y la biblioteca');
+    ok(/Deadlock/i.test(txt) && /SEGUIR JUGANDO/i.test(txt) && /LA BIBLIOTECA/i.test(txt), 'juegos: portada con el último jugado, seguir jugando y la biblioteca');
     ok(!/Juego oculto/.test(txt), 'juegos: los juegos ocultos no salen');
     // A: Jugar (lo enfocado al empezar)
     await btn(A); await page.waitForTimeout(300);

@@ -16,7 +16,7 @@ Atrio en el PC se abre siempre **a pantalla completa en el modo Juegos**: el lan
 revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** (LB y RB pasan de una a otra).
 
 - **Juegos:** arriba, el escaparate: un juego a lo grande (su fondo, el titular, la descripción de la tienda y
-  «Jugar →» ya enfocado: una pulsación de A y a jugar). En las tarjetas de juego manda el nombre: grande, con la
+  «Jugar →» ya enfocado: una pulsación de A y a jugar). Todos los títulos del modo Juegos van en mayúsculas. En las tarjetas de juego manda el nombre: grande, con la
   letra de la revista y un filete encima, y la portada pequeña al lado (como el índice de una revista). Debajo, «Seguir jugando» y «Favoritos» en filas de
   portadas que se recorren de lado: el escaparate pasa al juego que enfoques (la imagen se funde), subes y
   juegas. Cada fila recuerda dónde la dejaste. Después, toda la biblioteca en portadas (por recientes, A–Z u
