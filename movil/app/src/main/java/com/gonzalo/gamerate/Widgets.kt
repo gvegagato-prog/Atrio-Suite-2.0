@@ -60,7 +60,7 @@ import kotlin.math.sqrt
  */
 
 /** Los widgets que hay. */
-enum class WTipo { LEYENDO, ESTANTE, CALENDARIO, PORTADA, ANO, CITA, EFEMERIDE, MARCA, SIGUIENTE, ACTIVIDAD }
+enum class WTipo { LEYENDO, ESTANTE, CALENDARIO, PORTADA, ANO, CITA, EFEMERIDE, MARCA, MARCA_PAPEL, SIGUIENTE, ACTIVIDAD }
 
 abstract class WBase(private val tipo: WTipo) : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) = Widgets.pintar(ctx, tipo, ids, goAsync())
@@ -84,6 +84,7 @@ class WAno : WBase(WTipo.ANO)
 class WCita : WBase(WTipo.CITA)
 class WEfemeride : WBase(WTipo.EFEMERIDE)
 class WMarca : WBase(WTipo.MARCA)
+class WMarcaPapel : WBase(WTipo.MARCA_PAPEL)
 class WSiguiente : WBase(WTipo.SIGUIENTE)
 class WActividad : WBase(WTipo.ACTIVIDAD)
 
@@ -292,6 +293,7 @@ object Widgets {
         WTipo.CITA -> WCita::class.java
         WTipo.EFEMERIDE -> WEfemeride::class.java
         WTipo.MARCA -> WMarca::class.java
+        WTipo.MARCA_PAPEL -> WMarcaPapel::class.java
         WTipo.SIGUIENTE -> WSiguiente::class.java
         WTipo.ACTIVIDAD -> WActividad::class.java
     }
@@ -380,6 +382,7 @@ object Widgets {
         WTipo.ANO -> 165f to 165f
         WTipo.PORTADA -> 330f to 250f
         WTipo.MARCA -> 330f to 80f
+        WTipo.MARCA_PAPEL -> 330f to 165f
         else -> 330f to 165f
     }
 
@@ -417,6 +420,7 @@ object Widgets {
             WTipo.CITA -> cita(d, id, w, h)
             WTipo.EFEMERIDE -> efemeride(d, id, w, h)
             WTipo.MARCA -> marca(d, w, h)
+            WTipo.MARCA_PAPEL -> marcaPapel(d, w, h)
             WTipo.SIGUIENTE -> siguiente(d, id, w, h)
             WTipo.ACTIVIDAD -> actividad(d, w, h)
         }
@@ -952,6 +956,50 @@ object Widgets {
                 pon(l, 4f, min(h - l.height - 2f, base + fm.descent * 0.4f + 2f))
             }
         }.transparente()
+    }
+
+    /** ATRIO en papel: la cabecera de la portada de la revista (el nombre, el número del día y la fecha). */
+    private fun marcaPapel(d: WDatos, w: Float, h: Float): Pagina {
+        val ctx = d.ctx
+        val hoy = LocalDate.now()
+        val fecha = "${hoy.dayOfWeek.getDisplayName(TextStyle.FULL, ES)} ${hoy.dayOfMonth} de ${hoy.month.getDisplayName(TextStyle.FULL, ES)}"
+        val nombre = runCatching { d.store.myName }.getOrDefault("").trim()
+        return Pagina(listOf(Zona(0f, 0f, w, h, abrir(ctx, "home"), "Abrir la revista"))) {
+            fondo()
+            val pad = if (h < 90f) 12f else 16f
+            // Lo de debajo del nombre, según el sitio: la línea del número y la fecha; y la entradilla si cabe
+            val conLinea = h >= 70f
+            val conEntradilla = h >= 140f && nombre.isNotEmpty()
+            val bajo = (if (conLinea) 22f else 0f) + (if (conEntradilla) 24f else 0f)
+            val alto = h - 2 * pad - bajo
+            val p = tp(fTitular, 10f, tinta, -0.03f)
+            val s = min((w - 2 * pad) / (p.measureText("ATRIO") / 10f), alto / 0.78f).coerceAtLeast(10f)
+            val tpa = tp(fTitular, s, tinta, -0.03f)
+            val capH = s * 0.72f
+            // Todo el bloque centrado en el widget (el nombre se mide por sus mayúsculas, no por la caja de la letra)
+            val bloque = capH + s * 0.08f + 4f + bajo
+            val base = max(pad, (h - bloque) / 2) + capH
+            val tw = tpa.measureText("ATRIO")
+            c.drawText("ATRIO", (w - tw) / 2, base, tpa)
+            var y = base + s * 0.08f + 4f
+            if (conLinea) {
+                c.drawRect(pad, y, w - pad, y + 1.6f, lleno(tinta))
+                y += 5f
+                val iz = "Nº ${hoy.dayOfYear}"
+                ante(iz, pad, y, w / 2, tinta, 8.5f)
+                val sitio = w - 2 * pad - anchoAnte(iz, 8.5f) - 12f
+                val corta = "${hoy.dayOfWeek.getDisplayName(TextStyle.SHORT, ES).trimEnd('.')} ${hoy.dayOfMonth} ${hoy.month.getDisplayName(TextStyle.SHORT, ES).trimEnd('.')}"
+                ante(if (anchoAnte(fecha, 8.5f) > sitio) corta else fecha, pad + anchoAnte(iz, 8.5f) + 12f, y, w - 2 * pad - anchoAnte(iz, 8.5f) - 12f, tinta, 8.5f, Layout.Alignment.ALIGN_OPPOSITE)
+                y += 14f
+                c.drawRect(pad, y, w - pad, y + 0.6f, lleno(tinta))
+                y += 6f
+            }
+            if (conEntradilla) {
+                val pe = tp(fCursiva, 13f, gris)
+                val larga = "La colección de $nombre, al día"
+                pon(capa(if (pe.measureText(larga) > w - 2 * pad) "La colección de $nombre" else larga, pe, w - 2 * pad, 1), pad, y)
+            }
+        }
     }
 
     // ------------------------------------------------------------------ ¿Y ahora qué? (algo de tu lista)

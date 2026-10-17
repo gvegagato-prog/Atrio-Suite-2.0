@@ -19,6 +19,8 @@
     <string name="w_efemeride_d">Lo que terminaste esta misma fecha otros años.</string>
     <string name="w_marca">ATRIO</string>
     <string name="w_marca_d">La cabecera de la revista, sola sobre tu fondo. Un toque y estás en la portada.</string>
+    <string name="w_marcapapel">ATRIO en papel</string>
+    <string name="w_marcapapel_d">La cabecera de la revista en su papel: el número del día y la fecha. Un toque y estás en la portada.</string>
     <string name="w_siguiente">¿Y ahora qué?</string>
     <string name="w_siguiente_d">Algo de tu lista para empezar hoy, con su portada. «Otra» para cambiar.</string>
     <string name="w_actividad">Tu actividad</string>

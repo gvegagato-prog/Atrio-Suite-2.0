@@ -86,6 +86,7 @@ class WidgetsTest {
         ), 1)
         s.save(listOf(Game(401, "Dune", cover("Dune", 0xFFF2994A.toInt(), 0xFFF2C94C.toInt()), 89, creator = "Frank Herbert", end = minOf(d, mes + 14))), 1)
         s.setGoal(0, hoy.year, 24); s.setGoal(1, hoy.year, 12)
+        s.myName = "Gonzalo"
         // El libro que se está leyendo tiene su archivo, lo leído y dos subrayados
         BookFiles.put(ctx, 301, JSONObject().put("uri", "content://prueba/viento.epub").put("name", "viento.epub").put("fraction", 0.43)
             .put("read", System.currentTimeMillis())
@@ -113,6 +114,7 @@ class WidgetsTest {
             WTipo.CITA to listOf(480f to 220f, 330f to 165f, 330f to 250f),
             WTipo.EFEMERIDE to listOf(330f to 165f, 165f to 165f),
             WTipo.MARCA to listOf(330f to 80f, 330f to 165f, 165f to 60f),
+            WTipo.MARCA_PAPEL to listOf(330f to 165f, 330f to 80f, 165f to 165f, 480f to 220f),
             WTipo.SIGUIENTE to listOf(480f to 220f, 330f to 165f, 165f to 165f),
             WTipo.ACTIVIDAD to listOf(480f to 220f, 330f to 165f, 165f to 165f)
         )
