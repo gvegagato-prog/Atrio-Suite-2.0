@@ -13,6 +13,12 @@
   D.cuenta = () => cuenta;
   D.pc = () => pc;
   D.config = () => pc.config || {};
+  // Fotos de la galería de tus otros dispositivos ya descargadas en este PC: nombre (sin extensión) → dirección
+  let fotos = {};
+  D.setFotos = (m) => { fotos = m || {}; };
+  // Una foto de un dispositivo («file:…/covers/foto_….jpg») se ve si ya está aquí; las de internet, tal cual
+  D.fotoDe = (u) => { const m = /^file:.*\/([A-Za-z0-9_.-]+?)(\.[A-Za-z0-9]+)?$/i.exec(String(u || '')); return m ? m[1] : null; };
+  D.imagen = (u) => { const n = D.fotoDe(u); return n ? (fotos[n] || '') : (u || ''); };
   D.conCuenta = () => !!(cuenta.status && cuenta.status.signed);
   D.datos = () => cuenta.data || {};
   D.setCuenta = (s) => { if (s && typeof s === 'object') cuenta = { status: s.status || { signed: false }, data: s.data || null }; };

@@ -1175,3 +1175,6 @@ body[data-modo="juegos"] .dialogo h2 { text-transform: uppercase; letter-spacing
 body[data-entrada="mando"] .arte-opcion:focus { outline: 3px solid var(--acento); outline-offset: 4px; }
 .dialogo [hidden] { display: none !important; }
 .arte-estado:empty { display: none; }
+.arte-disp { display: flex; flex-direction: column; gap: 6px; margin: 0 0 14px; padding: 10px 0; border-top: 1px solid var(--linea); border-bottom: 1px solid var(--linea); }
+.arte-disp:empty { display: none; }
+.arte-disp .fila-botones { margin: 0; }

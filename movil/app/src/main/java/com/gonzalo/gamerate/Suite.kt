@@ -253,7 +253,10 @@ object Suite {
 
     private fun presence(on: Boolean) {
         try {
+            // «dn»: el nombre del aparato (el de Ajustes del sistema: «OPPO Pad Mini»), para distinguir el móvil de la tableta
+            val dn = try { android.provider.Settings.Global.getString(appCtx.contentResolver, "device_name") } catch (e: Exception) { null }
             val o = JSONObject().put("app", "ronron").put("name", store.myName.ifBlank { Build.MODEL ?: "Móvil" })
+                .put("dn", dn?.takeIf { it.isNotBlank() } ?: Build.MODEL ?: "Móvil")
                 .put("os", "android").put("on", on).put("at", JSONObject().put(".sv", "timestamp"))
             Account.db(store, "PUT", base() + "/suite/live/${store.accDevice}", o.toString(), "print=silent", ok404 = false)
         } catch (e: Exception) { }
@@ -267,7 +270,7 @@ object Suite {
             val o = live.optJSONObject(d) ?: return@mapNotNull null
             val g = o.optJSONObject("game")
             LiveDev(
-                d, o.optString("app"), o.optString("name", "?"), o.optString("os"),
+                d, o.optString("app"), o.optString("dn").ifBlank { o.optString("name", "?") }, o.optString("os"),
                 o.optBoolean("on") && now - o.optLong("at") < ONLINE_MS, o.optLong("at"),
                 g?.let { LiveGame(it.optString("key"), it.optString("name"), it.optLong("sg"), it.optLong("s"), it.optString("cover"), it.optString("hero"), it.optString("logo")) },
                 o.optBoolean("shot", true), o.optInt("today", 0),
@@ -290,6 +293,16 @@ object Suite {
                     val res = cmds.optJSONObject(d)?.optJSONObject(id)?.optJSONObject("res")
                     if (res != null) { w.complete(res); waits.remove(id) }
                 }
+            }
+        }
+        // Órdenes para este dispositivo (otro dispositivo pide una foto tuya)
+        cmds.optJSONObject(store.accDevice)?.let { mine ->
+            for (id in mine.keys().asSequence().toList()) {
+                val c = mine.optJSONObject(id) ?: continue
+                if (c.has("res") || id in busy) continue
+                if (System.currentTimeMillis() - c.optLong("t") > 10 * 60_000L) continue
+                busy.add(id)
+                scope?.launch { answer(id, c) }
             }
         }
         // Capturas: las nuevas se bajan solas
@@ -434,6 +447,76 @@ object Suite {
         val acked = tree?.optJSONObject("cmd")?.optJSONObject(to)?.optJSONObject(id)?.optBoolean("ack") == true
         if (acked) JSONObject().put("ok", true).put("msg", "${target()?.name ?: "El PC"} ha dejado de contestar: se está apagando")
         else fail("El PC no responde (¿Atrio está abierto y con tu cuenta?).")
+    }
+
+    // ---------------------------------------------------------------- Fotos entre dispositivos
+    // Una foto de tu galería puesta de portada (o de fondo) solo está en el móvil donde la elegiste. Otro
+    // dispositivo tuyo (el PC, la tableta) se la pide: este la sube por trozos, tal cual (el original, sin
+    // recomprimir), a /users/<uid>/fotodata/<id>, y el otro la baja y la borra.
+    private const val CHUNK = 512 * 1024
+
+    /** Los otros móviles y tabletas con la app abierta ahora mismo. */
+    fun phones(): List<LiveDev> = devices.filter { it.online && it.app == "ronron" }
+
+    private suspend fun answer(id: String, c: JSONObject) {
+        val res = try {
+            when (c.optString("op")) {
+                "foto" -> sendPhoto(id, c.optJSONObject("a") ?: JSONObject())
+                "ping" -> JSONObject().put("ok", true).put("msg", "${store.myName.ifBlank { Build.MODEL ?: "Móvil" }} conectado")
+                else -> JSONObject().put("ok", false).put("msg", "Orden desconocida: actualiza la app del móvil.")
+            }
+        } catch (e: Exception) { JSONObject().put("ok", false).put("msg", e.message ?: "error") }
+        try {
+            Account.db(store, "PUT", base() + "/suite/cmd/${store.accDevice}/$id/res", res.put("t", JSONObject().put(".sv", "timestamp")).toString(), "print=silent", ok404 = false)
+        } catch (e: Exception) { }
+    }
+
+    private fun sendPhoto(id: String, a: JSONObject): JSONObject {
+        val name = a.optString("name")
+        if (!Regex("^[A-Za-z0-9_.-]{1,80}$").matches(name)) throw java.io.IOException("Nombre de foto no válido")
+        val (f, orig) = Photos.best(appCtx, name) ?: return JSONObject().put("ok", false).put("msg", "Esa foto no está en este dispositivo")
+        val bytes = f.readBytes()
+        val b64 = Base64.getEncoder().encodeToString(bytes)
+        val n = (b64.length + CHUNK - 1) / CHUNK
+        var i = 0
+        while (i < n) {
+            val part = JSONObject()
+            for (j in i until minOf(n, i + 6)) part.put(j.toString(), b64.substring(j * CHUNK, minOf(b64.length, (j + 1) * CHUNK)))
+            Account.db(store, "PATCH", base() + "/fotodata/$id", part.toString(), "print=silent", ok404 = false)
+            i += 6
+        }
+        val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeFile(f.path, o)
+        return JSONObject().put("ok", true).put("data", id).put("n", n).put("bytes", bytes.size).put("mime", Photos.mimeOf(f))
+            .put("w", o.outWidth).put("h", o.outHeight).put("orig", orig)
+            .put("msg", if (orig) "Foto original (${o.outWidth}×${o.outHeight})" else "Foto (${o.outWidth}×${o.outHeight}): de antes de guardar el original")
+    }
+
+    /**
+     * Pide a otro dispositivo una foto tuya (por su dirección «file:…») y la guarda en este, con el mismo nombre:
+     * la portada que ya tenía la ficha se ve aquí también. Devuelve (bien, mensaje).
+     */
+    suspend fun fetchPhoto(dev: String, url: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val name = Photos.nameOf(url) ?: return@withContext false to "Esa imagen no es una foto de un dispositivo"
+        val r = sendRaw("foto", JSONObject().put("name", name), dev, 120_000)
+        if (!r.optBoolean("ok")) return@withContext false to r.optString("msg").ifBlank { "No ha contestado" }
+        val data = r.optString("data")
+        try {
+            val out = java.io.ByteArrayOutputStream(r.optInt("bytes").coerceAtLeast(1024))
+            val dec = Base64.getDecoder()
+            for (i in 0 until r.optInt("n")) {
+                val raw = Account.db(store, "GET", base() + "/fotodata/$data/$i", null) ?: throw java.io.IOException("falta un trozo")
+                out.write(dec.decode(JSONTokener(raw).nextValue() as? String ?: throw java.io.IOException("trozo dañado")))
+            }
+            val bytes = out.toByteArray()
+            if (bytes.size != r.optInt("bytes")) throw java.io.IOException("ha llegado incompleta")
+            Photos.saveArrived(appCtx, name, bytes, r.optString("mime", "image/jpeg"))
+            true to r.optString("msg").ifBlank { "Foto descargada" }
+        } catch (e: Exception) {
+            false to "No se ha podido descargar: ${e.message}"
+        } finally {
+            try { Account.db(store, "DELETE", base() + "/fotodata/$data", null) } catch (e: Exception) { }
+        }
     }
 
     /** El juego del PC con esa clave (de la biblioteca de cualquier PC). */

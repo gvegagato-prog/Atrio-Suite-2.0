@@ -239,6 +239,9 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
       const n = async () => {};
       window.atrio = {
         state: async () => p, ronron: async () => c, on: () => {}, ronronEdit: async (op) => { (window.__edits ||= []).push(op); return c; }, log: n,
+        fotoPhones: async () => [{ dev: 'movil1', name: 'Pixel de prueba' }],
+        fotoList: async () => window.__fotos || {},
+        fotoFetch: async (dev, name, dest) => { (window.__traidas ||= []).push([dev, name, dest]); window.__fotos = { [name]: p.games[1].art.cover }; return { w: 4000, h: 3000, orig: true, msg: 'Foto original (4000×3000)', names: window.__fotos }; },
         ronronAssets: async (id, type) => ({ sgdbId: id, items: [{ id: 1, url: `https://cdn.example/${type}.png`, thumb: p.games[0].art.cover, width: 600, height: 900 }] }), patchConfig: async (x) => { Object.assign(p.config, x); return p; },
         launch: async (k) => { (window.__lanzados ||= []).push(k); return {}; }, switchUi: n, toggleFullscreen: n, minimize: n, quit: n, rescan: async () => p,
         override: async (key, patch) => { const g = p.games.find((x) => x.key === key); Object.assign(g, patch); return { ...g }; },
@@ -250,6 +253,8 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
         setArt: async (key, type, src) => { (window.__arte ||= []).push([key, type, src]); const g = p.games.find((x) => x.key === key); return { ...g }; },
       };
       p.config.sgdbKey = 'clave';
+      // The Witcher 3 tiene de portada una foto de la galería del móvil
+      c.data.games.find((x) => x.id === 5).cover = 'file:///data/user/0/com.gonzalo.gamerate/files/covers/foto_1700000000000.jpg';
     }, { cuenta, pc });
     await page.goto(`http://localhost:${port}/`);
     await page.waitForTimeout(1600);
@@ -332,6 +337,14 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(/Witcher/i.test(opcV) && /favoritos/i.test(opcV) && /Cambiar la nota/.test(opcV), 'juegos: Y abre las opciones de un juego que no está instalado (favorito, nota…)');
     // Sus imágenes (de la cuenta): elegir una portada la guarda en la ficha
     await page.click('#capa button:has-text("Imágenes de la ficha")'); await page.waitForTimeout(500);
+    // Su portada es una foto del móvil: «Descargar de …» la trae (en su calidad original) y ya se ve en el PC
+    const dispTxt = await page.evaluate(() => (document.querySelector('#capa .arte-disp') || {}).innerText || '');
+    ok(/foto de tu móvil/i.test(dispTxt) && /Descargar de Pixel de prueba/i.test(dispTxt), `fotos: la portada del móvil ofrece «Descargar de …» («${dispTxt.replace(/\s+/g, ' ').slice(0, 80)}»)`);
+    await page.click('#capa .arte-disp button'); await page.waitForTimeout(500);
+    const traidas = await page.evaluate(() => window.__traidas || []);
+    ok(traidas.length === 1 && traidas[0][0] === 'movil1' && traidas[0][1] === 'foto_1700000000000', `fotos: se pide al móvil la foto por su nombre (${JSON.stringify(traidas[0] || null)})`);
+    const ahoraImg = await page.evaluate(() => { const i = document.querySelector('#capa .arte-actual img'); return i ? i.getAttribute('src') : ''; });
+    ok(!!ahoraImg && !/^file:/.test(ahoraImg), `fotos: después se ve la foto descargada (${String(ahoraImg).slice(0, 40)})`);
     await page.click('#capa .arte-opcion'); await page.waitForTimeout(400);
     const ed = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
     ok(ed && ed.op === 'saveGame' && /cover\.png$/.test(ed.item.cover), `juegos: cambiar la portada de un juego no instalado la guarda en la cuenta (${ed && ed.item && ed.item.cover})`);

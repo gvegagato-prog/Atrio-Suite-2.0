@@ -12,7 +12,7 @@
   const est = { orden: 'recientes', origen: 'todos', heroe: null, tiras: {} };
 
   const SECCIONES = [['j-valorados', 'Valorados'], ['juegos', 'Juegos'], ['revista', 'Revista']];
-  const remota = (u) => (u && /^(https?|atrio|data):/i.test(u) ? u : '');
+  const remota = (u) => { const x = D.imagen(u); return x && /^(https?|atrio|data):/i.test(x) ? x : ''; };
   const portadaDe = (g) => remota((g.art || {}).cover) || remota((g.art || {}).wide) || '';
   const fondoDe = (g) => { const a = g.art || {}; return remota(a.herohd) || remota(a.hero) || remota(a.wide) || remota(a.cover) || ''; };
   const juego = (key) => D.juegosPc().find((g) => g.key === key || (g.aliasKeys || []).includes(key)) || null;

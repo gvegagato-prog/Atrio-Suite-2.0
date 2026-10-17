@@ -125,7 +125,7 @@ async function pushLib() {
 function devices() {
   const live = tree.live || {};
   return Object.entries(live).filter(([d]) => d !== me()).map(([d, v]) => ({
-    dev: d, app: v.app, name: v.name, os: v.os, game: v.game || null, at: Number(v.at) || 0,
+    dev: d, app: v.app, name: v.dn || v.name, os: v.os, game: v.game || null, at: Number(v.at) || 0,
     online: !!v.on && now() - (Number(v.at) || 0) < ONLINE_MS,
   }));
 }
@@ -236,6 +236,48 @@ async function handleCommands() {
       // La orden y su respuesta se borran al rato (el móvil ya la ha leído)
       setTimeout(() => del(`/suite/cmd/${me()}/${id}`).catch(() => {}), 5 * 60 * 1000);
     })();
+  }
+}
+
+// ---------------------------------------------------------------- Fotos de tus otros dispositivos
+// Una foto de la galería del móvil puesta de portada solo está en ese móvil. Se le pide (orden «foto»): la sube
+// por trozos, tal cual, a /users/<uid>/fotodata/<id>; aquí se baja entera y se borra de la nube.
+function phones() { return devices().filter((d) => d.online && d.app === 'ronron'); }
+
+async function request(dev, op, a, timeoutMs = 60000) {
+  const id = `${now().toString(36)}${crypto.randomBytes(3).toString('hex')}`;
+  await put(`/suite/cmd/${dev}/${id}`, { op, a: a || {}, t: { '.sv': 'timestamp' }, by: os.hostname() });
+  const t0 = now();
+  try {
+    for (;;) {
+      const res = (((tree.cmd || {})[dev] || {})[id] || {}).res;
+      if (res) return res;
+      if (now() - t0 > timeoutMs) throw new Error('El otro dispositivo no contesta: abre Atrio en él (con tu cuenta).');
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  } finally {
+    del(`/suite/cmd/${dev}/${id}`).catch(() => {});
+  }
+}
+
+async function fetchFoto(dev, name) {
+  if (!rr.uid()) throw new Error('Entra en tu cuenta para traer fotos de tus otros dispositivos.');
+  if (!/^[A-Za-z0-9_.-]{1,80}$/.test(String(name || ''))) throw new Error('Esa imagen no es una foto de un dispositivo.');
+  const res = await request(dev, 'foto', { name }, 120000);
+  if (!res.ok) throw new Error(res.msg || 'No la tiene');
+  const data = res.data;
+  try {
+    let b64 = '';
+    for (let i = 0; i < (Number(res.n) || 0); i++) {
+      const part = await rr.db('GET', `${base()}/fotodata/${data}/${i}`, undefined, '', false);
+      if (typeof part !== 'string') throw new Error('falta un trozo');
+      b64 += part;
+    }
+    const buf = Buffer.from(b64, 'base64');
+    if (buf.length !== Number(res.bytes)) throw new Error('ha llegado incompleta');
+    return { buf, mime: res.mime || 'image/jpeg', w: res.w, h: res.h, orig: !!res.orig, msg: res.msg || '' };
+  } finally {
+    del(`/fotodata/${data}`).catch(() => {});
   }
 }
 
@@ -389,6 +431,6 @@ function state() {
 }
 
 module.exports = {
-  start, stop, state, takeAndUpload, localShots, shotFile, forgetShot, pushLib, pushLive,
+  start, stop, state, takeAndUpload, localShots, shotFile, forgetShot, pushLib, pushLive, phones, fetchFoto,
   libChanged: () => setTimeout(pushLib, 1500), liveChanged: () => pushLive(false), devices,
 };

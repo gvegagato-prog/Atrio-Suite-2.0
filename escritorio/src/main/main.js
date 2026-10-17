@@ -17,7 +17,7 @@ const steam = require('./scanners/steam');
 const heroic = require('./scanners/heroic');
 const lutris = require('./scanners/lutris');
 const local = require('./scanners/local');
-const { HOME, XDG_CONFIG, exists, mkdirp } = require('./paths');
+const { HOME, XDG_CONFIG, XDG_DATA, exists, mkdirp } = require('./paths');
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'atrio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
@@ -408,6 +408,28 @@ async function segFromSession(key) {
 
 function setupSuiteIpc() {
   ipcMain.handle('suite:state', () => suite.state());
+  // Fotos de la galería de tus otros dispositivos (portadas y fondos elegidos en el móvil)
+  ipcMain.handle('foto:phones', () => suite.phones().map((d) => ({ dev: d.dev, name: d.name })));
+  ipcMain.handle('foto:list', () => fotoNames());
+  ipcMain.handle('foto:fetch', async (_e, dev, name, dest) => {
+    const f = await suite.fetchFoto(dev, name);
+    const base = String(name).replace(/\.[^.]+$/, '');
+    const ext = ({ 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/heic': 'heic', 'image/heif': 'heif', 'image/avif': 'avif' })[f.mime] || 'jpg';
+    mkdirp(FOTOS);
+    for (const x of fs.readdirSync(FOTOS)) if (x.replace(/\.[^.]+$/, '') === base) { try { fs.unlinkSync(path.join(FOTOS, x)); } catch { /* */ } }
+    const file = path.join(FOTOS, `${base}.${ext}`);
+    fs.writeFileSync(file, f.buf);
+    log('foto de otro dispositivo', name, `${f.w}x${f.h}`, `${Math.round(f.buf.length / 1024)} KB`, f.orig ? 'original' : 'reducida');
+    const out = { w: f.w, h: f.h, orig: f.orig, msg: f.msg, url: fotoUrl(name), names: fotoNames() };
+    // Para un juego de este PC: pasa a ser su imagen en el lanzador
+    if (dest && dest.key && dest.type) {
+      const g = library.get(dest.key);
+      if (!g) throw new Error('Juego no encontrado');
+      art.setFromFile(dest.key, dest.type, file);
+      out.game = publicGame(g);
+    }
+    return out;
+  });
   ipcMain.handle('suite:shot', () => suite.takeAndUpload({}).then((r) => ({ id: r.id, w: r.w, h: r.h, method: r.method })));
   ipcMain.handle('suite:shots', (_e, key) => suite.localShots(key).map((x) => ({ ...x, url: `atrio://shot/${x.id}` })));
   ipcMain.handle('suite:shotDelete', (_e, id) => {
@@ -790,6 +812,26 @@ function uiBackground(mode) {
   return dark ? '#141210' : '#F3EEE4';
 }
 
+// ---------- Fotos de tus otros dispositivos ----------
+// Guardadas con el nombre que tienen en el móvil («foto_1700000000000»), así la ficha (que guarda la dirección del
+// móvil, «file:…/foto_….jpg») se ve también aquí.
+const FOTOS = path.join(XDG_DATA, 'atrio', 'fotos');
+const sinExt = (n) => String(n || '').replace(/\.[^.]+$/, '');
+function fotoFile(name) {
+  const b = sinExt(name);
+  if (!/^[A-Za-z0-9_.-]{1,80}$/.test(b)) return null;
+  try { const x = fs.readdirSync(FOTOS).find((f) => sinExt(f) === b); return x ? path.join(FOTOS, x) : null; } catch { return null; }
+}
+function fotoUrl(name) {
+  const f = fotoFile(name);
+  let v = 0;
+  try { v = Math.round(fs.statSync(f).mtimeMs); } catch { /* */ }
+  return f ? `atrio://foto/${encodeURIComponent(sinExt(name))}?v=${v}` : '';
+}
+function fotoNames() {
+  try { return Object.fromEntries(fs.readdirSync(FOTOS).map((f) => [sinExt(f), fotoUrl(f)])); } catch { return {}; }
+}
+
 // ---------- Ventana ----------
 function createWindow() {
   const cfg = config.get();
@@ -966,6 +1008,13 @@ app.whenReady().then(async () => {
             'cache-control': 'max-age=31536000, immutable',
           },
         });
+      }
+    }
+    if (u.host === 'foto' && parts.length === 1) {
+      const f = fotoFile(decodeURIComponent(parts[0]));
+      if (f) {
+        const r = await net.fetch(pathToFileURL(f).toString());
+        return new Response(r.body, { status: r.status, headers: { 'content-type': r.headers.get('content-type') || 'image/*', 'cache-control': 'max-age=31536000, immutable' } });
       }
     }
     if (u.host === 'shot' && parts.length === 1) {

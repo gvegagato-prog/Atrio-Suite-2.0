@@ -27,6 +27,11 @@ revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** 
   que no están instalados (Valorados, la revista): favorito, nota, opinión, apuntes, estado, datos, borrar y
   **sus imágenes** (portada, fondo y logo de la ficha, de SteamGridDB o pegando una dirección; se guardan en la
   cuenta y se ven también en el móvil). En cada ficha de la revista hay un enlace «Imágenes».
+- **Fotos de tu móvil, a máxima calidad:** si en el móvil pones de portada (o de fondo) una foto de tu galería, en
+  el PC y en la tableta el selector de imágenes ofrece «Descargar de <tu móvil>». El móvil la sube por trozos, tal
+  cual (el original, sin recomprimir) y el otro dispositivo la baja y la borra de la nube. El móvil tiene que tener
+  Atrio abierto. Desde Atrio 6.13 el móvil guarda el original de cada foto que eliges; las de antes solo se pueden
+  mandar como estaban guardadas (reducidas a 1400 px).
 - **Valorados:** tus juegos terminados con la nota en grande y su portada; los instalados se abren para jugar.
 - **Revista:** toda tu colección (libros, películas, series, el diario, las cifras, Descubrir…) como antes,
   ahora también con mando.

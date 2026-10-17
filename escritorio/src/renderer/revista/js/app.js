@@ -303,6 +303,7 @@
       RV.mando.config((s.config || {}).behavior);
     } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
     try { D.setCuenta(await api.ronron()); } catch { /* sin cuenta */ }
+    try { if (api.fotoList) D.setFotos(await api.fotoList()); } catch { /* */ }
     pintar({ y: 0 });
     // Con las letras ya cargadas, los titulares se miden bien
     if (document.fonts && document.fonts.load) {

@@ -27,6 +27,40 @@
     const rejilla = h('div.arte-rejilla');
     const estado = h('p.texto.arte-estado');
     const mas = h('button.enlace', { type: 'button', hidden: true, onclick: () => { pagina++; cargar(true); } }, 'Cargar más');
+    // Una foto de la galería de otro dispositivo tuyo (la elegiste en el móvil): se le pide y llega en su calidad original
+    const disp = h('div.arte-disp');
+    let telefonos = [];
+    let trayendo = false;
+    function pintarDisp() {
+      const raw = f.fotoDe ? f.fotoDe(tipo) : '';
+      const nombre = raw ? D.fotoDe(raw) : null;
+      if (!nombre) { disp.replaceChildren(); return; }
+      const aqui = !!D.imagen(raw);
+      disp.replaceChildren(
+        h('span.versal', aqui ? 'Foto de tu móvil · ya en este PC' : 'Es una foto de tu móvil'),
+        telefonos.length
+          ? h('div.fila-botones', telefonos.map((t) => h('button.enlace.acento', {
+            type: 'button', disabled: trayendo ? true : null,
+            onclick: () => traer(t, nombre),
+          }, `${aqui ? 'Volver a descargar' : 'Descargar'} de ${t.name} ↓`)))
+          : h('p.texto', 'Abre Atrio en el móvil donde la elegiste y podrás descargarla aquí, en su calidad original.'));
+    }
+    async function traer(t, nombre) {
+      trayendo = true;
+      pintarDisp();
+      estado.textContent = `Pidiéndosela a ${t.name}…`;
+      try {
+        const r = await f.traer(t.dev, nombre, tipo);
+        if (r && r.names) D.setFotos(r.names);
+        estado.textContent = '';
+        pintarActual();
+        RV.refrescar();
+        RV.aviso(`${r && r.msg ? r.msg : 'Foto descargada'} · de ${t.name}`);
+      } catch (e) { estado.textContent = RV.limpiaError(e); }
+      trayendo = false;
+      pintarDisp();
+    }
+    if (f.fotoDe && api.fotoPhones) api.fotoPhones().then((l) => { telefonos = l || []; pintarDisp(); }).catch(() => {});
 
     function pintarPestanas() {
       pestanas.replaceChildren(...f.tipos.map(([t, txt]) => h('button.j-opt', {
@@ -42,7 +76,7 @@
     function cambiar(t, enfocar) {
       if (t === tipo) return;
       tipo = t; pagina = 0;
-      pintarPestanas(); pintarActual();
+      pintarPestanas(); pintarActual(); pintarDisp();
       if (enfocar) requestAnimationFrame(() => { const b = pestanas.querySelector('[aria-pressed="true"]'); if (b) b.focus({ preventScroll: true }); });
       cargar(false);
     }
@@ -102,10 +136,10 @@
       });
       inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(d); } });
     };
-    pintarPestanas(); pintarActual();
+    pintarPestanas(); pintarActual(); pintarDisp();
     RV.dialogo({
       ante: 'Imágenes · LB y RB cambian de tipo', titulo: f.titulo, ancho: true,
-      cuerpo: [h('div.arte-cabeza', pestanas, actual), estado, h('div.arte-scroll.desplaza', rejilla, h('div.fila-botones', mas))],
+      cuerpo: [h('div.arte-cabeza', pestanas, actual), disp, estado, h('div.arte-scroll.desplaza', rejilla, h('div.fila-botones', mas))],
       acciones: [
         f.archivo ? { texto: 'Desde un archivo', fn: desdeArchivo } : null,
         f.url ? { texto: 'Pegar una dirección', fn: pegarDireccion } : null,
@@ -129,6 +163,9 @@
       listar: (t, p) => api.sgdbAssets(key, t, null, p),
       poner: async (t, src) => actualiza(await api.setArt(key, t, src)),
       equivocado: () => RV.juegoEquivocado(key),
+      // La foto que pusiste en el móvil en su ficha (portada o fondo) se puede traer como imagen del lanzador
+      fotoDe: (t) => { const fi = RV.fichaDeJuego(juego(key) || g0); const campo = t === 'wide' ? 'hero' : t; return fi && fi.item ? fi.item[campo] || '' : ''; },
+      traer: async (dev, nombre, t) => { const r = await api.fotoFetch(dev, nombre, { key, type: t }); if (r.game) actualiza(r.game); return r; },
     });
   };
 
@@ -139,7 +176,9 @@
     const tipos = [['cover', 'Portada'], ['hero', 'Fondo'], ['logo', 'Logo']];
     selector({
       titulo: item0.name, tipos, url: true,
-      actual: (tp) => fresca()[tp] || '',
+      actual: (tp) => D.imagen(fresca()[tp]),
+      fotoDe: (tp) => fresca()[tp] || '',
+      traer: (dev, nombre) => api.fotoFetch(dev, nombre, null),
       // Los juegos de la cuenta se identifican por su id de SteamGridDB
       listar: (tp, p) => api.ronronAssets(Number(fresca().id), tp, p),
       sinLista: kind.isGame ? null : 'Para esta ficha no hay catálogo de imágenes: pega la dirección de una imagen.',

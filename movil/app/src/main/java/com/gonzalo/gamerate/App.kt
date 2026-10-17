@@ -1357,7 +1357,9 @@ fun App(
                                 if (s.chain && kind.hasHero) screen = Screen.Art(g, true, s.isNew, true, s.play) else toEdit(s, g)
                             } else toEdit(s, s.game.copy(hero = url))
                         }
-                    }
+                    },
+                    // Descargada de otro dispositivo: misma dirección, ahora con la foto aquí
+                    onArrived = { h, url -> toEdit(s, if (h) s.game.copy(hero = url) else s.game.copy(cover = url)) }
                 )
 
                 is Screen.Edit -> { ChameleonEffect(s.game.cover); EditScreen(

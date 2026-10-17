@@ -16,7 +16,8 @@
 
   // La imagen de portada: el arte del PC si es el mismo juego (a máxima calidad); si no, el fondo o la portada
   // de la ficha (solo direcciones de internet: las del móvil, content://, aquí no se pueden abrir)
-  const remota = (u) => (u && /^https?:\/\//i.test(u) ? u : '');
+  // (Una foto de la galería del móvil, ya descargada en este PC, se ve con su dirección de aquí)
+  const remota = (u) => { const x = RV.D.imagen(u); return x && /^(https?:\/\/|atrio:)/i.test(x) ? x : ''; };
   function imagenDe(e) {
     const g = D.pcDe(e.kind, e.item);
     const a = (g && g.art) || {};

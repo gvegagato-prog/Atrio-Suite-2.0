@@ -82,7 +82,8 @@ async function until(fn, ms, every = 500) {
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_SUITE_BEAT: '4000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY']) delete env[k];
   const electron = path.join(DESK, 'node_modules', 'electron', 'dist', 'electron');
-  const atrio = spawn('xvfb-run', ['-a', '-s', '-screen 0 2560x1440x24', electron, '--no-sandbox', '--ventana', DESK], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const CDP = 9700 + Math.floor(Math.random() * 200);
+  const atrio = spawn('xvfb-run', ['-a', '-s', '-screen 0 2560x1440x24', electron, '--no-sandbox', '--ventana', `--remote-debugging-port=${CDP}`, DESK], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   const logs = [];
   atrio.stdout.on('data', (d) => logs.push(String(d)));
   atrio.stderr.on('data', (d) => logs.push(String(d)));
@@ -102,6 +103,85 @@ async function until(fn, ms, every = 500) {
     const t0 = Date.now();
     const pong = await send('ping');
     ok(pong && pong.ok, `Respuesta en ${Date.now() - t0} ms: ${pong && pong.msg}`);
+
+    console.log('2b. Una foto de la galería del móvil, al PC en su calidad original');
+    // El «móvil» con la app abierta: presencia y respuesta a la orden «foto» (sube el original por trozos)
+    await db('PUT', `/users/${uid}/suite/live/mtest`, { app: 'ronron', name: 'gonzalo', dn: 'Pixel de prueba', os: 'android', on: true, at: { '.sv': 'timestamp' } });
+    const crypto = require('crypto');
+    const foto = crypto.randomBytes(5 * 1024 * 1024 + 12345); // 5 MB: varios trozos
+    let respondida = null;
+    const movil = setInterval(async () => {
+      const cmds = (await db('GET', `/users/${uid}/suite/cmd/mtest`).catch(() => null)) || {};
+      for (const [id, c] of Object.entries(cmds)) {
+        if (!c || c.res || c.op !== 'foto' || respondida) continue;
+        respondida = { id, name: c.a && c.a.name };
+        const b64 = foto.toString('base64');
+        const CH = 512 * 1024;
+        const n = Math.ceil(b64.length / CH);
+        const part = {};
+        for (let i = 0; i < n; i++) part[i] = b64.slice(i * CH, (i + 1) * CH);
+        await db('PATCH', `/users/${uid}/fotodata/${id}`, part);
+        await db('PUT', `/users/${uid}/suite/cmd/mtest/${id}/res`, { ok: true, data: id, n, bytes: foto.length, mime: 'image/jpeg', w: 4000, h: 3000, orig: true, msg: 'Foto original (4000×3000)' });
+      }
+    }, 300);
+    // La ventana de Atrio, por el protocolo de depuración de Chromium (un WebSocket por página): la que tiene window.atrio
+    async function conectar(t) {
+      const ws = new WebSocket(t.webSocketDebuggerUrl);
+      await new Promise((r, e) => { ws.onopen = r; ws.onerror = e; });
+      let sig = 0;
+      const pend = new Map();
+      const ctxs = [];
+      ws.onmessage = (m) => {
+        const d = JSON.parse(m.data);
+        if (d.method === 'Runtime.executionContextCreated') ctxs.push(d.params.context);
+        if (pend.has(d.id)) { pend.get(d.id)(d); pend.delete(d.id); }
+      };
+      // El contexto de la página de Atrio (el principal, con su origen file://), no un about:blank
+      await new Promise((r) => { const id = ++sig; pend.set(id, r); ws.send(JSON.stringify({ id, method: 'Runtime.enable' })); });
+      await wait(300);
+      let main = null;
+      const evalEn = (ctxId, expr) => new Promise((res) => {
+        const id = ++sig;
+        pend.set(id, (d) => res(d.result && d.result.result ? d.result.result.value : undefined));
+        ws.send(JSON.stringify({ id, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, contextId: ctxId } }));
+      });
+      for (const c of ctxs) { if (await evalEn(c.id, 'typeof window.atrio') === 'object') { main = c; break; } }
+      const evaluate = (fn) => new Promise((res, rej) => {
+        const id = ++sig;
+        pend.set(id, (d) => (d.result && d.result.exceptionDetails ? rej(new Error(String((d.result.exceptionDetails.exception || {}).description || d.result.exceptionDetails.text))) : res(d.result && d.result.result ? d.result.result.value : undefined)));
+        ws.send(JSON.stringify({ id, method: 'Runtime.evaluate', params: { expression: `(${fn.toString()})()`, awaitPromise: true, returnByValue: true, ...(main ? { contextId: main.id } : {}) } }));
+      });
+      return { evaluate, close: async () => ws.close() };
+    }
+    const pg = await until(async () => {
+      const l = await j('GET', `http://127.0.0.1:${CDP}/json/list`);
+      for (const t of (Array.isArray(l) ? l : []).filter((x) => x.type === 'page')) {
+        const c = await conectar(t).catch(() => null);
+        if (c && await c.evaluate(() => !!(window.atrio && window.atrio.fotoFetch)).catch(() => false)) return c;
+        if (c) await c.close();
+      }
+      return null;
+    }, 150000, 1500);
+    if (!pg) {
+      const l = await j('GET', `http://127.0.0.1:${CDP}/json/list`);
+      for (const t of l) { const c = await conectar(t).catch(() => null); console.log('   ', t.type, t.url, c ? await c.evaluate(() => `${typeof window.atrio} ${document.readyState} ${location.href}`).catch((e) => String(e)) : '-'); }
+      throw new Error('no encuentro la ventana de Atrio');
+    }
+    const br = pg;
+    const tel = await until(async () => { const l = await pg.evaluate(() => window.atrio.fotoPhones()); return l && l.length ? l : null; }, 20000);
+    ok(tel && tel[0].dev === 'mtest' && tel[0].name === 'Pixel de prueba', `El PC ve el móvil conectado (${tel ? tel.map((x) => x.name).join(', ') : '-'})`);
+    const t3 = Date.now();
+    const r = await pg.evaluate(() => window.atrio.fotoFetch('mtest', 'foto_1700000000000', { key: 'custom:prueba', type: 'cover' }).catch((e) => ({ error: String(e.message || e) })));
+    clearInterval(movil);
+    ok(r && !r.error && r.orig && r.w === 4000, `Descargada en ${Date.now() - t3} ms: ${r && (r.error || r.msg)}`);
+    ok(respondida && respondida.name === 'foto_1700000000000', 'Se pide al móvil por el nombre de la foto');
+    const enPc = path.join(HOME, '.local', 'share', 'atrio', 'fotos', 'foto_1700000000000.jpg');
+    ok(fs.existsSync(enPc) && fs.readFileSync(enPc).equals(foto), 'Llega idéntica, byte a byte (sin recomprimir)');
+    ok(r && r.game && /^atrio:\/\/art\//.test((r.game.art || {}).cover || ''), 'Pasa a ser la portada del juego en el lanzador');
+    ok(r && r.names && /^atrio:\/\/foto\//.test(r.names.foto_1700000000000 || ''), 'Y la ficha la ve con su dirección del PC');
+    const resto = await until(async () => { const v = await db('GET', `/users/${uid}/fotodata/${respondida && respondida.id}`); return v == null ? 'vacio' : null; }, 10000, 300);
+    ok(resto === 'vacio', 'Los trozos se borran de la nube después');
+    await br.close().catch(() => {});
 
     console.log('3. Captura desde el móvil a calidad original');
     const t1 = Date.now();
@@ -213,6 +293,7 @@ async function until(fn, ms, every = 500) {
       return p && p.memos && p.memos.length && p.segs && p.segs.length ? p : null;
     }, 15000, 200);
     ok(!!merged, `Mezclado en Atrio en ${Date.now() - t2} ms sin perder la parte jugada`);
+
   } catch (e) {
     console.log('ERROR', e);
     failed++;

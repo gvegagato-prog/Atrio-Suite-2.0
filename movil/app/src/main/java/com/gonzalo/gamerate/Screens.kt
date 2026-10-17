@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Translate
@@ -662,7 +663,9 @@ fun ArtScreen(
     /** Una imagen del móvil: para el fondo o la portada; de tus archivos (true) o de la galería (false). */
     onLocal: ((hero: Boolean, files: Boolean) -> Unit)? = null,
     /** Empezar en «Archivo» (lo creado a mano no tiene imágenes en internet). */
-    startLocal: Boolean = false
+    startLocal: Boolean = false,
+    /** Una foto de otro dispositivo tuyo ya descargada aquí: para el fondo o la portada, con su dirección. */
+    onArrived: ((hero: Boolean, url: String) -> Unit)? = null
 ) {
     var list by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var msg by remember { mutableStateOf("Cargando…") }
@@ -744,7 +747,7 @@ fun ArtScreen(
             Spacer(Modifier.height(10.dp))
         }
         if (tab == 2 && onLocal != null) {
-            LocalArt(game, hasHero, localHero, { localHero = it }) { files -> onLocal(localHero, files) }
+            LocalArt(game, hasHero, localHero, { localHero = it }, onArrived = onArrived?.let { cb -> { url: String -> cb(localHero, url) } }) { files -> onLocal(localHero, files) }
             return@Column
         }
         if (search != null && !hero) {
@@ -810,7 +813,11 @@ fun ArtScreen(
 
 /** La pestaña «Archivo»: una imagen del móvil (de tus archivos o de la galería) como portada o como fondo. */
 @Composable
-private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boolean) -> Unit, onPick: (files: Boolean) -> Unit) {
+private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boolean) -> Unit, onArrived: ((String) -> Unit)? = null, onPick: (files: Boolean) -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var bajando by remember { mutableStateOf<String?>(null) }
+    var nota by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
         if (hasHero) {
             Text("PARA", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
@@ -843,10 +850,33 @@ private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boo
             Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
             Text("Desde la galería")
         }
+        // La foto que tiene es de otro dispositivo tuyo (la elegiste en el móvil): se puede descargar aquí, a máxima calidad
+        if (onArrived != null && Photos.isLocal(now) && !Photos.here(ctx, now)) {
+            Spacer(Modifier.height(16.dp))
+            Text("ESTÁ EN OTRO DISPOSITIVO TUYO", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
+            Spacer(Modifier.height(6.dp))
+            val otros = Suite.phones()
+            if (otros.isEmpty()) Text("Abre Atrio en el móvil donde elegiste esta foto y podrás descargarla aquí, en su calidad original.", color = Muted, fontSize = 13.sp)
+            otros.forEach { d ->
+                OutlinedButton({
+                    if (bajando != null) return@OutlinedButton
+                    bajando = d.dev; nota = "Pidiéndosela a ${d.name}…"
+                    scope.launch {
+                        val (ok, msg) = Suite.fetchPhoto(d.dev, now)
+                        bajando = null; nota = msg
+                        if (ok) onArrived(now)
+                    }
+                }, shape = pillShape(), modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), enabled = bajando == null) {
+                    Icon(Icons.Rounded.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                    Text(if (bajando == d.dev) "Descargando de ${d.name}…" else "Descargar de ${d.name}")
+                }
+            }
+            if (nota.isNotBlank()) Text(nota, color = UiSoft, fontSize = 13.sp)
+        }
         Spacer(Modifier.height(12.dp))
         Text(
             (if (hero) "Se recorta a lo ancho, como los fondos. " else "Se recorta en vertical, como las portadas. ") +
-                "La imagen se guarda en este móvil: no se sube a internet, así que tu pareja y el PC no la verán.",
+                "La imagen se guarda en este dispositivo y no se sube a internet: tu pareja no la verá. Tus otros dispositivos (el PC, la tableta) pueden descargarla mientras tengas Atrio abierto aquí.",
             color = Muted, fontSize = 12.sp
         )
     }

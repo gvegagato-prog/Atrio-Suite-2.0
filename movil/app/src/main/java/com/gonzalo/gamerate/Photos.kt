@@ -7,14 +7,32 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.nio.ByteBuffer
 
-/** Fotos de tu galería usadas como portada: se copian (reducidas) dentro de la app. */
+/**
+ * Fotos de tu galería usadas como portada: se copian (reducidas) dentro de la app para verlas rápido, y el
+ * original, tal cual, aparte (covers/orig): es el que se manda a tus otros dispositivos (el PC, la tableta)
+ * cuando lo piden con «Descargar de tu móvil».
+ */
 object Photos {
     private const val MAX = 1400
 
+    private fun dir(ctx: Context) = File(ctx.filesDir, "covers").apply { mkdirs() }
+    private fun origDir(ctx: Context) = File(dir(ctx), "orig").apply { mkdirs() }
+
     /** Copia la foto elegida y devuelve su dirección para usarla como portada. */
     suspend fun import(ctx: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-        val src = ImageDecoder.createSource(ctx.contentResolver, uri)
+        val base = "foto_${System.currentTimeMillis()}"
+        // El original, sin tocar (máxima calidad)
+        try {
+            val ext = extOf(ctx.contentResolver.getType(uri))
+            ctx.contentResolver.openInputStream(uri)?.use { inp -> File(origDir(ctx), "$base.$ext").outputStream().use { inp.copyTo(it) } }
+        } catch (e: Exception) { /* sin original: se queda la copia reducida */ }
+        reduced(ctx, ImageDecoder.createSource(ctx.contentResolver, uri), base)
+    }
+
+    /** La copia reducida (la que se ve en la app) a partir de cualquier imagen. */
+    private fun reduced(ctx: Context, src: ImageDecoder.Source, base: String): String {
         val bm = ImageDecoder.decodeBitmap(src) { dec, info, _ ->
             val w = info.size.width
             val h = info.size.height
@@ -23,12 +41,44 @@ object Photos {
             // Software: así se puede guardar y dibujar en cualquier sitio.
             dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
         }
-        val dir = File(ctx.filesDir, "covers").apply { mkdirs() }
-        val f = File(dir, "foto_${System.currentTimeMillis()}.jpg")
+        val f = File(dir(ctx), "$base.jpg")
         f.outputStream().use { bm.compress(Bitmap.CompressFormat.JPEG, 88, it) }
-        Uri.fromFile(f).toString()
+        return Uri.fromFile(f).toString()
+    }
+
+    private fun extOf(mime: String?) = when (mime?.lowercase()) {
+        "image/png" -> "png"; "image/webp" -> "webp"; "image/heic" -> "heic"; "image/heif" -> "heif"; "image/gif" -> "gif"; "image/avif" -> "avif"
+        else -> "jpg"
+    }
+    fun mimeOf(f: File) = when (f.extension.lowercase()) {
+        "png" -> "image/png"; "webp" -> "image/webp"; "heic" -> "image/heic"; "heif" -> "image/heif"; "gif" -> "image/gif"; "avif" -> "image/avif"
+        else -> "image/jpeg"
     }
 
     /** Es una foto tuya (no está en internet, tu pareja no la puede ver). */
     fun isLocal(url: String) = url.startsWith("file:")
+
+    /** El nombre de la foto («foto_1700000000000.jpg») a partir de su dirección, o null si no es una foto tuya. */
+    fun nameOf(url: String): String? {
+        if (!isLocal(url)) return null
+        val n = Uri.parse(url).lastPathSegment ?: return null
+        return n.takeIf { Regex("^[A-Za-z0-9_.-]{1,80}$").matches(it) }
+    }
+
+    /** La foto está en este dispositivo (se puede ver aquí). */
+    fun here(ctx: Context, url: String): Boolean = nameOf(url)?.let { File(dir(ctx), it).exists() } == true
+
+    /** El mejor archivo que hay aquí de esa foto: el original si está; si no, la copia reducida. */
+    fun best(ctx: Context, name: String): Pair<File, Boolean>? {
+        val base = name.substringBeforeLast('.')
+        origDir(ctx).listFiles()?.firstOrNull { it.nameWithoutExtension == base }?.let { return it to true }
+        return File(dir(ctx), name).takeIf { it.exists() }?.let { it to false }
+    }
+
+    /** Guarda una foto que llega de otro dispositivo: el original y la copia reducida con el mismo nombre. */
+    suspend fun saveArrived(ctx: Context, name: String, bytes: ByteArray, mime: String) = withContext(Dispatchers.IO) {
+        val base = name.substringBeforeLast('.')
+        File(origDir(ctx), "$base.${extOf(mime)}").writeBytes(bytes)
+        reduced(ctx, ImageDecoder.createSource(ByteBuffer.wrap(bytes)), base)
+    }
 }
