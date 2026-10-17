@@ -15,8 +15,8 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
 Atrio en el PC se abre siempre **a pantalla completa en el modo Juegos**: el lanzador, con la estética de la
 revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** (LB y RB pasan de una a otra).
 
-- **Juegos:** arriba, el escaparate: un juego a lo grande (su fondo, el titular, la descripción de la tienda y
-  «Jugar →» ya enfocado: una pulsación de A y a jugar). Debajo, «Seguir jugando» y «Favoritos» en filas de
+- **Juegos:** arriba, el escaparate: un juego con su titular a lo grande a la izquierda (con la descripción de la
+  tienda y «Jugar →» ya enfocado: una pulsación de A y a jugar) y su imagen, más pequeña, a la derecha. Debajo, «Seguir jugando» y «Favoritos» en filas de
   portadas que se recorren de lado: el escaparate pasa al juego que enfoques (la imagen se funde), subes y
   juegas. Cada fila recuerda dónde la dejaste. Después, toda la biblioteca en portadas (por recientes, A–Z u
   horas; filtrada por tienda); un juego sin imagen tiene una portada de tipografía. Cada juego tiene su
