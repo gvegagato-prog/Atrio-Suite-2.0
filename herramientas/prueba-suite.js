@@ -115,6 +115,8 @@ async function until(fn, ms, every = 500) {
       for (const [id, c] of Object.entries(cmds)) {
         if (!c || c.res || c.op !== 'foto' || respondida) continue;
         respondida = { id, name: c.a && c.a.name };
+        // Como el móvil de verdad: solo la tiene con ese nombre (el de la dirección de la ficha)
+        if (respondida.name !== 'foto_1700000000000.jpg') { await db('PUT', `/users/${uid}/suite/cmd/mtest/${id}/res`, { ok: false, msg: 'Esa foto no está en este dispositivo' }); continue; }
         const b64 = foto.toString('base64');
         const CH = 512 * 1024;
         const n = Math.ceil(b64.length / CH);
@@ -171,10 +173,10 @@ async function until(fn, ms, every = 500) {
     const tel = await until(async () => { const l = await pg.evaluate(() => window.atrio.fotoPhones()); return l && l.length ? l : null; }, 20000);
     ok(tel && tel[0].dev === 'mtest' && tel[0].name === 'Pixel de prueba', `El PC ve el móvil conectado (${tel ? tel.map((x) => x.name).join(', ') : '-'})`);
     const t3 = Date.now();
-    const r = await pg.evaluate(() => window.atrio.fotoFetch('mtest', 'foto_1700000000000', { key: 'custom:prueba', type: 'cover' }).catch((e) => ({ error: String(e.message || e) })));
+    const r = await pg.evaluate(() => window.atrio.fotoFetch('mtest', 'foto_1700000000000.jpg', { key: 'custom:prueba', type: 'cover' }).catch((e) => ({ error: String(e.message || e) })));
     clearInterval(movil);
     ok(r && !r.error && r.orig && r.w === 4000, `Descargada en ${Date.now() - t3} ms: ${r && (r.error || r.msg)}`);
-    ok(respondida && respondida.name === 'foto_1700000000000', 'Se pide al móvil por el nombre de la foto');
+    ok(respondida && respondida.name === 'foto_1700000000000.jpg', 'Se pide al móvil por el nombre de la foto (con su extensión)');
     const enPc = path.join(HOME, '.local', 'share', 'atrio', 'fotos', 'foto_1700000000000.jpg');
     ok(fs.existsSync(enPc) && fs.readFileSync(enPc).equals(foto), 'Llega idéntica, byte a byte (sin recomprimir)');
     ok(r && r.game && /^atrio:\/\/art\//.test((r.game.art || {}).cover || ''), 'Pasa a ser la portada del juego en el lanzador');

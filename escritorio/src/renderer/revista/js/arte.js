@@ -33,7 +33,7 @@
     let trayendo = false;
     function pintarDisp() {
       const raw = f.fotoDe ? f.fotoDe(tipo) : '';
-      const nombre = raw ? D.fotoDe(raw) : null;
+      const nombre = raw ? D.fotoArchivo(raw) : null;
       if (!nombre) { disp.replaceChildren(); return; }
       const aqui = !!D.imagen(raw);
       disp.replaceChildren(

@@ -41,6 +41,10 @@ class FotosTest {
         assertTrue(orig)
         assertEquals("png", f.extension)
         assertNull(Photos.best(ctx, "foto_2.jpg"))
+        // Una foto de antes de la 6.13 (solo la copia reducida), pedida con o sin extensión
+        File(covers, "foto_3.jpg").writeBytes(ByteArray(30))
+        assertEquals("foto_3.jpg", Photos.best(ctx, "foto_3")?.first?.name)
+        assertEquals("foto_3.jpg", Photos.best(ctx, "foto_3.jpg")?.first?.name)
     }
 
     @Test

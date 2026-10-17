@@ -478,12 +478,9 @@ object Suite {
         val bytes = f.readBytes()
         val b64 = Base64.getEncoder().encodeToString(bytes)
         val n = (b64.length + CHUNK - 1) / CHUNK
-        var i = 0
-        while (i < n) {
-            val part = JSONObject()
-            for (j in i until minOf(n, i + 6)) part.put(j.toString(), b64.substring(j * CHUNK, minOf(b64.length, (j + 1) * CHUNK)))
-            Account.db(store, "PATCH", base() + "/fotodata/$id", part.toString(), "print=silent", ok404 = false)
-            i += 6
+        // Trozo a trozo con PUT (PATCH no lo admiten todas las conexiones HTTP de Java)
+        for (j in 0 until n) {
+            Account.db(store, "PUT", base() + "/fotodata/$id/$j", JSONObject.quote(b64.substring(j * CHUNK, minOf(b64.length, (j + 1) * CHUNK))), "print=silent", ok404 = false)
         }
         val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         android.graphics.BitmapFactory.decodeFile(f.path, o)

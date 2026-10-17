@@ -70,9 +70,10 @@ object Photos {
 
     /** El mejor archivo que hay aquí de esa foto: el original si está; si no, la copia reducida. */
     fun best(ctx: Context, name: String): Pair<File, Boolean>? {
-        val base = name.substringBeforeLast('.')
+        // Con o sin extensión («foto_1.jpg» o «foto_1»): se busca por el nombre sin ella
+        val base = if (Regex("\\.[A-Za-z0-9]{2,5}$").containsMatchIn(name)) name.substringBeforeLast('.') else name
         origDir(ctx).listFiles()?.firstOrNull { it.nameWithoutExtension == base }?.let { return it to true }
-        return File(dir(ctx), name).takeIf { it.exists() }?.let { it to false }
+        return dir(ctx).listFiles()?.firstOrNull { it.isFile && it.nameWithoutExtension == base }?.let { it to false }
     }
 
     /** Guarda una foto que llega de otro dispositivo: el original y la copia reducida con el mismo nombre. */

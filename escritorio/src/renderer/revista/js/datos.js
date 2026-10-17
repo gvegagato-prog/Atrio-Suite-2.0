@@ -18,6 +18,8 @@
   D.setFotos = (m) => { fotos = m || {}; };
   // Una foto de un dispositivo («file:…/covers/foto_….jpg») se ve si ya está aquí; las de internet, tal cual
   D.fotoDe = (u) => { const m = /^file:.*\/([A-Za-z0-9_.-]+?)(\.[A-Za-z0-9]+)?$/i.exec(String(u || '')); return m ? m[1] : null; };
+  // El nombre completo del archivo (con su extensión), el que se le pide al móvil
+  D.fotoArchivo = (u) => { const m = /^file:.*\/([A-Za-z0-9_.-]+)$/i.exec(String(u || '')); return m ? m[1] : null; };
   D.imagen = (u) => { const n = D.fotoDe(u); return n ? (fotos[n] || '') : (u || ''); };
   D.conCuenta = () => !!(cuenta.status && cuenta.status.signed);
   D.datos = () => cuenta.data || {};

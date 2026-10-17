@@ -241,7 +241,7 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
         state: async () => p, ronron: async () => c, on: () => {}, ronronEdit: async (op) => { (window.__edits ||= []).push(op); return c; }, log: n,
         fotoPhones: async () => [{ dev: 'movil1', name: 'Pixel de prueba' }],
         fotoList: async () => window.__fotos || {},
-        fotoFetch: async (dev, name, dest) => { (window.__traidas ||= []).push([dev, name, dest]); window.__fotos = { [name]: p.games[1].art.cover }; return { w: 4000, h: 3000, orig: true, msg: 'Foto original (4000×3000)', names: window.__fotos }; },
+        fotoFetch: async (dev, name, dest) => { (window.__traidas ||= []).push([dev, name, dest]); window.__fotos = { [name.replace(/\.[^.]+$/, '')]: p.games[1].art.cover }; return { w: 4000, h: 3000, orig: true, msg: 'Foto original (4000×3000)', names: window.__fotos }; },
         ronronAssets: async (id, type) => ({ sgdbId: id, items: [{ id: 1, url: `https://cdn.example/${type}.png`, thumb: p.games[0].art.cover, width: 600, height: 900 }] }), patchConfig: async (x) => { Object.assign(p.config, x); return p; },
         launch: async (k) => { (window.__lanzados ||= []).push(k); return {}; }, switchUi: n, toggleFullscreen: n, minimize: n, quit: n, rescan: async () => p,
         override: async (key, patch) => { const g = p.games.find((x) => x.key === key); Object.assign(g, patch); return { ...g }; },
@@ -342,7 +342,7 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(/foto de tu móvil/i.test(dispTxt) && /Descargar de Pixel de prueba/i.test(dispTxt), `fotos: la portada del móvil ofrece «Descargar de …» («${dispTxt.replace(/\s+/g, ' ').slice(0, 80)}»)`);
     await page.click('#capa .arte-disp button'); await page.waitForTimeout(500);
     const traidas = await page.evaluate(() => window.__traidas || []);
-    ok(traidas.length === 1 && traidas[0][0] === 'movil1' && traidas[0][1] === 'foto_1700000000000', `fotos: se pide al móvil la foto por su nombre (${JSON.stringify(traidas[0] || null)})`);
+    ok(traidas.length === 1 && traidas[0][0] === 'movil1' && traidas[0][1] === 'foto_1700000000000.jpg', `fotos: se pide al móvil la foto por su nombre (${JSON.stringify(traidas[0] || null)})`);
     const ahoraImg = await page.evaluate(() => { const i = document.querySelector('#capa .arte-actual img'); return i ? i.getAttribute('src') : ''; });
     ok(!!ahoraImg && !/^file:/.test(ahoraImg), `fotos: después se ve la foto descargada (${String(ahoraImg).slice(0, 40)})`);
     await page.click('#capa .arte-opcion'); await page.waitForTimeout(400);
