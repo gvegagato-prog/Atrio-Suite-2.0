@@ -111,6 +111,40 @@
     ];
   }
 
+  // Tu nube (kDrive): el token y el número de tu kDrive se quedan en este PC
+  function nube() {
+    const n = D.config().nube || {};
+    const token = RV.entrada('', { placeholder: n.token ? 'Token guardado (escribe otro para cambiarlo)' : 'Tu token de API de kDrive', class: 'entrada mono', 'data-foco': 'nube' });
+    const drive = RV.entrada(n.drive || '', { placeholder: 'Número de tu kDrive (o su dirección)', class: 'entrada mono' });
+    const msg = h('p.mensaje.bien', n.token && n.drive ? `Conectada a tu kDrive ${n.drive}.` : 'Sin conectar.');
+    // Subir las capturas: Sí / No (como los interruptores de Sistema)
+    const subir = h('div.j-grupo', { role: 'group' });
+    const pintarSubir = (v) => subir.replaceChildren(...[[true, 'Sí'], [false, 'No']].map(([x, t]) => h('button.j-opt', {
+      type: 'button', 'aria-pressed': String(x === v),
+      onclick: async () => { D.setPc(await RV.api.patchConfig({ nube: { shots: x } })); pintarSubir(x); },
+    }, t)));
+    pintarSubir(n.shots !== false);
+    const conectar = async (t) => {
+      msg.classList.add('bien');
+      msg.textContent = t ? 'Probando…' : 'Desconectando…';
+      try {
+        const r = await RV.api.nubeTest(t, drive.value.trim());
+        D.setPc({ config: r.config });
+        msg.textContent = r.msg;
+        token.value = '';
+      } catch (e) { msg.classList.remove('bien'); msg.textContent = RV.limpiaError(e); }
+    };
+    return [
+      h('div.formulario', RV.campo('Token de API', token), RV.campo('Tu kDrive', drive)),
+      h('div.interruptor', h('div', h('span.t', 'Subir las capturas'), h('small', 'Todas las que hagas en este PC, a Atrio/Capturas/<juego>')), subir),
+      h('div.fila-botones',
+        h('button.boton-tinta', { type: 'button', onclick: () => conectar(token.value.trim() || n.token || '') }, 'Conectar'),
+        n.token ? h('button.enlace', { type: 'button', onclick: () => conectar('') }, 'Desconectar') : null,
+        h('button.enlace', { type: 'button', onclick: () => RV.api.openExternal('https://manager.infomaniak.com/v3/ng/profile/user/token/list') }, 'Crear un token →')),
+      msg,
+    ];
+  }
+
   RV.guardarRevista = guardarRevista;
   if (RV.ajustesPc) RV.ajustesPc.guardarRevista = guardarRevista;
 
@@ -160,6 +194,7 @@
       partes = [
         bloque('Cuenta', 'Tu cuenta de Atrio: las mismas fichas que en el móvil. Lo que cambies aquí llega al móvil en unos segundos, y al revés.', cuenta()),
         bloque('SteamGridDB', 'Para buscar videojuegos al añadirlos y para la portada, el fondo y el logo de cada juego. Si no la pones aquí, se usa la de tu cuenta.', steamgriddb()),
+        bloque('Tu nube (kDrive)', 'Las capturas de este PC van a la carpeta «Atrio» de tu kDrive, y las fotos de portada que elegiste en el móvil se bajan aquí. En el Manager de Infomaniak: Tokens de API → Crear un token, con la aplicación kDrive.', nube()),
       ];
     } else partes = P[seccion] ? P[seccion]() : [RV.vacio('Esta sección no está disponible.')];
     root.append(h('div.ajustes-cuerpo', partes));

@@ -406,6 +406,14 @@ object Suite {
         persist()
     }
 
+    /** Una captura bajada de tu nube (la subió el PC): igual que si hubiera llegado de él. */
+    fun addFromCloud(x: NubeFile, bytes: ByteArray) {
+        val m = x.m ?: JSONObject()
+        val s = Shot(x.k.removePrefix("shot:"), m.optString("pc"), m.optInt("w"), m.optInt("h"), m.optString("mime", "image/png"), bytes.size.toLong(),
+            m.optLong("t"), m.optString("game"), m.optLong("sg"), "", m.optString("by"))
+        addLocal(s.copy(uri = save(s, bytes)))
+    }
+
     /** Borra una captura de este móvil (la de la galería se queda). */
     fun deleteLocal(s: Shot) {
         try { File(Uri.parse(s.uri).path ?: "").delete() } catch (e: Exception) { }

@@ -92,7 +92,9 @@ class Partner(
     private val extraGames: Map<Int, List<Game>> = emptyMap(),
     private val extraPlays: Map<Int, List<Play>> = emptyMap(),
     /** Su último test de descubrir de cada tipo (0 juegos, 1 libros, 2 pelis y series). */
-    val quizzes: Map<Int, QuizRun> = emptyMap()
+    val quizzes: Map<Int, QuizRun> = emptyMap(),
+    /** Lo que tiene en su nube (libros, capturas…), con su enlace para abrirlo. */
+    val nube: List<NubeFile> = emptyList()
 ) {
     /** Cartas que le han gustado en "Siguiente". */
     fun likes(kind: Kind) = if (kind.custom) emptyList() else if (kind.isBook) likesBooks else likesGames
@@ -280,7 +282,8 @@ object Couple {
             ks,
             ks.associate { it.id to noLocal(gamesFromJson(d.optJSONArray("items_${it.id}") ?: JSONArray())) },
             ks.associate { it.id to noLocalP(playsFromJson(d.optJSONArray("iplays_${it.id}") ?: JSONArray())) },
-            quizRunsFromJson(d.optJSONObject("quiz"))
+            quizRunsFromJson(d.optJSONObject("quiz")),
+            (d.optJSONArray("nube") ?: JSONArray()).let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let { o -> nubeFromJson(o) } } }
         )
     }
 

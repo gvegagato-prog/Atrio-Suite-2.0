@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.PhotoCamera
@@ -273,7 +274,7 @@ fun ShotStrip(shots: List<Shot>, title: String = "Capturas", onOpen: (Shot) -> U
 
 /** Visor de una captura a pantalla completa, con zoom (pellizco o doble toque) y su resolución original. */
 @Composable
-fun ShotViewer(shot: Shot, onBack: () -> Unit, onDelete: () -> Unit, onMemo: (() -> Unit)?) {
+fun ShotViewer(shot: Shot, onBack: () -> Unit, onDelete: () -> Unit, onMemo: (() -> Unit)?, onUncloud: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     var scale by remember { mutableStateOf(1f) }
     var off by remember { mutableStateOf(Offset.Zero) }
@@ -321,6 +322,8 @@ fun ShotViewer(shot: Shot, onBack: () -> Unit, onDelete: () -> Unit, onMemo: (()
                 RemoteButton(Icons.Rounded.Share, "Compartir", light = true) { shareShot(ctx, shot) }
                 if (onMemo != null) RemoteButton(Icons.Rounded.EditNote, "Apunte", light = true) { onMemo() }
                 RemoteButton(Icons.AutoMirrored.Rounded.OpenInNew, "Abrir", light = true) { openShot(ctx, shot) }
+                // Está en tu nube: quitarla de allí (y que no se vuelva a subir)
+                if (onUncloud != null) RemoteButton(Icons.Rounded.CloudOff, "Quitar de la nube", light = true) { onUncloud() }
                 RemoteButton(Icons.Rounded.Delete, "Borrar", light = true) { ask = true }
             }
         }
@@ -549,6 +552,16 @@ fun SuiteScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("${shots.size} capturas en este móvil", color = Muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
                             if (pc != null) ActionPill(Icons.Rounded.PhotoCamera, if (shooting) "Capturando…" else "Capturar", dark = true) { shot() }
+                        }
+                        // Las que están en tu nube y no aquí (hechas antes, o mientras este móvil estaba apagado)
+                        val nctx = LocalContext.current
+                        val nscope = rememberCoroutineScope()
+                        val faltan = remember(shots) { if (KDrive.on(nctx)) NubeSync.missingShots(Store(nctx)) else emptyList() }
+                        if (faltan.isNotEmpty()) {
+                            Text(if (NubeSync.running) NubeSync.status else "Traer ${faltan.size} de tu nube →", color = ColGeneral, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp).clickable(enabled = !NubeSync.running) {
+                                    nscope.launch { NubeSync.running = true; try { NubeSync.fetchShots(nctx, faltan) } finally { NubeSync.running = false } }
+                                })
                         }
                         Spacer(Modifier.height(12.dp))
                         if (Suite.downloading.isNotEmpty()) { ShotStrip(emptyList(), "Llegando") { }; Spacer(Modifier.height(12.dp)) }

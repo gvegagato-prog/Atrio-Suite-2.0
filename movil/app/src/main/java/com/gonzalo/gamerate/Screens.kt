@@ -337,6 +337,8 @@ fun SettingsScreen(
     couple: @Composable () -> Unit,
     importMsg: String = "", onGoodreads: () -> Unit = {}, onBookmory: () -> Unit = {},
     steamKey: String = "", steamUser: String = "", onSteam: (String, String) -> Unit = { _, _ -> },
+    /** Tu nube (kDrive): libros, fotos y capturas en todos tus dispositivos. */
+    nube: (@Composable () -> Unit)? = null,
     onBack: () -> Unit
 ) {
     var k by remember { mutableStateOf(key) }
@@ -443,6 +445,8 @@ fun SettingsScreen(
             OutlinedButton({ onSteam(sk, su) }, shape = pillShape(), enabled = sk.isNotBlank() && su.isNotBlank()) { Text("Traer horas de Steam") }
             if (importMsg.isNotEmpty() && "Steam" in importMsg) ImportNote(importMsg)
         }
+
+        if (nube != null) SettingsSection("Tu nube (kDrive)", 395) { nube() }
 
         SettingsSection("Google Drive", 400) {
             if (driveName == null) {

@@ -14,6 +14,8 @@ jobs:
       - name: Dependencias
         working-directory: escritorio
         run: npm ci && node node_modules/electron/install.js
+      - name: Tu nube (kDrive de mentira)
+        run: node herramientas/prueba-nube.js
       - name: Prueba PC + móvil (Firebase de mentira + Atrio de verdad + móvil simulado)
         run: node herramientas/prueba-suite.js
         env:

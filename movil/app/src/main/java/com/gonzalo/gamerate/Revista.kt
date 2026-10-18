@@ -234,6 +234,7 @@ fun RevistaGameRead(
         if (kind.isGame) FichaPlayButtons(g.id, g.name, Modifier.padding(bottom = 6.dp))
         if (kind.hasSoundtrack) MagLink("Banda sonora", "YouTube Music") { openSoundtrack(ctx, g.name) }
         SagaLink(g.id, kind)
+        PartnerFileLink(g.id, kind)
         MagLink("Compartir") { onExport(g, ExportMode.Share) }
         // Exportar la ficha: un solo enlace y debajo el formato
         Text("Exportar", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 21.sp, modifier = Modifier.padding(top = 5.dp))

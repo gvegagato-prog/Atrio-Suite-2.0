@@ -151,6 +151,8 @@ fun PartnerPage(
                 Overline("Reacciona")
                 Spacer(Modifier.height(8.dp))
                 ReactBar(myReact, onReact)
+                Spacer(Modifier.height(10.dp))
+                PartnerFileLink(id, kind, always = true)
             }
 
             if (onFlip != null) {

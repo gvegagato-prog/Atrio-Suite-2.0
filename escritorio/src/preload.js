@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('atrio', {
   ronronLogout: () => invoke('ronron:logout'),
   ronronSync: () => invoke('ronron:sync'),
   ronronEdit: (op) => invoke('ronron:edit', op),
+  nubeTest: (token, drive) => invoke('nube:test', token, drive),
+  nubeFotos: () => invoke('nube:fotos'),
   ronronArt: (id) => invoke('ronron:art', id),
   ronronAssets: (id, type, page) => invoke('ronron:assets', id, type, page),
   suite: () => invoke('suite:state'),
@@ -63,7 +65,7 @@ contextBridge.exposeInMainWorld('atrio', {
   webState: () => invoke('web:state'),
   on: (channel, cb) => {
     const allowed = ['art', 'art-idle', 'library', 'focus', 'game-ended', 'play', 'winfocus', 'notice', 'ronron',
-      'suite', 'shot-start', 'shot-taken', 'remote', 'web', 'web-key', 'web-error', 'stream'];
+      'suite', 'shot-start', 'shot-taken', 'remote', 'web', 'web-key', 'web-error', 'stream', 'fotos'];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, payload) => cb(payload));
   },

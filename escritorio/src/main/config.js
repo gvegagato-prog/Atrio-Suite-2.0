@@ -48,6 +48,8 @@ const DEFAULTS = {
     shotUpload: true,      // subir al móvil (si no, solo se guardan en este PC)
     shotDir: '',           // '' = Imágenes/Atrio
   },
+  // Tu nube (kDrive de Infomaniak): token y número de tu kDrive (solo en este PC), y si se suben las capturas
+  nube: { token: '', drive: '', shots: true },
   // Streaming al móvil (Polaris en este PC + Nova en el móvil)
   stream: {
     user: '',              // usuario y contraseña del panel de Polaris (para emparejar el móvil desde la app)

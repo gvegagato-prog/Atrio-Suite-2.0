@@ -722,7 +722,7 @@ class Store(ctx: Context) {
     /** Lo que se comparte con la pareja: tus datos, recomendaciones y reacciones, sin la API key. */
     fun syncData(): String {
         val o = JSONObject()
-        for (n in listOf("games", "plays", "books", "bplays", "sagas")) {
+        for (n in listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura")) {
             o.put(n, JSONArray(p.getString(n, "[]")))
         }
         val ks = kinds
@@ -851,6 +851,7 @@ class Store(ctx: Context) {
         ed.putString("reacts", reacts.toString())
         ed.commit()
         applyKeys(r.optJSONObject("keys"), onlyEmpty = true)
+        applyLecturas()
         r.optJSONObject("goals")?.let { g ->
             val y = LocalDate.now().year
             if (goal(0, y) == 0 && g.optInt("g", 0) > 0) setGoal(0, y, g.optInt("g"))
@@ -918,7 +919,54 @@ class Store(ctx: Context) {
         Widgets.pedir(app)
     }
 
-    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas")
+    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura")
+
+    // ---- Tu nube (kDrive): lo subido, para que tus otros dispositivos y tu pareja lo encuentren ----
+    fun loadNube(): List<NubeFile> = try {
+        val a = JSONArray(p.getString("nube", "[]") ?: "[]")
+        (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let { o -> nubeFromJson(o) } }
+    } catch (e: Exception) { emptyList() }
+
+    private fun saveNube(l: List<NubeFile>) {
+        val a = JSONArray(); l.forEach { a.put(nubeToJson(it)) }
+        val ed = p.edit(); writeList("nube", a, ed); ed.commit()
+    }
+
+    fun addNube(add: List<NubeFile>) {
+        val ks = add.map { it.k }.toSet()
+        saveNube(loadNube().filter { it.k !in ks } + add)
+    }
+
+    fun removeNube(k: String) = saveNube(loadNube().filter { it.k != k })
+
+    /** Capturas que no quieres en la nube. */
+    fun shotNoCloud(id: String): Boolean = p.getStringSet("shotsNoCloud", emptySet())?.contains(id) == true
+    fun setShotNoCloud(id: String) { p.edit().putStringSet("shotsNoCloud", (p.getStringSet("shotsNoCloud", emptySet()) ?: emptySet()) + id).apply() }
+
+    // ---- Lo leído de cada libro (posición, subrayados, notas, marcadores): viaja con la cuenta ----
+    /** Copia el estado del lector de un libro a la cuenta (sin la dirección del archivo, que es de este dispositivo). */
+    fun saveLectura(id: Long, st: JSONObject) {
+        val s = JSONObject(st.toString()).apply { remove("uri"); remove("name"); remove("added") }
+        val a = try { JSONArray(p.getString("lectura", "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
+        val out = JSONArray()
+        for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") != id) out.put(it) }
+        out.put(JSONObject().put("id", id).put("s", s).put("updated", System.currentTimeMillis()))
+        val ed = p.edit(); writeList("lectura", out, ed); ed.apply()
+    }
+
+    /** Lleva al lector de este dispositivo lo leído en otro, si es más reciente. */
+    fun applyLecturas() {
+        val a = try { JSONArray(p.getString("lectura", "[]") ?: "[]") } catch (e: Exception) { return }
+        for (i in 0 until a.length()) {
+            val o = a.optJSONObject(i) ?: continue
+            val id = o.optLong("id")
+            val cur = BookFiles.state(app, id)
+            if (o.optLong("updated") <= cur.optLong("syncAt", 0L)) continue
+            val s = o.optJSONObject("s") ?: continue
+            for (k in listOf("uri", "name", "added")) if (cur.has(k)) s.put(k, cur.get(k))
+            BookFiles.putQuiet(app, id, s.put("syncAt", o.optLong("updated")))
+        }
+    }
 
     // ---- Sagas (libros agrupados bajo una portada) ----
     fun loadSagas(): List<Saga> = try { sagasFromJson(JSONArray(p.getString("sagas", "[]") ?: "[]")) } catch (e: Exception) { emptyList() }

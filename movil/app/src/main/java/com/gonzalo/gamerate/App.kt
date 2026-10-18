@@ -185,6 +185,8 @@ fun App(
     DisposableEffect(life) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP && (store.paired || store.driveUri.isNotBlank())) CloudSave.enqueue(ctx)
+            // Y lo nuevo (libros adjuntos, fotos, capturas) a tu nube; de paso se baja lo que falte aquí
+            if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP || ev == androidx.lifecycle.Lifecycle.Event.ON_START) NubeSync.enqueue(ctx)
         }
         life.lifecycle.addObserver(obs)
         onDispose { life.lifecycle.removeObserver(obs) }
@@ -890,6 +892,7 @@ fun App(
     SideEffect {
         SagaHub.open = { id -> volverSaga = null; screen = Screen.Saga(id) }
         SagaHub.on = !pv
+        NubeHub.partner = partner?.nube.orEmpty()
         SagaHub.addTo = if (pv) null else ({ id, k -> sagaAdd = id to k })
         SagaHub.exists = { id, kid -> myKinds.find { it.id == kid }?.let { k -> gamesOf(k).any { it.id == id } || playsOf(k).any { it.id == id } } == true }
     }
@@ -1226,6 +1229,7 @@ fun App(
                     onDriveRestore = { driveOpen.launch(arrayOf("application/json", "text/plain", "application/octet-stream", "*/*")) },
                     onDriveNow = { scope.launch { val ok = DriveBackup.save(ctx, store); driveTick++; say(if (ok) "Copia guardada en Drive" else "No se pudo guardar en Drive") } },
                     onDriveUnlink = { DriveBackup.unlink(ctx, store); driveName = null; say("Drive desvinculado") },
+                    nube = { NubeSettings { say(it) } },
                     onExport = { exporter.launch("valorin-datos.json") },
                     onImport = { importer.launch(arrayOf("*/*")) },
                     onUndoImport = if (undoImport) ({
@@ -1480,7 +1484,10 @@ fun App(
                 is Screen.ShotView -> ShotViewer(
                     s.shot, onBack = { screen = s.back },
                     onDelete = { Suite.deleteLocal(s.shot); screen = s.back },
-                    onMemo = (plays.find { it.id == s.shot.sg })?.let { p -> { memoFor = p to s.shot } }
+                    onMemo = (plays.find { it.id == s.shot.sg })?.let { p -> { memoFor = p to s.shot } },
+                    onUncloud = if (KDrive.on(ctx) && store.loadNube().any { it.k == "shot:${s.shot.id}" }) ({
+                        scope.launch { NubeSync.removeShot(ctx, s.shot.id); say("Quitada de tu nube (en este móvil sigue)"); screen = s.back }
+                    }) else null
                 )
 
                 is Screen.PartnerItem -> {

@@ -219,6 +219,8 @@
 
   // ---------------------------------------------------------------- Lo que llega de Atrio en directo
   api.on('ronron', (s) => { D.setCuenta(s); RV.refrescar(); });
+  // Fotos de portada que llegan de tu nube
+  api.on('fotos', (f) => { D.setFotos(f); RV.refrescar(); });
   api.on('library', (s) => { D.setPc(s); if (s && s.config) RV.mando.config(s.config.behavior); RV.refrescar(); });
   // El arte llega juego a juego (al arrancar, de toda la biblioteca): se redibuja despacio
   api.on('art', (g) => { D.setJuegoPc(g); if (['portada', 'pc', 'ficha', 'juegos', 'j-juego', 'j-valorados'].includes(ruta.v)) refrescarDespacio(); });

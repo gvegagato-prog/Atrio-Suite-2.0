@@ -46,14 +46,15 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 
 /*
  * Libros en el móvil: a cada libro se le puede adjuntar su EPUB o PDF (también MOBI/AZW3, FB2 y CBZ) que ya tengas
- * en el teléfono. No se sube a ningún sitio: Atrio solo guarda el permiso para abrir ese archivo, y lo lee con su
- * propio lector (foliate-js y pdf.js, dentro de la app). Posición, ajustes, subrayados, notas y marcadores se
- * guardan aquí, por libro.
+ * en el teléfono. Atrio guarda el permiso para abrir ese archivo y lo lee con su propio lector (foliate-js y pdf.js,
+ * dentro de la app); con tu nube conectada (Nube.kt) además se sube a tu kDrive y se puede bajar en tus otros
+ * dispositivos. Posición, ajustes, subrayados, notas y marcadores se guardan por libro y viajan con la cuenta.
  */
 
 /** Los archivos de libro adjuntos y lo que llevas leído (solo en este móvil). */
@@ -63,7 +64,24 @@ object BookFiles {
     fun state(ctx: Context, id: Long): JSONObject =
         prefs(ctx).getString("$id", null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
 
-    fun put(ctx: Context, id: Long, o: JSONObject) { prefs(ctx).edit().putString("$id", o.toString()).apply(); Widgets.pedir(ctx) }
+    fun put(ctx: Context, id: Long, o: JSONObject) {
+        o.put("syncAt", System.currentTimeMillis())
+        prefs(ctx).edit().putString("$id", o.toString()).apply(); Widgets.pedir(ctx)
+        // Lo leído viaja con la cuenta: sigues por la misma página en la tablet
+        runCatching { Store(ctx).saveLectura(id, o) }
+    }
+
+    /** Lo que llega de otro dispositivo: se guarda sin volver a subirlo. */
+    fun putQuiet(ctx: Context, id: Long, o: JSONObject) { prefs(ctx).edit().putString("$id", o.toString()).apply() }
+
+    /** Un libro bajado de tu nube: ya es un archivo de la app (no hace falta permiso). */
+    fun attachFile(ctx: Context, id: Long, f: java.io.File, name: String) {
+        val uri = Uri.fromFile(f).toString()
+        val old = state(ctx, id)
+        // Lo leído en otro dispositivo se conserva (llega con la cuenta)
+        putQuiet(ctx, id, old.put("uri", uri).put("name", name).put("added", System.currentTimeMillis()))
+        Widgets.pedir(ctx)
+    }
 
     /** El archivo adjunto (su dirección) o null. */
     fun get(ctx: Context, id: Long): String? = state(ctx, id).optString("uri").ifBlank { null }
@@ -79,9 +97,10 @@ object BookFiles {
         ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) name = c.getString(0) ?: name
         }
-        // Un archivo distinto empieza de cero (los subrayados de otro archivo no encajarían)
+        // Un archivo distinto empieza de cero (los subrayados de otro archivo no encajarían). Lo leído que llegó
+        // de otro dispositivo (aún sin archivo aquí) se conserva, y también si es el mismo archivo.
         val old = state(ctx, id)
-        val o = if (old.optString("uri") == uri.toString()) old else JSONObject()
+        val o = if (old.optString("uri") == uri.toString() || !old.has("uri") || old.optString("name") == name) old else JSONObject()
         put(ctx, id, o.put("uri", uri.toString()).put("name", name).put("added", System.currentTimeMillis()))
     }
 
@@ -472,7 +491,7 @@ fun BookFileBar(id: Long, name: String) {
     }
     val file = remember(tick) { BookFiles.get(ctx, id) }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { u ->
-        if (u != null) { BookFiles.attach(ctx, id, u); tick++; ReaderActivity.open(ctx, id, name) }
+        if (u != null) { BookFiles.attach(ctx, id, u); tick++; NubeSync.enqueue(ctx); ReaderActivity.open(ctx, id, name) }
     }
     val types = arrayOf("application/epub+zip", "application/pdf", "application/x-mobipocket-ebook", "application/vnd.amazon.ebook",
         "application/x-fictionbook+xml", "application/vnd.comicbook+zip", "application/zip", "application/octet-stream")
@@ -484,10 +503,28 @@ fun BookFileBar(id: Long, name: String) {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Léelo aquí", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Adjunta su EPUB o PDF del móvil: no se sube a ningún sitio.", color = Muted, fontSize = 13.sp)
+                    Text(if (KDrive.on(ctx)) "Adjunta su EPUB o PDF: se guarda también en tu nube." else "Adjunta su EPUB o PDF del móvil: no se sube a ningún sitio.", color = Muted, fontSize = 13.sp)
                 }
             }
             Spacer(Modifier.height(10.dp))
+            // Si ya lo subiste desde otro dispositivo, está en tu nube
+            val enNube = remember(tick) { if (KDrive.on(ctx)) Store(ctx).loadNube().find { it.k == "libro:$id" } else null }
+            val scope = rememberCoroutineScope()
+            var bajando by remember { mutableStateOf(false) }
+            if (enNube != null) {
+                BigAction(Icons.Rounded.CloudDownload, if (bajando) "Bajando…" else "Bajar de tu nube (${"%.1f".format(enNube.s / 1_048_576.0)} MB)", Modifier.fillMaxWidth()) {
+                    if (!bajando) {
+                        bajando = true
+                        scope.launch {
+                            val ok = runCatching { NubeSync.fetchBook(ctx, id) }
+                            bajando = false; tick++
+                            if (ok.getOrNull() == true) ReaderActivity.open(ctx, id, name)
+                            else android.widget.Toast.makeText(ctx, "No se pudo bajar: ${ok.exceptionOrNull()?.message}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
             BigAction(Icons.Rounded.AttachFile, "Elegir archivo", Modifier.fillMaxWidth(), accent = false) { pick.launch(types) }
         } else {
             val st = remember(tick) { BookFiles.state(ctx, id) }

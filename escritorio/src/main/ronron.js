@@ -47,7 +47,7 @@ function saveLocal() {
 
 // ---------------------------------------------------------------- Mezcla (igual que Store.mergeRemote)
 
-const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas'];
+const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas', 'nube', 'lectura'];
 const listNames = (kinds) => BASE_LISTS.concat(...(kinds || []).map((k) => [`items_${k.id}`, `iplays_${k.id}`]));
 const upd = (o) => Number(o && o.updated) || 0;
 
@@ -426,6 +426,9 @@ function edit(op) {
       if (!sg) throw new Fail('No encuentro esa saga.');
       const { cover, ...resto } = sg;
       put(d, 'sagas', op.cover ? { ...resto, cover: String(op.cover) } : resto);
+    } else if (op.op === 'nubeAdd') {
+      // Lo subido a tu nube desde este PC (capturas): la lista que leen tus otros dispositivos y tu pareja
+      for (const it of op.items || []) if (it && it.id && it.k) put(d, 'nube', it);
     } else if (op.op === 'memo') {
       // Apunte rápido (texto, y si quieres una captura) mientras juegas
       const p = (d[pk(kind)] || []).find((o) => Number(o.id) === Number(op.id));

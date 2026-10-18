@@ -309,6 +309,9 @@ async function takeAndUpload(opts = {}) {
       saveIdx();
     } catch (e) { log('guardar captura', e.message); }
     ctx.send('shot-taken', { id, w: cap.w, h: cap.h, game: g ? g.name : null, by: opts.by || null, method: cap.method });
+    // A tu nube (kDrive), en segundo plano: todas, salvo que lo quites en Ajustes
+    require('./nube').shot({ id, name, buf: cap.buf, game: g && g.name, sg: g && g.sg, t: now(), w: cap.w, h: cap.h, mime: cap.mime, pc: os.hostname() })
+      .catch((e) => log('nube: captura', e.message));
     // Subida a la nube por trozos, para que el móvil la baje tal cual (sin recomprimir)
     if (rr.uid() && cfg.shotUpload !== false) {
       const b64 = cap.buf.toString('base64');

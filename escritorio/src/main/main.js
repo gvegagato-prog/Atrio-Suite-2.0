@@ -9,6 +9,7 @@ const art = require('./art');
 const meta = require('./meta');
 const ronron = require('./ronron');
 const suite = require('./suite');
+const nube = require('./nube');
 const web = require('./web');
 const os = require('os');
 const { launch } = require('./launcher');
@@ -711,6 +712,15 @@ function setupIpc() {
   ipcMain.handle('ronron:logout', () => { ronron.signOut(); send('play', playState()); return rrState(); });
   ipcMain.handle('ronron:sync', async () => { await ronron.sync(false); return rrState(); });
   ipcMain.handle('ronron:edit', async (_e, op) => { await ronron.edit(op); return rrState(); });
+  // Tu nube: se prueba el token antes de guardarlo; vacío = desconectar
+  ipcMain.handle('nube:test', async (_e, token, drive) => {
+    if (!String(token || '').trim()) { config.patch({ nube: { token: '', drive: '' } }); return { msg: 'Nube desconectada', config: config.get() }; }
+    const r = await nube.test(token, drive);
+    config.patch({ nube: { token: String(token).trim(), drive: r.drive } });
+    nube.fotos().catch(() => {});
+    return { msg: r.msg, config: config.get() };
+  });
+  ipcMain.handle('nube:fotos', () => nube.fotos());
   // Portada, fondo y logo de SteamGridDB para una ficha nueva (URL, para que también se vean en el móvil)
   ipcMain.handle('ronron:art', (_e, sgdbId) => ronronArt(sgdbId));
   // Lista de arte de SteamGridDB para una ficha de Ronrón (para elegir portada, fondo o logo)
@@ -987,7 +997,12 @@ app.whenReady().then(async () => {
   art.setFetch((...a) => net.fetch(...a));
   meta.setFetch((...a) => net.fetch(...a));
   ronron.setFetch((...a) => net.fetch(...a));
-  ronron.start(() => send('ronron', { status: ronron.status(), data: ronron.data() }));
+  ronron.start(() => { send('ronron', { status: ronron.status(), data: ronron.data() }); nube.fotos().catch(() => {}); });
+  nube.start({
+    config: () => config.get(), data: () => ronron.data(), edit: (op) => ronron.edit(op), log, fotosDir: FOTOS,
+    onFotos: () => send('fotos', fotoNames()),
+  });
+  setTimeout(() => nube.fotos().catch(() => {}), 8000);
   protocol.handle('atrio', async (req) => {
     const u = new URL(req.url);
     const parts = u.pathname.split('/').filter(Boolean);
