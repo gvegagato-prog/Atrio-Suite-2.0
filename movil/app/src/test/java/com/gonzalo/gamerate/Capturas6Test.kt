@@ -163,6 +163,9 @@ open class Capturas6Test {
         repeat(3) { rule.onRoot().performTouchInput { swipeDown() } }; rule.waitForIdle()
         rule.onAllNodesWithText("Juegos")[0].performClick(); shoot("r3_biblioteca")
         rule.onAllNodesWithText("Pasados")[0].performClick(); shoot("r3b_biblioteca_pasados")
+        // «Portadas en las listas» (Perfil): cada título con su portada, como las sagas
+        rule.runOnUiThread { Skin.listCovers = true }; rule.waitForIdle(); shoot("r3c_biblioteca_portadas")
+        rule.runOnUiThread { Skin.listCovers = false }; rule.waitForIdle()
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r4_ficha_valorado")
         // Modo edición: el diseño de la página
         rule.onAllNodesWithText("EDITAR")[0].performClick(); shoot("r8_diseno")

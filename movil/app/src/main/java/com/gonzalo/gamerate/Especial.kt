@@ -225,6 +225,7 @@ fun NumeroEspecial(name: String, kinds: List<Kind>, entries: (Kind) -> List<Shel
                     done.drop(1).take(10).forEachIndexed { i, e ->
                         Row(Modifier.fillMaxWidth().clickable { onOpen(e) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("%02d".format(i + 2), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 26.sp, modifier = Modifier.width(50.dp))
+                            if (Skin.listCovers) { ListCover(e.cover, e.name, 44.dp, 62.dp); Spacer(Modifier.width(12.dp)) }
                             Column(Modifier.weight(1f)) {
                                 FitTitle(e.name, 21.sp, 24.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 Text(e.kind.title.uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)

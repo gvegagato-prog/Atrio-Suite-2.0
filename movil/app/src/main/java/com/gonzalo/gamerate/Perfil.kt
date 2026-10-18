@@ -83,6 +83,20 @@ fun ProfileScreen(
         }
         Spacer(Modifier.height(12.dp))
 
+        // Las listas con portada (como las sagas) o solo con títulos
+        if (Skin.revista) {
+            Card6(Modifier.rise(1), onClick = { Skin.listCovers = !Skin.listCovers; Skin.save(ctx) }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Portadas en las listas", fontWeight = FontWeight.Bold, fontSize = 24.sp, fontFamily = Display)
+                        Text(if (Skin.listCovers) "Cada título con su portada, como las sagas" else "Solo los títulos", color = Muted, fontSize = 13.sp)
+                    }
+                    androidx.compose.material3.Switch(Skin.listCovers, { Skin.listCovers = it; Skin.save(ctx) })
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
         // Tu PC
         val pc = Suite.target()
         ProfileRow(Icons.Rounded.DesktopWindows, "Tu PC", when {

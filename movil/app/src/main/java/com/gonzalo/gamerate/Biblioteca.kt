@@ -311,8 +311,10 @@ private fun RevistaLibrary(l: LibUi) {
         }
         items(l.cells.size, key = { "${l.segment}-${l.cells[it].id}" }) { i ->
             val c = l.cells[i]
-            // Sin portadas: el título grande, la nota a la derecha y el estudio (o autor) debajo
+            // El título grande, la nota a la derecha y el estudio (o autor) debajo; con «Portadas en las listas», su
+            // portada a la izquierda, como en las sagas
             Row(Modifier.fillMaxWidth().press(haptic = false) { l.open(c) }.padding(vertical = 14.dp).rise(i, i < 12), verticalAlignment = Alignment.CenterVertically) {
+                if (Skin.listCovers) { ListCover(c.cover, c.name, 74.dp, 104.dp); Spacer(Modifier.width(16.dp)) }
                 Column(Modifier.weight(1f)) {
                     FitTitle(c.name, 30.sp, 32.sp, letterSpacing = (-0.5).sp, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     val who = (c.game?.creator ?: c.play?.creator).orEmpty()
@@ -329,5 +331,14 @@ private fun RevistaLibrary(l: LibUi) {
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
         }
+    }
+}
+
+/** La portada de una entrada en las listas de la revista (con «Portadas en las listas»); sin imagen, su inicial. */
+@Composable
+internal fun ListCover(url: String, name: String, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp) {
+    Box(Modifier.size(w, h).background(Sand), contentAlignment = Alignment.Center) {
+        if (url.isNotBlank()) coil.compose.AsyncImage(url, name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+        else Text(name.take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = Muted)
     }
 }

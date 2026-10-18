@@ -321,6 +321,8 @@ object Skin {
     var accentId by mutableStateOf("rojo")
     /** Tamaño de las portadas en las bibliotecas: 0 normal, 1 grandes, 2 pequeñas. */
     var covers by mutableStateOf(0)
+    /** Revista: las listas con la portada al lado del título (como las sagas), en lugar de solo títulos. */
+    var listCovers by mutableStateOf(false)
     /** Dock con el nombre del destino elegido (si no, solo iconos). */
     var dockLabels by mutableStateOf(true)
     /** Interfaz: 2 Revista (la de la app); 0 la de Atrio 6.0 con dock, que solo usa la prueba automática. */
@@ -408,6 +410,7 @@ object Skin {
         accent = p.getLong("skin_accent", 0L)
         accentId = p.getString("skin_accent_id", "rojo")?.takeIf { id -> ACCENT_COLORS.any { it.id == id } } ?: "rojo"
         covers = p.getInt("skin_covers", 0)
+        listCovers = p.getBoolean("skin_listcovers", false)
         dockLabels = p.getBoolean("skin_docklabels", true)
         // La interfaz Feed (1) ya no existe: pasa a Revista
         shell = p.getInt("skin_shell", 2).let { if (it == 1 || it == 3) 2 else it }
@@ -426,7 +429,7 @@ object Skin {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
             .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
-            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putInt("skin_covers", covers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
+            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putInt("skin_covers", covers).putBoolean("skin_listcovers", listCovers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
         Widgets.pedir(ctx)
     }
 }
