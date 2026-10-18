@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
  * dejados) y una cuadrícula de portadas que se abren con la transición compartida.
  */
 
-private fun libMatches(q: String, vararg fields: String): Boolean {
+fun libMatches(q: String, vararg fields: String): Boolean {
     if (q.isBlank()) return true
     val t = q.trim().lowercase()
     return fields.any { it.lowercase().contains(t) }
@@ -52,16 +52,19 @@ fun LibraryScreen(
     /** Sustituye al título (Cine: «Películas · Series»). */
     titleSwitch: (@Composable () -> Unit)? = null,
     badgeFor: (@Composable BoxScope.(Long, String) -> Unit)? = null,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    /** Libros: la pestaña «Sagas» (null = sin ella). */
+    sagas: List<Saga>? = null, onOpenSaga: (Saga) -> Unit = {}, onCreateSaga: (String, List<Long>) -> Unit = { _, _ -> }
 ) {
     var query by remember(kind.id) { mutableStateOf("") }
     var searching by remember(kind.id) { mutableStateOf(false) }
     var sort by remember(kind.id) { mutableStateOf(0) }
     var favOnly by remember(kind.id) { mutableStateOf(false) }
-    val labels = listOf(kind.statuses[1], kind.statuses[0], kind.doneWord, kind.statuses[2])
-    val counts = listOf(plays.count { it.status == 1 }, plays.count { it.status == 0 }, games.size, plays.count { it.status == 2 })
+    val labels = listOf(kind.statuses[1], kind.statuses[0], kind.doneWord, kind.statuses[2]) + if (sagas != null) listOf("Sagas") else emptyList()
+    val counts = listOf(plays.count { it.status == 1 }, plays.count { it.status == 0 }, games.size, plays.count { it.status == 2 }) + if (sagas != null) listOf(sagas.size) else emptyList()
     val cells: List<Cell> = remember(kind.id, games, plays, segment, query, sort, favOnly) {
         when (segment) {
+            4 -> emptyList()
             2 -> {
                 val f = games.filter { (!favOnly || it.fav) && libMatches(query, it.name, it.creator, it.platform) }
                 when (sort) {
@@ -88,7 +91,8 @@ fun LibraryScreen(
     val open: (Cell) -> Unit = { c -> if (c.play != null) onOpenPlay(c.play) else if (c.game != null) onOpenGame(c.game) }
     val lib = LibUi(
         kind, labels, counts, cells, segment, onSegment, query, { query = it }, searching, { searching = it }, sort, { sort = it },
-        favOnly, { favOnly = it }, readOnly, open, onAdd, onStats, onDiscover, onWheel, titleSwitch, badgeFor, onBack
+        favOnly, { favOnly = it }, readOnly, open, onAdd, onStats, onDiscover, onWheel, titleSwitch, badgeFor, onBack,
+        if (segment == 4 && sagas != null) ({ SagaList(sagas, plays, games, readOnly, onOpenSaga, onCreateSaga) }) else null
     )
     if (Skin.revista) { RevistaLibrary(lib); return }
     val grid = rememberLazyGridState()
@@ -127,7 +131,8 @@ fun LibraryScreen(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    if (cells.isEmpty()) EmptyLibrary(kind, segment, query.isNotBlank(), if (readOnly) null else onAdd)
+                    if (lib.sagaPanel != null) lib.sagaPanel.invoke()
+                    else if (cells.isEmpty()) EmptyLibrary(kind, segment, query.isNotBlank(), if (readOnly) null else onAdd)
                 }
             }
             itemsIndexed(cells, key = { _, c -> "${segment}-${c.id}" }) { i, c ->
@@ -209,7 +214,9 @@ private class LibUi(
     val sort: Int, val setSort: (Int) -> Unit, val favOnly: Boolean, val setFav: (Boolean) -> Unit,
     val readOnly: Boolean, val open: (Cell) -> Unit,
     val onAdd: ((Boolean) -> Unit)?, val onStats: () -> Unit, val onDiscover: (() -> Unit)?, val onWheel: (() -> Unit)?,
-    val titleSwitch: (@Composable () -> Unit)?, val badgeFor: (@Composable BoxScope.(Long, String) -> Unit)?, val onBack: (() -> Unit)?
+    val titleSwitch: (@Composable () -> Unit)?, val badgeFor: (@Composable BoxScope.(Long, String) -> Unit)?, val onBack: (() -> Unit)?,
+    /** En la pestaña «Sagas»: lo que va en lugar de la lista. */
+    val sagaPanel: (@Composable () -> Unit)? = null
 )
 
 @Composable
@@ -238,13 +245,16 @@ private fun RevistaLibrary(l: LibUi) {
             Segmented(l.labels, l.segment, counts = l.counts) { l.onSegment(it) }
             Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (l.onDiscover != null) TextLink("DESCUBRIR →", ColGeneral, l.onDiscover)
+                // En el móvil la pestaña «Sagas» queda al final de la fila: aquí, a mano
+                if (l.labels.size > 4 && l.segment != 4) TextLink("SAGAS →", onClick = { l.onSegment(4) })
                 if (l.segment == 1 && l.onWheel != null && l.counts[1] > 0) TextLink("RULETA", onClick = l.onWheel)
                 if (l.segment == 2) {
                     listOf("NOTA", "RECIENTES", "NOMBRE").forEachIndexed { i, n -> TextLink(n, if (l.sort == i) ColGeneral else Muted) { l.setSort(i) } }
                     TextLink("★ FAVORITOS", if (l.favOnly) ColGeneral else Muted) { l.setFav(!l.favOnly) }
                 }
             }
-            if (l.cells.isEmpty()) {
+            if (l.sagaPanel != null) l.sagaPanel.invoke()
+            else if (l.cells.isEmpty()) {
                 Text(
                     if (l.query.isNotBlank()) "Nada coincide con la búsqueda." else "Esta sección está en blanco, de momento.",
                     fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 20.sp, color = Muted, modifier = Modifier.padding(vertical = 30.dp)

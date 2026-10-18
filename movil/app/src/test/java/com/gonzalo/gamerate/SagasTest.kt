@@ -1,0 +1,163 @@
+package com.gonzalo.gamerate
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.test.core.app.ApplicationProvider
+import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
+import com.github.takahirom.roborazzi.captureRoboImage
+import kotlinx.coroutines.Dispatchers
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.io.File
+import java.time.LocalDate
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+
+/** Sagas: libros juntos bajo una portada, estén donde estén (leídos con su nota, en curso o en lista). */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
+open class SagasTest {
+    open val prefijo: String get() = ""
+    @get:Rule val rule = createComposeRule()
+    private val ctx: Context get() = ApplicationProvider.getApplicationContext()
+
+    private fun cover(name: String, a: Int, b: Int): String {
+        val f = File(ctx.cacheDir, "s_${name.hashCode()}.png")
+        if (!f.exists()) {
+            val bmp = Bitmap.createBitmap(300, 450, Bitmap.Config.ARGB_8888)
+            val c = Canvas(bmp)
+            c.drawRect(0f, 0f, 300f, 450f, Paint().apply { shader = LinearGradient(0f, 0f, 300f, 450f, a, b, Shader.TileMode.CLAMP) })
+            c.drawText(name.take(1), 30f, 160f, Paint().apply { color = 0x55FFFFFF; textSize = 120f; isAntiAlias = true; isFakeBoldText = true })
+            f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        return f.absolutePath
+    }
+
+    private fun seed(): Store {
+        val s = Store(ctx)
+        val d = java.time.LocalDate.now().toEpochDay()
+        // La trilogía de Rothfuss, repartida: el 1 leído, el 2 a medias y el 3 en la lista (títulos al estilo de Goodreads)
+        s.save(listOf(
+            Game(501, "El nombre del viento (Crónica del asesino de reyes, #1)", cover("Viento", 0xFF603813.toInt(), 0xFFB29F94.toInt()), 92, creator = "Patrick Rothfuss", end = d - 200),
+            Game(601, "Dune", cover("Dune", 0xFFF2994A.toInt(), 0xFFF2C94C.toInt()), 89, creator = "Frank Herbert", end = d - 30),
+            Game(603, "Hijos de Dune", cover("Hijos", 0xFF7F3800.toInt(), 0xFFF7971E.toInt()), 78, creator = "Frank Herbert", end = d - 10)
+        ), 1)
+        s.savePlays(listOf(
+            Play(502, "El temor de un hombre sabio (Crónica del asesino de reyes, #2)", cover("Temor", 0xFF0F2027.toInt(), 0xFF2C5364.toInt()), "", 1, emptyList(), chapter = 41, creator = "Patrick Rothfuss", updated = System.currentTimeMillis()),
+            Play(503, "Las puertas de piedra (Crónica del asesino de reyes, #3)", cover("Puertas", 0xFF3E5151.toInt(), 0xFFDECBA4.toInt()), "", 0, emptyList(), creator = "Patrick Rothfuss"),
+            Play(602, "El mesías de Dune", cover("Mesias", 0xFFC9D6FF.toInt(), 0xFF6A5B3B.toInt()), "", 0, emptyList(), creator = "Frank Herbert")
+        ), 1)
+        return s
+    }
+
+    private fun shoot(n: String) {
+        rule.waitForIdle(); Thread.sleep(300); rule.waitForIdle()
+        com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_$n.png")
+    }
+
+    @Test fun modelo() {
+        assertEquals("Crónica del asesino de reyes" to 2f, seriesOf("El temor de un hombre sabio (Crónica del asesino de reyes, #2)"))
+        assertEquals(null, seriesOf("Dune"))
+        val s = seed()
+        val sug = sagaSuggestions(emptyList(), s.loadPlays(1), s.load(1))
+        // Por el título, en su orden; y por autor, los de Herbert
+        assertEquals(listOf(501L, 502L, 503L), sug.first { it.name == "Crónica del asesino de reyes" }.ids)
+        assertTrue(sug.any { it.why == "Libros de Frank Herbert" && it.ids.toSet() == setOf(601L, 602L, 603L) })
+        // Los libros de una saga, estén donde estén
+        val saga = Saga(1, "Crónica", listOf(501, 502, 503, 999), updated = 1)
+        val b = sagaBooks(saga, s.loadPlays(1), s.load(1))
+        assertEquals(3, b.size)
+        assertTrue(b[0].read && b[0].score == 92 && b[1].reading && !b[2].read)
+        assertEquals(502L, sagaNext(b)?.id)
+        assertEquals("3 libros · 1 leído · leyendo · media 92", sagaLine(b))
+        // Se guarda, viaja con la cuenta y se mezcla con otro dispositivo (la versión más reciente gana)
+        s.saveSagas(listOf(saga))
+        assertEquals(saga, s.loadSagas().single())
+        val remoto = org.json.JSONObject(s.syncData())
+        assertEquals(1, remoto.getJSONArray("sagas").length())
+        remoto.put("sagas", org.json.JSONArray().put(sagaToJson(saga.copy(name = "Crónica del asesino de reyes", updated = 5))).put(sagaToJson(Saga(2, "Dune", listOf(601, 602), updated = 5))))
+        s.mergeRemote(remoto.toString())
+        assertEquals(listOf("Crónica del asesino de reyes", "Dune"), s.loadSagas().map { it.name })
+        // Borrada en este móvil: no vuelve al mezclar con otro que aún la tenía
+        s.saveSagas(s.loadSagas().filter { it.id != 2L })
+        s.mergeRemote(remoto.toString())
+        assertEquals(listOf(1L), s.loadSagas().map { it.id })
+    }
+
+    @Test fun recorrido() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val s = seed()
+        Skin.load(ctx); Mode.dark = false; Mode.themeMode = 1; Skin.applyShell(2, ctx)
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(s, 0L, false, "") {} } } }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Libros").onLast().performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Sagas")[0].performClick(); rule.waitForIdle()
+        shoot("1_pestana")
+        // Crear la de Rothfuss desde la sugerencia (ya viene con su nombre y sus libros en orden)
+        rule.onAllNodesWithText("Crónica del asesino de reyes")[0].performScrollTo()
+        // El diálogo y el paso a la saga, fotograma a fotograma (con el reloj automático, Robolectric no da por
+        // terminada la animación de cerrar el diálogo en el móvil)
+        rule.mainClock.autoAdvance = false
+        rule.onAllNodesWithText("Crónica del asesino de reyes")[0].performClick()
+        repeat(30) { rule.mainClock.advanceTimeByFrame() }
+        com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_2_crear.png")
+        rule.onAllNodesWithText("Crear")[0].performClick()
+        repeat(60) { rule.mainClock.advanceTimeByFrame() }
+        com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_3_saga.png")
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        assertEquals(listOf(501L, 502L, 503L), Store(ctx).loadSagas().single().items)
+        assertTrue(rule.onAllNodesWithText("AHORA MISMO").fetchSemanticsNodes().isNotEmpty())
+        rule.onRoot().performTouchInput { swipeUp() }; shoot("4_saga_abajo")
+        // Un libro leído, desde la saga: su ficha; y «volver» lleva a la saga
+        rule.onAllNodesWithText("El nombre del viento").onLast().performScrollTo().performClick(); rule.waitForIdle()
+        shoot("5_libro")
+        assertTrue(rule.onAllNodesWithText("Saga · Crónica del asesino de reyes", substring = true).fetchSemanticsNodes().isNotEmpty())
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        assertTrue("vuelve a la saga", rule.onAllNodesWithText("EN ORDEN DE LECTURA").fetchSemanticsNodes().isNotEmpty())
+        // Editar: subir el tercero al segundo puesto
+        rule.onAllNodesWithText("EDITAR")[0].performClick(); rule.waitForIdle()
+        shoot("6_editar")
+        rule.onAllNodesWithText("↑")[2].performScrollTo().performClick(); rule.waitForIdle()
+        assertEquals(listOf(501L, 503L, 502L), Store(ctx).loadSagas().single().items)
+        rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        shoot("7_lista")
+    }
+
+    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onRoot() = this.onNode(androidx.compose.ui.test.isRoot())
+}
+
+@Config(sdk = [34], qualifiers = "w1260dp-h840dp-land-xhdpi")
+class SagasOppoHorizontalTest : SagasTest() { override val prefijo get() = "oppo_h_" }

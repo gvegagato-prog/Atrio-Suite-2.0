@@ -80,8 +80,12 @@
 
     const nombres = [k.statuses[1], k.statuses[0], k.doneWord, k.statuses[2]];
     const cuentas = [1, 0, null, 2].map((st) => (st === null ? D.valorados(k).length : D.fichas(k).filter((p) => num(p.status) === st).length));
+    // Libros: también sus sagas (las crea el móvil)
+    if (k.isBook) { nombres.push('Sagas'); cuentas.push(D.sagas().length); }
+    if (s.tab >= nombres.length) s.tab = 0;
     const lista = h('div');
     const pintarLista = () => {
+      if (s.tab === 4) { lista.replaceChildren(...RV.sagasLista()); RV.ajustar(lista); return; }
       const fs = filas(k, s);
       const out = [];
       if (!fs.length) {

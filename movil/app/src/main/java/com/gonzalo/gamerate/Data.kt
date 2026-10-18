@@ -722,7 +722,7 @@ class Store(ctx: Context) {
     /** Lo que se comparte con la pareja: tus datos, recomendaciones y reacciones, sin la API key. */
     fun syncData(): String {
         val o = JSONObject()
-        for (n in listOf("games", "plays", "books", "bplays")) {
+        for (n in listOf("games", "plays", "books", "bplays", "sagas")) {
             o.put(n, JSONArray(p.getString(n, "[]")))
         }
         val ks = kinds
@@ -918,7 +918,18 @@ class Store(ctx: Context) {
         Widgets.pedir(app)
     }
 
-    private val dataNames = listOf("games", "plays", "books", "bplays")
+    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas")
+
+    // ---- Sagas (libros agrupados bajo una portada) ----
+    fun loadSagas(): List<Saga> = try { sagasFromJson(JSONArray(p.getString("sagas", "[]") ?: "[]")) } catch (e: Exception) { emptyList() }
+
+    fun saveSagas(list: List<Saga>) {
+        val a = JSONArray()
+        list.forEach { a.put(sagaToJson(it)) }
+        val ed = p.edit()
+        writeList("sagas", a, ed)
+        ed.apply()
+    }
 
     /** Todos los datos en un JSON (incluye la clave de SteamGridDB). */
     /** Todas las claves de servicios (SteamGridDB, RAWG, IGDB y Steam), para copias y la nube. */
@@ -976,7 +987,8 @@ class Store(ctx: Context) {
         names.forEachIndexed { i, n -> backup.put(n, JSONArray(old[i])) }
         backup.put("kinds", JSONArray(oldKindsTxt))
         val ed = p.edit()
-        names.forEach { writeList(it, o.optJSONArray(it) ?: JSONArray(), ed) }
+        // Una copia antigua sin sagas no borra las tuyas
+        names.forEach { if (it != "sagas" || o.has("sagas")) writeList(it, o.optJSONArray(it) ?: JSONArray(), ed) }
         if (withKinds) ed.putString("kinds", (o.optJSONArray("kinds") ?: JSONArray()).toString())
         ed.apply()
         try {

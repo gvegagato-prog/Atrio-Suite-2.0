@@ -47,7 +47,7 @@ function saveLocal() {
 
 // ---------------------------------------------------------------- Mezcla (igual que Store.mergeRemote)
 
-const BASE_LISTS = ['games', 'plays', 'books', 'bplays'];
+const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas'];
 const listNames = (kinds) => BASE_LISTS.concat(...(kinds || []).map((k) => [`items_${k.id}`, `iplays_${k.id}`]));
 const upd = (o) => Number(o && o.updated) || 0;
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -229,7 +230,9 @@ fun BigAction(icon: ImageVector?, text: String, modifier: Modifier = Modifier, a
 fun Segmented(options: List<String>, selected: Int, modifier: Modifier = Modifier, counts: List<Int>? = null, onSelect: (Int) -> Unit) {
     val hf = LocalHapticFeedback.current
     if (Skin.revista) {
-        Row(modifier.fillMaxWidth().drawBehind { drawLine(Line, androidx.compose.ui.geometry.Offset(0f, size.height), androidx.compose.ui.geometry.Offset(size.width, size.height), 2f) },
+        // Si no caben todas (en el móvil, con «Sagas»), la fila se desliza de lado
+        Row(modifier.fillMaxWidth().drawBehind { drawLine(Line, androidx.compose.ui.geometry.Offset(0f, size.height), androidx.compose.ui.geometry.Offset(size.width, size.height), 2f) }
+            .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             options.forEachIndexed { i, o ->
                 val on = i == selected

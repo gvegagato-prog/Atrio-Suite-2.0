@@ -64,6 +64,8 @@ sealed interface Screen {
     /** «Siguiente»: cartas para deslizar (juegos). */
     /** Descubrir con preguntas: 1 libros, 2 pelis y series. */
     class Quiz(val domain: Int) : Screen
+    /** Una saga: sus libros, en orden. */
+    class Saga(val id: Long) : Screen
 }
 
 class MainActivity : ComponentActivity() {

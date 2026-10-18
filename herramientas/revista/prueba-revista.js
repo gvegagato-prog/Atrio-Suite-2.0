@@ -52,6 +52,8 @@ const cuenta = {
     bplays: [{ id: 402, name: 'El nombre del viento', status: 1, creator: 'Patrick Rothfuss', chapter: 31, pages: 880, start: H - 12, updated: Date.now() - 5e6 }],
     items_2: [{ id: 27205, name: 'Origen', general: 87, gfx: 80, story: 90, end: H - 70, creator: 'Christopher Nolan', updated: (H - 70) * DIA }],
     iplays_2: [],
+    // Una saga con un libro leído (Dune, 89) y otro a medias
+    sagas: [{ id: 9001, name: 'Las mejores sagas', kind: 1, items: [401, 402], updated: Date.now() }],
   },
 };
 const pc = {
@@ -157,6 +159,13 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(!(await errorPagina()) && (await texto()).includes('Deadlock'), `${tema}: ficha en curso`);
     await ir({ v: 'ficha', k: 1, t: 'p', id: 402 }); await shot('05b-ficha-libro');
     ok(!(await errorPagina()), `${tema}: ficha de libro`);
+    // Sagas: la pestaña de Libros y la página de la saga, con sus libros (el leído, con su nota)
+    await ir({ v: 'seccion', k: 1, tab: 4 }); await shot('05c-sagas');
+    t = await texto();
+    ok(!(await errorPagina()) && t.includes('Las mejores sagas') && /2 libros · 1 leído · leyendo · media 89/i.test(t), `${tema}: pestaña Sagas en Libros`);
+    await ir({ v: 'saga', id: 9001 }); await shot('05d-saga');
+    t = await texto();
+    ok(!(await errorPagina()) && t.includes('Dune') && t.includes('El nombre del viento') && /1\/2/.test(t) && t.includes('89'), `${tema}: página de la saga con sus libros`);
     await ir({ v: 'diario' }); await shot('06-diario');
     ok(!(await errorPagina()), `${tema}: diario`);
     await ir({ v: 'cifras' }); await shot('07-cifras');

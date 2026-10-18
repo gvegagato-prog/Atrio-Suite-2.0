@@ -10,8 +10,8 @@ android {
         applicationId = "com.gonzalo.gamerate"
         minSdk = 29
         targetSdk = 34
-        versionCode = 48
-        versionName = "6.20"
+        versionCode = 49
+        versionName = "6.21"
         // El traductor del lector trae código nativo por procesador: móviles de 64 bits (arm64) y el emulador de pruebas (x86_64)
         // (-Pabis=arm64-v8a genera la del móvil sola, más ligera)
         ndk { abiFilters += ((project.findProperty("abis") as String?)?.split(",") ?: listOf("arm64-v8a", "x86_64")) }
@@ -53,6 +53,8 @@ android {
             isIncludeAndroidResources = true
             all {
                 it.maxHeapSize = "3g"
+                // Cada clase de pruebas en su propio proceso: ninguna hereda lo que dejó otra (estado global de Compose)
+                it.forkEvery = 1
                 // Robolectric sin internet: su Android de prueba lo baja Gradle (ver robolectricDeps)
                 it.systemProperty("robolectric.offline", "true")
                 it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
