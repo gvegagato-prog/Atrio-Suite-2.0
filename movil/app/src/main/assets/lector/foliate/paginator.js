@@ -808,9 +808,24 @@ export class Paginator extends HTMLElement {
         const min = Math.abs(offset) - a
         const max = Math.abs(offset) + b
         const d = velocity * (this.#rtl ? -size : size)
-        const page = Math.floor(
+        let page = Math.floor(
             Math.max(min, Math.min(max, (start + end) / 2
                 + (isNaN(d) ? 0 : d))) / size)
+        // Atrio: un desliz pequeño ya pasa de página (antes había que arrastrar más de media pantalla o hacerlo
+        // muy rápido). Cuenta lo que se ha movido el dedo desde que tocó (en la última página la página ya no se
+        // mueve, el dedo sí): a partir de ~4 % del ancho, la siguiente o la anterior a la de partida; menos, se queda.
+        // La primera y la última «página» son los bordes: llegar a ellas abre el capítulo de al lado (lo de abajo).
+        const ts = this.#touchState
+        if (ts && ts.p0 != null) {
+            const moved = (this.#vertical ? ts.sy : ts.sx) * (this.#rtl ? -1 : 1)
+            const th = Math.max(16, size * 0.04)
+            const target = Math.abs(moved) >= th ? ts.p0 + Math.sign(moved) : ts.p0
+            // Sin capítulo antes (o después), los bordes no se tocan: se queda en la primera (o la última) página
+            const lo = this.#adjacentIndex(-1) == null ? 1 : 0
+            const hi = this.#adjacentIndex(1) == null ? pages - 2 : pages - 1
+            page = Math.max(lo, Math.min(hi, target))
+            ts.p0 = null
+        }
 
         this.#scrollToPage(page, 'snap').then(() => {
             const dir = page <= 0 ? -1 : page >= pages - 1 ? 1 : null
@@ -822,10 +837,13 @@ export class Paginator extends HTMLElement {
     }
     #onTouchStart(e) {
         const touch = e.changedTouches[0]
+        // (m0, p0: dónde estaba la página al tocar, para el desliz corto de snap)
+        const m0 = this.scrolled ? null : (this.start + this.end) / 2
         this.#touchState = {
             x: touch?.screenX, y: touch?.screenY,
             t: e.timeStamp,
             vx: 0, xy: 0,
+            m0, p0: m0 == null || !this.size ? null : Math.floor(m0 / this.size), sx: 0, sy: 0,
         }
     }
     #onTouchMove(e) {
@@ -847,6 +865,8 @@ export class Paginator extends HTMLElement {
         state.t = e.timeStamp
         state.vx = dx / dt
         state.vy = dy / dt
+        state.sx = (state.sx || 0) + dx
+        state.sy = (state.sy || 0) + dy
         this.#touchScrolled = true
         this.scrollBy(dx, dy)
     }

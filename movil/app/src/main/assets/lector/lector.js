@@ -325,7 +325,8 @@ function onLoad({ detail: { doc, index } }) {
         // (leyendo hacia abajo no se pasa de página deslizando de lado: solo se desplaza)
         if (isPDF && !haciaAbajo() && t0 && t && !holding) {
             const dx = t.clientX - t0.x, dy = t.clientY - t0.y
-            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4 && e.timeStamp - t0.time < 900) {
+            // Un desliz corto y suave basta (como en las páginas que no son PDF)
+            if (Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * 1.2 && e.timeStamp - t0.time < 1500) {
                 swiped = true
                 if (dx < 0) view.goRight(); else view.goLeft()
                 if (chromeOn) showChrome(false)

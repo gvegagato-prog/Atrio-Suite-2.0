@@ -101,11 +101,41 @@ const log = [];
       ok(f1 > f0, `${name}: deslizar pasa de página (${Math.round(f0 * 1000) / 10} → ${Math.round(f1 * 1000) / 10} %)`);
       await touch([[X(90), Y(430)], [X(150), Y(432)], [X(230), Y(434)], [X(310), Y(436)]]); await page.waitForTimeout(1300);
       ok((await frac()) < f1, `${name}: deslizar al otro lado vuelve atrás`);
+      // Un desliz corto (30 px) también basta
+      const f2 = await frac();
+      await touch([[X(250), Y(430)], [X(235), Y(431)], [X(220), Y(432)]]); await page.waitForTimeout(1300);
+      ok((await frac()) > f2, `${name}: un desliz corto (30 px) pasa de página`);
     } else {
       // (Los deslizamientos del EPUB no se pueden simular aquí: foliate usa screenX y las pruebas lo mandan a 0.
       // Mantener pulsado, seleccionar y deslizar se prueban en el emulador con toques de verdad.)
       const m = await page.evaluate(() => window.__view?.renderer?.getAttribute('margin'));
       ok(m && parseInt(m) >= 42, `${name}: margen arriba y abajo ${m}`);
+      // Un desliz corto pasa de página (antes había que arrastrar media pantalla). Toques de mentira con screenX,
+      // sobre el paginador, como los de un dedo: 40 px en ~150 ms → página siguiente; 6 px → se queda.
+      const pagina = () => page.evaluate(() => window.__view.renderer.page);
+      const desliz = (dx, pasos = 6) => page.evaluate(async ({ dx, pasos }) => {
+        const r = window.__view.renderer;
+        const mk = (x) => new Touch({ identifier: 1, target: r, clientX: x, clientY: 400, screenX: x, screenY: 400 });
+        const fire = (type, x) => r.dispatchEvent(new TouchEvent(type, { touches: type === 'touchend' ? [] : [mk(x)], changedTouches: [mk(x)], bubbles: true, cancelable: true, composed: true }));
+        const x0 = 260;
+        fire('touchstart', x0);
+        for (let i = 1; i <= pasos; i++) { await new Promise((ok) => setTimeout(ok, 25)); fire('touchmove', x0 - (dx * i) / pasos); }
+        fire('touchend', x0 - dx);
+      }, { dx, pasos });
+      // (unas páginas atrás: así hay página siguiente aunque se esté al final del libro de prueba)
+      for (let i = 0; i < 2; i++) { await page.evaluate(() => window.atrioPage(-1)); await page.waitForTimeout(500); }
+      // (se mira lo leído: al pasar al capítulo siguiente, el número de página vuelve a empezar)
+      await page.waitForTimeout(900);
+      const g0 = await frac();
+      await desliz(40); await page.waitForTimeout(1400);
+      const g1 = await frac();
+      ok(g1 > g0, `${name}: un desliz corto (40 px) pasa de página (${Math.round(g0 * 1000) / 10} → ${Math.round(g1 * 1000) / 10} %)`);
+      await desliz(-40); await page.waitForTimeout(1400);
+      const g2 = await frac();
+      ok(g2 < g1, `${name}: y al otro lado vuelve (${Math.round(g2 * 1000) / 10} %)`);
+      const pr = await pagina();
+      await desliz(6, 2); await page.waitForTimeout(1100);
+      ok((await pagina()) === pr && (await frac()) === g2, `${name}: un roce de 6 px no pasa de página`);
     }
     // Barras (tocar el centro). En el EPUB, en una página de texto: en el índice del libro el centro es un enlace.
     if (name.endsWith('epub')) { await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1500); }
@@ -221,7 +251,7 @@ const log = [];
       const said = await page.evaluate(() => window.__atrio.spoken || []);
       ok(said.length >= 3, `${name}: lee en voz alta (${said.length} frases: «${(said[0] || '').slice(0, 40)}…»)`);
       await page.screenshot({ path: path.join(out, name + '-11-voz.png') });
-      await page.click('#v-parar'); await page.waitForTimeout(300);
+      await page.evaluate(() => document.querySelector('#v-parar').click()); await page.waitForTimeout(300);
       ok(await page.$eval('#voz', (e) => e.classList.contains('oculta')), `${name}: «Parar» quita la voz`);
     }
     await ctx.close();
