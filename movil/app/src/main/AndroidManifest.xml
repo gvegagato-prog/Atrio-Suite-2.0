@@ -38,7 +38,7 @@
         <activity
             android:name=".ReaderActivity"
             android:exported="false"
-            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:theme="@style/Lector"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode|density" />
         <activity
             android:name=".MainActivity"

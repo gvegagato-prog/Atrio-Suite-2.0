@@ -17,6 +17,16 @@ const S = Object.assign({
     // PDF y cómics: «pages» página a página; «scroll», deslizando hacia abajo; «strip», tira continua sin huecos (manga)
     pdfFlow: 'pages',
 }, st.settings || {})
+// El brillo va en la escala del control de Android (la que ves en la barra del sistema, no la de la luz real):
+// antes iba en luz real y con un mínimo del 2 %, que en la barra del sistema es como un 25 % y por eso brillaba
+// más que el resto del móvil. Lo guardado con la escala de antes se pasa a la nueva (curva HLG de AOSP).
+if (S.brVer !== 2) {
+    if (S.brightness >= 0) {
+        const n = Math.max(0, Math.min(1, S.brightness)) * 12
+        S.brightness = Math.round((n <= 1 ? Math.sqrt(n) * 0.5 : 0.17883277 * Math.log(n - 0.28466892) + 0.55991073) * 100) / 100
+    }
+    S.brVer = 2
+}
 // Lo que llevas leído de este libro: tiempo total y por día (ms)
 const stats = Object.assign({ total: 0, days: {} }, st.stats || {})
 let notes = st.annotations || []      // { value, text, note, created, index, label } (el color de antes ya no se usa)
@@ -149,6 +159,7 @@ html, body, body * { -webkit-user-select: none !important; user-select: none !im
 }
 
 function applySettings() {
+    sinDensidad()
     lastTheme = theme()
     document.body.dataset.theme = lastTheme
     document.documentElement.style.setProperty('--accent', DARK_THEMES.includes(lastTheme) ? ACCENT.dark : ACCENT.light)
@@ -231,20 +242,56 @@ function remaining(detail) {
     const k = S.speed ? UNIT / S.speed : 1
     return { section: tm.section * k, total: tm.total * k }
 }
+// Páginas: las del capítulo, contadas tal y como está maquetado ahora (letra, tipo, márgenes, interlineado,
+// columnas); las del libro, estimadas con lo que cabe en una pantalla (bytes por página) en los capítulos ya
+// maquetados con estos ajustes. Al cambiar un ajuste se vuelve a medir desde cero.
+let densidad = new Map()   // índice del capítulo → [bytes, páginas]
+const sinDensidad = () => { densidad = new Map() }
+function paginas(detail) {
+    const r = view?.renderer, secs = view?.book?.sections
+    if (!r || !secs || isPDF) return null
+    const i = detail.section?.current ?? detail.index ?? 0
+    let left, total
+    if (r.scrolled) {
+        const size = r.size, vs = r.viewSize
+        if (!(size > 0 && vs > 0)) return null
+        total = Math.max(1, Math.ceil(vs / size)); left = Math.max(0, Math.ceil((vs - r.end) / size))
+    } else {
+        if (!(r.pages > 2)) return null
+        total = r.pages - 2; left = Math.max(0, total - r.page)
+    }
+    const bytes = secs[i]?.linear != 'no' ? (secs[i]?.size || 0) : 0
+    if (bytes > 0 && total > 0) densidad.set(i, [bytes, total])
+    let b = 0, n = 0
+    for (const [x, y] of densidad.values()) { b += x; n += y }
+    let libro = null
+    if (b > 0 && n > 0) {
+        const after = secs.slice(i + 1).reduce((a, s) => a + (s.linear != 'no' && s.size > 0 ? s.size : 0), 0)
+        libro = left + Math.round(after / (b / n))
+    }
+    return { cap: left, libro }
+}
+const pags = n => n === 1 ? '1 pág.' : `${n} págs.`
 function drawStatus(detail) {
     const el = $('#estado')
     if (!el || !detail) return
-    let left = ''
+    let left = '', right = pct(detail.fraction)
     if (isPDF) {
         const n = view?.book?.sections?.length || 0
         const i = (detail.section?.current ?? detail.index ?? 0) + 1
         left = n ? `Página ${i} de ${n}` : ''
+        if (n) right = `quedan ${pags(n - i)} · ${right}`
     } else {
         const r = remaining(detail)
-        if (r) left = r.section >= 1 ? `${durTxt(r.section)} para acabar el capítulo` : 'Última página del capítulo'
+        const p = paginas(detail)
+        const t = r && r.section >= 1 ? durTxt(r.section) : ''
+        if (p && p.cap > 0) left = `${pags(p.cap)}${t ? ' · ' + t : ''} para acabar el capítulo`
+        else if (p) left = 'Última página del capítulo'
+        else if (r) left = r.section >= 1 ? `${t} para acabar el capítulo` : 'Última página del capítulo'
+        if (p?.libro != null) right = `≈ ${pags(p.libro)} · ${right}`
     }
     $('#e-izq').textContent = left
-    $('#e-der').textContent = pct(detail.fraction)
+    $('#e-der').textContent = right
 }
 
 function onRelocate({ detail }) {
@@ -306,9 +353,9 @@ function onLoad({ detail: { doc, index } }) {
         if (t0 && t && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) > 12 && !holding) clearTimeout(holdTimer)
         if (edge && t0 && t && !holding) {
             const dx = t.clientX - t0.x, dy = t.clientY - t0.y
-            if (glow === null && Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx) * 1.6) glow = S.brightness < 0 ? 0.6 : S.brightness
+            if (glow === null && Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx) * 1.6) glow = S.brightness < 0 ? 0.5 : S.brightness
             if (glow !== null) {
-                S.brightness = Math.round(Math.min(1, Math.max(0.02, glow - dy / (window.innerHeight * 0.7))) * 100) / 100
+                S.brightness = Math.round(Math.min(1, Math.max(0, glow - dy / (window.innerHeight * 0.7))) * 100) / 100
                 A.setBrightness(S.brightness)
                 aviso('Brillo ' + Math.round(S.brightness * 100) + ' %')
                 e.stopPropagation()
@@ -826,7 +873,8 @@ function openBrightness() {
     openPanel(`<h2>Brillo</h2>
       <div class="fila"><button class="chip ${S.brightness < 0 ? 'on' : ''}" id="br-auto">Automático (el del móvil)</button></div>
       <h3>Brillo de esta pantalla</h3>
-      <input class="deslizar" type="range" id="br" min="0.02" max="1" step="0.01" value="${S.brightness < 0 ? 0.6 : S.brightness}">
+      <input class="deslizar" type="range" id="br" min="0" max="1" step="0.01" value="${S.brightness < 0 ? 0.5 : S.brightness}">
+      <p class="sub">Del todo a la izquierda es el mínimo de la pantalla, el mismo que el del móvil.</p>
       <h3>Luz cálida (menos luz azul)</h3>
       <input class="deslizar" type="range" id="warm" min="0" max="1" step="0.05" value="${S.warm}">`, el => {
         el.querySelector('#br-auto').onclick = () => { S.brightness = -1; applySettings(); saveSettings(); openBrightness() }

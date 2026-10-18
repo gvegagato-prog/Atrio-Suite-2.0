@@ -165,6 +165,11 @@ const log = [];
     ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar el centro abre el menú`);
     ok(textoAntes === textoDespues, `${name}: abrir el menú no mueve el texto (${textoAntes} → ${textoDespues})`);
     await page.screenshot({ path: path.join(out, name + '-3-barras.png') });
+    // Lo que queda: páginas del capítulo (y del libro, aproximadas) en la línea de abajo
+    const estado = () => page.evaluate(() => [document.querySelector('#e-izq').textContent, document.querySelector('#e-der').textContent, document.querySelector('foliate-view').renderer.pages]);
+    const e0 = await estado();
+    if (name.endsWith('epub')) ok(/^(\d+ págs?\..*para acabar el capítulo|Última página del capítulo)$/.test(e0[0]) && /^≈ \d+ págs?\. · \d+%$/.test(e0[1]), `${name}: páginas que quedan («${e0[0]}» · «${e0[1]}»)`);
+    else ok(/^quedan \d+ págs?\. · \d+%$/.test(e0[1]), `${name}: páginas que quedan del PDF («${e0[1]}»)`);
     // Ajustes: tema noche y letra más grande
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(out, name + '-4-ajustes.png') });
@@ -173,6 +178,21 @@ const log = [];
     await page.waitForTimeout(400);
     const set = await page.evaluate(() => window.__atrio.saved.settings);
     ok(set && set.theme === 'noche', `${name}: guarda los ajustes (${JSON.stringify(set)})`);
+    if (name.endsWith('epub')) {
+      // Con la letra más grande caben menos palabras: el capítulo tiene más páginas y se vuelven a contar
+      // (bastante más grande: con el capítulo corto de prueba, a doble página, un 10 % más aún cabe igual)
+      for (let i = 0; i < 6; i++) { await page.click('[data-step="size"][data-d="10"]'); await page.waitForTimeout(150); }
+      await page.waitForTimeout(1500);
+      const e1 = await estado();
+      ok(e1[2] > e0[2] && /págs?\.|Última/.test(e1[0]), `${name}: con letra más grande, más páginas en el capítulo (${e0[2] - 2} → ${e1[2] - 2}; «${e1[0]}»)`);
+      for (let i = 0; i < 6; i++) { await page.click('[data-step="size"][data-d="-10"]'); await page.waitForTimeout(150); }
+      await page.waitForTimeout(1200);
+    }
+    // Negro (OLED): fondo negro puro; en PDF, la página invertida del todo (el blanco pasa a negro)
+    await page.click('[data-theme-btn="negro"]'); await page.waitForTimeout(400);
+    const negro = await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('foliate-view')).filter]);
+    ok(negro[0] === 'rgb(0, 0, 0)' && (name.endsWith('epub') || /invert\(1\)/.test(negro[1])), `${name}: tema Negro, negro puro (${negro.join(' · ')})`);
+    await page.click('[data-theme-btn="noche"]'); await page.waitForTimeout(300);
     await page.mouse.click(X(206), Y(120)); await page.waitForTimeout(700);
     await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });
     await page.screenshot({ path: path.join(out, name + '-5-noche.png') });

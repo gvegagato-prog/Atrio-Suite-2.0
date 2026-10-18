@@ -8,6 +8,15 @@
 <script src="polyfills.js"></script>
 </head>
 <body data-theme="papel">
+<script>
+// El tema desde antes de pintar nada (el módulo del lector tarda un poco en arrancar): sin destello claro con Negro
+try {
+  const s = JSON.parse(window.Atrio.state()).settings || {}, h = new Date().getHours()
+  let t = s.theme || 'papel'
+  if (s.nightAuto && (h >= 21 || h < 7) && !['gris', 'noche', 'negro'].includes(t)) t = 'noche'
+  document.body.dataset.theme = t
+} catch (e) { }
+</script>
 <div id="libro"></div>
 <!-- Abajo de la página: lo que queda del capítulo y el % (se esconde con el menú) -->
 <div id="estado" class="estado"><span id="e-izq"></span><span id="e-der"></span></div>

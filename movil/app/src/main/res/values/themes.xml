@@ -7,4 +7,9 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
     <color name="paper">#F4F2ED</color>
+    <!-- El lector: sin la pantalla de espera gris de Android al abrirlo (la ventana sale ya con el fondo del tema) -->
+    <style name="Lector" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
 </resources>

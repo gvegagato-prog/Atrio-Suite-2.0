@@ -256,7 +256,12 @@ class ReaderActivity : ComponentActivity() {
         web.settings.domStorageEnabled = true
         web.settings.allowFileAccess = false
         web.settings.allowContentAccess = false
-        web.setBackgroundColor(AColor.parseColor("#FBF8F1"))
+        // Desde el primer fotograma, el fondo del tema que usas (si no, al abrir con Negro se veía un destello claro)
+        val tema0 = (BookFiles.state(this, id).optJSONObject("settings")
+            ?: runCatching { JSONObject(getSharedPreferences("lector", MODE_PRIVATE).getString("ajustes", "{}") ?: "{}") }.getOrNull())?.optString("theme").orEmpty()
+        val bg0 = AColor.parseColor(themeBg(tema0))
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bg0))
+        web.setBackgroundColor(bg0)
         web.webChromeClient = object : WebChromeClient() {
             // La consola del lector va al registro de Android (adb logcat -s AtrioLector)
             override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
@@ -333,6 +338,10 @@ class ReaderActivity : ComponentActivity() {
                 "window.atrioInsets && atrioInsets() }", null
         )
     }
+
+    /** El fondo de cada tema del lector (el mismo que en lector.css). */
+    private fun themeBg(t: String) = when (t) { "sepia" -> "#F1E6CF"; "gris" -> "#2B2D31"; "noche" -> "#121317"; "negro" -> "#000000"; else -> "#FBF8F1" }
+
 
     /** «Bajar volumen» pasa página (no leyendo PDF/cómics hacia abajo: ahí baja el volumen). */
     @Volatile private var volumeTurns = true
@@ -420,7 +429,7 @@ class ReaderActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun setBrightness(v: Double) = runOnUiThread {
-            window.attributes = window.attributes.apply { screenBrightness = if (v < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else v.toFloat().coerceIn(0.01f, 1f) }
+            window.attributes = window.attributes.apply { screenBrightness = if (v < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else brilloLineal(v.toFloat()) }
         }
 
         @JavascriptInterface
@@ -433,8 +442,9 @@ class ReaderActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun setTheme(t: String) = runOnUiThread {
-            val bg = when (t) { "sepia" -> "#F1E6CF"; "gris" -> "#2B2D31"; "noche" -> "#121317"; "negro" -> "#000000"; else -> "#FBF8F1" }
-            web.setBackgroundColor(AColor.parseColor(bg))
+            val bg = AColor.parseColor(themeBg(t))
+            web.setBackgroundColor(bg)
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bg))
             WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = t == "papel" || t == "sepia"
         }
 
@@ -653,4 +663,15 @@ fun BookNotesBox(id: Long, name: String) {
     }
     if (notes.size > 4) Text(if (all) "VER MENOS" else "VER LOS ${notes.size} →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
         modifier = Modifier.clickable { all = !all }.padding(top = 10.dp, bottom = 4.dp))
+}
+
+/**
+ * El brillo del lector va en la escala de la barra de brillo de Android (perceptual) y la ventana lo quiere en luz
+ * real: la misma conversión que hace Android (BrightnessUtils.convertGammaToLinear, curva HLG). 0 es el mínimo de la
+ * pantalla (BRIGHTNESS_OVERRIDE_OFF: lo más bajo, sin apagarla), igual que el mínimo del sistema.
+ */
+internal fun brilloLineal(g: Float): Float {
+    val x = g.coerceIn(0f, 1f)
+    val r = if (x <= 0.5f) (x / 0.5f) * (x / 0.5f) else kotlin.math.exp((x - 0.55991073f) / 0.17883277f) + 0.28466892f
+    return (r / 12f).coerceIn(0f, 1f)
 }
