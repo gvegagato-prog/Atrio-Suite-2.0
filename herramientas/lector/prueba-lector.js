@@ -91,10 +91,14 @@ const log = [];
     if (name.endsWith('pdf')) {
       // En horizontal (tableta) el PDF va de dos en dos páginas: con el de prueba (5) ya se está al final
       if (TAM.width > TAM.height) { await page.evaluate(() => window.__view.goTo(0)); await page.waitForTimeout(1200); f0 = await frac(); }
+      // Tocar ya no abre el menú (se abre con «subir volumen») ni pasa de página
       await touch([[X(380), Y(430)]]); await page.waitForTimeout(900);
       const menu = await page.$eval('#abajo', (e) => !e.classList.contains('oculta'));
-      ok(menu && (await frac()) === f0, `${name}: tocar el borde abre el menú y no pasa de página`);
+      ok(!menu && (await frac()) === f0, `${name}: tocar no abre el menú ni pasa de página`);
+      await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(500);
+      ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: «subir volumen» abre el menú`);
       await touch([[X(206), Y(430)]]); await page.waitForTimeout(700);
+      ok(await page.$eval('#abajo', (e) => e.classList.contains('oculta')), `${name}: tocar con el menú abierto lo cierra`);
       // Deslizar hacia la izquierda: página siguiente
       await touch([[X(330), Y(430)], [X(280), Y(432)], [X(200), Y(434)], [X(120), Y(436)]]); await page.waitForTimeout(1300);
       const f1 = await frac();
@@ -139,7 +143,10 @@ const log = [];
     }
     // Barras (tocar el centro). En el EPUB, en una página de texto: en el índice del libro el centro es un enlace.
     if (name.endsWith('epub')) { await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1500); }
+    // Las barras: con «subir volumen» (atrioMenu); tocar el centro ya no las abre
     await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(600);
+    ok(await page.$eval('#abajo', (e) => e.classList.contains('oculta')), `${name}: tocar el centro no abre el menú`);
+    await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(600);
     await page.screenshot({ path: path.join(out, name + '-3-barras.png') });
     // Ajustes: tema noche y letra más grande
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
@@ -229,7 +236,7 @@ const log = [];
     }
     // Índice y búsqueda
     await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(500);
-    if (!(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')))) { await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(500); }
+    if (!(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')))) { await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(500); }
     await page.click('#b-indice'); await page.waitForTimeout(600);
     const tocN = await page.$$eval('#panel-cuerpo li', (l) => l.length);
     ok(name.endsWith('pdf') || tocN >= 3, `${name}: índice con ${tocN} entradas`);
@@ -325,9 +332,9 @@ const log = [];
       const s1 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
       ok((await pagina()) === pg0 && Math.abs(s1 - s0) < 30, `${name}: deslizar de lado no pasa de página («${await pagina()}», ${Math.round(s0)} → ${Math.round(s1)})`);
     }
-    // Tocar el centro: el menú (no pasa nada más)
-    await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(700);
-    ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar abre el menú`);
+    // El menú, con «subir volumen» (también leyendo hacia abajo)
+    await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(700);
+    ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: «subir volumen» abre el menú`);
     // Cambiar a página a página y volver: se queda en la misma página
     const antes = await pagina();
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
@@ -337,7 +344,7 @@ const log = [];
     const r2 = await page.evaluate(() => document.querySelector('foliate-view').renderer.localName);
     ok((await page.evaluate(() => window.__atrio.vol)) === true, `${name}: en «Página a página» los botones de volumen vuelven a pasar página`);
     ok(r2 === 'foliate-fxl' && (await pagina()) === antes, `${name}: «Página a página» reabre en la misma página (${r2}, «${await pagina()}»)`);
-    await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(600);
+    await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(600);
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
     await page.click('[data-k="pdfFlow"][data-v="strip"]');
     await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2500);

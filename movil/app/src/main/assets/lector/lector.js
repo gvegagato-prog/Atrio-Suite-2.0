@@ -97,6 +97,11 @@ async function abrir() {
     $('#carga').classList.add('fuera')
     showChrome(true)
     setTimeout(() => showChrome(false), 1600)
+    // Las primeras veces: cómo se abre el menú (ya no se abre tocando)
+    try {
+        const n = Number(localStorage.getItem('avisoMenu') || 0)
+        if (n < 3) { localStorage.setItem('avisoMenu', String(n + 1)); setTimeout(() => aviso('Sube el volumen para abrir el menú'), 1800) }
+    } catch (e) { }
 }
 
 /** PDF o cómic leyendo hacia abajo (las páginas una debajo de otra). */
@@ -366,7 +371,7 @@ function onLoad({ detail: { doc, index } }) {
             if (pend) return
             // Tocar un subrayado: su nota, copiarlo, compartirlo o quitarlo
             if (hit) { showSel({ mode: 'edit', note: hit.note, y: yOf(doc, hit.range) }); return }
-            // PDF: tocar nunca pasa de página, solo abre o cierra el menú (las páginas, deslizando)
+            // PDF: tocar nunca pasa de página (las páginas, deslizando)
             if (S.flow === 'paginated' && !isPDF) {
                 const fr = doc.defaultView.frameElement?.getBoundingClientRect()
                 const x = e.clientX + (fr ? fr.left : 0)
@@ -374,7 +379,8 @@ function onLoad({ detail: { doc, index } }) {
                 if (x < w * 0.27) { view.goLeft(); if (chromeOn) showChrome(false); return }
                 if (x > w * 0.73) { view.goRight(); if (chromeOn) showChrome(false); return }
             }
-            showChrome(!chromeOn)
+            // El menú se abre solo con «subir volumen» (atrioMenu); tocar únicamente lo cierra
+            if (chromeOn) showChrome(false)
         }, 40)
     })
 }
@@ -1185,6 +1191,8 @@ window.atrioBack = () => {
     if (chromeOn) { showChrome(false); return true }
     return false
 }
+// «Subir volumen» (lo manda la app): abre el menú, o lo cierra; con algo abierto encima, lo cierra primero
+window.atrioMenu = () => { if (paso !== 'listo') return; if (!window.atrioBack()) showChrome(!chromeOn) }
 // Teclas de volumen para pasar página (las manda la app)
 window.atrioPage = d => { if (haciaAbajo()) return; if (d > 0) view?.goRight(); else view?.goLeft() }
 

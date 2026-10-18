@@ -272,7 +272,7 @@ class ReaderActivity : ComponentActivity() {
                 // Los capítulos se cargan en iframes con direcciones blob:/data:/about: — eso no se toca.
                 // Solo los enlaces web de verdad, en la página principal, se abren fuera (en el navegador).
                 if (!request.isForMainFrame || u.scheme !in setOf("http", "https") || u.host == "appassets.androidplatform.net") return false
-                try { startActivity(Intent(Intent.ACTION_VIEW, u)) } catch (e: Exception) { }
+                fuera(Intent(Intent.ACTION_VIEW, u))
                 return true
             }
         }
@@ -286,9 +286,12 @@ class ReaderActivity : ComponentActivity() {
             android.widget.Toast.LENGTH_LONG
         ).show()
         web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html")
+        // Atrás solo cierra lo que haya abierto encima (una nota, un panel, el menú): del libro se sale desde el menú
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                web.evaluateJavascript("window.atrioBack ? atrioBack() : false") { r -> if (r != "true") finish() }
+                web.evaluateJavascript("window.atrioBack ? atrioBack() : false") { r ->
+                    if (r != "true") android.widget.Toast.makeText(this@ReaderActivity, "Para salir: sube el volumen y toca ✕", android.widget.Toast.LENGTH_SHORT).show()
+                }
             }
         })
         // El WebView no le dice al CSS cuánto ocupan la barra de estado y la de navegación: se lo decimos nosotros,
@@ -328,15 +331,41 @@ class ReaderActivity : ComponentActivity() {
         )
     }
 
-    /** Las teclas de volumen pasan página (no leyendo PDF/cómics hacia abajo: ahí suben y bajan el volumen). */
+    /** «Bajar volumen» pasa página (no leyendo PDF/cómics hacia abajo: ahí baja el volumen). */
     @Volatile private var volumeTurns = true
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (!volumeTurns) return super.onKeyDown(keyCode, event)
-        // Volumen para pasar página
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) { web.evaluateJavascript("window.atrioPage && atrioPage(1)", null); return true }
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) { web.evaluateJavascript("window.atrioPage && atrioPage(-1)", null); return true }
+        // «Subir volumen» abre y cierra el menú del lector (siempre: es la única forma de abrirlo)
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) { if (event?.repeatCount == 0) web.evaluateJavascript("window.atrioMenu && atrioMenu()", null); return true }
+        if (volumeTurns && keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) { web.evaluateJavascript("window.atrioPage && atrioPage(1)", null); return true }
         return super.onKeyDown(keyCode, event)
+    }
+
+    /**
+     * Leyendo, la pantalla queda fijada («Fijar pantalla» de Android): ni inicio, ni recientes, ni la barra de
+     * notificaciones; el botón de apagar sí. Android pide confirmarlo y siempre deja salir con su gesto; desde la
+     * app se sale con ✕ en el menú. Se pide una vez al abrir el libro (si lo quitas con el gesto, no se insiste).
+     */
+    private var pinAsked = false
+
+    override fun onResume() {
+        super.onResume()
+        if (!pinAsked) { pinAsked = true; runCatching { startLockTask() } }
+    }
+
+    /**
+     * Abrir otra app (compartir, el navegador): con la pantalla fijada Android no deja, así que se suelta un momento
+     * y al volver al libro se vuelve a fijar (Android vuelve a pedir confirmarlo).
+     */
+    private fun fuera(i: Intent) {
+        runCatching { stopLockTask() }
+        pinAsked = false
+        try { startActivity(i) } catch (e: Exception) { }
+    }
+
+    private fun salir() {
+        runCatching { stopLockTask() }
+        finish()
     }
 
     override fun onDestroy() {
@@ -434,14 +463,14 @@ class ReaderActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun share(text: String) = runOnUiThread {
-            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Compartir"))
+            fuera(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Compartir"))
         }
 
         @JavascriptInterface
-        fun openUrl(url: String) = runOnUiThread { try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { } }
+        fun openUrl(url: String) = runOnUiThread { fuera(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
 
         @JavascriptInterface
-        fun close() = runOnUiThread { finish() }
+        fun close() = runOnUiThread { salir() }
 
         /** Un toque de vibración al coger una palabra. */
         @JavascriptInterface
