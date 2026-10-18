@@ -341,32 +341,13 @@ class ReaderActivity : ComponentActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    /**
-     * Leyendo, la pantalla queda fijada («Fijar pantalla» de Android): ni inicio, ni recientes, ni la barra de
-     * notificaciones; el botón de apagar sí. Android pide confirmarlo y siempre deja salir con su gesto; desde la
-     * app se sale con ✕ en el menú. Se pide una vez al abrir el libro (si lo quitas con el gesto, no se insiste).
-     */
-    private var pinAsked = false
+    // (Sin «Fijar pantalla»: Android obliga a confirmarlo con su aviso cada vez. Atrás no saca del libro y las
+    // barras del sistema siguen ocultas; de él se sale con ✕ en el menú.)
 
-    override fun onResume() {
-        super.onResume()
-        if (!pinAsked) { pinAsked = true; runCatching { startLockTask() } }
-    }
+    /** Abrir otra app (compartir, el navegador). */
+    private fun fuera(i: Intent) { try { startActivity(i) } catch (e: Exception) { } }
 
-    /**
-     * Abrir otra app (compartir, el navegador): con la pantalla fijada Android no deja, así que se suelta un momento
-     * y al volver al libro se vuelve a fijar (Android vuelve a pedir confirmarlo).
-     */
-    private fun fuera(i: Intent) {
-        runCatching { stopLockTask() }
-        pinAsked = false
-        try { startActivity(i) } catch (e: Exception) { }
-    }
-
-    private fun salir() {
-        runCatching { stopLockTask() }
-        finish()
-    }
+    private fun salir() = finish()
 
     override fun onDestroy() {
         tts?.stop(); tts?.shutdown(); tts = null
