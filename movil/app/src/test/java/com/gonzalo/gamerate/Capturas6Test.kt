@@ -159,7 +159,9 @@ open class Capturas6Test {
         }
         shoot("r1_portada")
         rule.onRoot().performTouchInput { swipeUp() }; rule.onRoot().performTouchInput { swipeUp() }; shoot("r2_portada_abajo")
-        rule.onAllNodesWithText("Videojuegos")[0].performClick(); shoot("r3_biblioteca")
+        // Las secciones están arriba del todo, antes de la portada: se vuelve arriba como haría uno
+        repeat(3) { rule.onRoot().performTouchInput { swipeDown() } }; rule.waitForIdle()
+        rule.onAllNodesWithText("Juegos")[0].performClick(); shoot("r3_biblioteca")
         rule.onAllNodesWithText("Pasados")[0].performClick(); shoot("r3b_biblioteca_pasados")
         rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r4_ficha_valorado")
         // Modo edición: el diseño de la página
@@ -399,30 +401,30 @@ open class Capturas6Test {
                 MagRowSpec(listOf(MagCell("imagen", image = cover("Hades", 0xFFE96443.toInt(), 0xFF904E95.toInt()), shape = "original", fit = true)))
             ))
         }
-        go("Videojuegos"); go("Pasados"); go("Hades II"); shoot("p00_foto_llena")
+        shoot("p00a_portada"); go("Juegos"); go("Pasados"); go("Hades II"); shoot("p00_foto_llena")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p00b_foto_original")
         home()
-        go("Descubrir un juego"); shoot("p01_descubrir")
+        go("Juegos"); go("DESCUBRIR →"); shoot("p01_descubrir")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p01b_descubrir_filtros")
         go("5"); shoot("p02_pregunta"); back(); back()
-        go("Descubrir un libro"); shoot("p03_descubrir_libro"); home()
+        go("Libros"); go("DESCUBRIR →"); shoot("p03_descubrir_libro"); home()
         go("Diario"); shoot("p04_diario"); home()
         go("Estadísticas"); shoot("p05_estadisticas"); home()
         go("Perfil"); shoot("p06_perfil")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p06b_perfil")
         go("Ajustes"); shoot("p07_ajustes")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p07b_ajustes"); home()
-        go("Videojuegos"); shoot("p08_biblioteca")
+        go("Juegos"); shoot("p08_biblioteca")
         go("+ AÑADIR"); shoot("p09_buscar"); back()
         go("Deadlock"); go("Apuntar notas →"); shoot("p10_apunte"); back(); home()
         go("Perfil"); go("Apariencia"); shoot("p11_apariencia"); back(); home()
-        go("Perfil"); go("Tu PC"); shoot("p12_pc"); home()
-        go("Tu ${java.time.LocalDate.now().year}, número especial"); shoot("p15_especial")
+        go("PC"); shoot("p12_pc"); home()
+        go("Estadísticas"); go("VER TU ${java.time.LocalDate.now().year}, NÚMERO ESPECIAL →"); shoot("p15_especial")
         // El número especial es un diálogo: tiene su propia raíz
         val dlg = { rule.onAllNodes(androidx.compose.ui.test.isRoot()).let { it[it.fetchSemanticsNodes().size - 1] } }
         dlg().performTouchInput { swipeUp() }; shoot("p15b_especial")
         dlg().performTouchInput { swipeUp() }; shoot("p15c_especial"); back(); home()
-        go("Descubrir un libro"); go("5")
+        go("Libros"); go("DESCUBRIR →"); go("5")
         repeat(5) { i -> rule.waitForIdle(); Thread.sleep(300); rule.onAllNodesWithText(if (i % 2 == 0) "A" else "B")[0].performClick() }
         rule.waitUntil(60_000) { rule.onAllNodesWithText("A MI LISTA +").fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("No ha salido nada", substring = true).fetchSemanticsNodes().isNotEmpty() }
         shoot("p13_resultados")

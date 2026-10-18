@@ -107,6 +107,8 @@ fun App(
     var wheelOpen by remember { mutableStateOf(false) }
     var partner by remember { mutableStateOf(Couple.cached(store)) }
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
+    // El número especial abierto desde Estadísticas (el año), encima de todo
+    var especialYear by remember { mutableStateOf<Int?>(null) }
     var syncTick by remember { mutableStateOf(0) }
     var reacts by remember { mutableStateOf(store.reacts) }
     var recsDone by remember { mutableStateOf(store.recsDone) }
@@ -945,7 +947,10 @@ fun App(
     val bgColor by animateColorAsState(target, tween(500), label = "fondo")
     // La revista es siempre papel liso (los fondos con dibujo eran de los estilos que ya no existen)
     val bgMod = if (Skin.revista) Modifier.background(Paper) else Modifier.pattern(look.pattern, bgColor, look.intensity)
-    val shown: Any = if (screen is Screen.Home) "top:$dest:$section:$pv" else screen
+    // (En el Diario, y entre Películas y Series, cambiar de categoría no rehace la pantalla entera: eso la hacía
+    // parpadear con un fundido de toda la página; lo que cambia se funde dentro)
+    val sectionKey = when { dest == 4 -> "diario"; kind.isMovie || kind.isTv -> "cine"; else -> "$section" }
+    val shown: Any = if (screen is Screen.Home) "top:$dest:$sectionKey:$pv" else screen
     val topLevel = screen is Screen.Home
     val dockOn = topLevel && Skin.shell == 0
     // Al volver de una ficha abierta desde Feed, Revista o Escritorio, se vuelve a esa pantalla (no a la biblioteca)
@@ -1140,8 +1145,10 @@ fun App(
                                 profile = if (pv) null else ({ screen = Screen.Profile }),
                                 add = if (pv) null else ({ k -> section = k.id; screen = Screen.Search(true) }),
                                 partner = if (p != null) ({ togglePartner() }) else null,
-                                stats = { k -> section = k.id; shellLib = true; screen = Screen.Stats },
+                                // (desde la portada, al salir de Estadísticas se vuelve a la portada, no a la biblioteca)
+                                stats = { k -> section = k.id; shellLib = false; screen = Screen.Stats },
                                 live = liveSlot,
+                                pc = if (pv) null else ({ screen = Screen.Suite }),
                                 pickImage = if (pv) null else ({ o ->
                                     val pl = o.play
                                     section = o.kind.id
@@ -1190,7 +1197,10 @@ fun App(
                         else -> if (kind.isBook) goalB else goalG
                     },
                     if (kind.isBook) (partner?.goalBooks ?: 0) else (partner?.goalGames ?: 0),
-                    onShareYear = if (pv) null else ({ y -> shareYear(kind, myGames, y) })
+                    onShareYear = if (pv) null else ({ y -> shareYear(kind, myGames, y) }),
+                    kinds = if (shellLib) emptyList() else if (pv) partner!!.allKinds else myKinds,
+                    onKind = { k -> if (k.isMovie || k.isTv) cineTv = k.isTv; section = k.id },
+                    onSpecial = { y -> especialYear = y }
                 ) { screen = Screen.Home }
 
                 is Screen.Quiz -> QuizScreen(
@@ -1551,6 +1561,25 @@ fun App(
                 ),
                 if (dest == 0 && section >= 0) 0 else dest
             ) { go(it) }
+        }
+        especialYear?.let { y ->
+            val p = partner
+            val ks = if (pv && p != null) p.allKinds else myKinds
+            NumeroEspecial(
+                if (pv && p != null) p.name else store.myName.ifBlank { "Atrio" }, ks,
+                { k -> ((if (pv && p != null) p.games(k) else gamesOf(k)).map { ShellEntry(k, null, it) } +
+                    (if (pv && p != null) p.plays(k) else playsOf(k)).map { ShellEntry(k, it, null) }).distinctBy { it.id } },
+                onOpen = { e ->
+                    especialYear = null
+                    section = e.kind.id
+                    screen = when {
+                        pv -> Screen.PartnerItem(e.kind.id, e.id)
+                        e.play != null -> Screen.PlayDetail(e.play)
+                        else -> Screen.Edit(e.game!!, false)
+                    }
+                },
+                startYear = y
+            ) { especialYear = null }
         }
         if (wheelOpen) {
             val pool = myPlays.filter { it.status == 0 }

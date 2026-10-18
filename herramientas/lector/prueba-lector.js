@@ -86,6 +86,9 @@ const log = [];
     };
     const frac = async () => (await page.evaluate(() => window.__atrio.saved.progress?.f)) ?? 0;
     await page.waitForTimeout(900);
+    // Leyendo no queda nada animándose sin fin (la rueda de carga oculta seguía girando y gastaba batería)
+    const sinFin = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.getComputedTiming().iterations === Infinity).length);
+    ok(sinFin === 0, `${name}: ninguna animación sin fin mientras lees (${sinFin})`);
     let f0 = await frac();
     // Tocar el lado derecho de un PDF: abre el menú y no pasa de página
     if (name.endsWith('pdf')) {

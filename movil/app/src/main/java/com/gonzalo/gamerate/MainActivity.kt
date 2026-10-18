@@ -96,6 +96,7 @@ class MainActivity : ComponentActivity() {
         // Desde el icono con Atrio ya abierto (por ejemplo con una guía delante): se vuelve a lo que había, sin otra pantalla encima
         if (!isTaskRoot && intent?.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER)) { finish(); return }
         if (savedInstanceState == null) read(intent)
+        maxRefresh()
         val store = Store(this)
         Mode.themeMode = store.themeMode
         Skin.load(this)
@@ -216,6 +217,19 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             if (cont.isActive) cont.resume(null)
         }
+    }
+
+    /**
+     * La pantalla a su frecuencia más alta (90/120 Hz si la tiene) mientras se usa la app: más fluida aunque gaste
+     * algo más. Muchos móviles dejan las apps a 60 Hz si no lo piden. (El lector no lo pide: allí decide Android y
+     * baja la frecuencia cuando el texto está quieto.)
+     */
+    private fun maxRefresh() {
+        val d = (if (android.os.Build.VERSION.SDK_INT >= 30) display else @Suppress("DEPRECATION") windowManager.defaultDisplay) ?: return
+        val cur = d.mode
+        val best = d.supportedModes.filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight }
+            .maxByOrNull { it.refreshRate } ?: return
+        window.attributes = window.attributes.also { it.preferredDisplayModeId = best.modeId; it.preferredRefreshRate = best.refreshRate }
     }
 
     // Al salir de la app, los widgets se ponen al día (lo que hayas cambiado, el día de hoy)

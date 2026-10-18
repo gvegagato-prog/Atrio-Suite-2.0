@@ -200,7 +200,8 @@ private fun nameScore(g: Game?): String = if (g == null) "—" else g.name + " (
 @Composable
 fun StatsScreen(
     kind: Kind, games: List<Game>, plays: List<Play>, partner: PartnerSide?,
-    goal: Int, partnerGoal: Int, onShareYear: ((Int) -> Unit)? = null, onMenu: () -> Unit
+    goal: Int, partnerGoal: Int, onShareYear: ((Int) -> Unit)? = null,
+    kinds: List<Kind> = emptyList(), onKind: (Kind) -> Unit = {}, onSpecial: ((Int) -> Unit)? = null, onMenu: () -> Unit
 ) {
     val showPartner = Mode.calP
     val useP = showPartner && partner != null
@@ -230,9 +231,19 @@ fun StatsScreen(
         if (useP) {
             Overline("Estadísticas de ${partner!!.name}", Modifier.padding(start = 4.dp, bottom = 10.dp))
         }
+        // Desde la portada: todas las categorías aquí mismo
+        if (kinds.size > 1) Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            kinds.forEach { k -> SoftChip(k.title, k.id == kind.id) { onKind(k) } }
+        }
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SoftChip("Todo", year == null) { year = null }
             years.forEach { y -> SoftChip("$y", year == y) { year = y } }
+        }
+        // Tu año entero, como número especial de la revista (el año elegido arriba; con «Todo», este)
+        if (onSpecial != null) {
+            val y = year ?: thisYear
+            Text("VER TU $y, NÚMERO ESPECIAL →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 14.dp).press { onSpecial(y) }.padding(vertical = 6.dp))
         }
 
         if (g.isEmpty() && p.isEmpty()) {

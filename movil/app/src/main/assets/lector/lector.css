@@ -35,8 +35,11 @@ body.pdf[data-theme="sepia"] foliate-view { filter: sepia(.45) brightness(.97); 
 body.pdf foliate-view { background: #fff; }
 
 /* Cargando */
-.carga { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); z-index: 50; background: var(--bg); transition: opacity .3s; }
-.carga.fuera { opacity: 0; pointer-events: none; }
+.carga { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); z-index: 50; background: var(--bg); transition: opacity .3s, visibility 0s; }
+/* Al irse, fuera del todo y con la rueda parada: una animación infinita, aunque no se vea, obliga a pintar cada fotograma
+   y gasta batería todo el rato que lees */
+.carga.fuera { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity .3s, visibility 0s .3s; }
+.carga.fuera .gira { animation: none; }
 .gira { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--accent); animation: gira 0.9s linear infinite; }
 @keyframes gira { to { transform: rotate(360deg); } }
 .carga p { margin: 0 32px; text-align: center; line-height: 1.4; font-family: var(--font-titulo); font-style: italic; font-size: 17px; }

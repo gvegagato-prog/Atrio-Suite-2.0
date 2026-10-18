@@ -480,7 +480,7 @@ fun SuiteScreen(
     }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp)) {
-            TopBar("Atrio", onBack, pc?.name ?: "Tu PC") {
+            TopBar("PC", onBack, pc?.name ?: "Tu PC") {
                 Box(Modifier.padding(end = 4.dp)) {
                     if (pc != null) Row(verticalAlignment = Alignment.CenterVertically) { LiveDot(); Spacer(Modifier.width(6.dp)); Text("Conectado", fontSize = 12.sp, color = Muted) }
                     else Text(Suite.state, fontSize = 12.sp, color = Muted)

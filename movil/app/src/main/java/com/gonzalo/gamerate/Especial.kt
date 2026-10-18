@@ -133,13 +133,13 @@ fun RevistaEfemerides(all: List<ShellEntry>, open: (ShellEntry) -> Unit) {
 fun especialYears(all: List<ShellEntry>): List<Int> =
     (all.mapNotNull { e -> e.game?.end?.takeIf { it > 0L }?.let { LocalDate.ofEpochDay(it).year } } + LocalDate.now().year).distinct().sortedDescending()
 
-/** El número especial: tu año en la revista. Se abre a pantalla completa desde el Sumario de la portada. */
+/** El número especial: tu año en la revista. Se abre a pantalla completa desde Estadísticas, con el año que elijas. */
 @Composable
-fun NumeroEspecial(name: String, kinds: List<Kind>, entries: (Kind) -> List<ShellEntry>, onOpen: (ShellEntry) -> Unit, onDismiss: () -> Unit) {
+fun NumeroEspecial(name: String, kinds: List<Kind>, entries: (Kind) -> List<ShellEntry>, onOpen: (ShellEntry) -> Unit, startYear: Int? = null, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val everything = remember(kinds) { kinds.flatMap { entries(it) } }
-    val years = remember(everything) { especialYears(everything) }
-    var year by remember { mutableStateOf(years.first()) }
+    val years = remember(everything) { (especialYears(everything) + listOfNotNull(startYear)).distinct().sortedDescending() }
+    var year by remember { mutableStateOf(startYear ?: years.first()) }
     // Lo terminado ese año (lo que tiene nota y fecha de fin)
     val done = remember(everything, year) {
         everything.filter { e -> e.game?.end?.let { it > 0L && LocalDate.ofEpochDay(it).year == year } == true }

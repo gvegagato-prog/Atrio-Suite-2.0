@@ -156,7 +156,7 @@ open class SagasTest {
         Skin.load(ctx); Mode.dark = false; Mode.themeMode = 1; Skin.applyShell(2, ctx)
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(s, 0L, false, "") {} } } }
         rule.waitForIdle()
-        rule.onAllNodesWithText("Videojuegos").onLast().performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Juegos")[0].performScrollTo().performClick(); rule.waitForIdle()
         rule.onAllNodesWithText("Sagas")[0].performClick(); rule.waitForIdle()
         shoot("8_juegos")
         assertTrue(rule.onAllNodesWithText("3 JUEGOS · 2 PASADOS · MEDIA 92", substring = true).fetchSemanticsNodes().isNotEmpty())

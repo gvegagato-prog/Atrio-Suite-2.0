@@ -152,7 +152,13 @@ fun CalendarScreen(
         }
         Spacer(Modifier.size(4.dp))
 
-        Column(Modifier.fillMaxWidth().weight(1f)) {
+        // Al cambiar de categoría (o a lo de tu pareja), el mes se funde con lo nuevo en lugar de saltar
+        val gridKey = kind.id to useP
+        val snaps = remember { mutableMapOf<Pair<Int, Boolean>, List<CalItem>>() }
+        snaps[gridKey] = cal
+        androidx.compose.animation.Crossfade(gridKey, Modifier.fillMaxWidth().weight(1f), androidx.compose.animation.core.tween(Motion.ms(220)), label = "diario") { gk ->
+        val cal = snaps[gk] ?: cal
+        Column(Modifier.fillMaxSize()) {
             for (w in 0 until weeks) {
                 Row(Modifier.fillMaxWidth().weight(1f)) {
                     for (c in 0 until 7) {
@@ -173,6 +179,7 @@ fun CalendarScreen(
                     }
                 }
             }
+        }
         }
     }
     val d = sel
