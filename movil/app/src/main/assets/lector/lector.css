@@ -50,12 +50,11 @@ body.menu .estado, body.sin-estado .estado { opacity: 0; }
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); pointer-events: none; }
 
 /* Barras */
-.barra { position: fixed; left: 0; right: 0; z-index: 20; background: var(--bg); transition: transform .3s cubic-bezier(.2,.9,.3,1), opacity .2s; }
+/* Encima del texto, sin moverlo: aparecen y se van con un fundido corto (sin deslizarse) */
+.barra { position: fixed; left: 0; right: 0; z-index: 20; background: var(--bg); transition: opacity .12s ease-out; }
 .barra.oculta { display: flex !important; opacity: 0; pointer-events: none; }
 #arriba { top: 0; padding: calc(var(--safe-top) + 6px) 8px 8px; display: flex; align-items: center; gap: 2px; border-bottom: 2px solid var(--fg); }
-#arriba.oculta { transform: translateY(-110%); }
 #abajo { bottom: 0; padding: 10px 14px calc(var(--safe-bottom) + 8px); border-top: 2px solid var(--fg); flex-direction: column; display: flex; }
-#abajo.oculta { transform: translateY(110%); }
 .ico { width: 44px; height: 44px; display: grid; place-items: center; flex: none; }
 .ico:active { background: var(--line); }
 .ico.on svg { fill: var(--accent); stroke: var(--accent); }

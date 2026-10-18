@@ -97,11 +97,6 @@ async function abrir() {
     $('#carga').classList.add('fuera')
     showChrome(true)
     setTimeout(() => showChrome(false), 1600)
-    // Las primeras veces: cómo se abre el menú (ya no se abre tocando)
-    try {
-        const n = Number(localStorage.getItem('avisoMenu') || 0)
-        if (n < 3) { localStorage.setItem('avisoMenu', String(n + 1)); setTimeout(() => aviso(haciaAbajo() ? 'Sube el volumen para abrir el menú' : 'Desliza hacia arriba (o sube el volumen) para el menú'), 1800) }
-    } catch (e) { }
 }
 
 /** PDF o cómic leyendo hacia abajo (las páginas una debajo de otra). */
@@ -390,8 +385,12 @@ function onLoad({ detail: { doc, index } }) {
                 if (x < w * 0.27) { view.goLeft(); if (chromeOn) showChrome(false); return }
                 if (x > w * 0.73) { view.goRight(); if (chromeOn) showChrome(false); return }
             }
-            // El menú se abre solo con «subir volumen» (atrioMenu); tocar únicamente lo cierra
-            if (chromeOn) showChrome(false)
+            // El menú: tocando en el centro de verdad (la zona del medio, ni bordes ni arriba ni abajo); con el menú
+            // abierto, tocar en cualquier sitio lo cierra
+            if (chromeOn) { showChrome(false); return }
+            const fr2 = doc.defaultView.frameElement?.getBoundingClientRect()
+            const cx = e.clientX + (fr2 ? fr2.left : 0), cy = e.clientY + (fr2 ? fr2.top : 0)
+            if (cx > window.innerWidth * 0.3 && cx < window.innerWidth * 0.7 && cy > window.innerHeight * 0.25 && cy < window.innerHeight * 0.75) showChrome(true)
         }, 40)
     })
 }
@@ -691,7 +690,7 @@ function showChrome(on) {
     document.body.classList.toggle('menu', on)
     $('#arriba').classList.toggle('oculta', !on)
     $('#abajo').classList.toggle('oculta', !on)
-    A.systemBars(on)
+    // (las barras de Android se quedan ocultas: enseñarlas cambia los márgenes y el libro se recolocaba, parpadeando)
 }
 
 // ---------------------------------------------------------------- Barra de un subrayado
@@ -1202,7 +1201,7 @@ window.atrioBack = () => {
     if (chromeOn) { showChrome(false); return true }
     return false
 }
-// «Subir volumen» (lo manda la app): abre el menú, o lo cierra; con algo abierto encima, lo cierra primero
+// El menú desde fuera (las pruebas): lo abre o lo cierra; con algo abierto encima, lo cierra primero
 window.atrioMenu = () => { if (paso !== 'listo') return; if (!window.atrioBack()) showChrome(!chromeOn) }
 // Teclas de volumen para pasar página (las manda la app)
 window.atrioPage = d => { if (haciaAbajo()) return; if (d > 0) view?.goRight(); else view?.goLeft() }

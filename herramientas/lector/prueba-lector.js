@@ -91,12 +91,12 @@ const log = [];
     if (name.endsWith('pdf')) {
       // En horizontal (tableta) el PDF va de dos en dos páginas: con el de prueba (5) ya se está al final
       if (TAM.width > TAM.height) { await page.evaluate(() => window.__view.goTo(0)); await page.waitForTimeout(1200); f0 = await frac(); }
-      // Tocar ya no abre el menú (se abre con «subir volumen») ni pasa de página
+      // Tocar fuera del centro no abre el menú ni pasa de página; en el centro, lo abre (sin mover nada)
       await touch([[X(380), Y(430)]]); await page.waitForTimeout(900);
       const menu = await page.$eval('#abajo', (e) => !e.classList.contains('oculta'));
-      ok(!menu && (await frac()) === f0, `${name}: tocar no abre el menú ni pasa de página`);
-      await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(500);
-      ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: «subir volumen» abre el menú`);
+      ok(!menu && (await frac()) === f0, `${name}: tocar fuera del centro no abre el menú ni pasa de página`);
+      await touch([[X(206), Y(430)]]); await page.waitForTimeout(500);
+      ok((await page.$eval('#abajo', (e) => !e.classList.contains('oculta'))) && (await frac()) === f0, `${name}: tocar el centro abre el menú`);
       await touch([[X(206), Y(430)]]); await page.waitForTimeout(700);
       ok(await page.$eval('#abajo', (e) => e.classList.contains('oculta')), `${name}: tocar con el menú abierto lo cierra`);
       await touch([[X(206), Y(600)], [X(207), Y(520)], [X(208), Y(440)], [X(208), Y(380)]]); await page.waitForTimeout(700);
@@ -153,10 +153,14 @@ const log = [];
     }
     // Barras (tocar el centro). En el EPUB, en una página de texto: en el índice del libro el centro es un enlace.
     if (name.endsWith('epub')) { await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1500); }
-    // Las barras: con «subir volumen» (atrioMenu); tocar el centro ya no las abre
+    // Las barras: tocando el centro, encima del texto (sin recolocarlo); un poco fuera del centro, no
+    await page.mouse.click(X(100), Y(430)); await page.waitForTimeout(600);
+    ok(await page.$eval('#abajo', (e) => e.classList.contains('oculta')), `${name}: tocar fuera del centro no abre el menú`);
+    const textoAntes = await page.evaluate(() => { const r = document.querySelector('foliate-view').renderer; return [r.start, r.scrollTop, window.__atrio.saved.progress?.f] .join() });
     await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(600);
-    ok(await page.$eval('#abajo', (e) => e.classList.contains('oculta')), `${name}: tocar el centro no abre el menú`);
-    await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(600);
+    const textoDespues = await page.evaluate(() => { const r = document.querySelector('foliate-view').renderer; return [r.start, r.scrollTop, window.__atrio.saved.progress?.f] .join() });
+    ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar el centro abre el menú`);
+    ok(textoAntes === textoDespues, `${name}: abrir el menú no mueve el texto (${textoAntes} → ${textoDespues})`);
     await page.screenshot({ path: path.join(out, name + '-3-barras.png') });
     // Ajustes: tema noche y letra más grande
     await page.click('#b-ajustes'); await page.waitForTimeout(500);
@@ -342,9 +346,9 @@ const log = [];
       const s1 = await page.evaluate(() => document.querySelector('foliate-view').renderer.scrollTop);
       ok((await pagina()) === pg0 && Math.abs(s1 - s0) < 30, `${name}: deslizar de lado no pasa de página («${await pagina()}», ${Math.round(s0)} → ${Math.round(s1)})`);
     }
-    // El menú, con «subir volumen» (también leyendo hacia abajo)
-    await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(700);
-    ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: «subir volumen» abre el menú`);
+    // El menú, tocando el centro (también leyendo hacia abajo)
+    await page.mouse.click(X(206), Y(430)); await page.waitForTimeout(700);
+    ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar el centro abre el menú`);
     // Cambiar a página a página y volver: se queda en la misma página
     const antes = await pagina();
     await page.click('#b-ajustes'); await page.waitForTimeout(500);

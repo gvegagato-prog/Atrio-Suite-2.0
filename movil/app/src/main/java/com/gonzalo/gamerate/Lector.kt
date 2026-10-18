@@ -290,7 +290,7 @@ class ReaderActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 web.evaluateJavascript("window.atrioBack ? atrioBack() : false") { r ->
-                    if (r != "true") android.widget.Toast.makeText(this@ReaderActivity, "Para salir: desliza hacia arriba (o sube el volumen) y toca ✕", android.widget.Toast.LENGTH_SHORT).show()
+                    if (r != "true") android.widget.Toast.makeText(this@ReaderActivity, "Para salir: toca el centro de la pantalla y luego ✕", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         })
@@ -299,8 +299,11 @@ class ReaderActivity : ComponentActivity() {
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(web) { _, ins ->
             val d = resources.displayMetrics.density
             val sys = ins.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            safeTop = sys.top / d; safeBottom = sys.bottom / d
-            pushInsets()
+            // (solo si cambian: volver a aplicarlos recoloca el texto)
+            if (sys.top / d != safeTop || sys.bottom / d != safeBottom) {
+                safeTop = sys.top / d; safeBottom = sys.bottom / d
+                pushInsets()
+            }
             ins
         }
         bars(false)
@@ -335,14 +338,15 @@ class ReaderActivity : ComponentActivity() {
     @Volatile private var volumeTurns = true
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // «Subir volumen» abre y cierra el menú del lector (siempre: es la única forma de abrirlo)
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) { if (event?.repeatCount == 0) web.evaluateJavascript("window.atrioMenu && atrioMenu()", null); return true }
-        if (volumeTurns && keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) { web.evaluateJavascript("window.atrioPage && atrioPage(1)", null); return true }
+        if (!volumeTurns) return super.onKeyDown(keyCode, event)
+        // Volumen para pasar página
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) { web.evaluateJavascript("window.atrioPage && atrioPage(1)", null); return true }
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) { web.evaluateJavascript("window.atrioPage && atrioPage(-1)", null); return true }
         return super.onKeyDown(keyCode, event)
     }
 
     // (Sin «Fijar pantalla»: Android obliga a confirmarlo con su aviso cada vez. Atrás no saca del libro y las
-    // barras del sistema siguen ocultas; de él se sale con ✕ en el menú.)
+    // barras del sistema siguen ocultas; de él se sale con ✕ en el menú, que se abre tocando el centro.)
 
     /** Abrir otra app (compartir, el navegador). */
     private fun fuera(i: Intent) { try { startActivity(i) } catch (e: Exception) { } }
