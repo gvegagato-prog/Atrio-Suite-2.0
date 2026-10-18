@@ -18,46 +18,98 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
-/** Un kDrive de mentira (las mismas llamadas que herramientas/fakekdrive.js), con un servidor HTTP mínimo. */
+/**
+ * Un kDrive de mentira (lo mismo que herramientas/fakekdrive.js), con un servidor HTTP mínimo. Como el de verdad: en la
+ * raíz no se puede escribir y lo tuyo va en «Mi carpeta» (visibility is_private_space).
+ */
 class FakeKDrive(private val drive: String = "777", private val token: String = "tok") {
-    class F(val id: Long, val name: String, val dir: Boolean, val parent: Long, val bytes: ByteArray = ByteArray(0))
-    val files = java.util.Collections.synchronizedMap(linkedMapOf(1L to F(1, "Mi carpeta", true, 0)))
+    class F(val id: Long, val name: String, val dir: Boolean, val parent: Long, var bytes: ByteArray = ByteArray(0), val visibility: String = "")
+    val files = java.util.Collections.synchronizedMap(linkedMapOf(
+        1L to F(1, "", true, 0, visibility = "is_root"), 2L to F(2, "Mi carpeta", true, 1, visibility = "is_private_space"),
+        3L to F(3, "Documentos comunes", true, 1, visibility = "is_team_space")))
     private var next = 100L
+    private val sessions = HashMap<String, Pair<JSONObject, java.util.TreeMap<Int, ByteArray>>>()
+    private val links = HashMap<String, Long>()
     private val sock = java.net.ServerSocket(0, 50, java.net.InetAddress.getByName("127.0.0.1"))
     val url get() = "http://127.0.0.1:${sock.localPort}"
     @Volatile private var alive = true
+    var finished = 0
 
-    fun pathOf(f: F): String { val out = mutableListOf<String>(); var c: F? = f; while (c != null && c.id != 1L) { out.add(0, c.name); c = files[c.parent] }; return out.joinToString("/") }
-    fun byPath(p: String) = synchronized(files) { files.values.firstOrNull { pathOf(it) == p } }
+    fun pathOf(f: F): String { val out = mutableListOf<String>(); var c: F? = f; while (c != null && c.id != 1L && c.id != 2L) { out.add(0, c.name); c = files[c.parent] }; return out.joinToString("/") }
+    fun byPath(p: String) = synchronized(files) { files.values.firstOrNull { !it.dir && pathOf(it) == p } }
     fun stop() { alive = false; sock.close() }
 
     private class Res(val code: Int, val body: ByteArray)
     private fun json(code: Int, o: JSONObject) = Res(code, o.toString().toByteArray())
     private fun ok(data: Any) = json(200, JSONObject().put("result", "success").put("data", data).put("has_more", false))
-    private fun err(code: Int) = json(code, JSONObject().put("result", "error").put("error", JSONObject().put("code", "$code").put("description", "err $code")))
+    private fun err(code: Int, d: String = "err $code") = json(code, JSONObject().put("result", "error").put("error", JSONObject().put("code", "$code").put("description", d)))
+
+    private fun ensure(parent: Long, path: String): Long {
+        var cur = parent
+        for (n in path.split('/').filter { it.isNotEmpty() }) {
+            cur = files.values.firstOrNull { it.parent == cur && it.dir && it.name == n }?.id ?: run { val id = next++; files[id] = F(id, n, true, cur); id }
+        }
+        return cur
+    }
+    private fun put(dir: Long, name: String, b: ByteArray): F {
+        files.values.firstOrNull { it.parent == dir && !it.dir && it.name == name }?.let { it.bytes = b; return it } // conflict=version
+        val id = next++; files[id] = F(id, name, false, dir, b); return files[id]!!
+    }
 
     private fun handle(method: String, target: String, auth: String?, body: ByteArray): Res {
-        if (auth != "Bearer $token") return err(401)
         val path = target.substringBefore('?')
         val q = target.substringAfter('?', "").split('&').filter { '=' in it }.associate { it.substringBefore('=') to java.net.URLDecoder.decode(it.substringAfter('='), "UTF-8") }
+        // Descarga pública por enlace (sin cuenta)
+        Regex("""^/2/app/(\d+)/share/([a-z0-9-]+)/files/(\d+)/download$""").find(path)?.let { m ->
+            val f = files[m.groupValues[3].toLong()]
+            return if (m.groupValues[1] == drive && links[m.groupValues[2]] == m.groupValues[3].toLong() && f != null) Res(200, f.bytes) else err(404)
+        }
+        if (auth != "Bearer $token") return err(401)
         val m = Regex("""^/([23])/drive/(\d+)(/.*)$""").find(path) ?: return err(404)
         if (m.groupValues[2] != drive) return err(404)
         val p = m.groupValues[3]
-        fun id(re: String) = Regex(re).find(p)?.groupValues?.get(1)?.toLong()
+        fun id(re: String) = Regex(re).find(p)?.groupValues?.get(1)
+        val denied = err(403, "You do not have the required permissions")
         synchronized(files) {
-            if (method == "GET") id("""^/files/(\d+)/files$""")?.let { d ->
-                return ok(JSONArray().apply { files.values.filter { it.parent == d }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("type", if (it.dir) "dir" else "file")) } })
+            if (method == "GET") id("""^/files/(\d+)/files$""")?.toLong()?.let { d ->
+                return ok(JSONArray().apply { files.values.filter { it.parent == d }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("type", if (it.dir) "dir" else "file").put("visibility", it.visibility)) } })
             }
-            if (method == "POST") id("""^/files/(\d+)/directory$""")?.let { d ->
+            if (method == "POST") id("""^/files/(\d+)/directory$""")?.toLong()?.let { d ->
+                if (d == 1L) return denied
                 val n = next++; files[n] = F(n, JSONObject(String(body)).getString("name"), true, d); return ok(JSONObject().put("id", n))
             }
             if (method == "POST" && p == "/upload") {
                 if (q["total_size"]?.toLong() != body.size.toLong()) return err(400)
-                val n = next++; files[n] = F(n, q["file_name"]!!, false, q["directory_id"]!!.toLong(), body); return ok(JSONObject().put("id", n))
+                val d = q["directory_id"]!!.toLong()
+                if (d == 1L) return denied
+                return ok(JSONObject().put("id", put(ensure(d, q["directory_path"].orEmpty()), q["file_name"]!!, body).id))
             }
-            if (method == "POST") id("""^/files/(\d+)/link$""")?.let { f -> return ok(JSONObject().put("url", "https://kdrive.example/app/share/$drive/$f")) }
-            if (method == "GET") id("""^/files/(\d+)/download$""")?.let { f -> return files[f]?.let { Res(200, it.bytes) } ?: err(404) }
-            if (method == "DELETE") id("""^/files/(\d+)$""")?.let { f -> files.remove(f); return ok(true) }
+            if (method == "POST" && p == "/upload/session/start") {
+                val b = JSONObject(String(body))
+                if (b.getLong("directory_id") == 1L) return denied
+                val t = java.util.UUID.randomUUID().toString().replace("-", "")
+                sessions[t] = b to java.util.TreeMap()
+                return ok(JSONObject().put("token", t).put("upload_url", url))
+            }
+            if (method == "POST") id("""^/upload/session/([a-f0-9]+)/chunk$""")?.let { t ->
+                val s = sessions[t] ?: return err(404)
+                if (q["chunk_size"]?.toInt() != body.size) return err(400)
+                s.second[q["chunk_number"]!!.toInt()] = body; return ok(JSONObject().put("status", "ok"))
+            }
+            if (method == "POST") id("""^/upload/session/([a-f0-9]+)/finish$""")?.let { t ->
+                val (b, ch) = sessions.remove(t) ?: return err(404)
+                if (ch.size != b.getInt("total_chunks")) return err(400)
+                val all = java.io.ByteArrayOutputStream().apply { ch.values.forEach { write(it) } }.toByteArray()
+                if (all.size.toLong() != b.getLong("total_size")) return err(400)
+                finished++
+                return ok(JSONObject().put("file", JSONObject().put("id", put(ensure(b.getLong("directory_id"), b.optString("directory_path")), b.getString("file_name"), all).id)))
+            }
+            if (method == "POST") id("""^/files/(\d+)/link$""")?.toLong()?.let { f ->
+                val u = java.util.UUID.randomUUID().toString(); links[u] = f
+                return ok(JSONObject().put("url", "https://kdrive.infomaniak.com/app/share/$drive/$u").put("file_id", f))
+            }
+            if (method == "GET") id("""^/files/(\d+)/download$""")?.toLong()?.let { f -> return files[f]?.let { Res(200, it.bytes) } ?: err(404) }
+            if (method == "DELETE") id("""^/files/(\d+)$""")?.toLong()?.let { f -> files.remove(f); return ok(true) }
         }
         return err(404)
     }
@@ -95,7 +147,7 @@ class NubeTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
     private lateinit var k: FakeKDrive
 
-    @Before fun up() { k = FakeKDrive(); KDrive.api = k.url }
+    @Before fun up() { k = FakeKDrive(); KDrive.api = k.url; KDrive.share = k.url }
     @After fun down() { k.stop() }
 
     @Test fun conectar() = runBlocking {
@@ -107,7 +159,8 @@ class NubeTest {
         // Con la dirección del navegador en lugar del número
         KDrive.save(ctx, "tok", "https://ksuite.infomaniak.com/kdrive/app/drive/777/files")
         assertEquals("777", KDrive.drive(ctx))
-        assertTrue(KDrive.test(ctx).startsWith("Conectado"))
+        assertTrue(KDrive.test(ctx).contains("Mi carpeta"))
+        assertEquals("tu carpeta privada", 2L, KDrive.home(ctx))
         // El token no viaja con la cuenta (tu pareja lee tus datos)
         assertTrue("tok" !in Store(ctx).syncData())
     }
@@ -116,7 +169,8 @@ class NubeTest {
         KDrive.save(ctx, "tok", "777")
         val s = Store(ctx)
         // Un libro con su EPUB adjunto y una ficha con una foto tuya de portada
-        val epub = File(ctx.cacheDir, "viento.epub").apply { writeBytes(ByteArray(20_000) { (it % 251).toByte() }) }
+        // Más de 5 MB: va a trozos
+        val epub = File(ctx.cacheDir, "viento.epub").apply { writeBytes(ByteArray(7 * 1024 * 1024 + 17) { (it % 251).toByte() }) }
         val fotoDir = File(ctx.filesDir, "covers").apply { mkdirs() }
         val foto = File(fotoDir, "foto_1700000000000.jpg")
         Bitmap.createBitmap(40, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF336699.toInt()) }.let { b -> foto.outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 90, it) } }
@@ -127,9 +181,12 @@ class NubeTest {
         // Se sube todo: el libro con su enlace (para tu pareja) y la foto
         val msg = NubeSync.run(ctx)
         assertTrue(msg, msg.startsWith("2 subidos"))
-        val libro = k.byPath("Atrio/Libros/El nombre del viento (501).epub")
-        assertTrue("libro en Atrio/Libros", libro != null && libro.bytes.contentEquals(epub.readBytes()))
-        assertTrue("foto en Atrio/Portadas", k.byPath("Atrio/Portadas/foto_1700000000000.jpg") != null)
+        // Todo ordenado en «Mi carpeta»: Atrio/<Categoría>/<Ficha>/<Libro|Portadas>
+        val libro = k.byPath("Atrio/Libros/El nombre del viento/Libro/El nombre del viento.epub")
+        assertTrue("libro en su carpeta: ${k.files.values.filter { !it.dir }.map { k.pathOf(it) }}", libro != null && libro.bytes.contentEquals(epub.readBytes()))
+        assertEquals("subido a trozos", 1, k.finished)
+        assertTrue("foto en la carpeta de su ficha", k.byPath("Atrio/Libros/El nombre del viento/Portadas/foto_1700000000000.jpg") != null)
+        assertTrue("nada en la raíz", k.files.values.none { it.parent == 1L && it.name == "Atrio" })
         val reg = s.loadNube().associateBy { it.k }
         assertTrue(reg["libro:501"]!!.l.contains("share"))
         // La lista de lo subido y lo leído viajan con la cuenta
@@ -154,6 +211,12 @@ class NubeTest {
         val f = File(Uri.parse(BookFiles.get(ctx, 501)).path!!)
         assertTrue(f.readBytes().contentEquals(epub.readBytes()))
         assertEquals("El nombre del viento.epub", BookFiles.name(ctx, 501))
+
+        // Tu pareja lo copia a su Atrio desde el enlace (sin tu cuenta)
+        val x = s.loadNube().first { it.k == "libro:501" }
+        val otro = 777_501L
+        NubeSync.copyFromPartner(ctx, x, otro)
+        assertTrue(File(Uri.parse(BookFiles.get(ctx, otro)).path!!).readBytes().contentEquals(epub.readBytes()))
         assertEquals("se conserva lo leído", 0.42, BookFiles.progress(ctx, 501).toDouble(), 0.001)
 
         // Lo leído en otro dispositivo después, gana; lo de antes, no

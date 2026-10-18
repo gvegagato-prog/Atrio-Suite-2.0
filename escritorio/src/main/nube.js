@@ -7,7 +7,6 @@ const path = require('path');
 
 let API = process.env.ATRIO_KDRIVE_API || 'https://api.infomaniak.com';
 let ctx = null; // { config(), patch(o), edit(op), data(), log(), fotosDir, onFotos() }
-const dirs = new Map();
 
 class Fail extends Error {}
 
@@ -50,38 +49,55 @@ async function children(dir, c = cfg()) {
   let cursor = '';
   do {
     const o = await call('GET', `/3/drive/${c.drive}/files/${dir}/files${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`, null, c);
-    for (const x of o.data || []) out.push({ name: x.name, id: Number(x.id), dir: x.type === 'dir' });
+    for (const x of o.data || []) out.push({ name: x.name, id: Number(x.id), dir: x.type === 'dir', visibility: x.visibility || '' });
     cursor = o.has_more ? o.cursor || '' : '';
   } while (cursor && out.length < 5000);
   return out;
 }
 
-// La carpeta «Atrio/…» (se crea si no está)
-async function dir(...parts) {
-  const key = `${cfg().drive}:${parts.join('/')}`;
-  if (dirs.has(key)) return dirs.get(key);
-  let cur = 1;
-  for (const name of ['Atrio', ...parts]) {
-    const f = (await children(cur)).find((x) => x.dir && x.name === name);
-    if (f) cur = f.id;
-    else {
-      const o = await call('POST', `/3/drive/${cfg().drive}/files/${cur}/directory`, { name });
-      cur = Number(o.data && o.data.id);
-      if (!cur) throw new Fail(`No se pudo crear la carpeta ${name}`);
-    }
-  }
-  dirs.set(key, cur);
-  return cur;
+// Tu carpeta privada («Mi carpeta»): en la raíz del kDrive no se puede escribir. La app oficial de kDrive la
+// reconoce por su visibilidad «is_private_space».
+const homes = new Map();
+async function home(c = cfg()) {
+  if (homes.has(c.drive)) return homes.get(c.drive);
+  const root = await children(1, c);
+  const h = root.find((x) => x.dir && x.visibility === 'is_private_space');
+  if (!h) throw new Fail(`No encuentro tu carpeta privada en el kDrive (hay: ${root.map((x) => x.name).join(', ') || 'nada'})`);
+  homes.set(c.drive, h.id);
+  return h.id;
 }
 
-async function upload(dirId, name, buf) {
-  const q = new URLSearchParams({ directory_id: String(dirId), file_name: name, total_size: String(buf.length) });
-  const r = await fetch(`${API}/3/drive/${cfg().drive}/upload?${q}`, {
-    method: 'POST', headers: { ...auth(cfg()), 'Content-Type': 'application/octet-stream' }, body: buf,
+const CHUNKED = 5 * 1024 * 1024;
+
+// Sube a «Mi carpeta/<dir>/<name>» (kDrive crea las carpetas que falten; con el mismo nombre, versión nueva).
+// Los de más de 5 MB, a trozos, como la app oficial.
+async function upload(dirPath, name, buf) {
+  const c = cfg();
+  const h = await home();
+  const authH = { ...auth(c), 'Content-Type': 'application/octet-stream' };
+  if (buf.length <= CHUNKED) {
+    const q = new URLSearchParams({ directory_id: String(h), directory_path: dirPath, file_name: name, total_size: String(buf.length), conflict: 'version' });
+    const o = await answer(await fetch(`${API}/3/drive/${c.drive}/upload?${q}`, { method: 'POST', headers: authH, body: buf }));
+    const id = Number(o.data && o.data.id);
+    if (!id) throw new Fail('kDrive no ha devuelto el archivo subido');
+    return id;
+  }
+  const chunk = Math.max(1024 * 1024, Math.ceil(buf.length / 200));
+  const total = Math.ceil(buf.length / chunk);
+  const st = await call('POST', `/3/drive/${c.drive}/upload/session/start`, {
+    conflict: 'version', directory_id: h, directory_path: dirPath, file_name: name,
+    last_modified_at: Math.floor(Date.now() / 1000), total_chunks: total, total_size: buf.length,
   });
-  const o = await answer(r);
-  const id = Number(o.data && o.data.id);
-  if (!id) throw new Fail('kDrive no ha devuelto el archivo subido');
+  const tok = st.data && st.data.token;
+  if (!tok) throw new Fail('kDrive no ha abierto la subida');
+  const host = String((st.data && st.data.upload_url) || API).replace(/\/+$/, '');
+  for (let n = 1; n <= total; n++) {
+    const part = buf.subarray((n - 1) * chunk, Math.min(buf.length, n * chunk));
+    await answer(await fetch(`${host}/3/drive/${c.drive}/upload/session/${tok}/chunk?chunk_number=${n}&chunk_size=${part.length}`, { method: 'POST', headers: authH, body: part }));
+  }
+  const fin = await call('POST', `/3/drive/${c.drive}/upload/session/${tok}/finish`);
+  const id = Number(fin.data && fin.data.file && fin.data.file.id);
+  if (!id) throw new Fail('kDrive no ha cerrado la subida');
   return id;
 }
 
@@ -98,13 +114,20 @@ async function download(file) {
   return Buffer.from(await r.arrayBuffer());
 }
 
-const safe = (s) => String(s || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Escritorio';
+// Un nombre que vale para una carpeta o un archivo en cualquier sistema (igual que NubeSync.safe en el móvil)
+const safe = (s) => String(s || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\.+$/, '').slice(0, 80).trim() || 'Sin nombre';
+// «El nombre del viento (Crónica…, #1)» → «El nombre del viento», como en el móvil
+const limpio = (t) => String(t || '').replace(/\(([^()#]+?),?\s*#\s*(\d+(?:[.,]\d+)?)\)\s*$/, '').trim() || String(t || '');
+// Atrio/<Categoría>/<Ficha>/<Libro|Capturas|Portadas>, bajo «Mi carpeta»
+const carpeta = (cat, ficha, que) => `Atrio/${safe(cat)}/${safe(limpio(ficha))}/${que}`;
 
 // Comprueba un token y un kDrive antes de guardarlos
 async function test(token, drive) {
   const d = String(drive || '').match(/drive\/(\d+)/)?.[1] || String(drive || '').replace(/\D/g, '');
-  const n = (await children(1, { token: String(token || '').trim(), drive: d })).length;
-  return { drive: d, msg: `Conectado: tu kDrive tiene ${n} elementos en la carpeta principal` };
+  const c = { token: String(token || '').trim(), drive: d };
+  homes.delete(d);
+  await home(c);
+  return { drive: d, msg: 'Conectado: Atrio guardará todo en «Mi carpeta/Atrio» de tu kDrive' };
 }
 
 const lista = () => ((ctx && ctx.data()) || {}).nube || [];
@@ -112,8 +135,10 @@ const lista = () => ((ctx && ctx.data()) || {}).nube || [];
 // Una captura recién hecha: a «Atrio/Capturas/<juego>/» con su enlace (en segundo plano: no frena la captura)
 async function shot({ id, name, buf, game, sg, t, w, h, mime, pc }) {
   if (!on() || cfg().shots === false) return null;
-  const g = safe(game);
-  const f = await upload(await dir('Capturas', g), name, buf);
+  // A la carpeta de su ficha (con el nombre de la ficha, no el del PC, si la tienes)
+  const d = (ctx && ctx.data()) || {};
+  const ficha = (sg && [...(d.plays || []), ...(d.games || [])].find((x) => Number(x.id) === Number(sg))) || null;
+  const f = await upload(carpeta('Videojuegos', (ficha && ficha.name) || game || 'Escritorio', 'Capturas'), name, buf);
   const k = `shot:${id}`;
   const item = {
     id: nubeId(k), k, f, n: name, s: buf.length, l: await link(f), updated: Date.now(),
@@ -150,6 +175,6 @@ async function fotos() {
 }
 
 function start(c) { ctx = c; }
-function setApi(u) { API = u; dirs.clear(); }
+function setApi(u) { API = u; homes.clear(); }
 
 module.exports = { start, on, test, shot, fotos, nubeId, setApi, Fail };

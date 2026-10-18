@@ -893,6 +893,27 @@ fun App(
         SagaHub.open = { id -> volverSaga = null; screen = Screen.Saga(id) }
         SagaHub.on = !pv
         NubeHub.partner = partner?.nube.orEmpty()
+        // Copiar a tu Atrio un libro de tu pareja: la ficha (si no la tienes, a tu lista) y su archivo
+        NubeHub.copyBook = { id ->
+            val x = partner?.nube?.find { it.k == "libro:$id" }
+            val pside = partner?.side(BOOKS)
+            if (x != null && pside != null) {
+                NubeHub.copying = id
+                if (books.none { it.id == id } && bplays.none { it.id == id }) {
+                    val g = pside.games.find { it.id == id }
+                    val pl = pside.plays.find { it.id == id }
+                    val nm = g?.name ?: pl?.name ?: x.n.substringBeforeLast('.')
+                    val cv = (g?.cover ?: pl?.cover).orEmpty().takeIf { !Photos.isLocal(it) }.orEmpty()
+                    setPlays(BOOKS, bplays + Play(id, nm, cv, "", 0, emptyList(), creator = g?.creator ?: pl?.creator.orEmpty(), pages = g?.pages ?: pl?.pages ?: 0, updated = now()))
+                }
+                scope.launch {
+                    val ok = runCatching { NubeSync.copyFromPartner(ctx, x, id) }
+                    NubeHub.copying = 0L
+                    if (ok.isSuccess) { NubeSync.enqueue(ctx); say("Copiado a tus libros, con su archivo") }
+                    else say("No se pudo copiar: ${ok.exceptionOrNull()?.message}")
+                }
+            }
+        }
         SagaHub.addTo = if (pv) null else ({ id, k -> sagaAdd = id to k })
         SagaHub.exists = { id, kid -> myKinds.find { it.id == kid }?.let { k -> gamesOf(k).any { it.id == id } || playsOf(k).any { it.id == id } } == true }
     }
