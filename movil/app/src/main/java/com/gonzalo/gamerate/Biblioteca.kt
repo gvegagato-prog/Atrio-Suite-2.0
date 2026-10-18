@@ -53,7 +53,7 @@ fun LibraryScreen(
     titleSwitch: (@Composable () -> Unit)? = null,
     badgeFor: (@Composable BoxScope.(Long, String) -> Unit)? = null,
     onBack: (() -> Unit)? = null,
-    /** Libros: la pestaña «Sagas» (null = sin ella). */
+    /** La pestaña «Sagas» de esta categoría (null = sin ella: en la app de tu pareja). */
     sagas: List<Saga>? = null, onOpenSaga: (Saga) -> Unit = {}, onCreateSaga: (String, List<Long>) -> Unit = { _, _ -> }
 ) {
     var query by remember(kind.id) { mutableStateOf("") }
@@ -92,7 +92,7 @@ fun LibraryScreen(
     val lib = LibUi(
         kind, labels, counts, cells, segment, onSegment, query, { query = it }, searching, { searching = it }, sort, { sort = it },
         favOnly, { favOnly = it }, readOnly, open, onAdd, onStats, onDiscover, onWheel, titleSwitch, badgeFor, onBack,
-        if (segment == 4 && sagas != null) ({ SagaList(sagas, plays, games, readOnly, onOpenSaga, onCreateSaga) }) else null
+        if (segment == 4 && sagas != null) ({ SagaList(sagas, plays, games, readOnly, onOpenSaga, onCreateSaga, kind) }) else null
     )
     if (Skin.revista) { RevistaLibrary(lib); return }
     val grid = rememberLazyGridState()

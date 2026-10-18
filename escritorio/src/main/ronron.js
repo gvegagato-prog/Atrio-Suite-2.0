@@ -420,6 +420,12 @@ function edit(op) {
       const p = (d[pk(kind)] || []).find((o) => Number(o.id) === Number(op.id));
       if (!p) throw new Fail('No encuentro esa ficha.');
       put(d, pk(kind), { ...p, minutes: (Number(p.minutes) || 0) + Math.max(0, Math.round(Number(op.min) || 0)) });
+    } else if (op.op === 'sagaCover') {
+      // La portada de una saga (vacía = la automática, con las de sus fichas)
+      const sg = (d.sagas || []).find((o) => Number(o.id) === Number(op.id));
+      if (!sg) throw new Fail('No encuentro esa saga.');
+      const { cover, ...resto } = sg;
+      put(d, 'sagas', op.cover ? { ...resto, cover: String(op.cover) } : resto);
     } else if (op.op === 'memo') {
       // Apunte rápido (texto, y si quieres una captura) mientras juegas
       const p = (d[pk(kind)] || []).find((o) => Number(o.id) === Number(op.id));

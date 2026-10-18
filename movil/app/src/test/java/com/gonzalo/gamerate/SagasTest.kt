@@ -13,6 +13,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
@@ -93,7 +95,7 @@ open class SagasTest {
         val sug = sagaSuggestions(emptyList(), s.loadPlays(1), s.load(1))
         // Por el título, en su orden; y por autor, los de Herbert
         assertEquals(listOf(501L, 502L, 503L), sug.first { it.name == "Crónica del asesino de reyes" }.ids)
-        assertTrue(sug.any { it.why == "Libros de Frank Herbert" && it.ids.toSet() == setOf(601L, 602L, 603L) })
+        assertTrue(sug.any { it.why == "De Frank Herbert" && it.ids.toSet() == setOf(601L, 602L, 603L) })
         // Los libros de una saga, estén donde estén
         val saga = Saga(1, "Crónica", listOf(501, 502, 503, 999), updated = 1)
         val b = sagaBooks(saga, s.loadPlays(1), s.load(1))
@@ -113,6 +115,53 @@ open class SagasTest {
         s.saveSagas(s.loadSagas().filter { it.id != 2L })
         s.mergeRemote(remoto.toString())
         assertEquals(listOf(1L), s.loadSagas().map { it.id })
+        // Lo que no son libros: por el principio del título y en el orden de sus números
+        assertEquals(normName("Dark Souls"), titleStem("Dark Souls III: The Ringed City"))
+        assertEquals(3f, titleNumber("Dark Souls III: The Ringed City"))
+        assertEquals(2f, titleNumber("Mass Effect 2"))
+        assertEquals(1f, titleNumber("Mass Effect: Andromeda"))
+        val juegos = sagaSuggestions(emptyList(), listOf(Play(13, "Mass Effect 3", "", "", 0, emptyList())), listOf(Game(12, "Mass Effect 2", "", 90), Game(11, "Mass Effect", "", 88), Game(20, "Hades", "", 95)), GAMES)
+        assertEquals(1, juegos.size)
+        assertEquals("Mass Effect", juegos[0].name)
+        assertEquals(listOf(11L, 12L, 13L), juegos[0].ids)
+        assertEquals("2 juegos · 1 pasado", sagaLine(sagaBooks(Saga(3, "ME", listOf(11, 13), kind = 0), listOf(Play(13, "Mass Effect 3", "", "", 0, emptyList())), listOf(Game(11, "Mass Effect", "", 88))), GAMES).substringBefore(" · media"))
+    }
+
+    /** Una saga de juegos: su pestaña, la sugerencia por el título, su página y el buscador de portadas. */
+    @Test fun juegos() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val s = seed()
+        val d = java.time.LocalDate.now().toEpochDay()
+        s.save(listOf(
+            Game(701, "Mass Effect", cover("ME1", 0xFF0B1D3A.toInt(), 0xFF5B86E5.toInt()), 88, creator = "BioWare", end = d - 300),
+            Game(702, "Mass Effect 2", cover("ME2", 0xFF141E30.toInt(), 0xFFF7971E.toInt()), 95, creator = "BioWare", end = d - 100)
+        ), 0)
+        s.savePlays(listOf(Play(703, "Mass Effect 3", cover("ME3", 0xFF232526.toInt(), 0xFFB21F1F.toInt()), "", 0, emptyList(), creator = "BioWare")), 0)
+        // Una saga de juegos (crearla pasa por el mismo diálogo que la de libros, que ya se prueba en «recorrido»)
+        s.saveSagas(listOf(Saga(77, "Mass Effect", listOf(701, 702, 703), kind = 0, updated = System.currentTimeMillis())))
+        Skin.load(ctx); Mode.dark = false; Mode.themeMode = 1; Skin.applyShell(2, ctx)
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(s, 0L, false, "") {} } } }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Videojuegos").onLast().performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Sagas")[0].performClick(); rule.waitForIdle()
+        shoot("8_juegos")
+        assertTrue(rule.onAllNodesWithText("3 JUEGOS · 2 PASADOS · MEDIA 92", substring = true).fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Mass Effect")[0].performClick(); rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("EN ORDEN").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("Empezar a jugar", substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("2/3").fetchSemanticsNodes().isNotEmpty())
+        shoot("9_saga_juegos")
+        // La portada: la automática, las de sus juegos, buscarla, de la galería o de un archivo
+        rule.onAllNodesWithText("EDITAR")[0].performClick(); rule.waitForIdle()
+        shoot("10_portada")
+        for (t in listOf("AUTOMÁTICA", "BUSCAR", "GALERÍA", "ARCHIVO")) assertTrue(t, rule.onAllNodesWithText(t).fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
+        // En la ficha del juego: su saga y su número
+        rule.onAllNodesWithText("Mass Effect 2").onLast().performScrollTo().performClick(); rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("Saga · Mass Effect", substring = true).fetchSemanticsNodes().isNotEmpty())
+        // Cada saga es de su categoría: un libro con el mismo id no está en ella
+        assertEquals(77L, SagaHub.of(702, 0)?.id)
+        assertEquals(null, SagaHub.of(702, 1))
     }
 
     @Test fun recorrido() {
@@ -154,6 +203,20 @@ open class SagasTest {
         rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         shoot("7_lista")
+    }
+
+    /** El buscador de portadas de una saga: empieza en la web de su categoría y, sin clave de SteamGridDB, dice dónde ponerla. */
+    @Test fun buscador() {
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) {
+            androidx.compose.foundation.layout.Box(Modifier.padding(24.dp)) { SagaCoverSearchBody("Mass Effect", GAMES, "", "", {}) }
+        } } }
+        rule.waitForIdle()
+        shoot("11_buscador")
+        assertTrue(rule.onAllNodesWithText("Añade tu clave de SteamGridDB", substring = true).fetchSemanticsNodes().isNotEmpty())
+        for (t in listOf("STEAMGRIDDB", "OPEN LIBRARY", "TMDB", "TVMAZE")) assertTrue(t, rule.onAllNodesWithText(t).fetchSemanticsNodes().isNotEmpty())
+        assertEquals(CoverSource.LIBROS, coverSourceFor(BOOKS))
+        assertEquals(CoverSource.SGDB, coverSourceFor(GAMES))
+        assertEquals(CoverSource.PELIS, coverSourceFor(customKind(5, "Pelis", listOf("Guion"), "Viendo", 0, SRC_MOVIE)))
     }
 
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onRoot() = this.onNode(androidx.compose.ui.test.isRoot())

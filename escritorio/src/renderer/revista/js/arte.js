@@ -191,6 +191,70 @@
     });
   };
 
+  // ---------------------------------------------------------------- La portada de una saga
+  // Se busca en SteamGridDB cualquier juego (el de la saga o uno suyo) y se elige una de sus portadas; o se pega una dirección.
+  RV.arteSaga = (saga0) => {
+    const fresca = () => D.saga(saga0.id) || saga0;
+    const poner = async (src) => {
+      if (!(await RV.editar({ op: 'sagaCover', id: Number(saga0.id), cover: src || '' }, null))) throw new Error('No se ha podido guardar');
+    };
+    const elegir = (r) => selector({
+      titulo: `${fresca().name} · ${r.name}`, tipos: [['cover', 'Portada']], url: true,
+      actual: () => D.imagen(fresca().cover),
+      listar: (tp, p) => api.ronronAssets(Number(r.id), 'cover', p),
+      poner: (tp, src) => poner(src),
+    });
+    const input = RV.entrada(saga0.name || '', { placeholder: 'El nombre de la saga o de cualquiera de sus juegos, libros…', 'data-autofocus': true });
+    const res = h('ul.resultados');
+    const msg = h('p.vacio');
+    let token = 0;
+    const buscar = async () => {
+      const q = input.value.trim();
+      if (!q) return;
+      const my = ++token;
+      res.replaceChildren();
+      msg.textContent = 'Buscando en SteamGridDB…';
+      try {
+        const list = await api.sgdbSearch(q);
+        if (my !== token) return;
+        msg.textContent = list.length ? '' : 'Sin resultados. Prueba con menos palabras o con el nombre en inglés.';
+        for (const r of list) {
+          res.append(h('li', h('div.resultado',
+            h('span', h('span.tit', r.name), r.year ? h('span.versal', { style: { display: 'block' } }, String(r.year)) : null),
+            h('span.acc', h('button.enlace.acento', { type: 'button', onclick: () => { d.cerrar(); elegir(r); } }, 'Sus portadas →')))));
+        }
+      } catch (e) {
+        if (my === token) msg.textContent = RV.limpiaError(e);
+      }
+    };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); buscar(); } });
+    const d = RV.dialogo({
+      ante: 'Portada de la saga', titulo: fresca().name, ancho: true,
+      cuerpo: [h('div', { style: { display: 'flex', gap: '18px', alignItems: 'flex-end' } }, h('div', { style: { flex: '1' } }, RV.campo('Buscar en SteamGridDB', input)),
+        h('button.boton-tinta', { type: 'button', onclick: buscar }, 'Buscar')), msg, res],
+      acciones: [
+        { texto: 'Pegar una dirección', fn: (x) => { x.cerrar(); pegarSaga(); } },
+        fresca().cover ? { texto: 'Volver a la automática', fn: async (x) => { x.cerrar(); await poner(''); RV.aviso('Portada automática'); } } : null,
+        'hueco', { texto: 'Cancelar', fn: (x) => x.cerrar() }],
+    });
+    function pegarSaga() {
+      const inp = RV.entrada('', { placeholder: 'https://…/imagen.jpg', 'data-autofocus': true, class: 'entrada mono' });
+      const ok = async (x) => {
+        const u = inp.value.trim();
+        if (!/^https:\/\/\S+$/i.test(u)) { RV.aviso('Tiene que ser una dirección https://', 'error'); return; }
+        x.cerrar();
+        try { await poner(u); RV.aviso('Portada puesta'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
+      };
+      const x = RV.dialogo({
+        ante: 'Portada de la saga', titulo: 'Una imagen de internet',
+        cuerpo: [RV.campo('Dirección de la imagen', inp), h('p.texto', 'Se guarda en tu cuenta, así que también la verás en el móvil.')],
+        acciones: [{ texto: 'Poner', principal: true, fn: ok }, 'hueco', { texto: 'Cancelar', fn: (y) => y.cerrar() }],
+      });
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(x); } });
+    }
+    if (saga0.name) buscar();
+  };
+
   // LB / RB con el selector abierto (lo llama app.js)
   RV.arteNav = (paso) => { if (!abierto) return false; abierto.paso(paso); return true; };
 

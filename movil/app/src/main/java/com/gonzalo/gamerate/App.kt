@@ -86,8 +86,8 @@ fun App(
     var sagas by remember { mutableStateOf(store.loadSagas().also { SagaHub.list = it }) }
     /** Al abrir un libro desde su saga, «volver» lleva a la saga. */
     var volverSaga by remember { mutableStateOf<Long?>(null) }
-    /** «Añadir a una saga» desde la ficha de ese libro. */
-    var sagaAdd by remember { mutableStateOf<Long?>(null) }
+    /** «Añadir a una saga» desde la ficha de esa ficha: (id, categoría). */
+    var sagaAdd by remember { mutableStateOf<Pair<Long, Int>?>(null) }
     // Categorías propias y lo que hay en cada una.
     var kinds by remember { mutableStateOf(store.run { ensureMediaKinds(); kinds }.also { Mode.kinds = it }) }
     var extra by remember { mutableStateOf(kinds.associate { it.id to store.load(it.id) }) }
@@ -146,8 +146,8 @@ fun App(
 
     fun setSagas(l: List<Saga>) { sagas = l; SagaHub.list = l; store.saveSagas(l) }
     fun saveSaga(s: Saga) = setSagas(sagas.map { if (it.id == s.id) s.copy(updated = now()) else it })
-    fun newSaga(name: String, ids: List<Long>): Saga {
-        val s = Saga(now(), name, ids, updated = now())
+    fun newSaga(name: String, ids: List<Long>, kind: Int): Saga {
+        val s = Saga(now(), name, ids, kind = kind, updated = now())
         setSagas(sagas + s)
         return s
     }
@@ -889,8 +889,9 @@ fun App(
     // Las fichas abren su saga (o la crean) sin saber nada de la app
     SideEffect {
         SagaHub.open = { id -> volverSaga = null; screen = Screen.Saga(id) }
-        SagaHub.addTo = if (pv) null else ({ id -> sagaAdd = id })
-        SagaHub.exists = { id -> books.any { it.id == id } || bplays.any { it.id == id } }
+        SagaHub.on = !pv
+        SagaHub.addTo = if (pv) null else ({ id, k -> sagaAdd = id to k })
+        SagaHub.exists = { id, kid -> myKinds.find { it.id == kid }?.let { k -> gamesOf(k).any { it.id == id } || playsOf(k).any { it.id == id } } == true }
     }
 
     BackHandler(enabled = dest != 0 || section != -1 || screen !is Screen.Home || pv) {
@@ -1017,9 +1018,9 @@ fun App(
                             else -> null
                         },
                         onWheel = if (pv) null else ({ wheelOpen = true }),
-                        sagas = if (k.isBook && !pv) sagas else null,
+                        sagas = if (!pv) sagas.filter { it.kind == k.id } else null,
                         onOpenSaga = { screen = Screen.Saga(it.id) },
-                        onCreateSaga = { n, ids -> screen = Screen.Saga(newSaga(n, ids).id) },
+                        onCreateSaga = { n, ids -> screen = Screen.Saga(newSaga(n, ids, k.id).id) },
                         titleSwitch = if (cine) ({
                             TitleTabs(listOf("Películas", "Series"), if (k.isTv) 1 else 0) { i -> cineTv = i == 1; section = cineKindId(); segment = 0 }
                         }) else null,
@@ -1424,18 +1425,21 @@ fun App(
 
                 is Screen.Saga -> {
                     val sg = sagas.find { it.id == s.id }
-                    if (sg == null) LaunchedEffect(Unit) { screen = Screen.Home }
+                    // De su categoría (si borraste la categoría, la saga se queda sin nada que enseñar)
+                    val sk = sg?.let { g -> myKinds.find { it.id == g.kind } }
+                    if (sg == null || sk == null) LaunchedEffect(Unit) { screen = Screen.Home }
                     else SagaScreen(
-                        sg, bplays, books, BOOKS,
-                        onBack = { screen = Screen.Home },
+                        sg, playsOf(sk), gamesOf(sk), sk,
+                        sgdbKey = key, tmdbKey = store.tmdbKey,
+                        onBack = { section = sk.id; screen = Screen.Home },
                         onOpenBook = { b ->
-                            volverSaga = sg.id; section = 1
+                            volverSaga = sg.id; section = sk.id
                             val p = b.play; val g = b.game
                             screen = if (p != null && (p.status == 1 || g == null)) Screen.PlayDetail(p) else if (g != null) Screen.Edit(g, false) else Screen.Home
                         },
                         onStart = { p0 ->
                             val p = p0.copy(status = 1, start = if (p0.start == 0L) today() else p0.start, end = 0L, updated = now())
-                            setPlays(BOOKS, bplays.map { if (it.id == p.id) p else it })
+                            setPlays(sk, playsOf(sk).map { if (it.id == p.id) p else it })
                             say("¡A por ${p.name}!")
                         },
                         onSave = { saveSaga(it) },
@@ -1561,12 +1565,13 @@ fun App(
             if (!store.paired) { LaunchedEffect(shareUrl) { say("Para guardar webs en tus juegos del PC, entra antes en tu cuenta"); onShareHandled() } }
             else ShareToGameDialog(shareUrl, shareTitle, onDismiss = { onShareHandled() }, say = { say(it) })
         }
-        sagaAdd?.let { id ->
-            val nm = (books.find { it.id == id }?.name ?: bplays.find { it.id == id }?.name).orEmpty()
-            AddToSagaDialog(nm, sagas,
+        sagaAdd?.let { (id, kid) ->
+            val ak = myKinds.find { it.id == kid } ?: GAMES
+            val nm = (gamesOf(ak).find { it.id == id }?.name ?: playsOf(ak).find { it.id == id }?.name).orEmpty()
+            AddToSagaDialog(nm, sagas.filter { it.kind == kid },
                 onPick = { sg -> sagaAdd = null; saveSaga(sg.copy(items = sg.items + id)); say("En la saga ${sg.name}") },
-                onNew = { n -> sagaAdd = null; val sg = newSaga(n, listOf(id)); volverSaga = null; screen = Screen.Saga(sg.id) },
-                onDismiss = { sagaAdd = null })
+                onNew = { n -> sagaAdd = null; val sg = newSaga(n, listOf(id), kid); volverSaga = null; screen = Screen.Saga(sg.id) },
+                onDismiss = { sagaAdd = null }, kind = ak)
         }
         val mf = memoFor
         if (mf != null) {

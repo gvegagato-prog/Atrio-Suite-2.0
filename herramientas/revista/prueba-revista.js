@@ -53,7 +53,9 @@ const cuenta = {
     items_2: [{ id: 27205, name: 'Origen', general: 87, gfx: 80, story: 90, end: H - 70, creator: 'Christopher Nolan', updated: (H - 70) * DIA }],
     iplays_2: [],
     // Una saga con un libro leído (Dune, 89) y otro a medias
-    sagas: [{ id: 9001, name: 'Las mejores sagas', kind: 1, items: [401, 402], updated: Date.now() }],
+    sagas: [{ id: 9001, name: 'Las mejores sagas', kind: 1, items: [401, 402], updated: Date.now() },
+      // Y una de juegos: Hades II pasado (91) y Death Stranding 2 en la lista
+      { id: 9002, name: 'Juegos de Supergiant', kind: 0, items: [2, 12], updated: Date.now() - 1000 }],
   },
 };
 const pc = {
@@ -166,6 +168,22 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     await ir({ v: 'saga', id: 9001 }); await shot('05d-saga');
     t = await texto();
     ok(!(await errorPagina()) && t.includes('Dune') && t.includes('El nombre del viento') && /1\/2/.test(t) && t.includes('89'), `${tema}: página de la saga con sus libros`);
+    // Sagas de juegos: su pestaña (la de libros no la enseña), su página y cambiarle la portada
+    await ir({ v: 'seccion', k: 0, tab: 4 }); await shot('05e-sagas-juegos');
+    t = await texto();
+    ok(!(await errorPagina()) && t.includes('Juegos de Supergiant') && /2 juegos · 1 pasado · media 91/i.test(t) && !t.includes('Las mejores sagas'), `${tema}: pestaña Sagas en Videojuegos`);
+    await ir({ v: 'seccion', k: 1, tab: 4 });
+    ok(!(await texto()).includes('Juegos de Supergiant'), `${tema}: las sagas de juegos no salen en Libros`);
+    await ir({ v: 'saga', id: 9002 }); await shot('05f-saga-juegos');
+    t = await texto();
+    ok(!(await errorPagina()) && t.includes('Hades II') && t.includes('Death Stranding 2') && /En orden/i.test(t) && /Pasados/i.test(t), `${tema}: página de una saga de juegos`);
+    await page.click('#pagina button:has-text("Cambiar la portada")'); await page.waitForTimeout(400);
+    ok(/Portada de la saga/i.test(await page.evaluate(() => document.getElementById('capa').innerText)), `${tema}: buscador de portada de la saga`);
+    await page.click('#capa button:has-text("Pegar una dirección")'); await page.waitForTimeout(300);
+    await page.fill('#capa input', 'https://cdn.example/saga.png');
+    await page.click('#capa button:has-text("Poner")'); await page.waitForTimeout(300);
+    const edS = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
+    ok(edS && edS.op === 'sagaCover' && edS.id === 9002 && edS.cover === 'https://cdn.example/saga.png', `${tema}: portada de la saga guardada (${JSON.stringify(edS)})`);
     await ir({ v: 'diario' }); await shot('06-diario');
     ok(!(await errorPagina()), `${tema}: diario`);
     await ir({ v: 'cifras' }); await shot('07-cifras');

@@ -163,7 +163,7 @@ fun PlayDetailScreen(
             }
             if (kind.isGame) defs["horas"] = MagDef("Horas") { MagHours(p.minutes, p.ttbMain, p.ttbExtra, p.ttbFull) }
             defs["enlaces"] = MagDef("Enlaces") {
-                if (kind.isBook) SagaLink(p.id)
+                SagaLink(p.id, kind)
                 if (kind.hasSoundtrack) MagLink("Banda sonora", "YouTube Music") { openSoundtrack(ctx, p.name) }
                 if (onRecommend != null) MagLink("Recomendar", "a $partnerName", accent = true) { recommend = true }
                 MagLink("Datos de la ficha") { editing = true }

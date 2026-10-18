@@ -35,10 +35,22 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /*
- * Sagas: libros agrupados bajo una portada, en su orden de lectura. Una saga no mueve los libros de su sitio
- * (cada uno sigue en su lista o en leídos); solo los junta: al abrirla salen todos, cada uno con su estado y,
- * si está leído, su nota.
+ * Sagas: libros, juegos, películas, series… agrupados bajo una portada, en su orden. Una saga no mueve nada de su
+ * sitio (cada uno sigue en su lista o en leídos/pasados/vistas); solo los junta: al abrirla salen todos, cada uno
+ * con su estado y, si está terminado, su nota. Cada saga es de una categoría ([Saga.kind]).
  */
+
+/** «libros», «juegos», «películas»… */
+val Kind.units: String get() = unit + "s"
+/** «un libro», «una película». */
+val Kind.aUnit: String get() = (if (unit.endsWith("a") || unit == "serie") "una " else "un ") + unit
+/** «este libro», «esta película». */
+val Kind.thisUnit: String get() = (if (unit.endsWith("a") || unit == "serie") "esta " else "este ") + unit
+/** Lo que se hace con ella: «leer», «jugar», «ver» (en las tuyas, nada). */
+private val Kind.verb: String get() = if (isBook) "leer" else if (isGame) "jugar" else if (isMovie || isTv) "ver" else ""
+private val Kind.gerund: String get() = if (isBook) "leyendo" else if (isGame) "jugando" else if (isMovie || isTv) "viendo" else ""
+/** «leído», «pasado», «vista»… en singular, para uno de la saga. */
+private fun Kind.doneOne(): String = doneWord.removeSuffix("s")
 
 /** Una saga. [items]: los ids de sus libros en orden de lectura; [cover]: su portada (vacía = la de sus libros). */
 data class Saga(
@@ -60,7 +72,7 @@ fun sagaFromJson(o: JSONObject): Saga = Saga(
 
 fun sagasFromJson(a: JSONArray): List<Saga> = (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { runCatching { sagaFromJson(it) }.getOrNull() } }
 
-/** Un libro de una saga, esté donde esté: leído (con su nota) o en una lista (con su estado). */
+/** Uno de una saga, esté donde esté: terminado (con su nota) o en una lista (con su estado). */
 class SagaBook(val id: Long, val name: String, val cover: String, val creator: String, val play: Play?, val game: Game?) {
     val read: Boolean get() = game != null && (play == null || play.status != 1)
     val reading: Boolean get() = play?.status == 1
@@ -68,7 +80,7 @@ class SagaBook(val id: Long, val name: String, val cover: String, val creator: S
     val score: Int? get() = game?.general
 }
 
-/** Los libros de la saga en su orden (los que ya no están en la app se saltan). */
+/** Lo de la saga en su orden (lo que ya no está en la app se salta). */
 fun sagaBooks(s: Saga, plays: List<Play>, games: List<Game>): List<SagaBook> = s.items.mapNotNull { id ->
     val p = plays.find { it.id == id }
     val g = games.find { it.id == id }
@@ -76,19 +88,19 @@ fun sagaBooks(s: Saga, plays: List<Play>, games: List<Game>): List<SagaBook> = s
     else SagaBook(id, cleanTitle(g?.name ?: p!!.name), (g?.cover?.ifBlank { null } ?: p?.cover).orEmpty(), (g?.creator?.ifBlank { null } ?: p?.creator).orEmpty(), p, g)
 }
 
-/** Lo que dice la portada de una saga: «3 de 7 leídos · media 86». */
-fun sagaLine(books: List<SagaBook>): String {
+/** Lo que dice la portada de una saga: «7 libros · 3 leídos · media 86». */
+fun sagaLine(books: List<SagaBook>, kind: Kind = BOOKS): String {
     val read = books.count { it.read }
     val avg = books.mapNotNull { if (it.read) it.score else null }.takeIf { it.isNotEmpty() }?.average()?.let { Math.round(it).toInt() }
     return listOfNotNull(
-        "${books.size} ${if (books.size == 1) "libro" else "libros"}",
-        if (read > 0) "$read leído${if (read == 1) "" else "s"}" else null,
-        if (books.any { it.reading }) "leyendo" else null,
+        "${books.size} ${if (books.size == 1) kind.unit else kind.units}",
+        if (read > 0) "$read ${(if (read == 1) kind.doneOne() else kind.doneWord).lowercase()}" else null,
+        if (books.any { it.reading }) kind.statuses[1].lowercase() else null,
         avg?.let { "media $it" }
     ).joinToString(" · ")
 }
 
-/** El que toca ahora: el que estás leyendo o, si no, el primero sin leer (ni abandonado). */
+/** El que toca ahora: el que tienes en curso o, si no, el primero sin terminar (ni abandonado). */
 fun sagaNext(books: List<SagaBook>): SagaBook? = books.firstOrNull { it.reading } ?: books.firstOrNull { !it.read && !it.dropped }
 
 /** Los autores de una saga («Patrick Rothfuss», o «A y B»). */
@@ -110,12 +122,44 @@ fun seriesOf(title: String): Pair<String, Float>? = SERIE.find(title)?.let { m -
 /** El título sin la coletilla de la saga («El nombre del viento (Crónica…, #1)» → «El nombre del viento»): dentro de la saga ya se ve su número. */
 fun cleanTitle(title: String): String = SERIE.replace(title, "").trim().ifBlank { title }
 
-/** Sagas que se podrían crear: por el título (Goodreads) y por autor (2 o más libros suyos sin saga). */
-fun sagaSuggestions(sagas: List<Saga>, plays: List<Play>, games: List<Game>): List<SagaSuggestion> {
+private val ENTREGA = Regex("""(?i)\s+(\d{1,2}|[ivx]{1,4})$""")
+
+/** El título hasta la entrega: «Dark Souls III: The Ringed City» → «Dark Souls». */
+fun titleHead(title: String): String =
+    title.substringBefore(':').substringBefore(" - ").substringBefore(" – ").substringBefore('(').trim().replace(ENTREGA, "").trim()
+
+/** Lo que comparten los títulos de una saga, para compararlos. */
+fun titleStem(title: String): String = normName(titleHead(title))
+
+/** El número de la entrega en el título («Mass Effect 2» → 2, «Dark Souls III» → 3; sin número, la primera). */
+fun titleNumber(title: String): Float {
+    val m = ENTREGA.find(title.substringBefore(':').substringBefore(" - ").substringBefore(" – ").substringBefore('(').trim())?.groupValues?.get(1) ?: return 1f
+    m.toFloatOrNull()?.let { return it }
+    val v = mapOf('i' to 1, 'v' to 5, 'x' to 10)
+    var n = 0; var prev = 0
+    for (c in m.lowercase().reversed()) { val x = v[c] ?: return 1f; if (x < prev) n -= x else { n += x; prev = x } }
+    return n.toFloat()
+}
+
+/**
+ * Sagas que se podrían crear. Libros: por el título (Goodreads) y por autor (2 o más libros suyos sin saga).
+ * Lo demás: por el principio del título («Mass Effect», «Mass Effect 2», «Mass Effect 3»).
+ */
+fun sagaSuggestions(sagas: List<Saga>, plays: List<Play>, games: List<Game>, kind: Kind = BOOKS): List<SagaSuggestion> {
     val taken = sagas.flatMap { it.items }.toSet()
     val all = (games.map { Triple(it.id, it.name, it.creator) } + plays.map { Triple(it.id, it.name, it.creator) }).distinctBy { it.first }.filter { it.first !in taken }
     val out = mutableListOf<SagaSuggestion>()
     val used = HashSet<Long>()
+    if (!kind.isBook) {
+        all.groupBy { titleStem(it.second) }
+            .filter { (k, v) -> k.length >= 3 && v.size >= 2 && sagas.none { normName(it.name) == k } }
+            .values.sortedByDescending { it.size }.take(6)
+            .forEach { g ->
+                val ord = g.sortedWith(compareBy<Triple<Long, String, String>> { titleNumber(it.second) }.thenBy { it.second.length })
+                out += SagaSuggestion(titleHead(g.minByOrNull { it.second.length }!!.second), ord.map { it.first }, "Por el título")
+            }
+        return out
+    }
     all.mapNotNull { b -> seriesOf(b.second)?.let { (s, n) -> Triple(b.first, s, n) } }
         .groupBy { normName(it.second) }
         .values.filter { it.size >= 2 }
@@ -131,18 +175,22 @@ fun sagaSuggestions(sagas: List<Saga>, plays: List<Play>, games: List<Game>): Li
         .values.filter { it.size >= 2 }
         .sortedByDescending { it.size }
         .take(4)
-        .forEach { g -> out += SagaSuggestion("", g.sortedBy { seriesOf(it.second)?.second ?: Float.MAX_VALUE }.map { it.first }, "Libros de ${g[0].third}") }
+        .forEach { g -> out += SagaSuggestion("", g.sortedBy { seriesOf(it.second)?.second ?: Float.MAX_VALUE }.map { it.first }, "De ${g[0].third}") }
     return out
 }
 
-/** Lo que las fichas necesitan saber de las sagas (lo pone la app): así un libro sabe en qué saga está. */
+/** Lo que las fichas necesitan saber de las sagas (lo pone la app): así cada ficha sabe en qué saga está. */
 object SagaHub {
     var list by mutableStateOf<List<Saga>>(emptyList())
+    /** Viendo la app de tu pareja, sus fichas no enseñan tus sagas. */
+    var on by mutableStateOf(true)
     var open: ((Long) -> Unit)? = null
-    var addTo: ((Long) -> Unit)? = null
-    /** ¿Ese libro sigue en la app? (uno borrado no cuenta en su saga; si deshaces el borrado, vuelve a su sitio) */
-    var exists: (Long) -> Boolean = { true }
-    fun of(itemId: Long): Saga? = list.firstOrNull { itemId in it.items }
+    /** Añadir esa ficha (id, categoría) a una saga. */
+    var addTo: ((Long, Int) -> Unit)? = null
+    /** ¿Esa ficha (id, categoría) sigue en la app? (una borrada no cuenta en su saga; si deshaces el borrado, vuelve a su sitio) */
+    var exists: (Long, Int) -> Boolean = { _, _ -> true }
+    /** Los ids son los de cada web (un juego y una película pueden compartirlo): por eso va con su categoría. */
+    fun of(itemId: Long, kind: Int): Saga? = if (!on) null else list.firstOrNull { it.kind == kind && itemId in it.items }
 }
 
 // ---------------------------------------------------------------- Portada de una saga
@@ -182,15 +230,15 @@ fun SagaCover(saga: Saga, books: List<SagaBook>, w: Dp, h: Dp, modifier: Modifie
 @Composable
 fun SagaList(
     sagas: List<Saga>, plays: List<Play>, games: List<Game>, readOnly: Boolean,
-    onOpen: (Saga) -> Unit, onCreate: (String, List<Long>) -> Unit
+    onOpen: (Saga) -> Unit, onCreate: (String, List<Long>) -> Unit, kind: Kind = BOOKS
 ) {
     var creating by remember { mutableStateOf<SagaSuggestion?>(null) }
-    val sugs = remember(sagas, plays, games) { if (readOnly) emptyList() else sagaSuggestions(sagas, plays, games) }
+    val sugs = remember(sagas, plays, games, kind) { if (readOnly) emptyList() else sagaSuggestions(sagas, plays, games, kind) }
     Column(Modifier.fillMaxWidth()) {
         if (!readOnly) Text("+ NUEVA SAGA", color = ColGeneral, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
             modifier = Modifier.press { creating = SagaSuggestion("", emptyList(), "") }.padding(vertical = 8.dp))
         if (sagas.isEmpty()) Text(
-            "Junta bajo una portada los libros de una saga: al abrirla salen todos en orden, estén en tu lista o ya leídos, cada uno con su nota.",
+            "Junta bajo una portada ${if (kind.isTv || kind.isMovie) "las" else "los"} ${kind.units} de una saga: al abrirla salen en orden, estén en tu lista o ya ${kind.doneWord.lowercase()}, cada uno con su nota.",
             fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 19.sp, lineHeight = 26.sp, color = Muted, modifier = Modifier.padding(vertical = 18.dp)
         )
         sagas.sortedByDescending { it.updated }.forEachIndexed { i, s ->
@@ -202,7 +250,7 @@ fun SagaList(
                     FitTitle(s.name, 28.sp, 30.sp, letterSpacing = (-0.5).sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     val who = sagaAuthors(books)
                     if (who.isNotBlank()) Text(who, color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(sagaLine(books).uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.padding(top = 4.dp))
+                    Text(sagaLine(books, kind).uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.padding(top = 4.dp))
                     if (books.isNotEmpty()) SagaProgress(books, Modifier.padding(top = 8.dp))
                 }
             }
@@ -225,14 +273,14 @@ fun SagaList(
     }
     creating?.let { sg ->
         SagaPicker(
-            title = "Nueva saga", name0 = sg.name, chosen0 = sg.ids, plays = plays, games = games, exclude = emptySet(), askName = true,
+            title = "Nueva saga", name0 = sg.name, chosen0 = sg.ids, plays = plays, games = games, exclude = emptySet(), askName = true, kind = kind,
             onDone = { name, ids -> creating = null; if (ids.isNotEmpty()) onCreate(name.ifBlank { "Saga sin nombre" }, ids) },
             onDismiss = { creating = null }
         )
     }
 }
 
-/** Una barra por libro: leído (acento), leyendo (a medias), sin leer (filete). */
+/** Una barra por cada uno: terminado (acento), en curso (a medias), pendiente (filete). */
 @Composable
 fun SagaProgress(books: List<SagaBook>, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().height(4.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -250,7 +298,9 @@ fun SagaProgress(books: List<SagaBook>, modifier: Modifier = Modifier) {
 fun SagaScreen(
     saga: Saga, plays: List<Play>, games: List<Game>, kind: Kind,
     onBack: () -> Unit, onOpenBook: (SagaBook) -> Unit, onStart: (Play) -> Unit,
-    onSave: (Saga) -> Unit, onDelete: () -> Unit
+    onSave: (Saga) -> Unit, onDelete: () -> Unit,
+    /** Claves para buscar portadas en SteamGridDB y TMDB (Ajustes → Servicios). */
+    sgdbKey: String = "", tmdbKey: String = ""
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -258,11 +308,15 @@ fun SagaScreen(
     var editing by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var searching by remember { mutableStateOf(false) }
     var name by remember(saga.id) { mutableStateOf(saga.name) }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+    // Una imagen tuya, de la galería o de tus archivos: se copia a la app (como las portadas de las fichas)
+    fun local(uri: android.net.Uri?) {
         if (uri != null) scope.launch { runCatching { Photos.import(ctx, uri) }.getOrNull()?.let { onSave(saga.copy(cover = it)) } }
     }
-    // Se reordena lo que se ve (un libro borrado de la app ya no está en la lista)
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { local(it) }
+    val file = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { local(it) }
+    // Se reordena lo que se ve (lo borrado de la app ya no está en la lista)
     fun move(i: Int, d: Int) {
         val l = books.map { it.id }.toMutableList()
         val j = i + d
@@ -290,22 +344,29 @@ fun SagaScreen(
             if (editing) {
                 OutlinedTextField(name, { name = it }, label = { Text("Nombre de la saga") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
                 Text("PORTADA", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
-                // La de uno de sus libros, una foto tuya o la automática (las de sus libros en abanico)
+                // La automática (las de sus fichas en abanico), la de una de ellas, una buscada en internet o una tuya
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onSave(saga.copy(cover = "")) }) {
                         SagaCover(saga.copy(cover = ""), books, 64.dp, 92.dp, if (saga.cover.isBlank()) Modifier.border(2.dp, ColGeneral, shp(6.dp)) else Modifier)
                         Text("AUTOMÁTICA", fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, modifier = Modifier.padding(top = 4.dp))
                     }
-                    books.filter { it.cover.isNotBlank() }.forEach { b ->
+                    // La elegida, si no es de ninguna de sus fichas (buscada o tuya)
+                    if (saga.cover.isNotBlank() && books.none { it.cover == saga.cover }) {
+                        Box(Modifier.size(64.dp, 92.dp).clip(shp(6.dp)).border(2.dp, ColGeneral, shp(6.dp))) {
+                            AsyncImage(saga.cover, saga.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        }
+                    }
+                    books.filter { it.cover.isNotBlank() }.distinctBy { it.cover }.forEach { b ->
                         Box(Modifier.size(64.dp, 92.dp).clip(shp(6.dp)).then(if (saga.cover == b.cover) Modifier.border(2.dp, ColGeneral, shp(6.dp)) else Modifier).clickable { onSave(saga.copy(cover = b.cover)) }) {
                             AsyncImage(b.cover, b.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         }
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable {
+                    SagaCoverButton("⌕", "BUSCAR") { searching = true }
+                    SagaCoverButton("+", "GALERÍA") {
                         pick.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }) {
-                        Box(Modifier.size(64.dp, 92.dp).border(1.dp, Line, shp(6.dp)), contentAlignment = Alignment.Center) { Text("+", fontFamily = Display, fontSize = 30.sp, color = Muted) }
-                        Text("TU FOTO", fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    SagaCoverButton("▤", "ARCHIVO") {
+                        try { file.launch(arrayOf("image/*")) } catch (e: Exception) { android.widget.Toast.makeText(ctx, "No hay un selector de archivos en este móvil", android.widget.Toast.LENGTH_SHORT).show() }
                     }
                 }
             } else {
@@ -319,7 +380,7 @@ fun SagaScreen(
                 Row(Modifier.fillMaxWidth().padding(vertical = 14.dp)) {
                     val read = books.count { it.read }
                     val avg = books.mapNotNull { if (it.read) it.score else null }.takeIf { it.isNotEmpty() }?.average()?.let { Math.round(it).toInt() }
-                    SagaFigure("$read/${books.size}", "Leídos", Modifier.weight(1f))
+                    SagaFigure("$read/${books.size}", kind.doneWord, Modifier.weight(1f))
                     SagaFigure(avg?.toString() ?: "—", "Tu media", Modifier.weight(1f))
                     val pend = books.count { !it.read && !it.dropped }
                     SagaFigure("$pend", if (pend == 1) "Te queda" else "Te quedan", Modifier.weight(1f))
@@ -334,11 +395,11 @@ fun SagaScreen(
                             Text(if (next.reading) "AHORA MISMO" else "EL SIGUIENTE", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                             FitTitle(next.name, 26.sp, 29.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                             val p = next.play
-                            // Con su archivo en el móvil, directamente al lector
-                            if (next.reading) MagLink("Seguir leyendo", accent = true) {
-                                if (BookFiles.get(ctx, next.id) != null) ReaderActivity.open(ctx, next.id, next.name) else onOpenBook(next)
+                            // Un libro con su archivo en el móvil, directamente al lector
+                            if (next.reading && kind.gerund.isNotEmpty()) MagLink("Seguir ${kind.gerund}", accent = true) {
+                                if (kind.isBook && BookFiles.get(ctx, next.id) != null) ReaderActivity.open(ctx, next.id, next.name) else onOpenBook(next)
                             }
-                            else if (p != null) MagLink("Empezar a leer", accent = true) { onStart(p) }
+                            else if (!next.reading && p != null) MagLink(if (kind.verb.isNotEmpty()) "Empezar a ${kind.verb}" else "Empezar", accent = true) { onStart(p) }
                             else MagLink("Abrir su ficha") { onOpenBook(next) }
                         }
                     }
@@ -347,11 +408,11 @@ fun SagaScreen(
             // Los libros, en orden
             Spacer(Modifier.height(22.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("EN ORDEN DE LECTURA", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+                Text(if (kind.isBook) "EN ORDEN DE LECTURA" else "EN ORDEN", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
                 Text("+ AÑADIR", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.clickable { adding = true }.padding(6.dp))
             }
             Box(Modifier.fillMaxWidth().padding(top = 6.dp).height(1.dp).background(Charcoal))
-            if (books.isEmpty()) Text("Aún no tiene libros: añade los que quieras.", fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp, color = Muted, modifier = Modifier.padding(vertical = 16.dp))
+            if (books.isEmpty()) Text("Aún no tiene ${kind.units}: añade ${if (kind.isTv || kind.isMovie) "las" else "los"} que quieras.", fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp, color = Muted, modifier = Modifier.padding(vertical = 16.dp))
             books.forEachIndexed { i, b ->
                 Row(Modifier.fillMaxWidth().clickable(enabled = !editing) { onOpenBook(b) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("%02d".format(i + 1), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.width(40.dp))
@@ -362,8 +423,8 @@ fun SagaScreen(
                     Column(Modifier.weight(1f)) {
                         FitTitle(b.name, 20.sp, 23.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, color = if (b.dropped) Muted else Color.Unspecified)
                         val st = when {
-                            b.reading -> listOfNotNull(kind.statuses[1], b.play?.chapter?.takeIf { it > 0 }?.let { "cap. $it" }).joinToString(" · ")
-                            b.read -> kind.doneWord.removeSuffix("s")
+                            b.reading -> listOfNotNull(kind.statuses[1], b.play?.chapter?.takeIf { it > 0 && kind.isBook }?.let { "cap. $it" }).joinToString(" · ")
+                            b.read -> kind.doneOne()
                             b.dropped -> kind.statuses[2]
                             else -> kind.statuses[0]
                         }
@@ -388,7 +449,7 @@ fun SagaScreen(
         }
     }
     if (adding) SagaPicker(
-        title = "Añadir a ${saga.name}", name0 = saga.name, chosen0 = emptyList(), plays = plays, games = games, exclude = saga.items.toSet(), askName = false,
+        title = "Añadir a ${saga.name}", name0 = saga.name, chosen0 = emptyList(), plays = plays, games = games, exclude = saga.items.toSet(), askName = false, kind = kind,
         hintAuthor = books.firstOrNull()?.creator.orEmpty(), hintSeries = saga.name,
         onDone = { _, ids -> adding = false; if (ids.isNotEmpty()) onSave(saga.copy(items = saga.items + ids)) },
         onDismiss = { adding = false }
@@ -396,10 +457,146 @@ fun SagaScreen(
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("¿Borrar la saga?", fontFamily = Display) },
-        text = { Text("Sus libros se quedan donde están; solo desaparece la saga.") },
+        text = { Text("Sus ${kind.units} se quedan donde están; solo desaparece la saga.") },
         confirmButton = { TextButton({ confirmDelete = false; onDelete() }) { Text("Borrar", color = ColGeneral) } },
         dismissButton = { TextButton({ confirmDelete = false }) { Text("Cancelar") } }
     )
+    if (searching) SagaCoverSearch(
+        saga.name, kind, sgdbKey, tmdbKey,
+        onPick = { searching = false; onSave(saga.copy(cover = it)) },
+        onDismiss = { searching = false }
+    )
+}
+
+@Composable
+private fun SagaCoverButton(sign: String, label: String, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable(onClick = onClick)) {
+        Box(Modifier.size(64.dp, 92.dp).border(1.dp, Line, shp(6.dp)), contentAlignment = Alignment.Center) { Text(sign, fontFamily = Display, fontSize = 28.sp, color = Muted) }
+        Text(label, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+/** Dónde se buscan portadas para una saga: cualquiera, sea de la categoría que sea la saga. */
+enum class CoverSource(val label: String) { SGDB("SteamGridDB"), LIBROS("Open Library"), PELIS("TMDB"), SERIES("TVmaze") }
+
+/** La fuente con la que empieza el buscador: la de la categoría de la saga. */
+fun coverSourceFor(kind: Kind): CoverSource = when {
+    kind.isBook -> CoverSource.LIBROS
+    kind.isMovie -> CoverSource.PELIS
+    kind.isTv -> CoverSource.SERIES
+    else -> CoverSource.SGDB
+}
+
+/**
+ * Buscar una portada para la saga en SteamGridDB, Open Library, TMDB o TVmaze: escribes un nombre
+ * (el de la saga o el de cualquiera de sus juegos, libros…), eliges el resultado y luego la portada.
+ */
+@Composable
+fun SagaCoverSearch(name0: String, kind: Kind, sgdbKey: String, tmdbKey: String, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Portada de la saga", fontFamily = Display) },
+        text = { SagaCoverSearchBody(name0, kind, sgdbKey, tmdbKey, onPick) },
+        confirmButton = { TextButton(onDismiss) { Text("Cancelar") } }
+    )
+}
+
+/** Lo de dentro del buscador de portadas (aparte, para poder probarlo sin diálogo). */
+@Composable
+fun SagaCoverSearchBody(name0: String, kind: Kind, sgdbKey: String, tmdbKey: String, onPick: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var src by remember { mutableStateOf(coverSourceFor(kind)) }
+    var query by remember { mutableStateOf(name0) }
+    var hits by remember { mutableStateOf<List<Hit>>(emptyList()) }
+    var hit by remember { mutableStateOf<Hit?>(null) }
+    var covers by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var msg by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    fun search() {
+        val q = query.trim()
+        if (q.isEmpty()) return
+        hit = null; covers = emptyList(); hits = emptyList(); busy = true; msg = ""
+        scope.launch {
+            try {
+                hits = when (src) {
+                    CoverSource.SGDB -> if (sgdbKey.isBlank()) error("Añade tu clave de SteamGridDB en Ajustes → Servicios") else Sgdb.search(q, sgdbKey)
+                    CoverSource.LIBROS -> OpenLib.search(q)
+                    CoverSource.PELIS -> Tmdb.search(q, tmdbKey)
+                    CoverSource.SERIES -> TvMaze.search(q)
+                }.take(20)
+                if (hits.isEmpty()) msg = "No sale nada con «$q»"
+            } catch (e: Exception) { msg = e.message ?: "No se pudo buscar" }
+            busy = false
+        }
+    }
+    fun open(h: Hit) {
+        hit = h; covers = emptyList(); busy = true; msg = ""
+        scope.launch {
+            covers = try {
+                when (src) {
+                    CoverSource.SGDB -> Sgdb.covers(h.id, sgdbKey)
+                    CoverSource.LIBROS -> OpenLib.covers(h.id)
+                    CoverSource.PELIS -> Tmdb.images(h.id, tmdbKey, false)
+                    CoverSource.SERIES -> TvMaze.images(h.id, false)
+                }
+            } catch (e: Exception) { msg = e.message ?: "No se pudieron traer sus portadas"; emptyList() }
+            // Si la web no tiene más, al menos la del resultado
+            if (covers.isEmpty() && h.cover.isNotBlank()) covers = listOf(h.cover to h.cover)
+            if (covers.isEmpty() && msg.isEmpty()) msg = "No tiene portadas"
+            busy = false
+        }
+    }
+    LaunchedEffect(Unit) { search() }
+            Column {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    CoverSource.values().forEach { c ->
+                        Text(c.label.uppercase(), color = if (c == src) ColGeneral else Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp,
+                            modifier = Modifier.clickable { if (c != src) { src = c; search() } }.padding(vertical = 6.dp))
+                    }
+                }
+                // Etiqueta corta: una larga que salta de línea hace que el contorno del campo no pare de recolocarse
+                OutlinedTextField(query, { query = it }, label = { Text("Buscar", maxLines = 1) }, singleLine = true, shape = shp(14.dp),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { search() }),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("El nombre de la saga o el de cualquiera de sus ${kind.units}", color = Muted, fontSize = 11.sp, lineHeight = 14.sp, modifier = Modifier.weight(1f).padding(top = 4.dp))
+                    Text("BUSCAR", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, modifier = Modifier.clickable { search() }.padding(8.dp))
+                }
+                val h = hit
+                if (h != null) Text("← ${h.name}".uppercase(), color = ColGeneral, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { hit = null; covers = emptyList(); msg = "" }.padding(vertical = 8.dp))
+                if (busy) Text("Buscando…", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, modifier = Modifier.padding(vertical = 10.dp))
+                else if (msg.isNotEmpty()) Text(msg, color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, modifier = Modifier.padding(vertical = 10.dp))
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 380.dp)) {
+                    if (h == null) items(hits.size) { i ->
+                        val x = hits[i]
+                        Row(Modifier.fillMaxWidth().clickable { open(x) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(34.dp, 50.dp).clip(shp(3.dp)).background(Sand)) {
+                                if (x.cover.isNotBlank()) AsyncImage(x.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(x.name, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                val sub = listOf(x.sub, x.creator).filter { it.isNotBlank() }.joinToString(" · ")
+                                if (sub.isNotBlank()) Text(sub, color = Muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    } else {
+                        val rows = covers.chunked(3)
+                        items(rows.size) { i ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                rows[i].forEach { (thumb, full) ->
+                                    Box(Modifier.weight(1f).aspectRatio(2f / 3f).clip(shp(5.dp)).background(Sand).clickable { onPick(full) }) {
+                                        AsyncImage(thumb, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                    }
+                                }
+                                repeat(3 - rows[i].size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                    }
+                }
+            }
 }
 
 @Composable
@@ -413,14 +610,14 @@ private fun SagaFigure(v: String, label: String, modifier: Modifier) {
 // ---------------------------------------------------------------- Elegir libros
 
 /**
- * Elegir libros (de cualquier lista: leídos, en curso, en lista…). Arriba, los que más pintan:
- * los de la misma saga por el título y los del mismo autor.
+ * Elegir lo de la saga (de cualquier lista: terminados, en curso, en lista…). Arriba, lo que más pinta:
+ * lo de la misma saga por el título y lo del mismo autor.
  */
 @Composable
 fun SagaPicker(
     title: String, name0: String, chosen0: List<Long>, plays: List<Play>, games: List<Game>, exclude: Set<Long>, askName: Boolean,
     hintAuthor: String = "", hintSeries: String = "",
-    onDone: (String, List<Long>) -> Unit, onDismiss: () -> Unit
+    onDone: (String, List<Long>) -> Unit, onDismiss: () -> Unit, kind: Kind = BOOKS
 ) {
     var name by remember { mutableStateOf(name0) }
     var query by remember { mutableStateOf("") }
@@ -433,9 +630,9 @@ fun SagaPicker(
     }
     val list = all.filter { it.first !in exclude && libMatches(query, it.second, it.third) }
         .sortedWith(compareByDescending<Triple<Long, String, String>> { it.first in chosen0 }
-            .thenByDescending { hintSeries.isNotBlank() && seriesOf(it.second)?.first?.let { s -> normName(s) == normName(hintSeries) } == true }
-            .thenByDescending { author.isNotBlank() && normName(it.third) == normName(author) }
-            .thenBy { seriesOf(it.second)?.second ?: Float.MAX_VALUE }
+            .thenByDescending { hintSeries.isNotBlank() && (seriesOf(it.second)?.first?.let { s -> normName(s) == normName(hintSeries) } == true || titleStem(it.second) == titleStem(hintSeries)) }
+            .thenByDescending { kind.isBook && author.isNotBlank() && normName(it.third) == normName(author) }
+            .thenBy { seriesOf(it.second)?.second ?: if (kind.isBook) Float.MAX_VALUE else titleNumber(it.second) }
             .thenBy { it.second.lowercase() })
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -443,7 +640,7 @@ fun SagaPicker(
         text = {
             Column {
                 if (askName) OutlinedTextField(name, { name = it }, label = { Text("Nombre de la saga") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(query, { query = it }, label = { Text("Buscar un libro") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                OutlinedTextField(query, { query = it }, label = { Text("Buscar ${kind.aUnit}") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 Text("${chosen.size} elegido${if (chosen.size == 1) "" else "s"} · en el orden en que los marques".uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 8.dp))
                 LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
                     items(list.size) { i ->
@@ -466,10 +663,10 @@ fun SagaPicker(
     )
 }
 
-/** «Añadir a una saga» desde la ficha de un libro: a una que ya tienes, o una nueva con este libro. */
+/** «Añadir a una saga» desde una ficha: a una que ya tienes (de su categoría), o una nueva con ella. */
 @Composable
-fun AddToSagaDialog(itemName: String, sagas: List<Saga>, onPick: (Saga) -> Unit, onNew: (String) -> Unit, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf(seriesOf(itemName)?.first.orEmpty()) }
+fun AddToSagaDialog(itemName: String, sagas: List<Saga>, onPick: (Saga) -> Unit, onNew: (String) -> Unit, onDismiss: () -> Unit, kind: Kind = BOOKS) {
+    var name by remember { mutableStateOf(seriesOf(itemName)?.first ?: if (kind.isBook) "" else titleHead(itemName)) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Añadir a una saga", fontFamily = Display) },
@@ -484,18 +681,18 @@ fun AddToSagaDialog(itemName: String, sagas: List<Saga>, onPick: (Saga) -> Unit,
                 OutlinedTextField(name, { name = it }, label = { Text("Nombre de la saga") }, singleLine = true, shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton({ onNew(name.trim()) }, enabled = name.isNotBlank()) { Text("Crear con este libro") } },
+        confirmButton = { TextButton({ onNew(name.trim()) }, enabled = name.isNotBlank()) { Text("Crear con ${kind.thisUnit}") } },
         dismissButton = { TextButton(onDismiss) { Text("Cancelar") } }
     )
 }
 
-/** En la ficha de un libro: en qué saga está (y su número), o para añadirlo a una. */
+/** En una ficha: en qué saga está (y su número), o para añadirla a una. */
 @Composable
-fun SagaLink(itemId: Long) {
-    val s = SagaHub.of(itemId)
+fun SagaLink(itemId: Long, kind: Kind) {
+    val s = SagaHub.of(itemId, kind.id)
     if (s != null) {
-        val vivos = s.items.filter { it == itemId || SagaHub.exists(it) }
+        val vivos = s.items.filter { it == itemId || SagaHub.exists(it, kind.id) }
         MagLink("Saga · ${s.name}", "Nº ${vivos.indexOf(itemId) + 1} de ${vivos.size}") { SagaHub.open?.invoke(s.id) }
     }
-    else if (SagaHub.addTo != null) MagLink("Añadir a una saga") { SagaHub.addTo?.invoke(itemId) }
+    else if (SagaHub.addTo != null && SagaHub.on) MagLink("Añadir a una saga") { SagaHub.addTo?.invoke(itemId, kind.id) }
 }
