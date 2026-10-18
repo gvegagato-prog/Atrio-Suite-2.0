@@ -100,7 +100,7 @@ async function abrir() {
     // Las primeras veces: cómo se abre el menú (ya no se abre tocando)
     try {
         const n = Number(localStorage.getItem('avisoMenu') || 0)
-        if (n < 3) { localStorage.setItem('avisoMenu', String(n + 1)); setTimeout(() => aviso('Sube el volumen para abrir el menú'), 1800) }
+        if (n < 3) { localStorage.setItem('avisoMenu', String(n + 1)); setTimeout(() => aviso(haciaAbajo() ? 'Sube el volumen para abrir el menú' : 'Desliza hacia arriba (o sube el volumen) para el menú'), 1800) }
     } catch (e) { }
 }
 
@@ -326,6 +326,17 @@ function onLoad({ detail: { doc, index } }) {
         const t = e.changedTouches[0]
         // (el touchend sí le llega a foliate: así la página vuelve a su sitio si se llegó a mover un poco al empezar)
         if (glow !== null) { glow = null; edge = false; swiped = true; saveSettings(); holding = false; return }
+        // Deslizar hacia arriba abre el menú (y hacia abajo lo cierra). Leyendo hacia abajo no: ahí deslizar mueve el libro
+        if (!haciaAbajo() && t0 && t && !holding) {
+            const dx = t.clientX - t0.x, dy = t.clientY - t0.y
+            if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx) * 1.5 && e.timeStamp - t0.time < 1200) {
+                swiped = true
+                if (dy < 0 && !chromeOn) showChrome(true)
+                else if (dy > 0 && chromeOn) showChrome(false)
+                holding = false
+                return
+            }
+        }
         // PDF: se pasa de página deslizando (foliate no lo hace solo en los PDF)
         // (leyendo hacia abajo no se pasa de página deslizando de lado: solo se desplaza)
         if (isPDF && !haciaAbajo() && t0 && t && !holding) {

@@ -290,7 +290,7 @@ class ReaderActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 web.evaluateJavascript("window.atrioBack ? atrioBack() : false") { r ->
-                    if (r != "true") android.widget.Toast.makeText(this@ReaderActivity, "Para salir: sube el volumen y toca ✕", android.widget.Toast.LENGTH_SHORT).show()
+                    if (r != "true") android.widget.Toast.makeText(this@ReaderActivity, "Para salir: desliza hacia arriba (o sube el volumen) y toca ✕", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         })

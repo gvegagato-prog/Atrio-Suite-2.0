@@ -99,6 +99,10 @@ const log = [];
       ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: «subir volumen» abre el menú`);
       await touch([[X(206), Y(430)]]); await page.waitForTimeout(700);
       ok(await page.$eval('#abajo', (e) => e.classList.contains('oculta')), `${name}: tocar con el menú abierto lo cierra`);
+      await touch([[X(206), Y(600)], [X(207), Y(520)], [X(208), Y(440)], [X(208), Y(380)]]); await page.waitForTimeout(700);
+      ok((await page.$eval('#abajo', (e) => !e.classList.contains('oculta'))) && (await frac()) === f0, `${name}: deslizar hacia arriba abre el menú`);
+      await touch([[X(206), Y(380)], [X(207), Y(460)], [X(208), Y(540)], [X(208), Y(600)]]); await page.waitForTimeout(700);
+      ok(await page.$eval('#abajo', (e) => e.classList.contains('oculta')), `${name}: deslizar hacia abajo lo cierra`);
       // Deslizar hacia la izquierda: página siguiente
       await touch([[X(330), Y(430)], [X(280), Y(432)], [X(200), Y(434)], [X(120), Y(436)]]); await page.waitForTimeout(1300);
       const f1 = await frac();
@@ -140,6 +144,12 @@ const log = [];
       const pr = await pagina();
       await desliz(6, 2); await page.waitForTimeout(1100);
       ok((await pagina()) === pr && (await frac()) === g2, `${name}: un roce de 6 px no pasa de página`);
+      // Deslizar hacia arriba abre el menú; hacia abajo lo cierra (y no pasa de página)
+      const menuAbierto = () => page.$eval('#abajo', (e) => !e.classList.contains('oculta'));
+      await touch([[X(206), Y(600)], [X(207), Y(520)], [X(208), Y(440)], [X(208), Y(380)]]); await page.waitForTimeout(700);
+      ok((await menuAbierto()) && (await frac()) === g2, `${name}: deslizar hacia arriba abre el menú`);
+      await touch([[X(206), Y(380)], [X(207), Y(460)], [X(208), Y(540)], [X(208), Y(600)]]); await page.waitForTimeout(700);
+      ok(!(await menuAbierto()), `${name}: deslizar hacia abajo lo cierra`);
     }
     // Barras (tocar el centro). En el EPUB, en una página de texto: en el índice del libro el centro es un enlace.
     if (name.endsWith('epub')) { await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1500); }
