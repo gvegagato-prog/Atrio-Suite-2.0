@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Subidas largas a tu nube (un libro de cientos de MB): WorkManager las hace en primer plano, con su aviso -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- Streaming: ver si Nova está instalado (y abrirlo directo en el PC o emparejarlo con un enlace art://) -->
     <queries>
         <package android:name="com.papi.nova" />
@@ -26,6 +30,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Ronron"
         android:networkSecurityConfig="@xml/network">
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
         <!-- Lector de libros (EPUB, PDF, MOBI, FB2, CBZ): el archivo se queda en el móvil -->
         <activity
             android:name=".ReaderActivity"

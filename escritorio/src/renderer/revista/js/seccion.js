@@ -30,8 +30,42 @@
     return D.ordenar(l, 'p', s.orden).map((item) => ({ item, t: 'p' }));
   }
 
+  // Libros en «En lista» y en los valorados: los de una misma saga, juntos en una entrada (como en el móvil).
+  // Se juntan si hay dos o más de la saga ahí; la nota de la saga, solo si todos sus libros están valorados.
+  function enSagas(k, s, fs) {
+    if (!k.isBook || ![1, 2].includes(s.tab) || s.q.trim() || s.sueltos || !D.sagas) return fs;
+    const of = new Map();
+    for (const sg of D.sagas(k.id)) for (const id of sg.items || []) if (!of.has(Number(id))) of.set(Number(id), sg);
+    const cuenta = new Map();
+    for (const f of fs) { const sg = of.get(Number(f.item.id)); if (sg) cuenta.set(sg.id, (cuenta.get(sg.id) || 0) + 1); }
+    const hecho = new Set();
+    const out = [];
+    for (const f of fs) {
+      const sg = of.get(Number(f.item.id));
+      if (!sg || cuenta.get(sg.id) < 2) { out.push(f); continue; }
+      if (hecho.has(sg.id)) continue;
+      hecho.add(sg.id);
+      const ls = D.librosDeSaga(sg);
+      const notas = ls.map((b) => (b.leido ? b.nota : null));
+      const nota = ls.length && notas.every((n) => n != null) ? Math.round(notas.reduce((a, b) => a + b, 0) / notas.length) : null;
+      out.push({ saga: sg, aqui: cuenta.get(sg.id), total: ls.length, nota, autores: [...new Set(ls.map((b) => b.creator).filter(Boolean))] });
+    }
+    return out;
+  }
+
+  function lineaSaga(k, f) {
+    const sub = [`Saga · ${RV.plural(f.aqui, k.unit, `${k.unit}s`)}${f.aqui < f.total ? ` de ${f.total}` : ''}`, f.autores.length > 2 ? `${f.autores[0]} y otros` : f.autores.join(' y ')];
+    return h('button.item', { type: 'button', onclick: () => RV.ir({ v: 'saga', id: f.saga.id }) },
+      h('span',
+        h('span.item-tit.ajusta', { 'data-min': '16' }, f.saga.name),
+        h('span.versal.acento', { style: { display: 'block' } }, sub.filter(Boolean).join(' · '))),
+      f.nota != null ? h('span.cifra', String(f.nota)) : h('span'));
+  }
+
   // Una línea del índice: título grande, versalitas y la nota a la derecha
-  function linea(k, { item, t }) {
+  function linea(k, f) {
+    if (f.saga) return lineaSaga(k, f);
+    const { item, t } = f;
     const sub = [item.creator, item.platform];
     if (t === 'p') {
       if (k.isBook && num(item.chapter) > 0) sub.push(`capítulo ${item.chapter}`);
@@ -92,7 +126,8 @@
         out.push(RV.vacio(s.q.trim() ? 'Nada coincide con la búsqueda.' : s.fav ? 'Ningún favorito por aquí.' : 'Esta sección está en blanco, de momento.', true));
         if (!s.q.trim() && s.tab !== 3) out.push(h('button.enlace.acento.grande', { type: 'button', onclick: () => anadir(k, s.tab) }, '+ Añadir el primero'));
       } else {
-        out.push(h(`div.indice${fs.length > 6 ? '.dos' : ''}`, fs.map((f) => linea(k, f))));
+        const vs = enSagas(k, s, fs);
+        out.push(h(`div.indice${vs.length > 6 ? '.dos' : ''}`, vs.map((f) => linea(k, f))));
         if (s.q.trim()) out.push(h('p.versal.cuenta-lista', RV.plural(fs.length, 'resultado', 'resultados')));
       }
       lista.replaceChildren(...out);
@@ -112,6 +147,10 @@
     }, n)));
     if (s.tab === 2) {
       ordenes.append(h('button.enlace.apagado', { type: 'button', 'aria-pressed': String(s.fav), onclick: () => { s.fav = !s.fav; RV.refrescar(); } }, '★ Favoritos'));
+    }
+    // Libros: juntos en sagas por defecto
+    if (k.isBook && (s.tab === 1 || s.tab === 2) && D.sagas(k.id).length) {
+      ordenes.append(h('button.enlace.apagado', { type: 'button', 'aria-pressed': String(!s.sueltos), onclick: () => { s.sueltos = !s.sueltos; RV.refrescar(); } }, 'En sagas'));
     }
     root.append(h('div.barra', pestanas, h('span.hueco'), ordenes, buscador));
     root.append(lista);

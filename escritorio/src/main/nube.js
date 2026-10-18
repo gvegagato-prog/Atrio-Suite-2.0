@@ -91,10 +91,20 @@ async function upload(dirPath, name, buf) {
   const tok = st.data && st.data.token;
   if (!tok) throw new Fail('kDrive no ha abierto la subida');
   const host = String((st.data && st.data.upload_url) || API).replace(/\/+$/, '');
-  for (let n = 1; n <= total; n++) {
+  // Cuatro trozos a la vez (como la app oficial); un trozo que falla por la red se reintenta, no todo el archivo
+  let next = 1;
+  const one = async (n) => {
     const part = buf.subarray((n - 1) * chunk, Math.min(buf.length, n * chunk));
-    await answer(await fetch(`${host}/3/drive/${c.drive}/upload/session/${tok}/chunk?chunk_number=${n}&chunk_size=${part.length}`, { method: 'POST', headers: authH, body: part }));
-  }
+    for (let t = 0; ; t++) {
+      try {
+        return await answer(await fetch(`${host}/3/drive/${c.drive}/upload/session/${tok}/chunk?chunk_number=${n}&chunk_size=${part.length}`, { method: 'POST', headers: authH, body: part }));
+      } catch (e) {
+        if (e instanceof Fail || t >= 2) throw e;
+        await new Promise((r) => setTimeout(r, 1500 * (t + 1)));
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, total) }, async () => { while (next <= total) await one(next++); }));
   const fin = await call('POST', `/3/drive/${c.drive}/upload/session/${tok}/finish`);
   const id = Number(fin.data && fin.data.file && fin.data.file.id);
   if (!id) throw new Fail('kDrive no ha cerrado la subida');
@@ -149,6 +159,24 @@ async function shot({ id, name, buf, game, sg, t, w, h, mime, pc }) {
   return item;
 }
 
+// Una imagen del lanzador que pusiste desde un archivo (portada, horizontal, fondo o logo de un juego del PC):
+// también a tu nube, a «Atrio/Videojuegos/<juego>/Portadas/Portada.png» (con el mismo nombre, versión nueva)
+const TIPO = { cover: 'Portada', wide: 'Horizontal', hero: 'Fondo', logo: 'Logo' };
+async function pcArt({ key, name, sg, type, file }) {
+  if (!on() || !TIPO[type]) return null;
+  const buf = fs.readFileSync(file);
+  const ext = (String(file).match(/\.([A-Za-z0-9]{2,5})$/) || [null, 'png'])[1].toLowerCase();
+  const d = (ctx && ctx.data()) || {};
+  const ficha = (sg && [...(d.plays || []), ...(d.games || [])].find((x) => Number(x.id) === Number(sg))) || null;
+  const n = `${TIPO[type]}.${ext}`;
+  const f = await upload(carpeta('Videojuegos', (ficha && ficha.name) || name || 'Escritorio', 'Portadas'), n, buf);
+  const k = `pcart:${key}:${type}`;
+  const item = { id: nubeId(k), k, f, n, s: buf.length, updated: Date.now() };
+  await ctx.edit({ op: 'nubeAdd', items: [item] });
+  ctx.log('nube: imagen del juego subida', n);
+  return item;
+}
+
 // Las fotos de portada que elegiste en el móvil (están en tu nube) y faltan en este PC
 let bajando = false;
 async function fotos() {
@@ -177,4 +205,4 @@ async function fotos() {
 function start(c) { ctx = c; }
 function setApi(u) { API = u; homes.clear(); }
 
-module.exports = { start, on, test, shot, fotos, nubeId, setApi, Fail };
+module.exports = { start, on, test, shot, pcArt, fotos, nubeId, setApi, Fail };

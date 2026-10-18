@@ -67,6 +67,14 @@ const ok = (c, t) => { console.log(`${c ? '  ✔' : '  ✘'} ${t}`); if (!c) fal
   ok((await nube.shot({ id: 'no', name: 'no.png', buf, game: 'X' })) === null, 'con «Subir las capturas: No» no se sube');
   conf.nube.shots = true;
 
+  // Una imagen del lanzador puesta desde un archivo: a la carpeta de su ficha, como «Portada.png»
+  const img = path.join(tmp, 'mi-portada.png');
+  fs.writeFileSync(img, Buffer.from('imagen'));
+  const pa = await nube.pcArt({ key: 'steam:1145360', name: 'Hades II: Steam', sg: 1145360, type: 'cover', file: img });
+  ok(pa && k.byPath('Atrio/Videojuegos/Hades II/Portadas/Portada.png') && pa.k === 'pcart:steam:1145360:cover', 'imagen del lanzador en Atrio/Videojuegos/Hades II/Portadas/Portada.png');
+  await nube.pcArt({ key: 'steam:1145360', name: 'Hades II', sg: 1145360, type: 'cover', file: img });
+  ok([...k.files.values()].filter((x) => x.name === 'Portada.png').length === 1, 'cambiarla otra vez no la duplica (versión nueva)');
+
   // Una foto de portada que elegiste en el móvil: está en tu nube y falta en este PC
   const foto = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
   const atrio = [...k.files.values()].find((x) => x.name === 'Atrio' && x.parent === 2);

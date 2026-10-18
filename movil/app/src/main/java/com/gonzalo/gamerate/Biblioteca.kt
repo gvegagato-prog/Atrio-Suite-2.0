@@ -40,8 +40,40 @@ fun libMatches(q: String, vararg fields: String): Boolean {
     return fields.any { it.lowercase().contains(t) }
 }
 
-/** Un elemento de la cuadrícula: algo en curso (Play) o algo terminado y valorado (Game). */
-private class Cell(val id: Long, val name: String, val cover: String, val sub: String, val play: Play?, val game: Game?)
+/** Un elemento de la cuadrícula: algo en curso (Play), algo terminado y valorado (Game) o una saga que junta varios. */
+internal class Cell(
+    val id: Long, val name: String, val cover: String, val sub: String, val play: Play?, val game: Game?,
+    val saga: Saga? = null,
+    /** La nota de la saga: la media, solo si todos sus libros están valorados. */
+    val sagaScore: Int? = null
+)
+
+/**
+ * En «En lista» y en los valorados, los libros de una misma saga se juntan en una sola entrada (en el sitio del
+ * primero de ellos). Se juntan si hay dos o más de la saga en ese apartado; uno solo se queda como está.
+ */
+internal fun groupSagas(cells: List<Cell>, sagas: List<Saga>, plays: List<Play>, games: List<Game>, kind: Kind): List<Cell> {
+    if (sagas.isEmpty()) return cells
+    val of = HashMap<Long, Saga>()
+    sagas.forEach { sg -> sg.items.forEach { of.putIfAbsent(it, sg) } }
+    val counts = cells.groupingBy { of[it.id]?.id }.eachCount()
+    val done = HashSet<Long>()
+    val out = mutableListOf<Cell>()
+    for (c in cells) {
+        val sg = of[c.id]
+        if (sg == null || (counts[sg.id] ?: 0) < 2) { out += c; continue }
+        if (!done.add(sg.id)) continue
+        val books = sagaBooks(sg, plays, games)
+        val here = counts[sg.id] ?: 0
+        val score = if (books.isNotEmpty() && books.all { it.read && it.score != null }) Math.round(books.mapNotNull { it.score }.average()).toInt() else null
+        val sub = listOfNotNull(
+            "Saga · $here ${if (here == 1) kind.unit else kind.units}" + if (here < books.size) " de ${books.size}" else "",
+            sagaAuthors(books).ifBlank { null }
+        ).joinToString(" · ")
+        out += Cell(-sg.id, sg.name, sg.cover.ifBlank { books.firstOrNull { it.cover.isNotBlank() }?.cover.orEmpty() }, sub, null, null, sg, score)
+    }
+    return out
+}
 
 @Composable
 fun LibraryScreen(
@@ -60,10 +92,13 @@ fun LibraryScreen(
     var searching by remember(kind.id) { mutableStateOf(false) }
     var sort by remember(kind.id) { mutableStateOf(0) }
     var favOnly by remember(kind.id) { mutableStateOf(false) }
+    // Libros: agrupados en sagas por defecto (en «En lista» y en los valorados)
+    var grouped by remember(kind.id) { mutableStateOf(LibPrefs.grouped) }
+    val canGroup = kind.isBook && sagas != null && sagas.isNotEmpty() && (segment == 1 || segment == 2) && query.isBlank()
     val labels = listOf(kind.statuses[1], kind.statuses[0], kind.doneWord, kind.statuses[2]) + if (sagas != null) listOf("Sagas") else emptyList()
     val counts = listOf(plays.count { it.status == 1 }, plays.count { it.status == 0 }, games.size, plays.count { it.status == 2 }) + if (sagas != null) listOf(sagas.size) else emptyList()
-    val cells: List<Cell> = remember(kind.id, games, plays, segment, query, sort, favOnly) {
-        when (segment) {
+    val cells: List<Cell> = remember(kind.id, games, plays, segment, query, sort, favOnly, grouped, sagas) {
+        val raw = when (segment) {
             4 -> emptyList()
             2 -> {
                 val f = games.filter { (!favOnly || it.fav) && libMatches(query, it.name, it.creator, it.platform) }
@@ -87,12 +122,14 @@ fun LibraryScreen(
                     }
             }
         }
+        if (canGroup && grouped) groupSagas(raw, sagas!!, plays, games, kind) else raw
     }
-    val open: (Cell) -> Unit = { c -> if (c.play != null) onOpenPlay(c.play) else if (c.game != null) onOpenGame(c.game) }
+    val open: (Cell) -> Unit = { c -> if (c.saga != null) onOpenSaga(c.saga) else if (c.play != null) onOpenPlay(c.play) else if (c.game != null) onOpenGame(c.game) }
     val lib = LibUi(
         kind, labels, counts, cells, segment, onSegment, query, { query = it }, searching, { searching = it }, sort, { sort = it },
         favOnly, { favOnly = it }, readOnly, open, onAdd, onStats, onDiscover, onWheel, titleSwitch, badgeFor, onBack,
-        if (segment == 4 && sagas != null) ({ SagaList(sagas, plays, games, readOnly, onOpenSaga, onCreateSaga, kind) }) else null
+        if (segment == 4 && sagas != null) ({ SagaList(sagas, plays, games, readOnly, onOpenSaga, onCreateSaga, kind) }) else null,
+        grouped = if (canGroup) grouped else null, setGrouped = { grouped = it; LibPrefs.grouped = it }
     )
     if (Skin.revista) { RevistaLibrary(lib); return }
     val grid = rememberLazyGridState()
@@ -129,6 +166,7 @@ fun LibraryScreen(
                             listOf("Nota", "Recientes", "Nombre").forEachIndexed { i, n -> SoftChip(n, sort == i) { sort = i } }
                             SoftChip("★ Favoritos", favOnly) { favOnly = !favOnly }
                         }
+                        if (canGroup) SoftChip("En sagas", grouped) { grouped = !grouped; LibPrefs.grouped = grouped }
                     }
                     Spacer(Modifier.height(14.dp))
                     if (lib.sagaPanel != null) lib.sagaPanel.invoke()
@@ -145,16 +183,17 @@ fun LibraryScreen(
                         dim = segment == 3,
                         badge = when {
                             c.game != null -> ({ ScoreBadge(c.game.general, ColGeneral) })
+                            c.sagaScore != null -> ({ ScoreBadge(c.sagaScore, ColGeneral) })
                             else -> null
                         },
                         badgeStart = badgeFor?.let { b -> { b(c.id, c.name) } },
                         interactive = !flips
-                    ) { if (c.play != null) onOpenPlay(c.play) else if (c.game != null) onOpenGame(c.game) }
+                    ) { open(c) }
                 }
                 Box(Modifier.rise(i, i < 14)) {
                     val p = partner
                     if (p != null && !readOnly) {
-                        FlipCard(enabled = true, onClick = { if (c.play != null) onOpenPlay(c.play) else if (c.game != null) onOpenGame(c.game) },
+                        FlipCard(enabled = c.saga == null, onClick = { open(c) },
                             modifier = Modifier, front = inner, back = { PartnerFace(p, c.id, kind) })
                     } else inner()
                 }
@@ -216,8 +255,15 @@ private class LibUi(
     val onAdd: ((Boolean) -> Unit)?, val onStats: () -> Unit, val onDiscover: (() -> Unit)?, val onWheel: (() -> Unit)?,
     val titleSwitch: (@Composable () -> Unit)?, val badgeFor: (@Composable BoxScope.(Long, String) -> Unit)?, val onBack: (() -> Unit)?,
     /** En la pestaña «Sagas»: lo que va en lugar de la lista. */
-    val sagaPanel: (@Composable () -> Unit)? = null
+    val sagaPanel: (@Composable () -> Unit)? = null,
+    /** Libros juntos en sagas (null = aquí no se puede). */
+    val grouped: Boolean? = null, val setGrouped: (Boolean) -> Unit = {}
 )
+
+/** Lo que recuerda la biblioteca entre pantallas: si los libros van juntos en sagas (por defecto, sí). */
+object LibPrefs {
+    var grouped by mutableStateOf(true)
+}
 
 @Composable
 private fun TextLink(t: String, color: Color = Charcoal, onClick: () -> Unit) =
@@ -252,6 +298,7 @@ private fun RevistaLibrary(l: LibUi) {
                     listOf("NOTA", "RECIENTES", "NOMBRE").forEachIndexed { i, n -> TextLink(n, if (l.sort == i) ColGeneral else Muted) { l.setSort(i) } }
                     TextLink("★ FAVORITOS", if (l.favOnly) ColGeneral else Muted) { l.setFav(!l.favOnly) }
                 }
+                if (l.grouped != null) TextLink(if (l.grouped) "EN SAGAS ✓" else "EN SAGAS", if (l.grouped) ColGeneral else Muted) { l.setGrouped(!l.grouped) }
             }
             if (l.sagaPanel != null) l.sagaPanel.invoke()
             else if (l.cells.isEmpty()) {
@@ -275,9 +322,9 @@ private fun RevistaLibrary(l: LibUi) {
                     if (pct != null && pct > 0) Text("$pct % HECHO", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     if (l.badgeFor != null) Box(Modifier.padding(top = 4.dp).height(26.dp).width(120.dp)) { l.badgeFor.invoke(this, c.id, c.name) }
                 }
-                if (c.game != null) {
+                if (c.game != null || c.sagaScore != null) {
                     Spacer(Modifier.width(12.dp))
-                    Text("${c.game.general}", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 48.sp, lineHeight = 48.sp)
+                    Text("${c.game?.general ?: c.sagaScore}", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 48.sp, lineHeight = 48.sp)
                 }
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(Line))

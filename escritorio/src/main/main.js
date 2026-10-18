@@ -644,7 +644,12 @@ function setupIpc() {
     if (!g) throw new Error('Juego no encontrado');
     if (!source) art.removeType(gameKey, type);
     else if (/^https?:\/\//.test(source)) await art.download(source, gameKey, type);
-    else art.setFromFile(gameKey, type, source);
+    else {
+      art.setFromFile(gameKey, type, source);
+      // La que pones tú desde un archivo, también a tu nube (en segundo plano)
+      nube.pcArt({ key: gameKey, name: g.name, sg: sgdbOf(g) || 0, type, file: source })
+        .catch((e) => log('nube: imagen', e.message));
+    }
     return publicGame(g);
   });
 

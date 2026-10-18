@@ -231,6 +231,23 @@ class NubeTest {
         assertEquals(0.8, BookFiles.progress(ctx, 501).toDouble(), 0.001)
     }
 
+    /** Todas las imágenes que pones tú: portada, fondo, logo y las de las casillas de la revista, en la carpeta de su ficha. */
+    @Test fun imagenesTuyas() = runBlocking {
+        KDrive.save(ctx, "tok", "777")
+        val dir = File(ctx.filesDir, "covers").apply { mkdirs() }
+        fun foto(n: String) = File(dir, n).also { f -> Bitmap.createBitmap(20, 20, Bitmap.Config.ARGB_8888).let { b -> f.outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 90, it) } } }
+        val fondo = foto("foto_1.jpg"); val logo = foto("foto_2.jpg"); val casilla = foto("foto_3.jpg")
+        val s = Store(ctx)
+        s.savePlays(listOf(Play(1145360, "Hades II", "https://cdn/hades.png", Uri.fromFile(fondo).toString(), 1, emptyList(), logo = Uri.fromFile(logo).toString())), 0)
+        ctx.getSharedPreferences("maqueta", Context.MODE_PRIVATE).edit().putString("p:0:1145360",
+            org.json.JSONArray().put(JSONObject().put("c", org.json.JSONArray().put(JSONObject().put("t", "imagen").put("i", Uri.fromFile(casilla).toString())))).toString()).commit()
+        val msg = NubeSync.run(ctx)
+        assertTrue(msg, msg.startsWith("3 subidos"))
+        assertTrue(k.byPath("Atrio/Videojuegos/Hades II/Portadas/foto_1.jpg") != null)
+        assertTrue(k.byPath("Atrio/Videojuegos/Hades II/Portadas/foto_2.jpg") != null)
+        assertTrue(k.byPath("Atrio/Videojuegos/Hades II/Imágenes/foto_3.jpg") != null)
+    }
+
     @Test fun capturas() = runBlocking {
         KDrive.save(ctx, "tok", "777")
         val s = Store(ctx)

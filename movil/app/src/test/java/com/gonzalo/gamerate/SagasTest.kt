@@ -115,6 +115,20 @@ open class SagasTest {
         s.saveSagas(s.loadSagas().filter { it.id != 2L })
         s.mergeRemote(remoto.toString())
         assertEquals(listOf(1L), s.loadSagas().map { it.id })
+        // En la biblioteca, los de una saga van juntos: en Leídos, Dune (2 leídos de 3) en una sola entrada, sin nota
+        // de saga porque falta uno; con todos leídos, la media
+        val dune = Saga(2, "Dune", listOf(601, 602, 603), updated = 1)
+        val leidos = s.load(1).map { Cell(it.id, it.name, it.cover, "", null, it) }
+        val g = groupSagas(leidos, listOf(saga, dune), s.loadPlays(1), s.load(1), BOOKS)
+        assertEquals(listOf("El nombre del viento (Crónica del asesino de reyes, #1)", "Dune"), g.map { it.name })
+        assertEquals(dune, g[1].saga)
+        assertEquals(null, g[1].sagaScore)
+        assertTrue(g[1].sub, g[1].sub.startsWith("Saga · 2 libros de 3"))
+        val todos = groupSagas(leidos, listOf(Saga(3, "Dune", listOf(601, 603))), s.loadPlays(1), s.load(1), BOOKS)
+        assertEquals(listOf(84), todos.mapNotNull { it.sagaScore })
+        // Sin otro de la saga en ese apartado, el libro se queda suelto
+        assertEquals(3, groupSagas(leidos, listOf(Saga(4, "X", listOf(601, 502))), s.loadPlays(1), s.load(1), BOOKS).size)
+
         // Lo que no son libros: por el principio del título y en el orden de sus números
         assertEquals(normName("Dark Souls"), titleStem("Dark Souls III: The Ringed City"))
         assertEquals(3f, titleNumber("Dark Souls III: The Ringed City"))

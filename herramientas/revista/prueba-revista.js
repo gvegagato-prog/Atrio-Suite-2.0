@@ -48,14 +48,18 @@ const cuenta = {
       { id: 11, name: 'Elden Ring Nightreign', status: 1, creator: 'FromSoftware', minutes: 900, start: H - 10, updated: Date.now() - 86400e3 },
       { id: 12, name: 'Death Stranding 2', status: 0, creator: 'Kojima Productions' },
     ],
-    books: [{ id: 401, name: 'Dune', general: 89, gfx: 50, story: 92, music: 88, gameplay: 80, end: H - 32, creator: 'Frank Herbert', pages: 690, updated: (H - 32) * DIA }],
+    books: [{ id: 401, name: 'Dune', general: 89, gfx: 50, story: 92, music: 88, gameplay: 80, end: H - 32, creator: 'Frank Herbert', pages: 690, updated: (H - 32) * DIA },
+      // Una saga entera leída: en los valorados va junta, con la media de la saga (90)
+      { id: 405, name: 'El imperio final', general: 92, end: H - 400, creator: 'Brandon Sanderson', updated: (H - 400) * DIA },
+      { id: 406, name: 'El pozo de la ascensión', general: 88, end: H - 300, creator: 'Brandon Sanderson', updated: (H - 300) * DIA }],
     bplays: [{ id: 402, name: 'El nombre del viento', status: 1, creator: 'Patrick Rothfuss', chapter: 31, pages: 880, start: H - 12, updated: Date.now() - 5e6 }],
     items_2: [{ id: 27205, name: 'Origen', general: 87, gfx: 80, story: 90, end: H - 70, creator: 'Christopher Nolan', updated: (H - 70) * DIA }],
     iplays_2: [],
     // Una saga con un libro leído (Dune, 89) y otro a medias
     sagas: [{ id: 9001, name: 'Las mejores sagas', kind: 1, items: [401, 402], updated: Date.now() },
       // Y una de juegos: Hades II pasado (91) y Death Stranding 2 en la lista
-      { id: 9002, name: 'Juegos de Supergiant', kind: 0, items: [2, 12], updated: Date.now() - 1000 }],
+      { id: 9002, name: 'Juegos de Supergiant', kind: 0, items: [2, 12], updated: Date.now() - 1000 },
+      { id: 9003, name: 'Nacidos de la bruma', kind: 1, items: [405, 406], updated: Date.now() - 2000 }],
   },
 };
 const pc = {
@@ -168,6 +172,15 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     await ir({ v: 'saga', id: 9001 }); await shot('05d-saga');
     t = await texto();
     ok(!(await errorPagina()) && t.includes('Dune') && t.includes('El nombre del viento') && /1\/2/.test(t) && t.includes('89'), `${tema}: página de la saga con sus libros`);
+    // En Libros → En lista y valorados, los de una saga van juntos (con dos o más ahí). Con Dune leído y otro en la
+    // lista no se juntan; se comprueba que la pestaña se pinta y el botón «En sagas» está
+    await ir({ v: 'seccion', k: 1, tab: 2 });
+    t = await texto();
+    ok(!(await errorPagina()) && /En sagas/i.test(t) && /Nacidos de la bruma/.test(t) && /Saga · 2 libros/i.test(t) && /\b90\b/.test(t) && !/El imperio final/.test(t), `${tema}: en los valorados de Libros, la saga junta con su media`);
+    await page.click('#pagina button:has-text("En sagas")'); await page.waitForTimeout(300);
+    t = await texto();
+    ok(/El imperio final/.test(t) && /El pozo de la ascensión/.test(t), `${tema}: «En sagas» quitado: sueltos`);
+    await page.click('#pagina button:has-text("En sagas")'); await page.waitForTimeout(300);
     // Sagas de juegos: su pestaña (la de libros no la enseña), su página y cambiarle la portada
     await ir({ v: 'seccion', k: 0, tab: 4 }); await shot('05e-sagas-juegos');
     t = await texto();

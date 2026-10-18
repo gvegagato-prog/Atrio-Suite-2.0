@@ -163,12 +163,13 @@ object KDrive {
 
     /** Archivos de más de 5 MB: a trozos (como la app oficial). */
     private const val CHUNKED = 5L * 1024 * 1024
+    private const val PARALLEL = 4
 
     /**
      * Sube un archivo a «Mi carpeta/[path]/[name]» (kDrive crea las carpetas que falten). Si ya hay uno con ese
      * nombre, queda como versión nueva del mismo (nada de «libro (1).epub»). Devuelve su id.
      */
-    fun upload(ctx: Context, path: String, name: String, size: Long, input: () -> InputStream): Long {
+    fun upload(ctx: Context, path: String, name: String, size: Long, onProgress: (Long) -> Unit = {}, input: () -> InputStream): Long {
         val d = drive(ctx)
         val home = home(ctx)
         val enc = { v: String -> URLEncoder.encode(v, "UTF-8").replace("+", "%20") }
@@ -182,7 +183,7 @@ object KDrive {
             c.setRequestProperty("Authorization", "Bearer ${token(ctx)}")
             c.setRequestProperty("Content-Type", "application/octet-stream")
             c.outputStream.use { out -> input().use { it.copyTo(out) } }
-            return answer(c).optJSONObject("data")?.optLong("id")?.takeIf { it > 0 } ?: throw Fail("kDrive no ha devuelto el archivo subido")
+            return answer(c).optJSONObject("data")?.optLong("id")?.takeIf { it > 0 }.also { onProgress(size) } ?: throw Fail("kDrive no ha devuelto el archivo subido")
         }
         // Trozos de al menos 1 MB, unos 200 por archivo (los mismos números que la app oficial)
         val chunk = maxOf(1L * 1024 * 1024, (size + 199) / 200)
@@ -193,23 +194,49 @@ object KDrive {
             .optJSONObject("data") ?: throw Fail("kDrive no ha abierto la subida")
         val tok = start.optString("token").ifBlank { throw Fail("kDrive no ha abierto la subida") }
         val host = start.optString("upload_url").ifBlank { api }.trimEnd('/')
-        input().use { inp ->
-            val buf = ByteArray(chunk.toInt())
-            for (n in 1..total) {
-                val len = if (n == total) (size - chunk * (total - 1)).toInt() else chunk.toInt()
-                var r = 0
-                while (r < len) { val k = inp.read(buf, r, len - r); if (k < 0) throw Fail("El archivo se ha acabado antes de tiempo"); r += k }
-                val c = URL("$host/3/drive/$d/upload/session/$tok/chunk?chunk_number=$n&chunk_size=$len").openConnection() as HttpURLConnection
-                c.requestMethod = "POST"
-                c.connectTimeout = 20000; c.readTimeout = 300000
-                c.doOutput = true
-                c.setFixedLengthStreamingMode(len)
-                c.setRequestProperty("Authorization", "Bearer ${token(ctx)}")
-                c.setRequestProperty("Content-Type", "application/octet-stream")
-                c.outputStream.use { it.write(buf, 0, len) }
-                answer(c)
+        // Cuatro trozos a la vez (como la app oficial): se aprovecha mucho mejor la subida que de uno en uno
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(PARALLEL)
+        val slots = java.util.concurrent.Semaphore(PARALLEL)
+        val sent = java.util.concurrent.atomic.AtomicLong(0)
+        val failed = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
+        try {
+            input().use { inp ->
+                for (n in 1..total) {
+                    val len = if (n == total) (size - chunk * (total - 1)).toInt() else chunk.toInt()
+                    slots.acquire()
+                    failed.get()?.let { throw it }
+                    val buf = ByteArray(len)
+                    var r = 0
+                    while (r < len) { val k = inp.read(buf, r, len - r); if (k < 0) throw Fail("El archivo se ha acabado antes de tiempo"); r += k }
+                    pool.execute {
+                        try {
+                            var tries = 0
+                            while (true) {
+                                try {
+                                    val c = URL("$host/3/drive/$d/upload/session/$tok/chunk?chunk_number=$n&chunk_size=$len").openConnection() as HttpURLConnection
+                                    c.requestMethod = "POST"
+                                    c.connectTimeout = 20000; c.readTimeout = 300000
+                                    c.doOutput = true
+                                    c.setFixedLengthStreamingMode(len)
+                                    c.setRequestProperty("Authorization", "Bearer ${token(ctx)}")
+                                    c.setRequestProperty("Content-Type", "application/octet-stream")
+                                    c.outputStream.use { it.write(buf) }
+                                    answer(c)
+                                    break
+                                } catch (e: IOException) {
+                                    // Un corte de red en un trozo: se reintenta ese trozo (no todo el archivo)
+                                    if (e is Fail || ++tries >= 3) throw e
+                                    Thread.sleep(1500L * tries)
+                                }
+                            }
+                            onProgress(sent.addAndGet(len.toLong()))
+                        } catch (e: Throwable) { failed.compareAndSet(null, e) } finally { slots.release() }
+                    }
+                }
             }
-        }
+            slots.acquire(PARALLEL) // espera a que acaben todos
+            failed.get()?.let { throw it }
+        } finally { pool.shutdownNow() }
         val fin = call(ctx, "POST", "/3/drive/$d/upload/session/$tok/finish").optJSONObject("data")
         return fin?.optJSONObject("file")?.optLong("id")?.takeIf { it > 0 } ?: throw Fail("kDrive no ha cerrado la subida")
     }
@@ -262,7 +289,8 @@ object NubeSync {
         if (!KDrive.on(ctx)) return
         val req = OneTimeWorkRequestBuilder<NubeWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
-        WorkManager.getInstance(ctx).enqueueUniqueWork("kdrive", ExistingWorkPolicy.REPLACE, req)
+        // KEEP: si ya está subiendo, que siga (antes se cortaba al abrir o cerrar la app y volvía a empezar)
+        WorkManager.getInstance(ctx).enqueueUniqueWork("kdrive", ExistingWorkPolicy.KEEP, req)
     }
 
     /** Un nombre que vale para una carpeta o un archivo en cualquier sistema. */
@@ -275,12 +303,26 @@ object NubeSync {
     fun folder(kind: Kind, name: String, what: String) = "Atrio/${safe(kind.title)}/${safe(cleanTitle(name))}/$what"
 
     /** Las fotos tuyas que usan tus fichas y tus sagas (portadas y fondos), con la carpeta de su ficha. */
-    private fun photosInUse(store: Store): Map<String, String> {
+    private fun photosInUse(ctx: Context, store: Store): Map<String, String> {
         val out = LinkedHashMap<String, String>()
         val kinds = listOf(GAMES, BOOKS) + store.kinds
+        val names = HashMap<Pair<Int, Long>, String>()
         for (k in kinds) {
-            val items = store.load(k.id).map { Triple(it.name, it.cover, it.hero) } + store.loadPlays(k.id).map { Triple(it.name, it.cover, it.hero) }
-            for ((n, c, h) in items) for (u in listOf(c, h)) Photos.nameOf(u)?.let { out.putIfAbsent(it, folder(k, n, "Portadas")) }
+            // Portada, fondo y logo de cada ficha
+            val items = store.load(k.id).map { listOf(it.name, it.cover, it.hero, it.logo) to it.id } + store.loadPlays(k.id).map { listOf(it.name, it.cover, it.hero, it.logo) to it.id }
+            for ((v, id) in items) {
+                names[k.id to id] = v[0]
+                for (u in v.drop(1)) Photos.nameOf(u)?.let { out.putIfAbsent(it, folder(k, v[0], "Portadas")) }
+            }
+        }
+        // Las fotos que pusiste en las casillas de la revista de una ficha (se guardan en este dispositivo)
+        for ((key, raw) in ctx.getSharedPreferences("maqueta", Context.MODE_PRIVATE).all) {
+            val m = Regex("""^[pv]:(\d+):(\d+)$""").find(key) ?: continue
+            val k = kinds.find { it.id == m.groupValues[1].toInt() } ?: continue
+            val name = names[k.id to m.groupValues[2].toLong()] ?: continue
+            Regex(""""i"\s*:\s*"(file:[^"]+)"""").findAll(raw as? String ?: continue).forEach { r ->
+                Photos.nameOf(r.groupValues[1].replace("\\/", "/"))?.let { out.putIfAbsent(it, folder(k, name, "Imágenes")) }
+            }
         }
         store.loadSagas().forEach { sg ->
             val k = kinds.find { it.id == sg.kind } ?: BOOKS
@@ -305,13 +347,25 @@ object NubeSync {
     }
 
     /** Sube lo que falte y baja lo que falte aquí. Devuelve un resumen. */
-    suspend fun run(ctx: Context): String = withContext(Dispatchers.IO) {
+    suspend fun run(ctx: Context, foreground: (suspend (String, Int) -> Unit)? = null): String = withContext(Dispatchers.IO) {
         if (!KDrive.on(ctx)) return@withContext "Sin nube"
         val store = Store(ctx)
         running = true
         var up = 0; var down = 0; val errs = mutableListOf<String>()
         try {
             val have = store.loadNube().associateBy { it.k }
+            // El progreso de cada subida, en Ajustes y en el aviso (cada 1 %)
+            fun progress(what: String, size: Long): (Long) -> Unit {
+                var last = -1
+                return { done ->
+                    val pct = if (size > 0) (done * 100 / size).toInt() else 100
+                    if (pct != last) {
+                        last = pct
+                        status = "Subiendo $what… $pct %"
+                        if (foreground != null) kotlinx.coroutines.runBlocking { runCatching { foreground(status, pct) } }
+                    }
+                }
+            }
             val added = mutableListOf<NubeFile>()
             // Libros: el archivo que tengas adjunto, con su enlace para tu pareja
             val titles = (store.load(1).map { it.id to it.name } + store.loadPlays(1).map { it.id to it.name }).toMap()
@@ -326,18 +380,19 @@ object NubeSync {
                     val title = titles[id] ?: file.substringBeforeLast('.')
                     val name = "${safe(cleanTitle(title))}.$ext"
                     status = "Subiendo $name…"
-                    val f = KDrive.upload(ctx, folder(BOOKS, title, "Libro"), name, size) { ctx.contentResolver.openInputStream(uri) ?: throw IOException("no se puede leer") }
+                    foreground?.let { runCatching { it(status, 0) } }
+                    val f = KDrive.upload(ctx, folder(BOOKS, title, "Libro"), name, size, progress(name, size)) { ctx.contentResolver.openInputStream(uri) ?: throw IOException("no se puede leer") }
                     added += NubeFile("libro:$id", f, name, size, KDrive.link(ctx, f))
                     up++
                 } catch (e: Exception) { errs += "${titles[id] ?: "un libro"}: ${e.message}" }
             }
             // Fotos de portada: el original si está aquí
-            for ((n, where) in photosInUse(store)) {
+            for ((n, where) in photosInUse(ctx, store)) {
                 if (have.containsKey("foto:$n")) continue
                 val (f0, _) = Photos.best(ctx, n) ?: continue
                 try {
                     status = "Subiendo la foto ${f0.name}…"
-                    val f = KDrive.upload(ctx, where, f0.name, f0.length()) { f0.inputStream() }
+                    val f = KDrive.upload(ctx, where, f0.name, f0.length(), progress(f0.name, f0.length())) { f0.inputStream() }
                     added += NubeFile("foto:$n", f, f0.name, f0.length(), KDrive.link(ctx, f))
                     up++
                 } catch (e: Exception) { errs += "${f0.name}: ${e.message}" }
@@ -351,14 +406,14 @@ object NubeSync {
                     val g = gameName(store, s.sg, s.game)
                     val name = "${safe(cleanTitle(g))} ${java.text.SimpleDateFormat("yyyy-MM-dd HH.mm.ss", java.util.Locale.ROOT).format(java.util.Date(s.time))}.${f0.extension}"
                     status = "Subiendo la captura $name…"
-                    val f = KDrive.upload(ctx, folder(GAMES, g, "Capturas"), name, f0.length()) { f0.inputStream() }
+                    val f = KDrive.upload(ctx, folder(GAMES, g, "Capturas"), name, f0.length(), progress(name, f0.length())) { f0.inputStream() }
                     added += NubeFile("shot:${s.id}", f, name, f0.length(), KDrive.link(ctx, f), shotMeta(s))
                     up++
                 } catch (e: Exception) { errs += "${s.game}: ${e.message}" }
             }
             if (added.isNotEmpty()) store.addNube(added)
             // Bajar las fotos de portada que falten aquí (las elegiste en otro dispositivo)
-            for (n in photosInUse(store).keys) {
+            for (n in photosInUse(ctx, store).keys) {
                 if (Photos.best(ctx, n) != null) continue
                 val x = have["foto:$n"] ?: continue
                 try {
@@ -458,8 +513,25 @@ fun PartnerFileLink(itemId: Long, kind: Kind, always: Boolean = false) {
 }
 
 class NubeWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
+    /**
+     * Mientras sube, en primer plano con su aviso: así Android le deja pasar de los 10 minutos de un trabajo normal
+     * (un libro de 700 MB). Si Android no lo deja (la app ya estaba de fondo), sigue como trabajo normal.
+     */
+    private suspend fun aviso(text: String, pct: Int) {
+        val nm = applicationContext.getSystemService(android.app.NotificationManager::class.java)
+        if (android.os.Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel("nube") == null)
+            nm.createNotificationChannel(android.app.NotificationChannel("nube", "Subidas a tu nube", android.app.NotificationManager.IMPORTANCE_LOW))
+        val n = androidx.core.app.NotificationCompat.Builder(applicationContext, "nube")
+            .setSmallIcon(android.R.drawable.stat_sys_upload).setContentTitle("Subiendo a tu nube").setContentText(text)
+            .setProgress(100, pct, false).setOngoing(true).setOnlyAlertOnce(true).setSilent(true).build()
+        val info = if (android.os.Build.VERSION.SDK_INT >= 29) androidx.work.ForegroundInfo(4711, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            else androidx.work.ForegroundInfo(4711, n)
+        setForeground(info)
+    }
+
     override suspend fun doWork(): Result {
-        val msg = NubeSync.run(applicationContext)
+        var fg = true
+        val msg = NubeSync.run(applicationContext) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } }
         return if (msg.startsWith("falló") && runAttemptCount < 3) Result.retry() else Result.success()
     }
 }
@@ -506,7 +578,8 @@ fun NubeSettings(say: (String) -> Unit) {
         }
         Plegado("Todas, salvo las que quites de la nube al verlas. Normalmente las sube el PC al hacerlas; desde aquí se suben las que falten.")
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button({ scope.launch { say(NubeSync.run(ctx)) } }, enabled = !NubeSync.running, shape = pillShape()) { Text(if (NubeSync.running) "Sincronizando…" else "Sincronizar ahora") }
+            // En segundo plano (con su aviso): no se corta aunque salgas de aquí o cierres la app
+            Button({ NubeSync.enqueue(ctx); say("Sincronizando con tu nube en segundo plano") }, enabled = !NubeSync.running, shape = pillShape()) { Text(if (NubeSync.running) "Sincronizando…" else "Sincronizar ahora") }
             OutlinedButton({ KDrive.forget(ctx); on = false; token = ""; say("Nube desconectada (lo subido sigue en tu kDrive)") }, shape = pillShape()) { Text("Desconectar") }
         }
     }
