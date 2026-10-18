@@ -142,6 +142,9 @@
       cuerpo: [h('div.arte-cabeza', pestanas, actual), disp, estado, h('div.arte-scroll.desplaza', rejilla, h('div.fila-botones', mas))],
       acciones: [
         f.archivo ? { texto: 'Desde un archivo', fn: desdeArchivo } : null,
+        f.desdeNube && D.nubeOn() ? { texto: 'De tu nube', fn: () => RV.nubeElegir(async (x) => {
+          try { poner(await f.desdeNube(tipo, x), null, 'Imagen puesta'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
+        }) } : null,
         f.url ? { texto: 'Pegar una dirección', fn: pegarDireccion } : null,
         { texto: 'Quitar esta', fn: () => poner(null, null, 'Imagen quitada') },
         f.equivocado ? { texto: 'Juego equivocado', fn: (d) => { d.cerrar(); f.equivocado(); } } : null,
@@ -163,6 +166,8 @@
       listar: (t, p) => api.sgdbAssets(key, t, null, p),
       poner: async (t, src) => actualiza(await api.setArt(key, t, src)),
       equivocado: () => RV.juegoEquivocado(key),
+      // Una imagen de tu nube: se baja aquí y se pone como desde un archivo (y como tal se sube a la carpeta del juego)
+      desdeNube: async (t, x) => (await api.fotoImportar(x.id, { nombre: x.name })).file,
       // La foto que pusiste en el móvil en su ficha (portada o fondo) se puede traer como imagen del lanzador
       fotoDe: (t) => { const fi = RV.fichaDeJuego(juego(key) || g0); const campo = t === 'wide' ? 'hero' : t; return fi && fi.item ? fi.item[campo] || '' : ''; },
       traer: async (dev, nombre, t) => { const r = await api.fotoFetch(dev, nombre, { key, type: t }); if (r.game) actualiza(r.game); return r; },
@@ -174,8 +179,11 @@
   RV.arteFicha = (kind, t, item0) => {
     const fresca = () => D.buscar(kind, t, item0.id) || item0;
     const tipos = [['cover', 'Portada'], ['hero', 'Fondo'], ['logo', 'Logo']];
+    // Una foto tuya (de un archivo o de tu nube): se guarda aquí como las del móvil y se sube a la carpeta de la ficha
+    const donde = () => ({ cat: kind.title, ficha: fresca().name });
     selector({
-      titulo: item0.name, tipos, url: true,
+      titulo: item0.name, tipos, url: true, archivo: true,
+      desdeNube: async (tp, x) => (await api.fotoImportar(x.id, { ...donde(), nombre: x.name })).uri,
       actual: (tp) => D.imagen(fresca()[tp]),
       fotoDe: (tp) => fresca()[tp] || '',
       traer: (dev, nombre) => api.fotoFetch(dev, nombre, null),
@@ -183,6 +191,7 @@
       listar: (tp, p) => api.ronronAssets(Number(fresca().id), tp, p),
       sinLista: kind.isGame ? null : 'Para esta ficha no hay catálogo de imágenes: pega la dirección de una imagen.',
       poner: async (tp, src) => {
+        if (src && !/^(https?|file|data|atrio):/i.test(src)) src = (await api.fotoImportar(src, donde())).uri;
         const cur = fresca();
         const next = { ...cur, [tp]: src || '' };
         const op = t === 'g' ? { op: 'saveGame', kind: kind.id, item: D.completarJuego(next) } : { op: 'savePlay', kind: kind.id, item: D.completarFicha(next) };
@@ -195,6 +204,7 @@
   // Se busca en SteamGridDB cualquier juego (el de la saga o uno suyo) y se elige una de sus portadas; o se pega una dirección.
   RV.arteSaga = (saga0) => {
     const fresca = () => D.saga(saga0.id) || saga0;
+    const dondeSaga = () => ({ cat: (D.tipo(fresca().kind == null ? 1 : Number(fresca().kind)) || { title: 'Libros' }).title, ficha: fresca().name, saga: true });
     const poner = async (src) => {
       if (!(await RV.editar({ op: 'sagaCover', id: Number(saga0.id), cover: src || '' }, null))) throw new Error('No se ha podido guardar');
     };
@@ -233,6 +243,15 @@
       cuerpo: [h('div', { style: { display: 'flex', gap: '18px', alignItems: 'flex-end' } }, h('div', { style: { flex: '1' } }, RV.campo('Buscar en SteamGridDB', input)),
         h('button.boton-tinta', { type: 'button', onclick: buscar }, 'Buscar')), msg, res],
       acciones: [
+        { texto: 'Desde un archivo', fn: async (x) => {
+          const p = await api.pickFile({ title: 'Elegir una imagen', filters: [{ name: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }] });
+          if (!p) return;
+          x.cerrar();
+          try { await poner((await api.fotoImportar(p, dondeSaga())).uri); RV.aviso('Portada puesta'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
+        } },
+        D.nubeOn() ? { texto: 'De tu nube', fn: (x) => { x.cerrar(); RV.nubeElegir(async (it) => {
+          try { await poner((await api.fotoImportar(it.id, { ...dondeSaga(), nombre: it.name })).uri); RV.aviso('Portada puesta'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
+        }); } } : null,
         { texto: 'Pegar una dirección', fn: (x) => { x.cerrar(); pegarSaga(); } },
         fresca().cover ? { texto: 'Volver a la automática', fn: async (x) => { x.cerrar(); await poner(''); RV.aviso('Portada automática'); } } : null,
         'hueco', { texto: 'Cancelar', fn: (x) => x.cerrar() }],
@@ -253,6 +272,43 @@
       inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(x); } });
     }
     if (saga0.name) buscar();
+  };
+
+  // ---------------------------------------------------------------- Elegir una imagen de tu nube (kDrive)
+  // Carpetas y miniaturas, empezando en «Mi carpeta/Atrio»; al elegir una, se llama a elegido({ id, name })
+  RV.nubeElegir = (elegido) => {
+    const rejilla = h('div.arte-rejilla.cover');
+    const carpetas = h('div.fila-botones');
+    const ruta = h('p.versal');
+    const estado = h('p.texto.arte-estado', 'Abriendo tu nube…');
+    const pila = [];
+    let d = null;
+    async function abrir(id, nombre, volver) {
+      estado.textContent = 'Abriendo…';
+      rejilla.replaceChildren(); carpetas.replaceChildren();
+      try {
+        const r = await api.nubeLista(id || 0);
+        if (volver) pila.pop(); else pila.push({ id: r.id, nombre: nombre || 'Atrio' });
+        ruta.textContent = pila.map((x) => x.nombre).join(' / ');
+        if (pila.length > 1) carpetas.append(h('button.enlace.acento', { type: 'button', onclick: () => abrir(pila[pila.length - 2].id, null, true) }, '← Atrás'));
+        else if (r.id !== r.home) carpetas.append(h('button.enlace', { type: 'button', onclick: () => { pila.length = 0; abrir(r.home, 'Mi carpeta'); } }, '↑ Mi carpeta'));
+        for (const x of r.items.filter((i) => i.dir)) carpetas.append(h('button.enlace', { type: 'button', onclick: () => abrir(x.id, x.name) }, `▸ ${x.name}`));
+        const imgs = r.items.filter((i) => i.img);
+        estado.textContent = imgs.length ? '' : 'Aquí no hay imágenes.';
+        for (const x of imgs) {
+          const img = h('img', { alt: x.name, loading: 'lazy', decoding: 'async' });
+          const b = h('button.arte-opcion', { type: 'button', title: x.name, onclick: () => { if (d) d.cerrar(); elegido(x); } }, img, h('span.versal', x.name));
+          rejilla.append(b);
+          api.nubeMiniatura(x.id).then((u) => { if (u) img.src = u; }).catch(() => {});
+        }
+      } catch (e) { estado.textContent = RV.limpiaError(e); }
+    }
+    d = RV.dialogo({
+      ante: 'Tu nube (kDrive)', titulo: 'Elegir una imagen', ancho: true,
+      cuerpo: [ruta, carpetas, estado, h('div.arte-scroll.desplaza', rejilla)],
+      acciones: ['hueco', { texto: 'Cancelar', fn: (x) => x.cerrar() }],
+    });
+    abrir(0, 'Atrio');
   };
 
   // LB / RB con el selector abierto (lo llama app.js)

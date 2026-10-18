@@ -409,8 +409,10 @@ fun MagPage(
                             Tool("ELEGIR DE MIS ARCHIVOS →", accent = true) { pick(true, use) }
                             Spacer(Modifier.height(12.dp))
                             Tool("DESDE LA GALERÍA →") { pick(false, use) }
+                            val nube = NubeHub.pickFromCloud
+                            if (nube != null) { Spacer(Modifier.height(12.dp)); Tool("DE TU NUBE →") { nube(use) } }
                             Spacer(Modifier.height(12.dp))
-                            Text("Se guarda en este móvil: tu pareja y el PC no la verán. Luego puedes encuadrarla.", color = Muted, fontSize = 12.sp)
+                            Text(if (nube != null) "Se guarda en este móvil y en tu nube, en la carpeta de esta ficha. Luego puedes encuadrarla." else "Se guarda en este móvil: tu pareja y el PC no la verán. Luego puedes encuadrarla.", color = Muted, fontSize = 12.sp)
                         }
                         l == null -> Text("Cargando…", color = Muted)
                         l.isEmpty() -> Text(err.ifBlank { "No hay imágenes de este tipo." }, color = Muted)

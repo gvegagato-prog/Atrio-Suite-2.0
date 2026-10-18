@@ -283,6 +283,10 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
         fotoList: async () => window.__fotos || {},
         fotoFetch: async (dev, name, dest) => { (window.__traidas ||= []).push([dev, name, dest]); window.__fotos = { [name.replace(/\.[^.]+$/, '')]: p.games[1].art.cover }; return { w: 4000, h: 3000, orig: true, msg: 'Foto original (4000×3000)', names: window.__fotos }; },
         ronronAssets: async (id, type) => ({ sgdbId: id, items: [{ id: 1, url: `https://cdn.example/${type}.png`, thumb: p.games[0].art.cover, width: 600, height: 900 }] }), patchConfig: async (x) => { Object.assign(p.config, x); return p; },
+        // Tu nube: una carpeta con una imagen; importarla devuelve la dirección de foto del móvil
+        nubeLista: async (id) => (id ? { id, home: 2, items: [{ id: 77, name: 'fondo.png', img: true }] } : { id: 10, home: 2, items: [{ id: 11, name: 'Videojuegos', dir: true }, { id: 76, name: 'portada.jpg', img: true }] }),
+        nubeMiniatura: async () => p.games[0].art.cover,
+        fotoImportar: async (src, donde) => { (window.__importadas ||= []).push([src, donde]); return { uri: 'file:///data/user/0/com.gonzalo.gamerate/files/covers/foto_42.jpg', file: '/tmp/foto_42.png' }; },
         launch: async (k) => { (window.__lanzados ||= []).push(k); return {}; }, switchUi: n, toggleFullscreen: n, minimize: n, quit: n, rescan: async () => p,
         override: async (key, patch) => { const g = p.games.find((x) => x.key === key); Object.assign(g, patch); return { ...g }; },
         power: async (a) => { window.__energia = a; },
@@ -402,7 +406,22 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     await page.click('#capa .arte-opcion'); await page.waitForTimeout(400);
     const ed = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
     ok(ed && ed.op === 'saveGame' && /cover\.png$/.test(ed.item.cover), `juegos: cambiar la portada de un juego no instalado la guarda en la cuenta (${ed && ed.item && ed.item.cover})`);
+    // Con tu nube conectada: «De tu nube» abre tu kDrive; elegir una imagen la pone con dirección de foto del móvil
+    await page.evaluate(() => { window.RV.D.setPc({ config: { ...window.RV.D.config(), nube: { token: 't', drive: '1' } } }); });
     await btn(B); await page.waitForTimeout(250);
+    await btn(Y); await page.waitForTimeout(300);
+    await page.click('#capa button:has-text("Imágenes de la ficha")'); await page.waitForTimeout(500);
+    const accs = await page.evaluate(() => [...document.querySelectorAll('#capa .dialogo button')].map((b) => b.innerText).join('|'));
+    ok(/Desde un archivo/i.test(accs) && /De tu nube/i.test(accs), `nube: la ficha ofrece «Desde un archivo» y «De tu nube» (${accs.slice(0, 120)})`);
+    await page.click('#capa button:has-text("De tu nube")'); await page.waitForTimeout(500);
+    await page.click('#capa button:has-text("Videojuegos")'); await page.waitForTimeout(400);
+    await page.click('#capa .arte-opcion[title="fondo.png"]'); await page.waitForTimeout(500);
+    const imp = await page.evaluate(() => (window.__importadas || []).slice(-1)[0] || null);
+    const ed2 = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
+    ok(imp && imp[0] === 77 && imp[1].nombre === 'fondo.png' && imp[1].cat === 'Videojuegos' && /Witcher/.test(imp[1].ficha), `nube: se importa la imagen elegida para la carpeta de su ficha (${JSON.stringify(imp)})`);
+    ok(ed2 && ed2.op === 'saveGame' && /covers\/foto_42\.jpg$/.test(ed2.item.cover), `nube: la ficha queda con la foto (${ed2 && ed2.item && ed2.item.cover})`);
+    // Se cierran los diálogos que queden (el selector y las opciones) y se sigue como antes
+    for (let i = 0; i < 4 && await page.evaluate(() => !!document.querySelector('#capa .dialogo')); i++) { await btn(B); await page.waitForTimeout(250); }
     await btn(RB); await page.waitForTimeout(300);
     await btn(RB); await page.waitForTimeout(500);
     e = await estado();

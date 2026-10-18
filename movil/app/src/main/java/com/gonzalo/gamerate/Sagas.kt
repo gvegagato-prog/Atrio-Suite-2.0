@@ -362,6 +362,7 @@ fun SagaScreen(
                         }
                     }
                     SagaCoverButton("⌕", "BUSCAR") { searching = true }
+                    NubeHub.pickFromCloud?.let { nube -> SagaCoverButton("☁", "TU NUBE") { nube { onSave(saga.copy(cover = it)) } } }
                     SagaCoverButton("+", "GALERÍA") {
                         pick.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }

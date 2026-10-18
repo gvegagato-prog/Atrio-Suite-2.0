@@ -72,7 +72,8 @@ class FakeKDrive(private val drive: String = "777", private val token: String = 
         val denied = err(403, "You do not have the required permissions")
         synchronized(files) {
             if (method == "GET") id("""^/files/(\d+)/files$""")?.toLong()?.let { d ->
-                return ok(JSONArray().apply { files.values.filter { it.parent == d }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("type", if (it.dir) "dir" else "file").put("visibility", it.visibility)) } })
+                return ok(JSONArray().apply { files.values.filter { it.parent == d }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("type", if (it.dir) "dir" else "file").put("visibility", it.visibility)
+                    .put("extension_type", if (it.dir) "" else if (Regex("(?i)\\.(png|jpe?g)$").containsMatchIn(it.name)) "image" else "unknown")) } })
             }
             if (method == "POST") id("""^/files/(\d+)/directory$""")?.toLong()?.let { d ->
                 if (d == 1L) return denied
@@ -108,6 +109,7 @@ class FakeKDrive(private val drive: String = "777", private val token: String = 
                 val u = java.util.UUID.randomUUID().toString(); links[u] = f
                 return ok(JSONObject().put("url", "https://kdrive.infomaniak.com/app/share/$drive/$u").put("file_id", f))
             }
+            if (method == "GET") id("""^/files/(\d+)/thumbnail$""")?.toLong()?.let { f -> return files[f]?.let { Res(200, it.bytes.copyOf(minOf(16, it.bytes.size))) } ?: err(404) }
             if (method == "GET") id("""^/files/(\d+)/download$""")?.toLong()?.let { f -> return files[f]?.let { Res(200, it.bytes) } ?: err(404) }
             if (method == "DELETE") id("""^/files/(\d+)$""")?.toLong()?.let { f -> files.remove(f); return ok(true) }
         }
@@ -212,6 +214,14 @@ class NubeTest {
         assertTrue(f.readBytes().contentEquals(epub.readBytes()))
         assertEquals("El nombre del viento.epub", BookFiles.name(ctx, 501))
 
+        // Quitarlo del móvil (ya está en tu nube): se borra el archivo, lo leído se queda y se puede volver a bajar
+        assertTrue(BookFiles.removeLocal(ctx, 501))
+        assertTrue("borrado", !f.exists())
+        assertEquals(null, BookFiles.get(ctx, 501))
+        assertEquals(0.42, BookFiles.progress(ctx, 501).toDouble(), 0.001)
+        assertTrue(NubeSync.fetchBook(ctx, 501))
+        assertTrue(File(Uri.parse(BookFiles.get(ctx, 501)).path!!).readBytes().contentEquals(epub.readBytes()))
+
         // Tu pareja lo copia a su Atrio desde el enlace (sin tu cuenta)
         val x = s.loadNube().first { it.k == "libro:501" }
         val otro = 777_501L
@@ -246,6 +256,28 @@ class NubeTest {
         assertTrue(k.byPath("Atrio/Videojuegos/Hades II/Portadas/foto_1.jpg") != null)
         assertTrue(k.byPath("Atrio/Videojuegos/Hades II/Portadas/foto_2.jpg") != null)
         assertTrue(k.byPath("Atrio/Videojuegos/Hades II/Imágenes/foto_3.jpg") != null)
+    }
+
+    /** El explorador de tu kDrive y una foto puesta desde el PC (dirección de foto del móvil, archivo en tu nube). */
+    @Test fun explorarYFotoDelPc() = runBlocking {
+        KDrive.save(ctx, "tok", "777")
+        val s = Store(ctx)
+        // En tu nube: Atrio/Libros/Dune/Portadas/foto_1800000000000.png (la puso el PC) y otra cosa que no es imagen
+        val png = java.io.ByteArrayOutputStream().also { Bitmap.createBitmap(30, 45, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFFAA3300.toInt()) }.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        k.files[10] = FakeKDrive.F(10, "Atrio", true, 2); k.files[11] = FakeKDrive.F(11, "Libros", true, 10)
+        k.files[12] = FakeKDrive.F(12, "Dune", true, 11); k.files[13] = FakeKDrive.F(13, "Portadas", true, 12)
+        k.files[14] = FakeKDrive.F(14, "foto_1800000000000.png", false, 13, png)
+        k.files[15] = FakeKDrive.F(15, "notas.txt", false, 10, "hola".toByteArray())
+        assertEquals(10L, KDrive.start(ctx))
+        assertEquals(listOf("Libros"), KDrive.list(ctx, 10).map { it.name }) // carpetas e imágenes; lo demás no
+        assertTrue(KDrive.list(ctx, 13).single().image)
+        // La ficha que el PC dejó con su foto: el móvil la baja y la ve
+        val uri = "file:///data/user/0/com.gonzalo.gamerate/files/covers/foto_1800000000000.jpg"
+        s.save(listOf(Game(401, "Dune", uri, 89)), 1)
+        s.addNube(listOf(NubeFile("foto:foto_1800000000000.jpg", 14, "foto_1800000000000.png", png.size.toLong())))
+        val m = NubeSync.run(ctx)
+        assertTrue(m, m.contains("1 bajado"))
+        assertTrue(Photos.here(ctx, uri))
     }
 
     @Test fun capturas() = runBlocking {

@@ -771,6 +771,9 @@ fun App(
     }
     // La pestaña «Archivo» de las imágenes de las casillas de la revista
     SideEffect { MagImages.pick = { files, cb -> pickImage(files, cb) } }
+    // De tu nube: el explorador de tu kDrive (con la nube conectada)
+    var nubePick by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    SideEffect { NubeHub.pickFromCloud = if (KDrive.on(ctx) && !pv) ({ cb -> nubePick = cb }) else null }
 
     // ---- Cambiar entre tu app y la de tu pareja ----
     fun togglePartner() {
@@ -1592,6 +1595,9 @@ fun App(
         if (shareUrl.isNotEmpty()) {
             if (!store.paired) { LaunchedEffect(shareUrl) { say("Para guardar webs en tus juegos del PC, entra antes en tu cuenta"); onShareHandled() } }
             else ShareToGameDialog(shareUrl, shareTitle, onDismiss = { onShareHandled() }, say = { say(it) })
+        }
+        nubePick?.let { cb ->
+            NubePicker(onPick = { url -> nubePick = null; cb(url); NubeSync.enqueue(ctx) }, onDismiss = { nubePick = null })
         }
         sagaAdd?.let { (id, kid) ->
             val ak = myKinds.find { it.id == kid } ?: GAMES

@@ -61,7 +61,9 @@ function create({ drive = '777', token = 'tok' } = {}) {
     if (m[2] !== drive) return err(res, 404, 'drive_not_found');
     const p = m[3];
     if (req.method === 'GET' && (x = p.match(/^\/files\/(\d+)\/files$/))) {
-      const kids = [...files.values()].filter((f) => f.parent === Number(x[1])).map(({ id, name, type, visibility }) => ({ id, name, type, visibility: visibility || '' }));
+      const kids = [...files.values()].filter((f) => f.parent === Number(x[1])).map(({ id, name, type, visibility }) => ({
+        id, name, type, visibility: visibility || '', extension_type: type === 'dir' ? '' : /\.(png|jpe?g|webp)$/i.test(name) ? 'image' : 'unknown',
+      }));
       return ok(res, kids, { has_more: false });
     }
     if (req.method === 'POST' && (x = p.match(/^\/files\/(\d+)\/directory$/))) {
@@ -108,6 +110,12 @@ function create({ drive = '777', token = 'tok' } = {}) {
       const uuid = crypto.randomUUID();
       links.set(uuid, Number(x[1]));
       return ok(res, { url: `https://kdrive.infomaniak.com/app/share/${drive}/${uuid}`, file_id: Number(x[1]), right: 'public' });
+    }
+    if (req.method === 'GET' && (x = p.match(/^\/files\/(\d+)\/thumbnail$/))) {
+      const f = files.get(Number(x[1]));
+      if (!f || !f.buf) return err(res, 404, 'file_not_found');
+      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+      return res.end(f.buf.subarray(0, 16));
     }
     if (req.method === 'GET' && (x = p.match(/^\/files\/(\d+)\/download$/))) {
       const f = files.get(Number(x[1]));

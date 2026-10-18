@@ -3,11 +3,18 @@ package com.gonzalo.gamerate
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -240,6 +247,39 @@ object KDrive {
         val fin = call(ctx, "POST", "/3/drive/$d/upload/session/$tok/finish").optJSONObject("data")
         return fin?.optJSONObject("file")?.optLong("id")?.takeIf { it > 0 } ?: throw Fail("kDrive no ha cerrado la subida")
     }
+
+    /** Una carpeta o un archivo de tu kDrive, para el explorador. */
+    class Entry(val id: Long, val name: String, val dir: Boolean, val image: Boolean)
+
+    private val IMG = Regex("""(?i)\.(jpe?g|png|webp|gif|heic|heif|avif|bmp)$""")
+
+    /** Lo que hay en una carpeta de tu kDrive: primero las carpetas y luego las imágenes (lo demás no sirve aquí). */
+    fun list(ctx: Context, dir: Long): List<Entry> {
+        val out = mutableListOf<Entry>()
+        var cursor = ""
+        do {
+            val q = if (cursor.isNotEmpty()) "?cursor=${URLEncoder.encode(cursor, "UTF-8")}" else ""
+            val o = call(ctx, "GET", "/3/drive/${drive(ctx)}/files/$dir/files$q")
+            val a = o.optJSONArray("data") ?: JSONArray()
+            for (i in 0 until a.length()) a.optJSONObject(i)?.let {
+                val dirx = it.optString("type") == "dir"
+                val img = !dirx && (it.optString("extension_type") == "image" || IMG.containsMatchIn(it.optString("name")))
+                if (dirx || img) out += Entry(it.optLong("id"), it.optString("name"), dirx, img)
+            }
+            cursor = if (o.optBoolean("has_more")) o.optString("cursor") else ""
+        } while (cursor.isNotEmpty() && out.size < 5000)
+        return out.sortedWith(compareByDescending<Entry> { it.dir }.thenBy { it.name.lowercase() })
+    }
+
+    /** Dónde empieza el explorador: «Mi carpeta/Atrio» si ya existe; si no, «Mi carpeta». */
+    fun start(ctx: Context): Long {
+        val h = home(ctx)
+        return list(ctx, h).firstOrNull { it.dir && it.name == "Atrio" }?.id ?: h
+    }
+
+    /** La miniatura de una imagen (la misma dirección que usa la app oficial). */
+    fun thumb(ctx: Context, file: Long) = "$api/2/drive/${drive(ctx)}/files/$file/thumbnail"
+    fun auth(ctx: Context) = "Bearer ${token(ctx)}"
 
     /** La web de los enlaces públicos (se cambia en las pruebas). */
     var share = "https://kdrive.infomaniak.com"
@@ -491,10 +531,91 @@ object NubeSync {
 
 /** En la app de tu pareja: su nube (la pone la app al ver la suya). */
 object NubeHub {
+    /** Elegir una imagen de tu kDrive (lo pone la app; null sin nube): la devuelve ya como foto tuya de este móvil. */
+    var pickFromCloud: (((String) -> Unit) -> Unit)? = null
     var partner by mutableStateOf<List<NubeFile>>(emptyList())
     /** Copiar a tu Atrio un libro de tu pareja (lo pone la app). */
     var copyBook: ((Long) -> Unit)? = null
     var copying by mutableStateOf(0L)
+}
+
+/**
+ * Elegir una imagen de tu kDrive: carpetas y miniaturas, empezando en «Mi carpeta/Atrio». La elegida se baja y queda
+ * como una foto tuya de este móvil (y al sincronizar se sube a la carpeta de la ficha donde la pongas).
+ */
+@Composable
+fun NubePicker(onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var path by remember { mutableStateOf<List<Pair<Long, String>>>(emptyList()) }
+    var items by remember { mutableStateOf<List<KDrive.Entry>?>(null) }
+    var msg by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    fun open(id: Long, name: String, back: Boolean = false) {
+        items = null; msg = ""
+        scope.launch {
+            try {
+                val l = withContext(Dispatchers.IO) { KDrive.list(ctx, id) }
+                path = if (back) path.dropLast(1) else path + (id to name)
+                items = l
+            } catch (e: Exception) { msg = e.message ?: "No se pudo abrir"; items = emptyList() }
+        }
+    }
+    LaunchedEffect(Unit) {
+        try { val s = withContext(Dispatchers.IO) { KDrive.start(ctx) }; path = listOf(s to "Atrio"); items = withContext(Dispatchers.IO) { KDrive.list(ctx, s) } }
+        catch (e: Exception) { msg = e.message ?: "No se pudo abrir tu nube"; items = emptyList() }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("De tu nube", fontFamily = Display) },
+        text = {
+            Column {
+                Text(path.joinToString(" / ") { it.second }.ifBlank { "Mi carpeta" }, color = Muted, fontSize = 12.sp, maxLines = 2)
+                if (path.size > 1) Text("← ATRÁS", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black,
+                    modifier = Modifier.clickable { val p = path[path.size - 2]; open(p.first, p.second, back = true) }.padding(vertical = 8.dp))
+                else Text("↑ MI CARPETA", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black,
+                    modifier = Modifier.clickable { scope.launch { runCatching { withContext(Dispatchers.IO) { KDrive.home(ctx) } }.getOrNull()?.let { h -> path = emptyList(); open(h, "Mi carpeta") } } }.padding(vertical = 8.dp))
+                if (busy) Text("Bajando la imagen…", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                if (msg.isNotEmpty()) Text(msg, color = Muted, fontSize = 13.sp)
+                val l = items
+                if (l == null) Text("Abriendo…", color = Muted)
+                else if (l.isEmpty() && msg.isEmpty()) Text("Aquí no hay carpetas ni imágenes.", color = Muted)
+                else androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                    val dirs = l.filter { it.dir }
+                    val imgs = l.filter { it.image }.chunked(3)
+                    items(dirs.size) { i ->
+                        val d = dirs[i]
+                        Text("▸ ${d.name}", fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth().clickable { open(d.id, d.name) }.padding(vertical = 10.dp))
+                    }
+                    items(imgs.size) { i ->
+                        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            imgs[i].forEach { e ->
+                                val req = remember(e.id) {
+                                    coil.request.ImageRequest.Builder(ctx).data(KDrive.thumb(ctx, e.id)).addHeader("Authorization", KDrive.auth(ctx)).crossfade(true).build()
+                                }
+                                androidx.compose.foundation.layout.Box(Modifier.weight(1f).aspectRatio(1f).background(Sand).clickable(enabled = !busy) {
+                                    busy = true
+                                    scope.launch {
+                                        val url = runCatching {
+                                            withContext(Dispatchers.IO) {
+                                                val tmp = File(ctx.cacheDir, "nube_pick_${e.id}_${e.name.replace(Regex("[^A-Za-z0-9._-]"), "_")}")
+                                                KDrive.download(ctx, e.id, tmp)
+                                                Photos.import(ctx, Uri.fromFile(tmp)).also { tmp.delete() }
+                                            }
+                                        }
+                                        busy = false
+                                        url.onSuccess { onPick(it) }.onFailure { msg = "No se pudo bajar: ${it.message}" }
+                                    }
+                                }) { coil.compose.AsyncImage(req, e.name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+                            }
+                            repeat(3 - imgs[i].size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onDismiss) { Text("Cerrar") } }
+    )
 }
 
 /** En una ficha de tu pareja: su libro, para abrirlo (y bajarlo) desde su enlace. */

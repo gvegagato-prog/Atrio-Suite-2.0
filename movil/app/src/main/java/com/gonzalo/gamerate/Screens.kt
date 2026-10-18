@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Translate
@@ -840,6 +841,15 @@ private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boo
         OutlinedButton({ onPick(false) }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
             Text("Desde la galería")
+        }
+        // Una imagen de tu kDrive (la que quieras, de cualquier carpeta)
+        val nube = NubeHub.pickFromCloud
+        if (nube != null && onArrived != null) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton({ nube { url -> onArrived(url) } }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Rounded.CloudDownload, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                Text("De tu nube")
+            }
         }
         // La foto que tiene es de otro dispositivo tuyo (la elegiste en el móvil): se puede descargar aquí, a máxima calidad
         if (onArrived != null && Photos.isLocal(now) && !Photos.here(ctx, now)) {

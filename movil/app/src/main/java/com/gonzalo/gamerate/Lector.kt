@@ -92,7 +92,9 @@ object BookFiles {
     fun progress(ctx: Context, id: Long): Float = state(ctx, id).optDouble("fraction", 0.0).toFloat()
 
     fun attach(ctx: Context, id: Long, uri: Uri) {
-        try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (e: Exception) { }
+        // Lectura y, si se puede, escritura: así luego se puede borrar del móvil cuando ya está en tu nube
+        try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+        catch (e: Exception) { try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (e2: Exception) { } }
         var name = "libro"
         ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) name = c.getString(0) ?: name
@@ -102,6 +104,24 @@ object BookFiles {
         val old = state(ctx, id)
         val o = if (old.optString("uri") == uri.toString() || !old.has("uri") || old.optString("name") == name) old else JSONObject()
         put(ctx, id, o.put("uri", uri.toString()).put("name", name).put("added", System.currentTimeMillis()))
+    }
+
+    /**
+     * Quitar el archivo de este móvil cuando ya está en tu nube: se borra (el bajado por Atrio, o el tuyo original si
+     * Android deja), y lo leído se queda para cuando lo vuelvas a bajar. Devuelve si se pudo borrar del todo.
+     */
+    fun removeLocal(ctx: Context, id: Long): Boolean {
+        val u = get(ctx, id) ?: return true
+        val uri = Uri.parse(u)
+        val gone = when (uri.scheme) {
+            "file" -> java.io.File(uri.path ?: "").let { !it.exists() || it.delete() }
+            else -> runCatching { android.provider.DocumentsContract.deleteDocument(ctx.contentResolver, uri) }.getOrDefault(false)
+        }
+        try { ctx.contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) } catch (e: Exception) { }
+        val st = state(ctx, id).apply { remove("uri"); remove("name"); remove("added") }
+        putQuiet(ctx, id, st)
+        Widgets.pedir(ctx)
+        return gone
     }
 
     fun detach(ctx: Context, id: Long) {
@@ -536,7 +556,14 @@ fun BookFileBar(id: Long, name: String) {
                     RoundIcon(Icons.Rounded.MoreVert, "Opciones del archivo") { menu = true }
                     DropdownMenu(menu, { menu = false }) {
                         DropdownMenuItem({ Text("Cambiar de archivo") }, { menu = false; pick.launch(types) }, leadingIcon = { Icon(Icons.Rounded.SwapHoriz, null) })
-                        DropdownMenuItem({ Text("Quitar el archivo") }, { menu = false; BookFiles.detach(ctx, id); tick++ }, leadingIcon = { Icon(Icons.Rounded.LinkOff, null) })
+                        // Ya en tu nube: se borra de este móvil (para liberar espacio) y se vuelve a bajar desde aquí cuando quieras
+                        val subido = KDrive.on(ctx) && Store(ctx).loadNube().any { it.k == "libro:$id" }
+                        if (subido) DropdownMenuItem({ Text("Quitar del móvil (sigue en tu nube)") }, {
+                            menu = false
+                            val ok = BookFiles.removeLocal(ctx, id); tick++
+                            android.widget.Toast.makeText(ctx, if (ok) "Borrado de este móvil; lo bajas de tu nube cuando quieras" else "Quitado de Atrio; Android no deja borrar tu archivo original (bórralo tú si quieres)", android.widget.Toast.LENGTH_LONG).show()
+                        }, leadingIcon = { Icon(Icons.Rounded.CloudDone, null) })
+                        else DropdownMenuItem({ Text("Quitar el archivo") }, { menu = false; BookFiles.detach(ctx, id); tick++ }, leadingIcon = { Icon(Icons.Rounded.LinkOff, null) })
                     }
                 }
             }

@@ -75,6 +75,21 @@ const ok = (c, t) => { console.log(`${c ? '  ✔' : '  ✘'} ${t}`); if (!c) fal
   await nube.pcArt({ key: 'steam:1145360', name: 'Hades II', sg: 1145360, type: 'cover', file: img });
   ok([...k.files.values()].filter((x) => x.name === 'Portada.png').length === 1, 'cambiarla otra vez no la duplica (versión nueva)');
 
+  // Explorar tu kDrive: empieza en «Mi carpeta/Atrio», carpetas primero y solo imágenes
+  const ex = await nube.explorar(0);
+  ok(ex.items.some((x) => x.dir && x.name === 'Videojuegos') && ex.items.every((x) => x.dir || x.img), `explorar tu nube desde Atrio (${ex.items.map((x) => x.name).join(', ')})`);
+  const vj = await nube.explorar(ex.items.find((x) => x.name === 'Videojuegos').id);
+  ok(vj.items.some((x) => x.name === 'Hades II' && x.dir), 'entrar en una carpeta');
+  const caps = await nube.explorar(k.byPath('Atrio/Videojuegos/Hades II/Capturas/otra.png').parent);
+  const im = caps.items.find((x) => x.name === 'otra.png');
+  ok(im && im.img && /^data:image\/jpeg;base64,/.test(await nube.miniatura(im.id)), 'las imágenes, con su miniatura');
+  // Una foto puesta desde el PC en una ficha (o una saga): a su carpeta, registrada como las del móvil
+  const pf = await nube.foto({ name: 'foto_1800000000000.png', buf: Buffer.from('png'), cat: 'Libros', ficha: 'Dune (Dune, #1)' });
+  ok(pf && pf.k === 'foto:foto_1800000000000.jpg' && k.byPath('Atrio/Libros/Dune/Portadas/foto_1800000000000.png'), 'foto puesta en el PC: a Atrio/Libros/Dune/Portadas, como foto del móvil');
+  await nube.foto({ name: 'foto_1800000000001.jpg', buf: Buffer.from('jpg'), cat: 'Libros', ficha: 'Dune', saga: true });
+  ok(!!k.byPath('Atrio/Libros/Sagas/Dune/Portadas/foto_1800000000001.jpg'), 'la de una saga, a Atrio/Libros/Sagas/Dune/Portadas');
+  data.nube = data.nube.filter((x) => !String(x.k).startsWith('foto:'));
+
   // Una foto de portada que elegiste en el móvil: está en tu nube y falta en este PC
   const foto = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
   const atrio = [...k.files.values()].find((x) => x.name === 'Atrio' && x.parent === 2);

@@ -159,6 +159,47 @@ async function shot({ id, name, buf, game, sg, t, w, h, mime, pc }) {
   return item;
 }
 
+// ---------------------------------------------------------------- Explorar tu kDrive (elegir una imagen de tu nube)
+const IMG = /\.(jpe?g|png|webp|gif|heic|heif|avif|bmp)$/i;
+async function explorar(dirId) {
+  const c = cfg();
+  const h = await home();
+  let id = Number(dirId) || 0;
+  if (!id) id = ((await children(h)).find((x) => x.dir && x.name === 'Atrio') || { id: h }).id; // empieza en «Mi carpeta/Atrio»
+  const o = [];
+  let cursor = '';
+  do {
+    const r = await call('GET', `/3/drive/${c.drive}/files/${id}/files${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`);
+    for (const x of r.data || []) {
+      const dir = x.type === 'dir';
+      const img = !dir && (x.extension_type === 'image' || IMG.test(x.name || ''));
+      if (dir || img) o.push({ id: Number(x.id), name: x.name, dir, img });
+    }
+    cursor = r.has_more ? r.cursor || '' : '';
+  } while (cursor && o.length < 5000);
+  o.sort((a, b) => (b.dir - a.dir) || a.name.localeCompare(b.name, 'es'));
+  return { id, home: h, items: o };
+}
+// La miniatura (la misma dirección que usa la app oficial), como data: para la revista
+async function miniatura(file) {
+  const r = await fetch(`${API}/2/drive/${cfg().drive}/files/${file}/thumbnail`, { headers: auth(cfg()) });
+  if (!r.ok) return '';
+  return `data:${r.headers.get('content-type') || 'image/jpeg'};base64,${Buffer.from(await r.arrayBuffer()).toString('base64')}`;
+}
+
+// Una foto tuya puesta desde el PC (de un archivo o de tu nube) en una ficha o una saga: a la carpeta de su ficha,
+// registrada como «foto:<nombre>» igual que las del móvil, para que el móvil la baje y la vea.
+async function foto({ name, buf, cat, ficha, saga }) {
+  if (!on()) return null;
+  const dir = saga ? `Atrio/${safe(cat)}/Sagas/${safe(ficha)}/Portadas` : carpeta(cat, ficha, 'Portadas');
+  const f = await upload(dir, name, buf);
+  const k = `foto:${name.replace(/\.[^.]+$/, '')}.jpg`;
+  const item = { id: nubeId(k), k, f, n: name, s: buf.length, updated: Date.now() };
+  await ctx.edit({ op: 'nubeAdd', items: [item] });
+  ctx.log('nube: foto subida', dir, name);
+  return item;
+}
+
 // Una imagen del lanzador que pusiste desde un archivo (portada, horizontal, fondo o logo de un juego del PC):
 // también a tu nube, a «Atrio/Videojuegos/<juego>/Portadas/Portada.png» (con el mismo nombre, versión nueva)
 const TIPO = { cover: 'Portada', wide: 'Horizontal', hero: 'Fondo', logo: 'Logo' };
@@ -205,4 +246,4 @@ async function fotos() {
 function start(c) { ctx = c; }
 function setApi(u) { API = u; homes.clear(); }
 
-module.exports = { start, on, test, shot, pcArt, fotos, nubeId, setApi, Fail };
+module.exports = { start, on, test, shot, pcArt, foto, explorar, miniatura, download, fotos, nubeId, setApi, Fail };

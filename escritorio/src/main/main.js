@@ -726,6 +726,21 @@ function setupIpc() {
     return { msg: r.msg, config: config.get() };
   });
   ipcMain.handle('nube:fotos', () => nube.fotos());
+  ipcMain.handle('nube:lista', (_e, id) => nube.explorar(id));
+  ipcMain.handle('nube:miniatura', (_e, id) => nube.miniatura(id));
+  // Una foto tuya para una ficha o una saga, de un archivo (ruta) o de tu nube (id): se guarda aquí con nombre de foto
+  // del móvil («foto_<ms>»), la ficha la guarda con la dirección que tendrá en el móvil, y se sube a tu nube
+  ipcMain.handle('foto:importar', async (_e, src, donde) => {
+    const buf = typeof src === 'number' ? await nube.download(src.valueOf()) : fs.readFileSync(String(src));
+    const ext = ((donde && donde.nombre) || String(src)).match(/\.([A-Za-z0-9]{2,5})$/)?.[1]?.toLowerCase() || 'jpg';
+    const base = `foto_${Date.now()}`;
+    mkdirp(FOTOS);
+    const file = path.join(FOTOS, `${base}.${ext}`);
+    fs.writeFileSync(file, buf);
+    send('fotos', fotoNames());
+    if (nube.on() && donde) nube.foto({ name: `${base}.${ext}`, buf, cat: donde.cat, ficha: donde.ficha, saga: !!donde.saga }).catch((e) => log('nube: foto', e.message));
+    return { uri: `file:///data/user/0/com.gonzalo.gamerate/files/covers/${base}.jpg`, file, url: fotoUrl(base) };
+  });
   // Portada, fondo y logo de SteamGridDB para una ficha nueva (URL, para que también se vean en el móvil)
   ipcMain.handle('ronron:art', (_e, sgdbId) => ronronArt(sgdbId));
   // Lista de arte de SteamGridDB para una ficha de Ronrón (para elegir portada, fondo o logo)

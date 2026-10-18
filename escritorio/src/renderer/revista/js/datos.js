@@ -13,6 +13,8 @@
   D.cuenta = () => cuenta;
   D.pc = () => pc;
   D.config = () => pc.config || {};
+  // Tu nube (kDrive) conectada en este PC
+  D.nubeOn = () => !!((D.config().nube || {}).token && (D.config().nube || {}).drive);
   // Fotos de la galería de tus otros dispositivos ya descargadas en este PC: nombre (sin extensión) → dirección
   let fotos = {};
   D.setFotos = (m) => { fotos = m || {}; };
