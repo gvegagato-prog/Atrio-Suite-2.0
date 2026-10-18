@@ -243,9 +243,14 @@ private fun RevistaHome(m: ShellModel) {
         if (best.isNotEmpty()) Column(Modifier.llega(5)) {
             Spacer(Modifier.height(28.dp))
             RevSection("Las notas más altas")
+            // La columna de los números, tan ancha como la nota más ancha (un 100 no cabía y se partía en «10» y «0»)
+            val numStyle = androidx.compose.ui.text.TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 58.sp, lineHeight = 58.sp)
+            val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val numW = with(density) { best.maxOf { measurer.measure("${it.score}", numStyle).size.width }.toDp() } + 16.dp
             best.forEach { e ->
                 Row(Modifier.fillMaxWidth().press(haptic = false) { m.open(e) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${e.score}", color = Ink2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 58.sp, lineHeight = 58.sp, modifier = Modifier.width(100.dp))
+                    Text("${e.score}", color = Ink2, style = numStyle, maxLines = 1, softWrap = false, modifier = Modifier.width(maxOf(numW, 100.dp)))
                     Column(Modifier.weight(1f)) {
                         FitTitle(e.name, 20.sp, 23.sp, color = Ink2, fontWeight = FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(kindShort(e.kind).uppercase(), color = Red2, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)

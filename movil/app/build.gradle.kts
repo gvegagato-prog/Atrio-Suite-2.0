@@ -10,8 +10,8 @@ android {
         applicationId = "com.gonzalo.gamerate"
         minSdk = 29
         targetSdk = 34
-        versionCode = 61
-        versionName = "6.33"
+        versionCode = 62
+        versionName = "6.34"
         // El traductor del lector trae código nativo por procesador: móviles de 64 bits (arm64) y el emulador de pruebas (x86_64)
         // (-Pabis=arm64-v8a genera la del móvil sola, más ligera)
         ndk { abiFilters += ((project.findProperty("abis") as String?)?.split(",") ?: listOf("arm64-v8a", "x86_64")) }

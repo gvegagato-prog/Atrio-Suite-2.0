@@ -72,7 +72,7 @@ open class Capturas6Test {
         val d = LocalDate.now().toEpochDay()
         s.myName = "Gonzalo"
         s.save(listOf(
-            Game(101, "Clair Obscur: Expedition 33", cover("Clair", 0xFF8E2DE2.toInt(), 0xFF4A00E0.toInt()), 94, 96, 92, 98, 90, creator = "Sandfall Interactive", end = d - 20, fav = true),
+            Game(101, "Clair Obscur: Expedition 33", cover("Clair", 0xFF8E2DE2.toInt(), 0xFF4A00E0.toInt()), 100, 100, 100, 100, 100, creator = "Sandfall Interactive", end = d - 20, fav = true),
             Game(102, "Hades II", cover("Hades", 0xFFE96443.toInt(), 0xFF904E95.toInt()), 91, creator = "Supergiant", end = d - 60),
             Game(103, "Hollow Knight: Silksong", cover("Silk", 0xFF134E5E.toInt(), 0xFF71B280.toInt()), 88, creator = "Team Cherry", end = d - 3),
             Game(104, "Balatro", cover("Balatro", 0xFFDA4453.toInt(), 0xFF89216B.toInt()), 85, creator = "LocalThunk", end = d - 100),
