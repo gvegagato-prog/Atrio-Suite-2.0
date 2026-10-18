@@ -927,6 +927,7 @@ fun App(
         val cur = screen
         when {
             cur is Screen.ShotView -> screen = cur.back
+            cur is Screen.MassScore -> screen = cur.back
             screen is Screen.Settings -> screen = Screen.Profile
             screen !is Screen.Home -> atras()
             dest != 0 -> go(0)
@@ -1203,6 +1204,11 @@ fun App(
                     onSpecial = { y -> especialYear = y }
                 ) { screen = Screen.Home }
 
+                is Screen.MassScore -> MassScoreScreen(
+                    myKinds, { k -> gamesOf(k) },
+                    onSave = { k, g -> setGames(k, gamesOf(k).map { if (it.id == g.id) g else it }) }
+                ) { screen = s.back }
+
                 is Screen.Quiz -> QuizScreen(
                     s.domain, store, mine = (when (s.domain) { 0 -> listOf(GAMES); 1 -> listOf(BOOKS); else -> myKinds.filter { it.isMovie || it.isTv } })
                         .flatMap { k -> gamesOf(k).map { it.name } + playsOf(k).map { it.name } }.toSet(),
@@ -1216,6 +1222,7 @@ fun App(
                     onStyle = { Skin.open = true },
                     onSettings = { screen = Screen.Settings },
                     onSuite = { screen = Screen.Suite },
+                    onMassScores = { screen = Screen.MassScore(Screen.Profile) },
                     goalGames = goalG, goalBooks = goalB,
                     onGoal = { k, v ->
                         val nv = v.coerceIn(0, 999)
@@ -1279,6 +1286,7 @@ fun App(
                         }
                     },
                     importMsg = importMsg,
+                    onMassScores = { screen = Screen.MassScore(Screen.Settings) },
                     onGoodreads = { if (importing) say("Ya hay una importación en marcha") else goodreads.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/octet-stream", "*/*")) },
                     onBookmory = { if (importing) say("Ya hay una importación en marcha") else bookmory.launch(arrayOf("application/zip", "application/x-zip-compressed", "text/plain", "application/octet-stream", "*/*")) },
                     steamKey = store.steamKey, steamUser = store.steamUser,

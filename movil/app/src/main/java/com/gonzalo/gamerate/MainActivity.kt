@@ -66,6 +66,8 @@ sealed interface Screen {
     class Quiz(val domain: Int) : Screen
     /** Una saga: sus libros, en orden. */
     class Saga(val id: Long) : Screen
+    /** Cambiar notas en masa (desde Perfil o Ajustes); [back] es adonde se vuelve. */
+    class MassScore(val back: Screen) : Screen
 }
 
 class MainActivity : ComponentActivity() {

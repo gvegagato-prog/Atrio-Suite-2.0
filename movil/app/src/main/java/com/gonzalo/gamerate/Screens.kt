@@ -336,7 +336,7 @@ fun SettingsScreen(
     driveName: String?, driveInfo: String, onDriveLink: () -> Unit, onDriveRestore: () -> Unit,
     onDriveNow: () -> Unit, onDriveUnlink: () -> Unit,
     couple: @Composable () -> Unit,
-    importMsg: String = "", onGoodreads: () -> Unit = {}, onBookmory: () -> Unit = {},
+    importMsg: String = "", onGoodreads: () -> Unit = {}, onBookmory: () -> Unit = {}, onMassScores: () -> Unit = {},
     steamKey: String = "", steamUser: String = "", onSteam: (String, String) -> Unit = { _, _ -> },
     /** Tu nube (kDrive): libros, fotos y capturas en todos tus dispositivos. */
     nube: (@Composable () -> Unit)? = null,
@@ -445,6 +445,13 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
             OutlinedButton({ onSteam(sk, su) }, shape = pillShape(), enabled = sk.isNotBlank() && su.isNotBlank()) { Text("Traer horas de Steam") }
             if (importMsg.isNotEmpty() && "Steam" in importMsg) ImportNote(importMsg)
+            Spacer(Modifier.height(14.dp))
+            Text("Cambiar notas en masa", fontWeight = FontWeight.SemiBold)
+            Plegado(
+                "Para después de importar: elige libros, juegos o lo que sea (de una o de varias categorías) y te irán saliendo uno detrás de otro para cambiarles la nota. " +
+                    "«Los de estrellas» elige de golpe los que tienen notas de estrellas (20, 40, 60, 80 o 100), que es como llegan de Goodreads y Bookmory."
+            )
+            OutlinedButton(onMassScores, shape = pillShape()) { Text("Cambiar notas en masa") }
         }
 
         if (nube != null) SettingsSection("Tu nube (kDrive)", 395) { nube() }
