@@ -339,6 +339,16 @@ class ReaderActivity : ComponentActivity() {
         )
     }
 
+    /**
+     * Los ajustes con los que se abre un libro: los suyos (que viajan con él a tus otros dispositivos) encima de los
+     * de este dispositivo; así, un libro que llega de otro sin tamaño de letra ni brillo usa los de aquí.
+     */
+    private fun ajustesDe(o: JSONObject): JSONObject {
+        val base = runCatching { JSONObject(getSharedPreferences("lector", MODE_PRIVATE).getString("ajustes", "{}") ?: "{}") }.getOrElse { JSONObject() }
+        o.optJSONObject("settings")?.let { b -> for (k in b.keys()) base.put(k, b.get(k)) }
+        return base
+    }
+
     /** El fondo de cada tema del lector (el mismo que en lector.css). */
     private fun themeBg(t: String) = when (t) { "sepia" -> "#F1E6CF"; "gris" -> "#2B2D31"; "noche" -> "#121317"; "negro" -> "#000000"; else -> "#FBF8F1" }
 
@@ -414,7 +424,7 @@ class ReaderActivity : ComponentActivity() {
                 .put("goto", intent.getStringExtra("goto") ?: JSONObject.NULL)
                 .put("stats", o.optJSONObject("stats") ?: JSONObject())
                 .put("accent", accentJson())
-                .put("settings", o.optJSONObject("settings") ?: JSONObject(getSharedPreferences("lector", MODE_PRIVATE).getString("ajustes", "{}") ?: "{}"))
+                .put("settings", ajustesDe(o))
                 .put("annotations", o.optJSONArray("notes") ?: org.json.JSONArray())
                 .put("bookmarks", o.optJSONArray("marks") ?: org.json.JSONArray())
                 .toString()
@@ -573,7 +583,8 @@ fun BookFileBar(id: Long, name: String) {
             }
             Spacer(Modifier.height(10.dp))
             // Si ya lo subiste desde otro dispositivo, está en tu nube
-            val enNube = remember(tick) { if (KDrive.on(ctx)) Store(ctx).loadNube().find { it.k == "libro:$id" } else null }
+            // (sin tu kDrive en este dispositivo, se baja por su enlace)
+            val enNube = remember(tick) { Store(ctx).loadNube().find { it.k == "libro:$id" && (KDrive.on(ctx) || it.l.isNotBlank()) } }
             val scope = rememberCoroutineScope()
             var bajando by remember { mutableStateOf(false) }
             if (enNube != null) {

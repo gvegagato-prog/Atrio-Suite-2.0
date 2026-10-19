@@ -440,7 +440,7 @@ class Store(ctx: Context) {
         val skin = JSONObject()
         for ((k, v) in p.all) if (k in AJUSTES_SKIN && v != null) skin.put(k, v)
         val lector = runCatching { JSONObject(app.getSharedPreferences("lector", Context.MODE_PRIVATE).getString("ajustes", "{}") ?: "{}") }.getOrElse { JSONObject() }
-        lector.remove("brightness")
+        lector.remove("brightness"); lector.remove("size")
         return JSONObject().put("at", p.getLong("ajustesAt", 0L)).put("skin", skin).put("lector", lector)
             .put("noCloud", JSONArray((p.getStringSet("shotsNoCloud", emptySet()) ?: emptySet()).toList()))
     }
@@ -465,7 +465,7 @@ class Store(ctx: Context) {
         r.optJSONObject("lector")?.let { l ->
             val lp = app.getSharedPreferences("lector", Context.MODE_PRIVATE)
             val mine = runCatching { JSONObject(lp.getString("ajustes", "{}") ?: "{}") }.getOrElse { JSONObject() }
-            mine.opt("brightness")?.let { l.put("brightness", it) }
+            for (k in listOf("brightness", "size")) mine.opt(k)?.let { l.put(k, it) }
             lp.edit().putString("ajustes", l.toString()).apply()
         }
         // La app aplica lo nuevo enseguida (Skin y el tema están en memoria)
@@ -997,7 +997,7 @@ class Store(ctx: Context) {
     // ---- Lo leído de cada libro (posición, subrayados, notas, marcadores): viaja con la cuenta ----
     /** Copia el estado del lector de un libro a la cuenta (sin la dirección del archivo, que es de este dispositivo). */
     fun saveLectura(id: Long, st: JSONObject) {
-        val s = JSONObject(st.toString()).apply { remove("uri"); remove("name"); remove("added"); optJSONObject("settings")?.remove("brightness") }
+        val s = JSONObject(st.toString()).apply { remove("uri"); remove("name"); remove("added"); optJSONObject("settings")?.let { it.remove("brightness"); it.remove("size") } }
         val a = try { JSONArray(p.getString("lectura", "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
         val out = JSONArray()
         for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") != id) out.put(it) }
@@ -1015,8 +1015,10 @@ class Store(ctx: Context) {
             if (o.optLong("updated") <= cur.optLong("syncAt", 0L)) continue
             val s = o.optJSONObject("s") ?: continue
             for (k in listOf("uri", "name", "added")) if (cur.has(k)) s.put(k, cur.get(k))
-            // El brillo es de cada pantalla: se queda el de aquí
-            cur.optJSONObject("settings")?.opt("brightness")?.let { b -> s.optJSONObject("settings")?.put("brightness", b) }
+            // El brillo y el tamaño de letra son de cada pantalla: se quedan los de aquí (el resto de ajustes del
+            // libro, como leer un manga hacia abajo, viaja con él)
+            val loc = cur.optJSONObject("settings")
+            for (k in listOf("brightness", "size")) loc?.opt(k)?.let { v -> s.optJSONObject("settings")?.put(k, v) }
             BookFiles.putQuiet(app, id, s.put("syncAt", o.optLong("updated")))
         }
     }
@@ -1119,6 +1121,9 @@ class Store(ctx: Context) {
     fun importSync(data: String) {
         val o = JSONObject(data)
         replaceData(o)
+        // Al entrar con tu cuenta en un dispositivo nuevo: también lo leído (por dónde vas en cada libro) y tus ajustes
+        applyLecturas()
+        o.optJSONObject("ajustes")?.let { applyAjustes(it) }
         applyKeys(o.optJSONObject("keys"), onlyEmpty = true)
         o.optJSONArray("recs")?.let { p.edit().putString("recs", it.toString()).apply() }
         o.optJSONObject("reacts")?.let { p.edit().putString("reacts", it.toString()).apply() }

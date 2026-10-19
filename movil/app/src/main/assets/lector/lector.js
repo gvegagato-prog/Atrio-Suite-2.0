@@ -60,7 +60,9 @@ let paso = 'inicio'
 function fallo(e) {
     console.error('Lector: fallo en «' + paso + '»', e && (e.stack || e.message || e))
     $('#carga').classList.remove('fuera')
-    $('#carga-txt').textContent = ((e && e.message) || 'No se ha podido abrir el libro.') + ' (' + paso + ')'
+    // Dónde ha fallado (archivo y línea): si me mandas una captura, se ve a la primera qué arreglar
+    const at = String(e?.stack || '').split('\n').map(l => l.match(/([\w-]+\.m?js):(\d+)/)).find(Boolean)
+    $('#carga-txt').textContent = ((e && e.message) || 'No se ha podido abrir el libro.') + ' (' + paso + (at ? ' · ' + at[1] + ':' + at[2] : '') + ')'
     $('.gira').classList.add('oculta')
 }
 // Si algo se queda colgado, al menos se ve en qué paso

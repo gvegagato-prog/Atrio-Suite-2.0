@@ -66,6 +66,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.repeatOnLifecycle
 import java.time.LocalDate
 
 private fun now() = System.currentTimeMillis()
@@ -198,7 +199,7 @@ fun App(
     DisposableEffect(life) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_START) Suite.start(ctx, store)
-            if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) Suite.stop()
+            if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) { Suite.stop(); Account.Listening.stop() }
         }
         life.lifecycle.addObserver(obs)
         onDispose { life.lifecycle.removeObserver(obs) }
@@ -219,6 +220,23 @@ fun App(
                 // Lo leído o lo subido a tu nube (sin tocar fichas) también se sube
                 Couple.pushIfPending(store)
             }
+        }
+    }
+    // Y al instante: mientras la app está a la vista, una escucha en directo de tu cuenta. En cuanto otro dispositivo
+    // tuyo sube algo, se baja y se mezcla aquí (lo de cada 30 s queda de respaldo por si la escucha se corta).
+    LaunchedEffect(store.paired) {
+        if (!store.paired) return@LaunchedEffect
+        life.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            var force = false
+            try {
+                while (true) {
+                    val why = withContext(Dispatchers.IO) {
+                        runCatching { Account.listen(store, force) { scope.launch { try { Couple.syncOwn(store) } catch (e: Exception) { } } } }.getOrElse { "sin red" }
+                    }
+                    force = why == "auth_revoked"
+                    delay(if (force) 500 else 5000)
+                }
+            } finally { Account.Listening.stop() }
         }
     }
     // Al volver a la app, también.

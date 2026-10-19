@@ -269,6 +269,11 @@ class NubeTest {
         KDrive.save(ctx, "tok", "888")
         NubeSync.bajar(ctx, x, dest)
         assertTrue("bajado por el enlace", dest.readBytes().contentEquals(epub.readBytes()))
+        // Un dispositivo sin tu kDrive (solo con tu cuenta): baja igual por el enlace
+        KDrive.forget(ctx); dest.delete()
+        NubeSync.bajar(ctx, x, dest)
+        assertTrue("sin kDrive, por el enlace", dest.readBytes().contentEquals(epub.readBytes()))
+        KDrive.save(ctx, "tok", "888")
         // Sin enlace que valga: dice que es otro kDrive (no «revisa su número» a secas)
         val sinEnlace = x.copy(l = "https://kdrive.infomaniak.com/app/share/777/00000000-0000-0000-0000-000000000000")
         val e1 = runCatching { NubeSync.bajar(ctx, sinEnlace, dest) }.exceptionOrNull()?.message.orEmpty()

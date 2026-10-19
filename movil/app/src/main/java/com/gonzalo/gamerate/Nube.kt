@@ -329,7 +329,8 @@ object NubeSync {
     var status by mutableStateOf("")
 
     fun enqueue(ctx: Context) {
-        if (!KDrive.on(ctx)) return
+        // Sin kDrive aquí, solo si hay algo tuyo que bajar por su enlace (tus portadas)
+        if (!KDrive.on(ctx) && Store(ctx).loadNube().none { it.k.startsWith("foto:") && it.l.isNotBlank() }) return
         val req = OneTimeWorkRequestBuilder<NubeWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
         // KEEP: si ya está subiendo, que siga (antes se cortaba al abrir o cerrar la app y volvía a empezar)
@@ -391,8 +392,10 @@ object NubeSync {
 
     /** Sube lo que falte y baja lo que falte aquí. Devuelve un resumen. */
     suspend fun run(ctx: Context, foreground: (suspend (String, Int) -> Unit)? = null): String = withContext(Dispatchers.IO) {
-        if (!KDrive.on(ctx)) return@withContext "Sin nube"
+        // Sin tu kDrive en este dispositivo no se sube nada, pero lo tuyo se baja igual por sus enlaces
+        val on = KDrive.on(ctx)
         val store = Store(ctx)
+        if (!on && store.loadNube().none { it.l.isNotBlank() }) return@withContext "Sin nube"
         running = true
         var up = 0; var down = 0; val errs = mutableListOf<String>()
         try {
@@ -410,6 +413,7 @@ object NubeSync {
                 }
             }
             val added = mutableListOf<NubeFile>()
+            if (on) {
             // Libros: el archivo que tengas adjunto, con su enlace para tu pareja
             val titles = (store.load(1).map { it.id to it.name } + store.loadPlays(1).map { it.id to it.name }).toMap()
             for ((id, u) in localBooks(ctx)) {
@@ -454,6 +458,7 @@ object NubeSync {
                     up++
                 } catch (e: Exception) { errs += "${s.game}: ${e.message}" }
             }
+            }
             if (added.isNotEmpty()) store.addNube(added)
             // Bajar las fotos de portada que falten aquí (las elegiste en otro dispositivo)
             for (n in photosInUse(ctx, store).keys) {
@@ -490,9 +495,10 @@ object NubeSync {
      * token sin permiso…), por el enlace del archivo, que no depende de la cuenta. Si tampoco, el porqué de verdad.
      */
     fun bajar(ctx: Context, x: NubeFile, dest: File) {
-        val first = try { KDrive.download(ctx, x.f, dest); return } catch (e: Exception) { e }
-        if (x.l.isNotBlank()) try { KDrive.downloadShared(x.l, x.f, dest); return } catch (e: Exception) { }
-        throw KDrive.Fail(porQue(ctx, x, first))
+        val first = if (KDrive.on(ctx)) try { KDrive.download(ctx, x.f, dest); return } catch (e: Exception) { e } else null
+        var shared: Exception? = null
+        if (x.l.isNotBlank()) try { KDrive.downloadShared(x.l, x.f, dest); return } catch (e: Exception) { shared = e }
+        throw KDrive.Fail(if (first != null) porQue(ctx, x, first) else "No se pudo bajar por su enlace (${shared?.message ?: "no tiene"}); conecta tu kDrive en Ajustes → Tu nube")
     }
 
     /** Por qué no se pudo bajar: otro kDrive en este dispositivo, el archivo ya no está, o el error tal cual. */
