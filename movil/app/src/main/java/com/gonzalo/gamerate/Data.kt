@@ -511,27 +511,72 @@ class Store(ctx: Context) {
         set(v) { p.edit().putString("tmdb", v.trim()).apply() }
 
     /**
-     * Crea una sola vez las secciones de Películas y Series. Si ya tenías una categoría tuya con ese
-     * nombre, no se duplica: esa misma pasa a buscar en internet y conserva sus fichas y criterios.
+     * Deja en orden las secciones: una sola de Películas y una sola de Series (si faltan, se crean; si ya tenías una
+     * categoría tuya con ese nombre, esa misma pasa a buscar en internet y conserva sus fichas y criterios) y sin
+     * categorías repetidas. Se puede llamar las veces que haga falta: si todo está bien, no toca nada.
      */
     fun ensureMediaKinds() {
-        if (p.getBoolean("mediakinds", false)) return
+        val peli = setOf("peliculas", "pelis", "pelicula", "cine")
+        val serie = setOf("series", "serie")
         var ks = kinds
-        fun add(names: Set<String>, src: String, title: String, crit: List<String>, color: Int) {
-            if (ks.any { it.source == src }) return
-            val same = ks.firstOrNull { normName(it.title) in names && it.source.isEmpty() }
-            ks = if (same != null) {
-                ks.map { if (it.id == same.id) customKind(it.id, it.title, it.labels.drop(1), it.statuses[1], it.color, src) else it }
-            } else {
-                ks + customKind(nextKindId(), title, crit, "Viendo", color, src)
-            }
+        // 1) Una con el nombre de Películas (o Series) que busca en el sitio equivocado (p. ej. «Películas» que quedó
+        //    como Series al juntar dispositivos) vuelve a su buscador, antes de juntar repetidas
+        for ((names, src) in listOf(peli to SRC_MOVIE, serie to SRC_TV)) {
+            if (ks.any { it.source == src } || tombs.has("media:$src")) continue
+            val same = ks.firstOrNull { normName(it.title) in names && it.source != src } ?: continue
+            ks = ks.map { if (it.id == same.id) customKind(it.id, it.title, it.labels.drop(1), it.statuses[1], it.color, src) else it }
             kinds = ks
         }
-        add(setOf("peliculas", "pelis", "pelicula", "cine"), SRC_MOVIE, "Películas",
-            listOf("Guion", "Actuación", "Dirección", "Música"), 0xFF2F4B7C.toInt())
-        add(setOf("series", "serie"), SRC_TV, "Series",
-            listOf("Guion", "Personajes", "Actuación", "Ritmo"), 0xFF2E6B4F.toInt())
+        repairKinds()
+        ks = kinds
+        // 2) Las que falten, se crean
+        for ((title, src, crit, color) in listOf(
+            listOf<Any>("Películas", SRC_MOVIE, listOf("Guion", "Actuación", "Dirección", "Música"), 0xFF2F4B7C.toInt()),
+            listOf<Any>("Series", SRC_TV, listOf("Guion", "Personajes", "Actuación", "Ritmo"), 0xFF2E6B4F.toInt())
+        )) {
+            if (ks.any { it.source == src } || tombs.has("media:$src")) continue
+            @Suppress("UNCHECKED_CAST")
+            ks = ks + customKind(nextKindId(), title as String, crit as List<String>, "Viendo", color as Int, src as String)
+            kinds = ks
+        }
         p.edit().putBoolean("mediakinds", true).apply()
+    }
+
+    /**
+     * Categorías repetidas (mismo buscador de internet, o mismo nombre a mano): se juntan en la de id más bajo, con
+     * las fichas de todas. Pasaba cuando dos dispositivos creaban cada uno sus «Películas» y «Series» con los mismos
+     * números y al juntar las cuentas una categoría pisaba a otra. Devuelve cuántas juntó.
+     */
+    fun repairKinds(): Int {
+        val ks = kinds
+        fun key(k: Kind) = if (k.source.isNotEmpty()) "src:${k.source}" else "name:${normName(k.title)}"
+        val groups = ks.groupBy { key(it) }.filter { it.value.size > 1 }
+        if (groups.isEmpty()) return 0
+        val drop = HashSet<Int>()
+        val t = tombs
+        val now = System.currentTimeMillis()
+        for ((_, g) in groups) {
+            val keep = g.minByOrNull { it.id }!!
+            for (o in g) {
+                if (o.id == keep.id) continue
+                for ((a, b) in listOf(gk(keep.id) to gk(o.id), pk(keep.id) to pk(o.id))) {
+                    val x = try { JSONArray(p.getString(a, "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
+                    val y = try { JSONArray(p.getString(b, "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
+                    val have = (0 until x.length()).mapNotNull { x.optJSONObject(it)?.optLong("id") }.toSet()
+                    for (i in 0 until y.length()) y.optJSONObject(i)?.let { if (it.optLong("id") !in have) x.put(it) }
+                    p.edit().putString(a, x.toString()).remove(b).apply()
+                }
+                // Las sagas de la categoría que se va pasan a la que se queda
+                val sg = try { JSONArray(p.getString("sagas", "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
+                for (i in 0 until sg.length()) sg.optJSONObject(i)?.let { if (it.optInt("kind", 1) == o.id) it.put("kind", keep.id) }
+                p.edit().putString("sagas", sg.toString()).apply()
+                t.put("kind:${o.id}", now)
+                drop += o.id
+            }
+        }
+        tombs = t
+        kinds = ks.filter { it.id !in drop }
+        return drop.size
     }
 
     /** Clave de RAWG (estudios y recomendaciones de juegos). */
@@ -934,13 +979,19 @@ class Store(ctx: Context) {
 
     /** Id libre para una categoría nueva (nunca se reutiliza uno de una categoría borrada). */
     fun nextKindId(): Int {
-        val n = maxOf(p.getInt("kindseq", 1), kinds.maxOfOrNull { it.id } ?: 1) + 1
+        // Un número al azar (no el siguiente): dos dispositivos que crean una categoría cada uno por su cuenta no
+        // pueden acabar con el mismo id, y al juntar tus datos una pisaría a la otra
+        val used = kinds.map { it.id }.toSet() + tombs.keys().asSequence().mapNotNull { it.removePrefix("kind:").toIntOrNull() }.toSet()
+        var n: Int
+        do { n = 1000 + java.util.Random().nextInt(1_000_000_000) } while (n in used)
         p.edit().putInt("kindseq", n).apply()
         return n
     }
 
     /** Borra una categoría propia con todas sus fichas. */
     fun deleteKind(id: Int) {
+        // Si era Películas o Series y la borras tú, no vuelve a crearse sola (la marca viaja con tu cuenta)
+        kinds.find { it.id == id }?.source?.takeIf { it.isNotEmpty() }?.let { tombs = tombs.put("media:$it", System.currentTimeMillis()) }
         tombs = tombs.put("kind:$id", System.currentTimeMillis())
         kinds = kinds.filter { it.id != id }
         p.edit().remove(gk(id)).remove(pk(id)).apply()

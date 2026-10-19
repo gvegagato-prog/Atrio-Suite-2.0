@@ -171,6 +171,8 @@ fun App(
     }
 
     fun reloadAll() {
+        // Si al juntar tus dispositivos quedaron categorías repetidas (o falta Películas), se arregla aquí
+        store.ensureMediaKinds()
         games = store.load(0)
         plays = store.loadPlays(0)
         books = store.load(1)
