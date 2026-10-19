@@ -152,9 +152,9 @@ private fun RevistaHome(m: ShellModel) {
         // Las secciones de la revista, como el menú de una web: sin título, justo antes de la portada
         Box(Modifier.llega(2)) { RevistaMenu(m) }
 
-        // En portada: va pasando por lo que llevas entre manos ahora mismo (leyendo, jugando, viendo), con un fundido
+        // En portada: lo que llevas entre manos ahora mismo (leyendo, jugando, viendo). Se desliza con el dedo entre
+        // todas y, si no la tocas, pasa sola a la siguiente cada 7 s (después de deslizar, la cuenta vuelve a empezar)
         val ongoing = m.ongoing
-        var turn by remember { mutableStateOf(0) }
         val ctx = LocalContext.current
         // Las imágenes de todas, cargadas de antemano: al cambiar no se queda el hueco en blanco
         LaunchedEffect(ongoing.map { it.play.id }) {
@@ -163,29 +163,33 @@ private fun RevistaHome(m: ShellModel) {
                 if (art.isNotBlank()) coil.Coil.imageLoader(ctx).enqueue(coil.request.ImageRequest.Builder(ctx).data(art).build())
             }
         }
-        LaunchedEffect(ongoing.size) {
-            if (ongoing.size < 2) return@LaunchedEffect
-            while (true) { kotlinx.coroutines.delay(7_000); turn++ }
+        val n = ongoing.size
+        // Muchas páginas «virtuales» que dan la vuelta: de la última se pasa a la primera hacia delante, sin rebobinar
+        val vueltas = if (n > 1) n * 1000 else n
+        val pager = androidx.compose.runtime.key(n) { rememberPagerState(initialPage = if (n > 1) n * 500 else 0) { vueltas } }
+        LaunchedEffect(pager.settledPage, n) {
+            if (n < 2) return@LaunchedEffect
+            kotlinx.coroutines.delay(7_000)
+            if (!pager.isScrollInProgress) pager.animateScrollToPage(pager.settledPage + 1, animationSpec = tween(Motion.ms(700)))
         }
-        val front = ongoing.getOrNull(if (ongoing.isEmpty()) 0 else turn % ongoing.size)
-        if (front != null) Column(Modifier.llega(3)) {
+        val actual = if (n > 0) pager.currentPage % n else 0
+        val scope = rememberCoroutineScope()
+        if (n > 0) Column(Modifier.llega(3)) {
             Spacer(Modifier.height(22.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RevSection("En portada")
                 Spacer(Modifier.weight(1f))
                 // Puntos: cuántas hay y cuál se ve (tocar uno la pone)
-                if (ongoing.size > 1) Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ongoing.forEachIndexed { i, o ->
-                        Box(Modifier.size(if (o === front) 8.dp else 6.dp).clip(CircleShape).background(if (o === front) Red2 else Grey2.copy(alpha = 0.5f))
-                            .press(haptic = false) { turn = i })
+                if (n > 1) Row(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ongoing.forEachIndexed { i, _ ->
+                        Box(Modifier.size(if (i == actual) 8.dp else 6.dp).clip(CircleShape).background(if (i == actual) Red2 else Grey2.copy(alpha = 0.5f))
+                            .press(haptic = false) { scope.launch { pager.animateScrollToPage(pager.currentPage - actual + i) } })
                     }
                 }
             }
-            AnimatedContent(
-                front,
-                transitionSpec = { fadeIn(tween(Motion.ms(650))) togetherWith fadeOut(tween(Motion.ms(450))) },
-                contentKey = { it.play.id }, label = "portada"
-            ) { o ->
+            HorizontalPager(pager, Modifier.fillMaxWidth(), pageSpacing = 18.dp, verticalAlignment = Alignment.Top,
+                key = { p -> if (n > 1) p else ongoing.getOrNull(p)?.play?.id ?: p }) { page ->
+                val o = ongoing[page % n]
                 val e = ShellEntry(o.kind, o.play, null)
                 val art = e.hero.ifBlank { e.cover }
                 val imagen: @Composable (Modifier) -> Unit = { mod ->

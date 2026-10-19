@@ -21,6 +21,7 @@ import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
+import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -158,6 +159,15 @@ open class Capturas6Test {
             }
         }
         shoot("r1_portada")
+        // En portada se desliza con el dedo: de Deadlock a la siguiente (y vuelta)
+        fun veces(t: String) = rule.onAllNodesWithText(t).fetchSemanticsNodes().size
+        val antes = veces("Elden Ring Nightreign")
+        rule.onRoot().performTouchInput { swipeLeft(startX = width * 0.9f, endX = width * 0.1f, durationMillis = 250) }
+        rule.waitForIdle()
+        assertTrue("al deslizar, la portada pasa a la siguiente (${veces("Elden Ring Nightreign")} veces, antes $antes)", veces("Elden Ring Nightreign") > antes)
+        shoot("r1b_portada_deslizada")
+        rule.onRoot().performTouchInput { swipeRight(startX = width * 0.1f, endX = width * 0.9f, durationMillis = 250) }
+        rule.waitForIdle()
         rule.onRoot().performTouchInput { swipeUp() }; rule.onRoot().performTouchInput { swipeUp() }; shoot("r2_portada_abajo")
         // Las secciones están arriba del todo, antes de la portada: se vuelve arriba como haría uno
         repeat(3) { rule.onRoot().performTouchInput { swipeDown() } }; rule.waitForIdle()
