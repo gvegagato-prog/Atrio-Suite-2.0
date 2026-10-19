@@ -395,7 +395,7 @@ class Store(ctx: Context) {
     /** Tema: 0 como el sistema, 1 claro, 2 oscuro. Desde la 3.1, oscuro por defecto (lo de tu pareja va en claro). */
     var themeMode: Int
         get() = p.getInt("theme31", 2)
-        set(v) { p.edit().putInt("theme31", v).apply(); Widgets.pedir(app) }
+        set(v) { p.edit().putInt("theme31", v).apply(); ajustesCambiados(app); Widgets.pedir(app) }
 
     /** Ya has usado el doble toque para ver lo de tu pareja (para no repetir la pista). */
     var knowsDoubleTap: Boolean
@@ -433,6 +433,55 @@ class Store(ctx: Context) {
     var igdbExp: Long
         get() = p.getLong("igdbexp", 0L)
         set(v) { p.edit().putLong("igdbexp", v).apply() }
+
+    // ---- Tus ajustes en todos tus dispositivos (salvo la maqueta de cada ficha y el brillo del lector) ----
+    /** Apariencia (claro/oscuro, acento, portadas en las listas…), ajustes del lector y capturas fuera de la nube. */
+    fun ajustesJson(): JSONObject {
+        val skin = JSONObject()
+        for ((k, v) in p.all) if (k in AJUSTES_SKIN && v != null) skin.put(k, v)
+        val lector = runCatching { JSONObject(app.getSharedPreferences("lector", Context.MODE_PRIVATE).getString("ajustes", "{}") ?: "{}") }.getOrElse { JSONObject() }
+        lector.remove("brightness")
+        return JSONObject().put("at", p.getLong("ajustesAt", 0L)).put("skin", skin).put("lector", lector)
+            .put("noCloud", JSONArray((p.getStringSet("shotsNoCloud", emptySet()) ?: emptySet()).toList()))
+    }
+
+    /** Los ajustes de otro dispositivo, si son más nuevos (y las capturas fuera de la nube, de los dos). */
+    private fun applyAjustes(r: JSONObject) {
+        val nc = (p.getStringSet("shotsNoCloud", emptySet()) ?: emptySet()) + (0 until (r.optJSONArray("noCloud")?.length() ?: 0)).map { r.getJSONArray("noCloud").getString(it) }
+        p.edit().putStringSet("shotsNoCloud", nc).apply()
+        val at = r.optLong("at", 0L)
+        if (at <= p.getLong("ajustesAt", 0L)) return
+        val ed = p.edit()
+        r.optJSONObject("skin")?.let { sk ->
+            for (k in sk.keys()) if (k in AJUSTES_SKIN) when (val v = sk.get(k)) {
+                is Boolean -> ed.putBoolean(k, v)
+                is Int -> if (k == "skin_accent") ed.putLong(k, v.toLong()) else ed.putInt(k, v)
+                is Long -> ed.putLong(k, v)
+                is Number -> ed.putLong(k, v.toLong())
+                is String -> ed.putString(k, v)
+            }
+        }
+        ed.putLong("ajustesAt", at).commit()
+        r.optJSONObject("lector")?.let { l ->
+            val lp = app.getSharedPreferences("lector", Context.MODE_PRIVATE)
+            val mine = runCatching { JSONObject(lp.getString("ajustes", "{}") ?: "{}") }.getOrElse { JSONObject() }
+            mine.opt("brightness")?.let { l.put("brightness", it) }
+            lp.edit().putString("ajustes", l.toString()).apply()
+        }
+        // La app aplica lo nuevo enseguida (Skin y el tema están en memoria)
+        AjustesHub.version++
+    }
+
+    // ---- Lo que hay que subir aunque no hayas tocado ninguna ficha (lo leído, lo que está en tu nube) ----
+    /** Cuándo cambió por última vez algo de la cuenta que no es una ficha (hora de este dispositivo). */
+    var dirtyAt: Long
+        get() = p.getLong("dirtyAt", 0L)
+        set(v) { p.edit().putLong("dirtyAt", v).apply() }
+    /** Cuándo se subió por última vez todo a la cuenta (hora de este dispositivo). */
+    var pushedAt: Long
+        get() = p.getLong("pushedAt", 0L)
+        set(v) { p.edit().putLong("pushedAt", v).apply() }
+    val pendiente: Boolean get() = dirtyAt > pushedAt
 
     // ---- Estado de la copia en la nube (Firebase) ----
     /** Hora (del servidor) de la última subida comprobada. */
@@ -739,6 +788,7 @@ class Store(ctx: Context) {
             .put("0", JSONArray(p.getString("likes_0", "[]")))
             .put("1", JSONArray(p.getString("likes_1", "[]"))))
         o.put("quiz", runCatching { JSONObject(p.getString("quizzes", "{}") ?: "{}") }.getOrElse { JSONObject() })
+        o.put("ajustes", ajustesJson())
         return o.toString()
     }
 
@@ -852,6 +902,7 @@ class Store(ctx: Context) {
         ed.commit()
         applyKeys(r.optJSONObject("keys"), onlyEmpty = true)
         applyLecturas()
+        r.optJSONObject("ajustes")?.let { applyAjustes(it) }
         r.optJSONObject("goals")?.let { g ->
             val y = LocalDate.now().year
             if (goal(0, y) == 0 && g.optInt("g", 0) > 0) setGoal(0, y, g.optInt("g"))
@@ -929,7 +980,7 @@ class Store(ctx: Context) {
 
     private fun saveNube(l: List<NubeFile>) {
         val a = JSONArray(); l.forEach { a.put(nubeToJson(it)) }
-        val ed = p.edit(); writeList("nube", a, ed); ed.commit()
+        val ed = p.edit(); writeList("nube", a, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
     }
 
     fun addNube(add: List<NubeFile>) {
@@ -941,17 +992,17 @@ class Store(ctx: Context) {
 
     /** Capturas que no quieres en la nube. */
     fun shotNoCloud(id: String): Boolean = p.getStringSet("shotsNoCloud", emptySet())?.contains(id) == true
-    fun setShotNoCloud(id: String) { p.edit().putStringSet("shotsNoCloud", (p.getStringSet("shotsNoCloud", emptySet()) ?: emptySet()) + id).apply() }
+    fun setShotNoCloud(id: String) { p.edit().putStringSet("shotsNoCloud", (p.getStringSet("shotsNoCloud", emptySet()) ?: emptySet()) + id).apply(); ajustesCambiados(app) }
 
     // ---- Lo leído de cada libro (posición, subrayados, notas, marcadores): viaja con la cuenta ----
     /** Copia el estado del lector de un libro a la cuenta (sin la dirección del archivo, que es de este dispositivo). */
     fun saveLectura(id: Long, st: JSONObject) {
-        val s = JSONObject(st.toString()).apply { remove("uri"); remove("name"); remove("added") }
+        val s = JSONObject(st.toString()).apply { remove("uri"); remove("name"); remove("added"); optJSONObject("settings")?.remove("brightness") }
         val a = try { JSONArray(p.getString("lectura", "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
         val out = JSONArray()
         for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") != id) out.put(it) }
         out.put(JSONObject().put("id", id).put("s", s).put("updated", System.currentTimeMillis()))
-        val ed = p.edit(); writeList("lectura", out, ed); ed.apply()
+        val ed = p.edit(); writeList("lectura", out, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.apply()
     }
 
     /** Lleva al lector de este dispositivo lo leído en otro, si es más reciente. */
@@ -964,6 +1015,8 @@ class Store(ctx: Context) {
             if (o.optLong("updated") <= cur.optLong("syncAt", 0L)) continue
             val s = o.optJSONObject("s") ?: continue
             for (k in listOf("uri", "name", "added")) if (cur.has(k)) s.put(k, cur.get(k))
+            // El brillo es de cada pantalla: se queda el de aquí
+            cur.optJSONObject("settings")?.opt("brightness")?.let { b -> s.optJSONObject("settings")?.put("brightness", b) }
             BookFiles.putQuiet(app, id, s.put("syncAt", o.optLong("updated")))
         }
     }
@@ -1096,3 +1149,15 @@ class Store(ctx: Context) {
         if (gone.isNotEmpty()) p.edit().apply { gone.forEach { remove(it) } }.apply()
     }
 }
+
+/** Las preferencias de apariencia que viajan con tu cuenta (las de esta pantalla, como el tamaño de letra, no). */
+internal val AJUSTES_SKIN = setOf("theme31", "skin_accent", "skin_accent_id", "skin_listcovers", "skin_motion", "skin_shell", "skin_covers", "skin_docklabels")
+
+/** Cambió un ajuste que viaja con tu cuenta: se apunta la hora y queda pendiente de subir. */
+fun ajustesCambiados(ctx: Context) {
+    val now = System.currentTimeMillis()
+    ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).edit().putLong("ajustesAt", now).putLong("dirtyAt", now).apply()
+}
+
+/** Llegaron ajustes de otro dispositivo: la app los vuelve a leer. */
+object AjustesHub { private val v = androidx.compose.runtime.mutableIntStateOf(0); var version: Int get() = v.intValue; set(x) { v.intValue = x } }

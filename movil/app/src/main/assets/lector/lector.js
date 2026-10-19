@@ -100,7 +100,17 @@ async function abrir() {
     if (!st.title) $('#t-libro').textContent = (typeof view.book.metadata?.title === 'string' ? view.book.metadata.title : '') || ''
     applySettings()
     // Desde la ficha del libro se puede abrir directamente en un subrayado
-    await view.init({ lastLocation: st.goto || st.location || null, showTextStart: !st.location && !st.goto })
+    try {
+        await view.init({ lastLocation: st.goto || st.location || null, showTextStart: !st.location && !st.goto })
+    } catch (e) {
+        // La posición guardada no encaja con este archivo (llegó de otro dispositivo con otra edición, o el archivo
+        // cambió): en lugar de no abrir, se abre por el mismo porcentaje (o por el principio)
+        if (!st.goto && !st.location) throw e
+        console.warn('Lector: la posición guardada no vale en este archivo', e)
+        paso = 'mostrar la primera página (sin la posición guardada)'
+        if (st.fraction > 0 && st.fraction < 1) await view.goToFraction(st.fraction)
+        else await view.renderer.next()
+    }
     paso = 'listo'
     // Leyendo hacia abajo, los botones de volumen no pasan página (son el volumen de siempre)
     try { A.volumeKeys?.(!haciaAbajo()) } catch (e) { }

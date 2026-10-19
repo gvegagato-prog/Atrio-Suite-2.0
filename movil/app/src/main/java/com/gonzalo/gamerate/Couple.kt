@@ -173,18 +173,23 @@ object Couple {
         if (!store.paired) return@withContext
         try {
             syncOwn(store)
+            val t0 = System.currentTimeMillis()
             val data = store.syncData()
             val ts = Account.upload(store, data)
             store.cloudLast = ts
             store.ownSeen = ts
             store.cloudCount = countItems(data)
             store.cloudErr = ""
+            store.pushedAt = t0
         } catch (e: Exception) {
             store.cloudErr = e.message ?: "sin conexión"
             throw e
         }
         Unit
     }
+
+    /** Sube si hay algo sin subir que no es una ficha (lo leído en el lector, lo que se subió a tu nube). */
+    suspend fun pushIfPending(store: Store) { if (store.paired && store.pendiente) runCatching { push(store) } }
 
     /**
      * Si otro dispositivo de tu cuenta ha subido algo después de lo último que tienes, lo baja y lo mezcla

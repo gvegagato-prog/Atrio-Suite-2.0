@@ -208,12 +208,16 @@ fun App(
 
     // ---- Tu misma cuenta en otro dispositivo: lo que llegue de allí se vuelve a leer aquí ----
     LaunchedEffect(SyncBus.version) { if (SyncBus.version > 0) reloadAll() }
+    // Ajustes de otro dispositivo tuyo (apariencia, portadas en las listas…): se aplican sin reiniciar
+    LaunchedEffect(AjustesHub.version) { if (AjustesHub.version > 0) { Skin.load(ctx); Mode.themeMode = store.themeMode } }
     // Mientras la app está abierta, cada 30 s se mira (con una consulta mínima) si tu otro dispositivo ha subido algo.
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000)
             if (store.paired && life.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
                 try { Couple.syncOwn(store) } catch (e: Exception) { /* sin conexión: la próxima vez */ }
+                // Lo leído o lo subido a tu nube (sin tocar fichas) también se sube
+                Couple.pushIfPending(store)
             }
         }
     }
@@ -221,7 +225,7 @@ fun App(
     DisposableEffect(life) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_START && store.paired) {
-                scope.launch { try { Couple.syncOwn(store) } catch (e: Exception) { } }
+                scope.launch { try { Couple.syncOwn(store) } catch (e: Exception) { }; Couple.pushIfPending(store) }
             }
         }
         life.lifecycle.addObserver(obs)

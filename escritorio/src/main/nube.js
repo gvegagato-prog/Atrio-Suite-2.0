@@ -6,6 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 let API = process.env.ATRIO_KDRIVE_API || 'https://api.infomaniak.com';
+// La web de los enlaces públicos (en las pruebas, el mismo kDrive de mentira)
+let SHARE = process.env.ATRIO_KDRIVE_SHARE || 'https://kdrive.infomaniak.com';
 let ctx = null; // { config(), patch(o), edit(op), data(), log(), fotosDir, onFotos() }
 
 class Fail extends Error {}
@@ -124,6 +126,20 @@ async function download(file) {
   return Buffer.from(await r.arrayBuffer());
 }
 
+// Un archivo de la lista de la nube: con tu cuenta y, si falla (este PC conectado a otro kDrive…), por su enlace
+// público, que no depende de la cuenta (como en el móvil, NubeSync.bajar)
+async function bajar(x) {
+  try { return await download(x.f); } catch (e) {
+    const m = String(x.l || '').match(/\/app\/share\/(\d+)\/([a-z0-9-]+)/);
+    if (m) {
+      const r = await fetch(`${SHARE}/2/app/${m[1]}/share/${m[2]}/files/${x.f}/download`);
+      if (r.ok) return Buffer.from(await r.arrayBuffer());
+    }
+    if (m && cfg().drive && m[1] !== String(cfg().drive)) throw new Fail(`Este PC está conectado a otro kDrive (nº ${cfg().drive}) y el archivo está en el nº ${m[1]}`);
+    throw e;
+  }
+}
+
 // Un nombre que vale para una carpeta o un archivo en cualquier sistema (igual que NubeSync.safe en el móvil)
 const safe = (s) => String(s || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\.+$/, '').slice(0, 80).trim() || 'Sin nombre';
 // «El nombre del viento (Crónica…, #1)» → «El nombre del viento», como en el móvil
@@ -231,7 +247,7 @@ async function fotos() {
       const base = String(x.k).slice(5).replace(/\.[^.]+$/, '');
       if (!/^[A-Za-z0-9_.-]{1,80}$/.test(base) || have.has(base)) continue;
       try {
-        const buf = await download(x.f);
+        const buf = await bajar(x);
         const ext = (String(x.n).match(/\.([A-Za-z0-9]{2,5})$/) || [null, 'jpg'])[1].toLowerCase();
         fs.mkdirSync(ctx.fotosDir, { recursive: true });
         fs.writeFileSync(path.join(ctx.fotosDir, `${base}.${ext}`), buf);
@@ -244,6 +260,6 @@ async function fotos() {
 }
 
 function start(c) { ctx = c; }
-function setApi(u) { API = u; homes.clear(); }
+function setApi(u, share) { API = u; SHARE = share || u; homes.clear(); }
 
 module.exports = { start, on, test, shot, pcArt, foto, explorar, miniatura, download, fotos, nubeId, setApi, Fail };

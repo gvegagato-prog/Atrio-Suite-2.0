@@ -102,6 +102,14 @@ const ok = (c, t) => { console.log(`${c ? '  ✔' : '  ✘'} ${t}`); if (!c) fal
   ok(fotosAvisadas === 1, 'la revista se entera de la foto nueva');
   ok((await nube.fotos()) === 0, 'la segunda vez no la vuelve a bajar');
 
+  // Este PC conectado a otro kDrive: la foto baja igual, por su enlace público
+  const r2 = await (await fetch(`http://127.0.0.1:${k.server.address().port}/2/drive/777/files/9001/link`, { method: 'POST', headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' }, body: '{}' })).json();
+  data.nube.find((x) => x.f === 9001).l = r2.data.url;
+  fs.rmSync(bajada);
+  conf.nube.drive = '888';
+  ok((await nube.fotos()) === 1 && fs.existsSync(bajada), 'conectado a otro kDrive: la baja por el enlace');
+  conf.nube.drive = '777';
+
   k.server.close();
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log(fallos ? `${fallos} fallos` : 'Todo bien');

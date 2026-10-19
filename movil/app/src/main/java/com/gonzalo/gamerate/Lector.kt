@@ -373,6 +373,14 @@ class ReaderActivity : ComponentActivity() {
         if (::web.isInitialized) web.evaluateJavascript("window.atrioPausa && atrioPausa(false)", null)
     }
 
+    // Al dejar de leer (cerrar el libro, apagar la pantalla, cambiar de app), lo leído sube a tu cuenta: en la tablet
+    // sigues por la misma página sin tener que tocar nada más
+    override fun onStop() {
+        super.onStop()
+        val app = applicationContext
+        Thread { kotlinx.coroutines.runBlocking { Couple.pushIfPending(Store(app)) } }.start()
+    }
+
     override fun onDestroy() {
         tts?.stop(); tts?.shutdown(); tts = null
         (web.parent as? android.view.ViewGroup)?.removeView(web)
@@ -402,6 +410,7 @@ class ReaderActivity : ComponentActivity() {
                 .put("title", intent.getStringExtra("name") ?: "")
                 .put("file", name)
                 .put("location", o.optString("cfi").ifBlank { null } ?: JSONObject.NULL)
+                .put("fraction", o.optDouble("fraction", 0.0))
                 .put("goto", intent.getStringExtra("goto") ?: JSONObject.NULL)
                 .put("stats", o.optJSONObject("stats") ?: JSONObject())
                 .put("accent", accentJson())
@@ -419,6 +428,7 @@ class ReaderActivity : ComponentActivity() {
         fun saveSettings(json: String) {
             edit { it.put("settings", JSONObject(json)) }
             getSharedPreferences("lector", MODE_PRIVATE).edit().putString("ajustes", json).apply()
+            ajustesCambiados(this@ReaderActivity)
         }
 
         @JavascriptInterface

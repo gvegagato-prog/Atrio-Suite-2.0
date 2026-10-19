@@ -317,6 +317,9 @@ object KDrive {
         if (!tmp.renameTo(dest)) { tmp.copyTo(dest, true); tmp.delete() }
     }
 
+    /** ¿Responde tu kDrive con este token? (lista su raíz; falla si el número o el token no valen). */
+    fun reach(ctx: Context) { children(ctx, 1) }
+
     fun delete(ctx: Context, file: Long) { call(ctx, "DELETE", "/2/drive/${drive(ctx)}/files/$file") }
 }
 
@@ -459,7 +462,7 @@ object NubeSync {
                 try {
                     status = "Bajando la foto ${x.n}…"
                     val tmp = File(ctx.cacheDir, "nube_${x.f}")
-                    KDrive.download(ctx, x.f, tmp)
+                    bajar(ctx, x, tmp)
                     Photos.saveArrived(ctx, n, tmp.readBytes(), Photos.mimeOf(File(x.n)))
                     tmp.delete()
                     down++
@@ -482,11 +485,33 @@ object NubeSync {
     fun shotMeta(s: Shot): JSONObject = JSONObject().put("game", s.game).put("sg", s.sg).put("t", s.time).put("w", s.w).put("h", s.h)
         .put("mime", s.mime).put("pc", s.pc).put("by", s.by)
 
+    /**
+     * Baja un archivo de tu nube. Primero con tu cuenta; si falla (este dispositivo conectado a otro kDrive, un
+     * token sin permiso…), por el enlace del archivo, que no depende de la cuenta. Si tampoco, el porqué de verdad.
+     */
+    fun bajar(ctx: Context, x: NubeFile, dest: File) {
+        val first = try { KDrive.download(ctx, x.f, dest); return } catch (e: Exception) { e }
+        if (x.l.isNotBlank()) try { KDrive.downloadShared(x.l, x.f, dest); return } catch (e: Exception) { }
+        throw KDrive.Fail(porQue(ctx, x, first))
+    }
+
+    /** Por qué no se pudo bajar: otro kDrive en este dispositivo, el archivo ya no está, o el error tal cual. */
+    internal fun porQue(ctx: Context, x: NubeFile, e: Exception): String {
+        val suyo = Regex("""/app/share/(\d+)/""").find(x.l)?.groupValues?.get(1)
+        val aqui = KDrive.drive(ctx)
+        if (suyo != null && aqui.isNotBlank() && suyo != aqui)
+            return "Este dispositivo está conectado a otro kDrive (nº $aqui) y el archivo está en el nº $suyo: cámbialo en Ajustes → Tu nube"
+        if (e is KDrive.Fail && e.message?.startsWith("No encuentro") == true)
+            return if (runCatching { KDrive.reach(ctx) }.isSuccess) "Ese archivo ya no está en tu kDrive (¿lo borraste o lo moviste?): vuelve a adjuntarlo desde el dispositivo donde lo tengas"
+            else "No encuentro tu kDrive (nº $aqui) con este token: revísalo en Ajustes → Tu nube"
+        return e.message ?: "error"
+    }
+
     /** Baja un libro de la nube y lo deja adjunto. */
     suspend fun fetchBook(ctx: Context, id: Long): Boolean = withContext(Dispatchers.IO) {
         val x = Store(ctx).loadNube().find { it.k == "libro:$id" } ?: return@withContext false
         val dest = File(File(ctx.filesDir, "libros"), "$id.${x.n.substringAfterLast('.', "epub")}")
-        KDrive.download(ctx, x.f, dest)
+        bajar(ctx, x, dest)
         BookFiles.attachFile(ctx, id, dest, x.n)
         true
     }
@@ -509,7 +534,7 @@ object NubeSync {
             try {
                 status = "Bajando ${x.n}…"
                 val tmp = File(ctx.cacheDir, "nube_${x.f}")
-                KDrive.download(ctx, x.f, tmp)
+                bajar(ctx, x, tmp)
                 Suite.addFromCloud(x, tmp.readBytes())
                 tmp.delete()
                 n++
@@ -653,6 +678,8 @@ class NubeWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     override suspend fun doWork(): Result {
         var fg = true
         val msg = NubeSync.run(applicationContext) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } }
+        // Lo subido, a tu cuenta enseguida (aunque la app esté cerrada): así tus otros dispositivos lo ven ya
+        Couple.pushIfPending(Store(applicationContext))
         return if (msg.startsWith("falló") && runAttemptCount < 3) Result.retry() else Result.success()
     }
 }

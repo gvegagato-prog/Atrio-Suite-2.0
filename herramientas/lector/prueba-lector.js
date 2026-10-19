@@ -430,6 +430,23 @@ const log = [];
     await page.screenshot({ path: path.join(out, name + '-4-tira.png') });
     await ctx.close();
   }
+  // Una posición guardada que no encaja con este archivo (llega de otro dispositivo con otra edición): abre igual,
+  // por el mismo porcentaje, en lugar de quedarse en «mostrar la primera página»
+  {
+    book = epub;
+    const ctx = await browser.newContext({ viewport: TAM, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => log.push('pageerror ' + e.message));
+    await page.addInitScript(() => {
+      window.Atrio = new Proxy({ state: () => JSON.stringify({ title: 'Otro dispositivo', file: 'quijote.epub', location: 'epubcfi(/6/4!/4/80/3:5)', fraction: 0.6, settings: {}, annotations: [], bookmarks: [], stats: {} }) },
+        { get: (t, k) => t[k] || (() => {}) });
+    });
+    await page.goto(`http://localhost:${port}/assets/lector/index.html`);
+    await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {});
+    const abierto = !!(await page.$('#carga.fuera'));
+    ok(abierto, `posición de otro dispositivo que no encaja: abre igual (${abierto ? 'abierto' : await page.textContent('#carga-txt')})`);
+    await ctx.close();
+  }
   await browser.close();
   srv.close();
   const errs = log.filter((l) => !/favicon/.test(l));

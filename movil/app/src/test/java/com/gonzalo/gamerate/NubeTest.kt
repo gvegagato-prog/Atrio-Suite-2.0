@@ -241,6 +241,45 @@ class NubeTest {
         assertEquals(0.8, BookFiles.progress(ctx, 501).toDouble(), 0.001)
     }
 
+    /** Lo leído y lo subido a tu nube quedan pendientes de subir a la cuenta aunque no toques ninguna ficha. */
+    @Test fun pendienteDeSubir() {
+        val s = Store(ctx)
+        s.pushedAt = System.currentTimeMillis() + 1
+        assertTrue(!s.pendiente)
+        Thread.sleep(5)
+        BookFiles.put(ctx, 901, JSONObject().put("fraction", 0.3))
+        assertTrue("leer deja algo por subir", s.pendiente)
+        s.pushedAt = System.currentTimeMillis() + 1
+        Thread.sleep(5)
+        s.addNube(listOf(NubeFile("libro:901", 5, "a.epub", 10)))
+        assertTrue("lo subido a tu nube, también", s.pendiente)
+    }
+
+    /** Bajar en otro dispositivo mal conectado (otro kDrive) o cuando el archivo ya no está: el porqué de verdad. */
+    @Test fun bajarDesdeOtroDispositivo() = runBlocking {
+        KDrive.save(ctx, "tok", "777")
+        val s = Store(ctx)
+        val epub = File(ctx.cacheDir, "red.epub").apply { writeBytes(ByteArray(2 * 1024 * 1024) { (it % 13).toByte() }) }
+        s.save(listOf(Game(601, "Red Rising", "", 90)), 1)
+        BookFiles.attachFile(ctx, 601, epub, "red.epub")
+        assertTrue(NubeSync.run(ctx).startsWith("1 subido"))
+        val x = s.loadNube().first { it.k == "libro:601" }
+        val dest = File(ctx.cacheDir, "bajado.epub")
+        // La tablet del trabajo, conectada a otro kDrive (o con otro número): baja igual, por el enlace del archivo
+        KDrive.save(ctx, "tok", "888")
+        NubeSync.bajar(ctx, x, dest)
+        assertTrue("bajado por el enlace", dest.readBytes().contentEquals(epub.readBytes()))
+        // Sin enlace que valga: dice que es otro kDrive (no «revisa su número» a secas)
+        val sinEnlace = x.copy(l = "https://kdrive.infomaniak.com/app/share/777/00000000-0000-0000-0000-000000000000")
+        val e1 = runCatching { NubeSync.bajar(ctx, sinEnlace, dest) }.exceptionOrNull()?.message.orEmpty()
+        assertTrue(e1, e1.contains("otro kDrive (nº 888)") && e1.contains("nº 777"))
+        // Bien conectado, pero el archivo ya no está en el kDrive (borrado o movido)
+        KDrive.save(ctx, "tok", "777")
+        synchronized(k.files) { k.files.remove(x.f) }
+        val e2 = runCatching { NubeSync.bajar(ctx, x, dest) }.exceptionOrNull()?.message.orEmpty()
+        assertTrue(e2, e2.contains("ya no está en tu kDrive"))
+    }
+
     /** Todas las imágenes que pones tú: portada, fondo, logo y las de las casillas de la revista, en la carpeta de su ficha. */
     @Test fun imagenesTuyas() = runBlocking {
         KDrive.save(ctx, "tok", "777")
