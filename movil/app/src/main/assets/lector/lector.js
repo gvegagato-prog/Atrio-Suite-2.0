@@ -208,24 +208,42 @@ let lastTurn = null           // { t, loc }
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') }
 const saveStats = debounce(() => { try { A.saveStats(JSON.stringify(stats)) } catch (e) { } }, 4000)
 const saveSpeed = debounce(() => saveSettings(), 8000)
+// El tiempo leído: corre mientras lees y se para solo si pasan más de 5 minutos sin mover la página (o tocarla),
+// o si sales del lector, se apaga la pantalla o vas a otra app (lo avisa la app con atrioPausa). Se cuenta hasta el
+// último movimiento más esos 5 minutos como mucho, también la última página antes de cerrar.
+const PARADO = 5 * 60000
+const ahora = () => (window.__reloj ? window.__reloj() : Date.now())
+let activo = ahora(), enPausa = false
+function sumar(now) {
+    if (enPausa) return
+    const add = Math.max(0, Math.min(now - activo, PARADO))
+    activo = now
+    if (add < 1000) return
+    stats.total += add
+    const d = today()
+    stats.days[d] = (stats.days[d] || 0) + add
+    saveStats()
+}
+/** Cualquier movimiento o toque: lo de antes cuenta (hasta 5 min) y el contador sigue. */
+function mueve() { sumar(ahora()) }
+window.atrioPausa = on => {
+    if (on) { sumar(ahora()); enPausa = true; try { A.saveStats(JSON.stringify(stats)) } catch (e) { } }
+    else if (enPausa) { enPausa = false; activo = ahora() }
+}
+document.addEventListener('visibilitychange', () => window.atrioPausa(document.hidden))
+window.addEventListener('pagehide', () => window.atrioPausa(true))
+document.addEventListener('pointerdown', mueve, true)
 function track(detail) {
-    const now = Date.now()
+    const now = ahora()
     const loc = detail.location?.current
+    mueve()
     if (lastTurn && typeof loc === 'number') {
         const dt = now - lastTurn.t
-        // Solo cuenta como lectura si no has dejado el móvil (más de 10 min en una página = te fuiste)
-        if (dt > 1500 && dt < 10 * 60000 && !document.hidden) {
-            const add = Math.min(dt, 4 * 60000)
-            stats.total += add
-            const d = today()
-            stats.days[d] = (stats.days[d] || 0) + add
-            // Velocidad: lo avanzado (en bytes) entre lo tardado, si es un paso normal de página
-            const dloc = loc - lastTurn.loc
-            if (!isPDF && dloc > 0 && dloc <= 6 && dt > 4000) {
-                const bpm = dloc * LOC / (dt / 60000)
-                if (bpm > 200 && bpm < 20000) { S.speed = S.speed ? Math.round(S.speed * 0.85 + bpm * 0.15) : Math.round(bpm); saveSpeed() }
-            }
-            saveStats()
+        // Velocidad: lo avanzado (en bytes) entre lo tardado, si es un paso normal de página
+        const dloc = loc - lastTurn.loc
+        if (!isPDF && dloc > 0 && dloc <= 6 && dt > 4000 && dt < PARADO) {
+            const bpm = dloc * LOC / (dt / 60000)
+            if (bpm > 200 && bpm < 20000) { S.speed = S.speed ? Math.round(S.speed * 0.85 + bpm * 0.15) : Math.round(bpm); saveSpeed() }
         }
     }
     if (typeof loc === 'number') lastTurn = { t: now, loc }
@@ -332,6 +350,8 @@ function onLoad({ detail: { doc, index } }) {
     stl.textContent = 'html,body,body *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}'
     ;(doc.head || doc.documentElement).append(stl)
     const win = doc.defaultView
+    // Tocar la página también cuenta como que sigues leyendo (el contador de tiempo no se para)
+    doc.addEventListener("pointerdown", mueve, true)
 
     // Mantener pulsado (sin mover el dedo): la palabra de debajo. Mientras, la página NO se mueve.
     let t0 = null, holding = false, holdTimer = 0, swiped = false, held = false
@@ -906,7 +926,7 @@ function readingHtml() {
     const r = !isPDF && last ? remaining(last) : null
     const s = streak()
     return `<div class="lectura">
-        <div><b>${esc(ms2txt(stats.total))}</b><span>leído en total</span></div>
+        <div><b>${esc(ms2txt(stats.total))}</b><span>${(last?.fraction ?? 0) >= 0.99 ? 'lo has leído en' : 'leído en total'}</span></div>
         <div><b>${esc(ms2txt(stats.days[today()] || 0))}</b><span>hoy</span></div>
         ${r ? `<div><b>${esc(durTxt(r.total) || '—')}</b><span>para acabarlo${S.speed ? ' a tu ritmo' : ''}</span></div>` : ''}
         ${s > 1 ? `<div><b>${s}</b><span>días seguidos</span></div>` : ''}

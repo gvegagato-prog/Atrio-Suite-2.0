@@ -179,6 +179,21 @@ const log = [];
     ok(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')), `${name}: tocar el centro abre el menú`);
     ok(textoAntes === textoDespues, `${name}: abrir el menú no mueve el texto (${textoAntes} → ${textoDespues})`);
     await page.screenshot({ path: path.join(out, name + '-3-barras.png') });
+    // El tiempo leído: corre mientras pasas páginas, como mucho 5 min sin moverla, y nada mientras está en pausa
+    // (otra app o pantalla apagada). Con un reloj de mentira para no esperar de verdad.
+    {
+      const total = async () => { await page.evaluate(() => { window.atrioPausa(true); }); const t = await page.evaluate(() => window.__atrio.saved.stats?.total || 0); await page.evaluate(() => window.atrioPausa(false)); return t; };
+      await page.evaluate(() => { window.__t = Date.now(); window.__reloj = () => window.__t; });
+      const t0 = await total();
+      const paso = async (ms, d) => { await page.evaluate(([ms, d]) => { window.__t += ms; window.atrioPage(d); }, [ms, d]); await page.waitForTimeout(900); };
+      await paso(2 * 60000, -1);                               // 2 min en una página: cuentan
+      await paso(20 * 60000, 1);                               // 20 min sin moverla: solo 5
+      await page.evaluate(() => { window.atrioPausa(true); window.__t += 30 * 60000; window.atrioPausa(false); }); // en pausa: nada
+      await paso(60000, -1);                                   // 1 min más
+      const t1 = await total();
+      await page.evaluate(() => { delete window.__reloj; });
+      ok(t1 - t0 === 8 * 60000, `${name}: tiempo leído con tope de 5 min y sin contar la pausa (${(t1 - t0) / 60000} min, deben ser 8)`);
+    }
     // Lo que queda: páginas del capítulo (y del libro, aproximadas) en la línea de abajo
     const estado = () => page.evaluate(() => [document.querySelector('#e-izq').textContent, document.querySelector('#e-der').textContent, document.querySelector('foliate-view').renderer.pages]);
     const e0 = await estado();

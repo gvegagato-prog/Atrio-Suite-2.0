@@ -297,5 +297,11 @@ fun GameFacts(g: Game, kind: Kind) {
     if (kind.isBook && g.pages > 0) { MagFact("Páginas", "${g.pages}"); any = true }
     if (g.start > 0L) { MagFact("Empezado", fmtDay(g.start)); any = true }
     if (g.end > 0L) { MagFact("Terminado", fmtDay(g.end)); any = true }
+    // Lo que tardaste en leerlo (el tiempo que cuenta el lector de Atrio)
+    if (kind.isBook) {
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val min = remember(g.id) { readMinutes(ctx, g.id) }
+        if (min > 0) { MagFact("Lo leíste en", readTime(min)); any = true }
+    }
     if (!any) Text("Sin datos.", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 15.sp)
 }

@@ -362,6 +362,17 @@ class ReaderActivity : ComponentActivity() {
 
     private fun salir() = finish()
 
+    // El tiempo leído se para al salir a otra app o apagar la pantalla (salvo si te lo está leyendo en voz alta)
+    override fun onPause() {
+        super.onPause()
+        if (::web.isInitialized && tts?.isSpeaking != true) web.evaluateJavascript("window.atrioPausa && atrioPausa(true)", null)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::web.isInitialized) web.evaluateJavascript("window.atrioPausa && atrioPausa(false)", null)
+    }
+
     override fun onDestroy() {
         tts?.stop(); tts?.shutdown(); tts = null
         (web.parent as? android.view.ViewGroup)?.removeView(web)
@@ -598,11 +609,7 @@ fun BookFileBar(id: Long, name: String) {
             Spacer(Modifier.height(6.dp))
             val notes = st.optJSONArray("notes")?.length() ?: 0
             val readMin = (st.optJSONObject("stats")?.optLong("total") ?: 0L) / 60000L
-            val readTxt = when {
-                readMin < 1 -> null
-                readMin < 60 -> "$readMin min leyendo"
-                else -> "${readMin / 60} h${if (readMin % 60 > 0) " ${readMin % 60} min" else ""} leyendo"
-            }
+            val readTxt = if (readMin < 1) null else if (frac >= 0.99f) "leído en ${readTime(readMin)}" else "${readTime(readMin)} leyendo"
             Text(
                 listOfNotNull("${(frac * 100).toInt()} % leído", readTxt, st.optString("label").ifBlank { null }, if (notes > 0) "$notes subrayados" else null, st.optString("name")).joinToString(" · "),
                 color = Muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis
@@ -675,3 +682,9 @@ internal fun brilloLineal(g: Float): Float {
     val r = if (x <= 0.5f) (x / 0.5f) * (x / 0.5f) else kotlin.math.exp((x - 0.55991073f) / 0.17883277f) + 0.28466892f
     return (r / 12f).coerceIn(0f, 1f)
 }
+
+/** «7 h 32 min», «45 min». */
+fun readTime(min: Long): String = if (min < 60) "$min min" else "${min / 60} h${if (min % 60 > 0) " ${min % 60} min" else ""}"
+
+/** Lo que has tardado en leer un libro con el lector de Atrio (minutos; 0 si no lo has leído aquí). */
+fun readMinutes(ctx: Context, id: Long): Long = (BookFiles.state(ctx, id).optJSONObject("stats")?.optLong("total") ?: 0L) / 60000L
