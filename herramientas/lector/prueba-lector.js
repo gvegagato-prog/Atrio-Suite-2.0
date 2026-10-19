@@ -5,6 +5,20 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+// El color de un píxel de la pantalla (decodifica el PNG de la captura con zlib, sin dependencias)
+async function pixel(page, x, y) {
+  const zlib = require('zlib');
+  const b = await page.screenshot({ clip: { x, y, width: 1, height: 1 } });
+  let o = 8, w = 0, ct = 0; const idat = [];
+  while (o < b.length) {
+    const len = b.readUInt32BE(o), type = b.toString('ascii', o + 4, o + 8), d = b.subarray(o + 8, o + 8 + len);
+    if (type === 'IHDR') { w = d.readUInt32BE(0); ct = d[9]; }
+    if (type === 'IDAT') idat.push(d);
+    o += 12 + len;
+  }
+  const raw = zlib.inflateSync(Buffer.concat(idat));
+  return [raw[1], raw[2], raw[3]]; // 1×1: byte de filtro (0 en la primera fila) y luego R, G, B
+}
 const { chromium } = require(process.env.PW || 'playwright');
 // Tamaño de la pantalla (en dp): el de un móvil; LECTOR_TAM=1260x840 para la tableta
 const TAM = (() => { const [w, h] = (process.env.LECTOR_TAM || '412x860').split('x').map(Number); return { width: w, height: h }; })();
@@ -192,6 +206,15 @@ const log = [];
     await page.click('[data-theme-btn="negro"]'); await page.waitForTimeout(400);
     const negro = await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('foliate-view')).filter]);
     ok(negro[0] === 'rgb(0, 0, 0)' && (name.endsWith('epub') || /invert\(1\)/.test(negro[1])), `${name}: tema Negro, negro puro (${negro.join(' · ')})`);
+    if (name.endsWith('epub')) {
+      // Y en la pantalla de verdad, dentro de la página del libro (entre las líneas, junto al margen izquierdo)
+      await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });
+      await page.waitForTimeout(500);
+      const box = await page.evaluate(() => { const f = [...(window.__docs || [])].reverse().map((d) => d.doc.defaultView?.frameElement).find((f) => f && f.getBoundingClientRect().width > 0); const r = f.getBoundingClientRect(); return { x: Math.max(r.left, 0) + 3, y: r.top + r.height / 2 }; });
+      const px = await pixel(page, Math.round(box.x), Math.round(box.y));
+      ok(px.every((c) => c === 0), `${name}: tema Negro, el fondo de la página del libro es negro puro en pantalla (rgb ${px.join(', ')})`);
+      await page.click('#b-ajustes'); await page.waitForTimeout(500);
+    }
     await page.click('[data-theme-btn="noche"]'); await page.waitForTimeout(300);
     await page.mouse.click(X(206), Y(120)); await page.waitForTimeout(700);
     await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); });

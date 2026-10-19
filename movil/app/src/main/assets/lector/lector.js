@@ -162,6 +162,9 @@ function applySettings() {
     sinDensidad()
     lastTheme = theme()
     document.body.dataset.theme = lastTheme
+    // La página del lector, con el mismo esquema de color que el libro: si no coinciden, Chromium pinta el libro
+    // (va en un iframe) sobre un fondo opaco del modo oscuro (#121212), y con Negro se veía una caja gris
+    document.documentElement.style.colorScheme = DARK_THEMES.includes(lastTheme) ? 'dark' : 'light'
     document.documentElement.style.setProperty('--accent', DARK_THEMES.includes(lastTheme) ? ACCENT.dark : ACCENT.light)
     document.body.classList.toggle('sin-estado', !S.status)
     A.setTheme(lastTheme)
