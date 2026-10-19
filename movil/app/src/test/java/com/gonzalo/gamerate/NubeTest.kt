@@ -241,6 +241,36 @@ class NubeTest {
         assertEquals(0.8, BookFiles.progress(ctx, 501).toDouble(), 0.001)
     }
 
+    /** Una portada tuya: se sube enseguida, el otro dispositivo (aunque no tenga tu kDrive) la baja; y elegir una
+     *  imagen de tu nube no la vuelve a subir. */
+    @Test fun portadaEntreDispositivos() = runBlocking {
+        KDrive.save(ctx, "tok", "777")
+        val s = Store(ctx)
+        val dir = File(ctx.filesDir, "covers").apply { mkdirs() }
+        val foto = File(dir, "foto_1711111111111.jpg")
+        Bitmap.createBitmap(30, 40, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF884422.toInt()) }.let { b -> foto.outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 90, it) } }
+        s.save(listOf(Game(701, "Hades II", Uri.fromFile(foto).toString(), 91)), 0)
+        assertTrue("hay una foto por subir", NubeSync.fotosPorSubir(ctx))
+        NubeSync.run(ctx)
+        assertTrue(!NubeSync.fotosPorSubir(ctx))
+        val subidas = k.files.values.count { !it.dir }
+        // El otro dispositivo: sin la foto y sin tu kDrive; le llegan tus datos y la baja por su enlace
+        val datos = s.syncData()
+        dir.deleteRecursively(); KDrive.forget(ctx)
+        s.mergeRemote(datos)
+        assertEquals(1, NubeSync.bajarFotos(ctx))
+        assertTrue("la portada ya se ve", Photos.here(ctx, Uri.fromFile(foto).toString()))
+        // Elegir de tu nube esa misma imagen para otra ficha: se apunta el mismo archivo y no se sube otra copia
+        KDrive.save(ctx, "tok", "777")
+        val f = s.loadNube().first { it.k == "foto:foto_1711111111111.jpg" }.f
+        val u = NubeSync.usarDeLaNube(ctx, f, "foto_1711111111111.jpg")
+        s.save(listOf(Game(701, "Hades II", Uri.fromFile(foto).toString(), 91), Game(702, "Balatro", u, 85)), 0)
+        assertTrue("nada nuevo que subir", !NubeSync.fotosPorSubir(ctx))
+        NubeSync.run(ctx)
+        assertEquals("sin copias de más en tu kDrive", subidas, k.files.values.count { !it.dir })
+        assertEquals(f, s.loadNube().first { it.k == "foto:${Photos.nameOf(u)}" }.f)
+    }
+
     /** Lo leído y lo subido a tu nube quedan pendientes de subir a la cuenta aunque no toques ninguna ficha. */
     @Test fun pendienteDeSubir() {
         val s = Store(ctx)

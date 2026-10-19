@@ -6,6 +6,7 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import java.io.File
 import java.nio.ByteBuffer
 
@@ -23,12 +24,13 @@ object Photos {
     /** Copia la foto elegida y devuelve su dirección para usarla como portada. */
     suspend fun import(ctx: Context, uri: Uri): String = withContext(Dispatchers.IO) {
         val base = "foto_${System.currentTimeMillis()}"
-        // El original, sin tocar (máxima calidad)
-        try {
-            val ext = extOf(ctx.contentResolver.getType(uri))
-            ctx.contentResolver.openInputStream(uri)?.use { inp -> File(origDir(ctx), "$base.$ext").outputStream().use { inp.copyTo(it) } }
+        // El original, sin tocar (máxima calidad); la copia reducida sale de los mismos bytes
+        val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        if (bytes != null) try {
+            val ext = extOf(ctx.contentResolver.getType(uri) ?: android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(uri.lastPathSegment?.substringAfterLast('.', "")?.lowercase()))
+            File(origDir(ctx), "$base.$ext").writeBytes(bytes)
         } catch (e: Exception) { /* sin original: se queda la copia reducida */ }
-        reduced(ctx, ImageDecoder.createSource(ctx.contentResolver, uri), base)
+        reduced(ctx, if (bytes != null) ImageDecoder.createSource(ByteBuffer.wrap(bytes)) else ImageDecoder.createSource(ctx.contentResolver, uri), base)
     }
 
     /** La copia reducida (la que se ve en la app) a partir de cualquier imagen. */
@@ -75,6 +77,11 @@ object Photos {
         origDir(ctx).listFiles()?.firstOrNull { it.nameWithoutExtension == base }?.let { return it to true }
         return dir(ctx).listFiles()?.firstOrNull { it.isFile && it.nameWithoutExtension == base }?.let { it to false }
     }
+
+    /** Sube cada vez que llegan fotos de otro dispositivo: las pantallas vuelven a pintar sus imágenes. */
+    private val ver = androidx.compose.runtime.mutableIntStateOf(0)
+    val version: Int get() = ver.intValue
+    fun llegaron() { kotlinx.coroutines.MainScope().launch { ver.intValue++ } }
 
     /** Guarda una foto que llega de otro dispositivo: el original y la copia reducida con el mismo nombre. */
     suspend fun saveArrived(ctx: Context, name: String, bytes: ByteArray, mime: String) = withContext(Dispatchers.IO) {

@@ -210,9 +210,19 @@ async function foto({ name, buf, cat, ficha, saga }) {
   const dir = saga ? `Atrio/${safe(cat)}/Sagas/${safe(ficha)}/Portadas` : carpeta(cat, ficha, 'Portadas');
   const f = await upload(dir, name, buf);
   const k = `foto:${name.replace(/\.[^.]+$/, '')}.jpg`;
-  const item = { id: nubeId(k), k, f, n: name, s: buf.length, updated: Date.now() };
+  // Con su enlace: así la ve también un dispositivo tuyo que no tenga tu kDrive puesto
+  const item = { id: nubeId(k), k, f, n: name, s: buf.length, l: await link(f), updated: Date.now() };
   await ctx.edit({ op: 'nubeAdd', items: [item] });
   ctx.log('nube: foto subida', dir, name);
+  return item;
+}
+
+// Una foto elegida de tu nube (ya está allí): se apunta ese mismo archivo para la foto nueva, sin subir otra copia
+async function fotoDeLaNube({ name, file, size }) {
+  if (!on()) return null;
+  const k = `foto:${name.replace(/\.[^.]+$/, '')}.jpg`;
+  const item = { id: nubeId(k), k, f: Number(file), n: name, s: size, l: await link(file), updated: Date.now() };
+  await ctx.edit({ op: 'nubeAdd', items: [item] });
   return item;
 }
 
@@ -262,4 +272,4 @@ async function fotos() {
 function start(c) { ctx = c; }
 function setApi(u, share) { API = u; SHARE = share || u; homes.clear(); }
 
-module.exports = { start, on, test, shot, pcArt, foto, explorar, miniatura, download, fotos, nubeId, setApi, Fail };
+module.exports = { start, on, test, shot, pcArt, foto, fotoDeLaNube, explorar, miniatura, download, fotos, nubeId, setApi, Fail };

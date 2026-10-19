@@ -347,6 +347,47 @@ object NubeSync {
     fun folder(kind: Kind, name: String, what: String) = "Atrio/${safe(kind.title)}/${safe(cleanTitle(name))}/$what"
 
     /** Las fotos tuyas que usan tus fichas y tus sagas (portadas y fondos), con la carpeta de su ficha. */
+    /** Tus fotos (portadas, fondos, imágenes de casillas) que usan tus fichas y faltan aquí: se bajan. Cuántas. */
+    suspend fun bajarFotos(ctx: Context, store: Store = Store(ctx), errs: MutableList<String> = mutableListOf()): Int = withContext(Dispatchers.IO) {
+        val have = store.loadNube().associateBy { it.k }
+        var n0 = 0
+        for (n in photosInUse(ctx, store).keys) {
+            if (Photos.best(ctx, n) != null) continue
+            val x = have["foto:$n"] ?: continue
+            try {
+                status = "Bajando la foto ${x.n}…"
+                val tmp = File(ctx.cacheDir, "nube_${x.f}")
+                bajar(ctx, x, tmp)
+                Photos.saveArrived(ctx, n, tmp.readBytes(), Photos.mimeOf(File(x.n)))
+                tmp.delete()
+                n0++
+            } catch (e: Exception) { errs += "${x.n}: ${e.message}" }
+        }
+        if (n0 > 0) Photos.llegaron()
+        n0
+    }
+
+    /**
+     * Una imagen que eliges de tu nube para una portada: se baja y se usa, y se apunta ese mismo archivo de tu
+     * kDrive para ella (no se vuelve a subir otra copia). Devuelve su dirección.
+     */
+    suspend fun usarDeLaNube(ctx: Context, file: Long, name: String): String = withContext(Dispatchers.IO) {
+        val tmp = File(ctx.cacheDir, "nube_pick_${file}_${name.replace(Regex("[^A-Za-z0-9._-]"), "_")}")
+        KDrive.download(ctx, file, tmp)
+        val size = tmp.length()
+        val u = Photos.import(ctx, Uri.fromFile(tmp))
+        tmp.delete()
+        Photos.nameOf(u)?.let { n -> Store(ctx).addNube(listOf(NubeFile("foto:$n", file, name, size, KDrive.link(ctx, file)))) }
+        u
+    }
+
+    /** ¿Hay fotos tuyas en uso aquí que aún no están en tu nube? (para subirlas enseguida) */
+    fun fotosPorSubir(ctx: Context, store: Store = Store(ctx)): Boolean {
+        if (!KDrive.on(ctx)) return false
+        val have = store.loadNube().map { it.k }.toSet()
+        return photosInUse(ctx, store).keys.any { "foto:$it" !in have && Photos.best(ctx, it) != null }
+    }
+
     private fun photosInUse(ctx: Context, store: Store): Map<String, String> {
         val out = LinkedHashMap<String, String>()
         val kinds = listOf(GAMES, BOOKS) + store.kinds
@@ -461,18 +502,7 @@ object NubeSync {
             }
             if (added.isNotEmpty()) store.addNube(added)
             // Bajar las fotos de portada que falten aquí (las elegiste en otro dispositivo)
-            for (n in photosInUse(ctx, store).keys) {
-                if (Photos.best(ctx, n) != null) continue
-                val x = have["foto:$n"] ?: continue
-                try {
-                    status = "Bajando la foto ${x.n}…"
-                    val tmp = File(ctx.cacheDir, "nube_${x.f}")
-                    bajar(ctx, x, tmp)
-                    Photos.saveArrived(ctx, n, tmp.readBytes(), Photos.mimeOf(File(x.n)))
-                    tmp.delete()
-                    down++
-                } catch (e: Exception) { errs += "${x.n}: ${e.message}" }
-            }
+            down += bajarFotos(ctx, store, errs)
         } catch (e: Exception) {
             errs += e.message ?: "error"
         } finally { running = false }
@@ -629,9 +659,7 @@ fun NubePicker(onPick: (String) -> Unit, onDismiss: () -> Unit) {
                                     scope.launch {
                                         val url = runCatching {
                                             withContext(Dispatchers.IO) {
-                                                val tmp = File(ctx.cacheDir, "nube_pick_${e.id}_${e.name.replace(Regex("[^A-Za-z0-9._-]"), "_")}")
-                                                KDrive.download(ctx, e.id, tmp)
-                                                Photos.import(ctx, Uri.fromFile(tmp)).also { tmp.delete() }
+                                                NubeSync.usarDeLaNube(ctx, e.id, e.name)
                                             }
                                         }
                                         busy = false
@@ -683,7 +711,9 @@ class NubeWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
 
     override suspend fun doWork(): Result {
         var fg = true
-        val msg = NubeSync.run(applicationContext) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } }
+        var msg = NubeSync.run(applicationContext) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } }
+        // Si mientras subía pusiste otra foto, otra pasada (hasta dos más)
+        repeat(2) { if (NubeSync.fotosPorSubir(applicationContext)) msg = NubeSync.run(applicationContext) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } } }
         // Lo subido, a tu cuenta enseguida (aunque la app esté cerrada): así tus otros dispositivos lo ven ya
         Couple.pushIfPending(Store(applicationContext))
         return if (msg.startsWith("falló") && runAttemptCount < 3) Result.retry() else Result.success()

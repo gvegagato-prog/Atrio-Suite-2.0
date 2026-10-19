@@ -208,7 +208,13 @@ fun App(
     LaunchedEffect(Suite.notice) { Suite.notice?.let { say(it); Suite.notice = null } }
 
     // ---- Tu misma cuenta en otro dispositivo: lo que llegue de allí se vuelve a leer aquí ----
-    LaunchedEffect(SyncBus.version) { if (SyncBus.version > 0) reloadAll() }
+    LaunchedEffect(SyncBus.version) {
+        if (SyncBus.version > 0) {
+            reloadAll()
+            // Lo que llega de tu otro dispositivo puede traer fotos tuyas nuevas (una portada): se bajan ya
+            withContext(Dispatchers.IO) { runCatching { NubeSync.bajarFotos(ctx) } }
+        }
+    }
     // Ajustes de otro dispositivo tuyo (apariencia, portadas en las listas…): se aplican sin reiniciar
     LaunchedEffect(AjustesHub.version) { if (AjustesHub.version > 0) { Skin.load(ctx); Mode.themeMode = store.themeMode } }
     // Mientras la app está abierta, cada 30 s se mira (con una consulta mínima) si tu otro dispositivo ha subido algo.
@@ -257,6 +263,8 @@ fun App(
             try {
                 Couple.push(store)
                 cloudWarned = false
+                // Una foto tuya nueva (portada, fondo…): a tu nube enseguida, para que tus otros dispositivos la vean ya
+                if (withContext(Dispatchers.IO) { runCatching { NubeSync.fotosPorSubir(ctx) }.getOrDefault(false) }) NubeSync.enqueue(ctx)
                 val p = Couple.pull(store)
                 if (p != null) {
                     partner = p
@@ -1045,6 +1053,8 @@ fun App(
             label = "pantallas"
         ) { s ->
             CompositionLocalProvider(LocalShared provides sharedScope, LocalAnim provides this) {
+            // Cuando llegan fotos tuyas de otro dispositivo, las imágenes se vuelven a pintar (antes salía el hueco)
+            androidx.compose.runtime.key(Photos.version) {
             if (s is String) {
                 val p = partner
                 val pendingRecs = if (pv) emptyList() else p?.recs?.filter { it.id !in recsDone }?.sortedByDescending { it.time } ?: emptyList()
@@ -1572,6 +1582,7 @@ fun App(
                     }
                 }
                 else -> Unit
+            }
             }
             }
             }

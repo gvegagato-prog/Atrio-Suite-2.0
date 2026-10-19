@@ -738,7 +738,9 @@ function setupIpc() {
     const file = path.join(FOTOS, `${base}.${ext}`);
     fs.writeFileSync(file, buf);
     send('fotos', fotoNames());
-    if (nube.on() && donde) nube.foto({ name: `${base}.${ext}`, buf, cat: donde.cat, ficha: donde.ficha, saga: !!donde.saga }).catch((e) => log('nube: foto', e.message));
+    // De tu nube: se apunta el mismo archivo (sin otra copia); de un archivo del PC: se sube a la carpeta de su ficha
+    if (nube.on() && typeof src === 'number') nube.fotoDeLaNube({ name: `${base}.${ext}`, file: src, size: buf.length }).catch((e) => log('nube: foto', e.message));
+    else if (nube.on() && donde) nube.foto({ name: `${base}.${ext}`, buf, cat: donde.cat, ficha: donde.ficha, saga: !!donde.saga }).catch((e) => log('nube: foto', e.message));
     return { uri: `file:///data/user/0/com.gonzalo.gamerate/files/covers/${base}.jpg`, file, url: fotoUrl(base) };
   });
   // Portada, fondo y logo de SteamGridDB para una ficha nueva (URL, para que también se vean en el móvil)

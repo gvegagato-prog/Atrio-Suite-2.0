@@ -88,6 +88,11 @@ const ok = (c, t) => { console.log(`${c ? '  ✔' : '  ✘'} ${t}`); if (!c) fal
   ok(pf && pf.k === 'foto:foto_1800000000000.jpg' && k.byPath('Atrio/Libros/Dune/Portadas/foto_1800000000000.png'), 'foto puesta en el PC: a Atrio/Libros/Dune/Portadas, como foto del móvil');
   await nube.foto({ name: 'foto_1800000000001.jpg', buf: Buffer.from('jpg'), cat: 'Libros', ficha: 'Dune', saga: true });
   ok(!!k.byPath('Atrio/Libros/Sagas/Dune/Portadas/foto_1800000000001.jpg'), 'la de una saga, a Atrio/Libros/Sagas/Dune/Portadas');
+  ok(/share/.test(pf.l || ''), 'la foto lleva su enlace (para un dispositivo sin tu kDrive)');
+  // Elegir una imagen que ya está en tu nube: se apunta ese archivo, no se sube otra copia
+  const antes = [...k.files.values()].filter((x) => x.type === 'file').length;
+  const dn = await nube.fotoDeLaNube({ name: 'foto_1800000000002.jpg', file: im.id, size: 3 });
+  ok(dn && dn.f === im.id && /share/.test(dn.l) && [...k.files.values()].filter((x) => x.type === 'file').length === antes, 'una imagen de tu nube no se vuelve a subir (mismo archivo, con enlace)');
   data.nube = data.nube.filter((x) => !String(x.k).startsWith('foto:'));
 
   // Una foto de portada que elegiste en el móvil: está en tu nube y falta en este PC
