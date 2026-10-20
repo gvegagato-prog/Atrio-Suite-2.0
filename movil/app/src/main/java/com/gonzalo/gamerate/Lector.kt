@@ -228,6 +228,12 @@ class ReaderActivity : ComponentActivity() {
         id = intent.getLongExtra("id", 0L)
         uri = BookFiles.get(this, id)?.let { Uri.parse(it) }
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        // La página también bajo la cámara / la franja de la barra de estado: con las barras ocultas, Android deja por
+        // defecto esa zona en negro (ahí van ahora la hora y la batería)
+        window.attributes = window.attributes.also {
+            it.layoutInDisplayCutoutMode = if (android.os.Build.VERSION.SDK_INT >= 30) WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                else WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
         window.statusBarColor = AColor.TRANSPARENT
         window.navigationBarColor = AColor.TRANSPARENT
         val loader = WebViewAssetLoader.Builder()
@@ -271,7 +277,7 @@ class ReaderActivity : ComponentActivity() {
         }
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
-            override fun onPageFinished(view: WebView, url: String) { pushInsets() }
+            override fun onPageFinished(view: WebView, url: String) { pushInsets(); pushBattery() }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val u = request.url
                 // Los capítulos se cargan en iframes con direcciones blob:/data:/about: — eso no se toca.
@@ -417,8 +423,30 @@ class ReaderActivity : ComponentActivity() {
 
     // Al dejar de leer (cerrar el libro, apagar la pantalla, cambiar de app), lo leído sube a tu cuenta: en la tablet
     // sigues por la misma página sin tener que tocar nada más
+    // La batería, para la línea de arriba (solo mientras el lector se ve; Android avisa cada vez que cambia 1 %)
+    private var batteryOn = false
+    private val battery = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) { pushBattery(i) }
+    }
+    private fun pushBattery(i: Intent? = null) {
+        if (!::web.isInitialized) return
+        val b = i ?: registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return
+        val level = b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+        val scale = b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)
+        if (level < 0 || scale <= 0) return
+        val st = b.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+        val charging = st == android.os.BatteryManager.BATTERY_STATUS_CHARGING || st == android.os.BatteryManager.BATTERY_STATUS_FULL
+        web.evaluateJavascript("window.atrioBateria && atrioBateria(${level * 100 / scale}, $charging)", null)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!batteryOn) { batteryOn = true; registerReceiver(battery, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED)) }
+    }
+
     override fun onStop() {
         super.onStop()
+        if (batteryOn) { batteryOn = false; runCatching { unregisterReceiver(battery) } }
         confirmarMasLejos()
         val app = applicationContext
         Thread { kotlinx.coroutines.runBlocking { Couple.pushIfPending(Store(app)) } }.start()

@@ -198,6 +198,16 @@ const log = [];
       // (antes del reloj simulado, el lector ya había contado unos segundos de verdad: t0 incluye los 10 min de la otra)
       ok(dv.otra?.total === 600000 && dv.tablet?.total === t0 - 600000 + 480000 && t1 === dv.otra.total + dv.tablet.total, `${name}: el tiempo de otro dispositivo se conserva y se suma (otra ${(dv.otra?.total || 0) / 60000} + esta ${((dv.tablet?.total || 0) / 60000).toFixed(1)} = ${(t1 / 60000).toFixed(1)} min)`);
     }
+    // Arriba, la hora a la izquierda y la batería a la derecha, sin mover el texto
+    {
+      await page.evaluate(() => window.atrioBateria(57, false));
+      const r = await page.evaluate(() => { const g = (q) => document.querySelector(q).getBoundingClientRect(); return { hora: document.querySelector('#r-hora').textContent, bat: document.querySelector('#r-bat').textContent, izq: g('#r-hora').left, der: g('#r-bat').right, w: innerWidth, top: g('#reloj').top, h: g('#reloj').height,
+        margen: document.querySelector('foliate-view').renderer?.getAttribute?.('margin') }; });
+      ok(/^\d{2}:\d{2}$/.test(r.hora) && r.bat === '57 %' && r.izq < r.w / 2 && r.der > r.w / 2 && r.top === 0, `${name}: arriba, la hora («${r.hora}») a la izquierda y la batería («${r.bat}») a la derecha`);
+      await page.evaluate(() => window.atrioBateria(100, true));
+      ok((await page.textContent('#r-bat')).includes('⚡'), `${name}: cargando, con el rayo`);
+      await page.evaluate(() => window.atrioBateria(57, false));
+    }
     // Lo que queda: páginas del capítulo (y del libro, aproximadas) en la línea de abajo
     const estado = () => page.evaluate(() => [document.querySelector('#e-izq').textContent, document.querySelector('#e-der').textContent, document.querySelector('foliate-view').renderer.pages]);
     const e0 = await estado();

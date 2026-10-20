@@ -219,6 +219,25 @@ function applySettings() {
     Object.assign(w.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: 15, background: `rgba(255,120,20,${S.warm * 0.28})`, mixBlendMode: 'multiply' })
 }
 
+// ---------------------------------------------------------------- La hora y la batería (arriba)
+// La hora se repinta justo al cambiar de minuto (sin sondear) y se para con la pantalla apagada
+let relojT = 0
+function pintaHora() {
+    const e = $('#r-hora'); if (!e) return
+    const d = new Date()
+    e.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+}
+function tickReloj() {
+    clearTimeout(relojT)
+    if (document.hidden) return
+    pintaHora()
+    relojT = setTimeout(tickReloj, 60000 - (Date.now() % 60000) + 80)
+}
+tickReloj()
+document.addEventListener('visibilitychange', tickReloj)
+/** La app avisa de la batería (y si está cargando). */
+window.atrioBateria = (pct, carga) => { const e = $('#r-bat'); if (e) e.textContent = (carga ? '⚡ ' : '') + pct + ' %' }
+
 // ---------------------------------------------------------------- Posición
 const saveProgress = debounce(() => {
     if (!last) return
