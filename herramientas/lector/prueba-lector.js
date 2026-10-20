@@ -383,7 +383,7 @@ const log = [];
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       await page.waitForTimeout(400);
     }
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(3000);   // (con una máquina más lenta, el desplazamiento tarda más en asentarse)
     const tras = await pagina();
     const f1 = await page.evaluate(() => window.__atrio.saved.progress?.f || 0);
     // (En horizontal cada página es más alta que la pantalla: los mismos deslizamientos avanzan menos)

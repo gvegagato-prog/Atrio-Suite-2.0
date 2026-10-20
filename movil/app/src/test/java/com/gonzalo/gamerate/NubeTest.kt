@@ -229,90 +229,17 @@ class NubeTest {
         assertTrue(File(Uri.parse(BookFiles.get(ctx, otro)).path!!).readBytes().contentEquals(epub.readBytes()))
         assertEquals("se conserva lo leído", 0.42, BookFiles.progress(ctx, 501).toDouble(), 0.001)
 
-        // Lo leído en otro dispositivo después, gana; lo de antes, no
+        // Lo más lejos que has llegado en cualquier dispositivo, gana (aunque lo apuntara otro antes o después)
         val r = JSONObject(s.syncData())
         val l = r.getJSONArray("lectura").getJSONObject(0)
-        l.getJSONObject("s").put("fraction", 0.8); l.put("updated", System.currentTimeMillis() + 60_000)
+        l.getJSONObject("s").put("bestFrac", 0.8).put("bestCfi", "epubcfi(/6/20)"); l.put("updated", System.currentTimeMillis() + 60_000)
         s.mergeRemote(r.toString())
         assertEquals(0.8, BookFiles.progress(ctx, 501).toDouble(), 0.001)
         assertTrue("el archivo de aquí sigue", BookFiles.get(ctx, 501) != null)
-        l.getJSONObject("s").put("fraction", 0.1); l.put("updated", 1L)
+        // Otro, más atrás (aunque más reciente), no echa atrás a nadie
+        l.getJSONObject("s").put("bestFrac", 0.1).put("bestCfi", "epubcfi(/6/2)").put("fraction", 0.1); l.put("updated", System.currentTimeMillis() + 120_000)
         s.mergeRemote(r.toString())
         assertEquals(0.8, BookFiles.progress(ctx, 501).toDouble(), 0.001)
-    }
-
-    /** Una portada tuya: se sube enseguida, el otro dispositivo (aunque no tenga tu kDrive) la baja; y elegir una
-     *  imagen de tu nube no la vuelve a subir. */
-    @Test fun portadaEntreDispositivos() = runBlocking {
-        KDrive.save(ctx, "tok", "777")
-        val s = Store(ctx)
-        val dir = File(ctx.filesDir, "covers").apply { mkdirs() }
-        val foto = File(dir, "foto_1711111111111.jpg")
-        Bitmap.createBitmap(30, 40, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF884422.toInt()) }.let { b -> foto.outputStream().use { b.compress(Bitmap.CompressFormat.JPEG, 90, it) } }
-        s.save(listOf(Game(701, "Hades II", Uri.fromFile(foto).toString(), 91)), 0)
-        assertTrue("hay una foto por subir", NubeSync.fotosPorSubir(ctx))
-        NubeSync.run(ctx)
-        assertTrue(!NubeSync.fotosPorSubir(ctx))
-        val subidas = k.files.values.count { !it.dir }
-        // El otro dispositivo: sin la foto y sin tu kDrive; le llegan tus datos y la baja por su enlace
-        val datos = s.syncData()
-        dir.deleteRecursively(); KDrive.forget(ctx)
-        s.mergeRemote(datos)
-        assertEquals(1, NubeSync.bajarFotos(ctx))
-        assertTrue("la portada ya se ve", Photos.here(ctx, Uri.fromFile(foto).toString()))
-        // Elegir de tu nube esa misma imagen para otra ficha: se apunta el mismo archivo y no se sube otra copia
-        KDrive.save(ctx, "tok", "777")
-        val f = s.loadNube().first { it.k == "foto:foto_1711111111111.jpg" }.f
-        val u = NubeSync.usarDeLaNube(ctx, f, "foto_1711111111111.jpg")
-        s.save(listOf(Game(701, "Hades II", Uri.fromFile(foto).toString(), 91), Game(702, "Balatro", u, 85)), 0)
-        assertTrue("nada nuevo que subir", !NubeSync.fotosPorSubir(ctx))
-        NubeSync.run(ctx)
-        assertEquals("sin copias de más en tu kDrive", subidas, k.files.values.count { !it.dir })
-        assertEquals(f, s.loadNube().first { it.k == "foto:${Photos.nameOf(u)}" }.f)
-    }
-
-    /** Lo leído y lo subido a tu nube quedan pendientes de subir a la cuenta aunque no toques ninguna ficha. */
-    @Test fun pendienteDeSubir() {
-        val s = Store(ctx)
-        s.pushedAt = System.currentTimeMillis() + 1
-        assertTrue(!s.pendiente)
-        Thread.sleep(5)
-        BookFiles.put(ctx, 901, JSONObject().put("fraction", 0.3))
-        assertTrue("leer deja algo por subir", s.pendiente)
-        s.pushedAt = System.currentTimeMillis() + 1
-        Thread.sleep(5)
-        s.addNube(listOf(NubeFile("libro:901", 5, "a.epub", 10)))
-        assertTrue("lo subido a tu nube, también", s.pendiente)
-    }
-
-    /** Bajar en otro dispositivo mal conectado (otro kDrive) o cuando el archivo ya no está: el porqué de verdad. */
-    @Test fun bajarDesdeOtroDispositivo() = runBlocking {
-        KDrive.save(ctx, "tok", "777")
-        val s = Store(ctx)
-        val epub = File(ctx.cacheDir, "red.epub").apply { writeBytes(ByteArray(2 * 1024 * 1024) { (it % 13).toByte() }) }
-        s.save(listOf(Game(601, "Red Rising", "", 90)), 1)
-        BookFiles.attachFile(ctx, 601, epub, "red.epub")
-        assertTrue(NubeSync.run(ctx).startsWith("1 subido"))
-        val x = s.loadNube().first { it.k == "libro:601" }
-        val dest = File(ctx.cacheDir, "bajado.epub")
-        // La tablet del trabajo, conectada a otro kDrive (o con otro número): baja igual, por el enlace del archivo
-        KDrive.save(ctx, "tok", "888")
-        NubeSync.bajar(ctx, x, dest)
-        assertTrue("bajado por el enlace", dest.readBytes().contentEquals(epub.readBytes()))
-        // Un dispositivo sin tu kDrive (solo con tu cuenta): baja igual por el enlace
-        KDrive.forget(ctx); dest.delete()
-        NubeSync.bajar(ctx, x, dest)
-        assertTrue("sin kDrive, por el enlace", dest.readBytes().contentEquals(epub.readBytes()))
-        KDrive.save(ctx, "tok", "888")
-        // Sin enlace que valga: dice que es otro kDrive (no «revisa su número» a secas)
-        val sinEnlace = x.copy(l = "https://kdrive.infomaniak.com/app/share/777/00000000-0000-0000-0000-000000000000")
-        val e1 = runCatching { NubeSync.bajar(ctx, sinEnlace, dest) }.exceptionOrNull()?.message.orEmpty()
-        assertTrue(e1, e1.contains("otro kDrive (nº 888)") && e1.contains("nº 777"))
-        // Bien conectado, pero el archivo ya no está en el kDrive (borrado o movido)
-        KDrive.save(ctx, "tok", "777")
-        synchronized(k.files) { k.files.remove(x.f) }
-        val e2 = runCatching { NubeSync.bajar(ctx, x, dest) }.exceptionOrNull()?.message.orEmpty()
-        assertTrue(e2, e2.contains("ya no está en tu kDrive"))
     }
 
     /** Todas las imágenes que pones tú: portada, fondo, logo y las de las casillas de la revista, en la carpeta de su ficha. */

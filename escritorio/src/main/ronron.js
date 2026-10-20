@@ -78,6 +78,20 @@ function unite(win, lose) {
   return sinPartidas(out);
 }
 
+// Lo más lejos que has llegado en un libro (en cualquier dispositivo): lo demás de la versión más nueva y esto del que
+// más lejos llegó (igual que Store.uniteLectura en el móvil)
+const LEJOS = ['bestCfi', 'bestFrac', 'bestLabel'];
+function uniteLectura(a, b) {
+  const [base, otra] = upd(b) > upd(a) ? [b, a] : [a, b];
+  const so = otra.s || {};
+  // Lo que solo tenga la otra versión se conserva; en lo demás manda la más nueva
+  const out = { ...base, s: { ...so, ...(base.s || {}) } };
+  if ((Number(so.bestFrac) || 0) <= (Number((base.s || {}).bestFrac) || 0)) for (const k of LEJOS) if (base.s && k in base.s) out.s[k] = base.s[k];
+  if ((Number(so.bestFrac) || 0) > (Number(out.s.bestFrac) || 0)) for (const k of LEJOS) if (k in so) out.s[k] = so[k];
+  out.updated = Math.max(upd(a), upd(b));
+  return out;
+}
+
 function merge(a, b) {
   a = a || {};
   b = b || {};
@@ -100,6 +114,7 @@ function merge(a, b) {
       if (!o) continue;
       const cur = by.get(Number(o.id));
       if (!cur) by.set(Number(o.id), o);
+      else if (n === 'lectura') by.set(Number(o.id), uniteLectura(cur, o));
       else by.set(Number(o.id), unite(upd(o) > upd(cur) ? o : cur, upd(o) > upd(cur) ? cur : o));
     }
     out[n] = [...by.values()].filter((o) => !(t[`${n}:${o.id}`] !== undefined && Number(t[`${n}:${o.id}`]) >= upd(o)));

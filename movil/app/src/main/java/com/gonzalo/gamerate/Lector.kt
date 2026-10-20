@@ -290,7 +290,12 @@ class ReaderActivity : ComponentActivity() {
             this, "Tu WebView es antiguo (versión $major): actualiza «Android System WebView» en Google Play si el libro no se abre.",
             android.widget.Toast.LENGTH_LONG
         ).show()
-        web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html")
+        // Antes de abrir, lo último de tu cuenta (como mucho 2,5 s): así empiezas donde lo dejaste en cualquier dispositivo
+        val app = applicationContext
+        if (Store(app).paired) Thread {
+            runCatching { kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(2500) { Couple.syncOwn(Store(app)) } } }
+            runOnUiThread { if (!isDestroyed) web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html") }
+        }.start() else web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html")
         // Atrás solo cierra lo que haya abierto encima (una nota, un panel, el menú): del libro se sale desde el menú
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -349,6 +354,13 @@ class ReaderActivity : ComponentActivity() {
         return base
     }
 
+    /** Dónde se abre el libro: lo más lejos que has llegado en cualquier dispositivo (o, si no hay, donde lo dejaste aquí). */
+    private fun empiezaEn(o: JSONObject): Pair<String?, Double> {
+        val best = o.optDouble("bestFrac", 0.0)
+        return if (best > 0.0 && best >= o.optDouble("fraction", 0.0) && o.optString("bestCfi").isNotBlank()) o.optString("bestCfi") to best
+        else o.optString("cfi") to o.optDouble("fraction", 0.0)
+    }
+
     /** El fondo de cada tema del lector (el mismo que en lector.css). */
     private fun themeBg(t: String) = when (t) { "sepia" -> "#F1E6CF"; "gris" -> "#2B2D31"; "noche" -> "#121317"; "negro" -> "#000000"; else -> "#FBF8F1" }
 
@@ -383,10 +395,31 @@ class ReaderActivity : ComponentActivity() {
         if (::web.isInitialized) web.evaluateJavascript("window.atrioPausa && atrioPausa(false)", null)
     }
 
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile private var candidata: Triple<String, Double, String>? = null
+    private val confirmar = Runnable { confirmarMasLejos() }
+    /** Lo más lejos que has llegado en este libro (en cualquiera de tus dispositivos): todos se ponen ahí. */
+    private fun confirmarMasLejos() {
+        val c = candidata ?: return
+        candidata = null
+        val o = BookFiles.state(this, id)
+        if (c.second <= o.optDouble("bestFrac", 0.0)) return
+        o.put("bestCfi", c.first).put("bestFrac", c.second).put("bestLabel", c.third)
+        BookFiles.put(this, id, o)
+        subirEnSeguida()
+    }
+    private val subir = Runnable {
+        val app = applicationContext
+        Thread { kotlinx.coroutines.runBlocking { Couple.pushIfPending(Store(app)) } }.start()
+    }
+    /** Por dónde vas sube a tu cuenta unos segundos después de pasar página: tu otro dispositivo la ve casi al momento. */
+    private fun subirEnSeguida() { handler.removeCallbacks(subir); handler.postDelayed(subir, 4000) }
+
     // Al dejar de leer (cerrar el libro, apagar la pantalla, cambiar de app), lo leído sube a tu cuenta: en la tablet
     // sigues por la misma página sin tener que tocar nada más
     override fun onStop() {
         super.onStop()
+        confirmarMasLejos()
         val app = applicationContext
         Thread { kotlinx.coroutines.runBlocking { Couple.pushIfPending(Store(app)) } }.start()
     }
@@ -419,8 +452,8 @@ class ReaderActivity : ComponentActivity() {
             return JSONObject()
                 .put("title", intent.getStringExtra("name") ?: "")
                 .put("file", name)
-                .put("location", o.optString("cfi").ifBlank { null } ?: JSONObject.NULL)
-                .put("fraction", o.optDouble("fraction", 0.0))
+                .put("location", empiezaEn(o).first?.ifBlank { null } ?: JSONObject.NULL)
+                .put("fraction", empiezaEn(o).second)
                 .put("goto", intent.getStringExtra("goto") ?: JSONObject.NULL)
                 .put("stats", o.optJSONObject("stats") ?: JSONObject())
                 .put("accent", accentJson())
@@ -431,7 +464,17 @@ class ReaderActivity : ComponentActivity() {
         }
 
         @JavascriptInterface
-        fun saveProgress(cfi: String, fraction: Double, label: String) = edit { it.put("cfi", cfi).put("fraction", fraction).put("label", label).put("read", System.currentTimeMillis()) }
+        fun saveProgress(cfi: String, fraction: Double, label: String) {
+            val o = BookFiles.state(this@ReaderActivity, id)
+            // Al abrir el libro el lector «llega» a la posición guardada y avisa igualmente: eso no es leer
+            if (o.has("cfi") && kotlin.math.abs(o.optDouble("fraction", -1.0) - fraction) < 0.0005) return
+            o.put("cfi", cfi).put("fraction", fraction).put("label", label).put("read", System.currentTimeMillis())
+            BookFiles.put(this@ReaderActivity, id, o)
+            // Si es lo más lejos que has llegado, se apunta como candidata: cuenta si te quedas ahí unos segundos o
+            // al salir (un salto sin querer por la barra no cuenta si sigues leyendo desde otro sitio)
+            if (fraction > o.optDouble("bestFrac", 0.0)) { candidata = Triple(cfi, fraction, label); handler.removeCallbacks(confirmar); handler.postDelayed(confirmar, 6000) }
+            else { candidata = null; handler.removeCallbacks(confirmar) }
+        }
 
         /** Los ajustes valen para este libro y como punto de partida para los siguientes. */
         @JavascriptInterface

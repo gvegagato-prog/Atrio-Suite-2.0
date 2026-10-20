@@ -861,6 +861,22 @@ class Store(ctx: Context) {
 
     private fun itemUpdated(o: JSONObject): Long = o.optLong("updated", 0L)
 
+    /** Lo más lejos que has llegado en un libro (en cualquier dispositivo): lo que viaja y a lo que se ponen todos. */
+    private val LEJOS = listOf("bestCfi", "bestFrac", "bestLabel")
+
+    /** Une lo leído de un libro en dos dispositivos: lo demás, de la versión más nueva; lo más lejos, el que más lejos llegó. */
+    private fun uniteLectura(a: JSONObject, b: JSONObject): JSONObject {
+        val (base, otra) = if (itemUpdated(b) > itemUpdated(a)) b to a else a to b
+        val out = JSONObject(base.toString())
+        val so = otra.optJSONObject("s")
+        // Lo que solo tenga la otra versión (p. ej. los ajustes del libro) se conserva; en lo demás manda la más nueva
+        val sb = JSONObject(so?.toString() ?: "{}").also { m -> base.optJSONObject("s")?.let { b -> for (k in b.keys()) m.put(k, b.get(k)) } }
+        out.put("s", sb)
+        if (so != null && so.optDouble("bestFrac", 0.0) > (base.optJSONObject("s")?.optDouble("bestFrac", 0.0) ?: 0.0)) for (k in LEJOS) if (so.has(k)) sb.put(k, so.get(k))
+        out.put("updated", maxOf(itemUpdated(a), itemUpdated(b)))
+        return out
+    }
+
     /**
      * Guarda una lista apuntando lo que desaparece (borrado) y, si vuelve algo que estaba borrado
      * (deshacer), le pone la hora de ahora para que gane a ese borrado en los otros dispositivos.
@@ -921,6 +937,7 @@ class Store(ctx: Context) {
                 val id = o.optLong("id")
                 val cur = byId[id]
                 if (cur == null) byId[id] = o
+                else if (n == "lectura") byId[id] = uniteLectura(cur, o)
                 else if (itemUpdated(o) > itemUpdated(cur)) byId[id] = uniteLists(o, cur)
                 else byId[id] = uniteLists(cur, o)
             }
@@ -1063,8 +1080,13 @@ class Store(ctx: Context) {
             val o = a.optJSONObject(i) ?: continue
             val id = o.optLong("id")
             val cur = BookFiles.state(app, id)
-            if (o.optLong("updated") <= cur.optLong("syncAt", 0L)) continue
             val s = o.optJSONObject("s") ?: continue
+            // Se aplica si hay algo más nuevo, o si en otro dispositivo has llegado más lejos
+            if (o.optLong("updated") <= cur.optLong("syncAt", 0L) && s.optDouble("bestFrac", 0.0) <= cur.optDouble("bestFrac", 0.0)) continue
+            // Por dónde vas aquí se queda; pero si en otro dispositivo has llegado más lejos, se pone ahí
+            for (k in listOf("cfi", "fraction", "label", "read")) if (cur.has(k)) s.put(k, cur.get(k))
+            if (s.optDouble("bestFrac", 0.0) > cur.optDouble("bestFrac", 0.0) && s.optString("bestCfi").isNotBlank())
+                s.put("cfi", s.getString("bestCfi")).put("fraction", s.getDouble("bestFrac")).put("label", s.optString("bestLabel"))
             for (k in listOf("uri", "name", "added")) if (cur.has(k)) s.put(k, cur.get(k))
             // El brillo y el tamaño de letra son de cada pantalla: se quedan los de aquí (el resto de ajustes del
             // libro, como leer un manga hacia abajo, viaja con él)
