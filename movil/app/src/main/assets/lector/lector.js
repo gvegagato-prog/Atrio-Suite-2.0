@@ -29,6 +29,20 @@ if (S.brVer !== 2) {
 }
 // Lo que llevas leído de este libro: tiempo total y por día (ms)
 const stats = Object.assign({ total: 0, days: {} }, st.stats || {})
+// El tiempo leído va por dispositivo (stats.dev): aquí solo se suma en el de este dispositivo, y «total» y «days» son
+// la suma de todos (lo que se enseña). Un tiempo antiguo, sin repartir, pasa a ser el de este dispositivo.
+const DEV = st.device || 'local'
+if (!stats.dev) stats.dev = stats.total > 0 ? { [DEV]: { total: stats.total, days: { ...stats.days } } } : {}
+if (!stats.dev[DEV]) stats.dev[DEV] = { total: 0, days: {} }
+function recontar() {
+    let t = 0; const d = {}
+    for (const b of Object.values(stats.dev)) {
+        t += Number(b.total) || 0
+        for (const [k, v] of Object.entries(b.days || {})) d[k] = (d[k] || 0) + (Number(v) || 0)
+    }
+    stats.total = t; stats.days = d
+}
+recontar()
 let notes = st.annotations || []      // { value, text, note, created, index, label } (el color de antes ya no se usa)
 let marks = st.bookmarks || []        // { value, label, fraction, created }
 const THEMES = [['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
@@ -231,9 +245,11 @@ function sumar(now) {
     const add = Math.max(0, Math.min(now - activo, PARADO))
     activo = now
     if (add < 1000) return
-    stats.total += add
+    const mio = stats.dev[DEV]
+    mio.total += add
     const d = today()
-    stats.days[d] = (stats.days[d] || 0) + add
+    mio.days[d] = (mio.days[d] || 0) + add
+    recontar()
     saveStats()
 }
 /** Cualquier movimiento o toque: lo de antes cuenta (hasta 5 min) y el contador sigue. */

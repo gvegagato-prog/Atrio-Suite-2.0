@@ -869,8 +869,10 @@ class Store(ctx: Context) {
         val (base, otra) = if (itemUpdated(b) > itemUpdated(a)) b to a else a to b
         val out = JSONObject(base.toString())
         val so = otra.optJSONObject("s")
+        val stats = ReadStats.merge(a.optJSONObject("s")?.optJSONObject("stats"), b.optJSONObject("s")?.optJSONObject("stats"), deviceId, "legacy")
         // Lo que solo tenga la otra versión (p. ej. los ajustes del libro) se conserva; en lo demás manda la más nueva
         val sb = JSONObject(so?.toString() ?: "{}").also { m -> base.optJSONObject("s")?.let { b -> for (k in b.keys()) m.put(k, b.get(k)) } }
+        sb.put("stats", stats)
         out.put("s", sb)
         if (so != null && so.optDouble("bestFrac", 0.0) > (base.optJSONObject("s")?.optDouble("bestFrac", 0.0) ?: 0.0)) for (k in LEJOS) if (so.has(k)) sb.put(k, so.get(k))
         out.put("updated", maxOf(itemUpdated(a), itemUpdated(b)))
@@ -1082,7 +1084,10 @@ class Store(ctx: Context) {
             val cur = BookFiles.state(app, id)
             val s = o.optJSONObject("s") ?: continue
             // Se aplica si hay algo más nuevo, o si en otro dispositivo has llegado más lejos
-            if (o.optLong("updated") <= cur.optLong("syncAt", 0L) && s.optDouble("bestFrac", 0.0) <= cur.optDouble("bestFrac", 0.0)) continue
+            if (o.optLong("updated") <= cur.optLong("syncAt", 0L) && s.optDouble("bestFrac", 0.0) <= cur.optDouble("bestFrac", 0.0) &&
+                ReadStats.total(s.optJSONObject("stats")) <= ReadStats.total(cur.optJSONObject("stats"))) continue
+            // El tiempo leído: el de cada dispositivo (el de aquí también), sumado
+            s.put("stats", ReadStats.merge(cur.optJSONObject("stats"), s.optJSONObject("stats"), deviceId, "legacy"))
             // Por dónde vas aquí se queda; pero si en otro dispositivo has llegado más lejos, se pone ahí
             for (k in listOf("cfi", "fraction", "label", "read")) if (cur.has(k)) s.put(k, cur.get(k))
             if (s.optDouble("bestFrac", 0.0) > cur.optDouble("bestFrac", 0.0) && s.optString("bestCfi").isNotBlank())
@@ -1239,3 +1244,50 @@ fun ajustesCambiados(ctx: Context) {
 
 /** Llegaron ajustes de otro dispositivo: la app los vuelve a leer. */
 object AjustesHub { private val v = androidx.compose.runtime.mutableIntStateOf(0); var version: Int get() = v.intValue; set(x) { v.intValue = x } }
+
+/**
+ * El tiempo leído de un libro, por dispositivo: stats.dev = { <dispositivo>: { total, days } }. Cada dispositivo solo
+ * suma en el suyo y al juntar se toma, de cada uno, lo más alto (solo crece); «total» y «days» son la suma de todos
+ * (es lo que se enseña). Así el tiempo de un dispositivo nunca pisa al del otro, y se suman.
+ */
+object ReadStats {
+    private fun dev(st: JSONObject?, legacyKey: String): JSONObject {
+        st ?: return JSONObject()
+        st.optJSONObject("dev")?.let { return it }
+        // Antes del reparto por dispositivo: todo el tiempo era de un solo cubo
+        val total = st.optLong("total", 0L)
+        return if (total > 0L) JSONObject().put(legacyKey, JSONObject().put("total", total).put("days", st.optJSONObject("days") ?: JSONObject())) else JSONObject()
+    }
+
+    /** Une dos estados de tiempo. aKey/bKey: de qué dispositivo es un tiempo antiguo sin repartir (el de aquí, o «legacy»). */
+    fun merge(a: JSONObject?, b: JSONObject?, aKey: String, bKey: String = "legacy"): JSONObject {
+        val da = dev(a, aKey)
+        val db = dev(b, bKey)
+        val hasReal = (a?.has("dev") == true) || (b?.has("dev") == true)
+        val out = JSONObject()
+        for (src in listOf(da, db)) for (id in src.keys()) {
+            if (hasReal && id == "legacy") continue   // lo antiguo ya está dentro del cubo de su dispositivo
+            val x = src.getJSONObject(id)
+            val cur = out.optJSONObject(id)
+            if (cur == null) { out.put(id, JSONObject(x.toString())); continue }
+            val days = JSONObject(cur.optJSONObject("days")?.toString() ?: "{}")
+            x.optJSONObject("days")?.let { d -> for (k in d.keys()) days.put(k, maxOf(days.optLong(k, 0L), d.optLong(k, 0L))) }
+            out.put(id, JSONObject().put("total", maxOf(cur.optLong("total", 0L), x.optLong("total", 0L))).put("days", days))
+        }
+        return derived(out)
+    }
+
+    /** total y days = la suma de todos los dispositivos. */
+    fun derived(dev: JSONObject): JSONObject {
+        var total = 0L
+        val days = JSONObject()
+        for (id in dev.keys()) {
+            val b = dev.getJSONObject(id)
+            total += b.optLong("total", 0L)
+            b.optJSONObject("days")?.let { d -> for (k in d.keys()) days.put(k, days.optLong(k, 0L) + d.optLong(k, 0L)) }
+        }
+        return JSONObject().put("dev", dev).put("total", total).put("days", days)
+    }
+
+    fun total(st: JSONObject?): Long = st?.optLong("total", 0L) ?: 0L
+}

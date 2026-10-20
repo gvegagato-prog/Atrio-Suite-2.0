@@ -456,6 +456,7 @@ class ReaderActivity : ComponentActivity() {
                 .put("fraction", empiezaEn(o).second)
                 .put("goto", intent.getStringExtra("goto") ?: JSONObject.NULL)
                 .put("stats", o.optJSONObject("stats") ?: JSONObject())
+                .put("device", Store(this@ReaderActivity).deviceId)
                 .put("accent", accentJson())
                 .put("settings", ajustesDe(o))
                 .put("annotations", o.optJSONArray("notes") ?: org.json.JSONArray())
@@ -489,7 +490,10 @@ class ReaderActivity : ComponentActivity() {
 
         /** Lo que llevas leído de este libro (tiempo total y por día). */
         @JavascriptInterface
-        fun saveStats(json: String) = edit { it.put("stats", JSONObject(json)) }
+        fun saveStats(json: String) = edit {
+            // Mezclado con lo guardado: si mientras leías llegó el tiempo de otro dispositivo, no se pierde
+            it.put("stats", ReadStats.merge(it.optJSONObject("stats"), JSONObject(json), Store(this@ReaderActivity).deviceId, Store(this@ReaderActivity).deviceId))
+        }
 
         /** Lee una frase en voz alta; al acabar contesta en window.atrioSpoken(id, error). */
         @JavascriptInterface

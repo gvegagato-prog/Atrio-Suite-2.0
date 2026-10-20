@@ -60,7 +60,7 @@ const log = [];
       const store = { saved: {} };
       window.__atrio = store;
       window.Atrio = {
-        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: {}, annotations: [], bookmarks: [], stats: {}, accent: { light: '#2F5D8A', dark: '#7FA7C4' } }),
+        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: {}, annotations: [], bookmarks: [], device: 'tablet', stats: { dev: { otra: { total: 600000, days: { '2020-01-01': 600000 } } }, total: 600000, days: { '2020-01-01': 600000 } }, accent: { light: '#2F5D8A', dark: '#7FA7C4' } }),
         saveProgress: (cfi, f, l) => { store.saved.progress = { cfi, f, l }; },
         saveSettings: (j) => { store.saved.settings = JSON.parse(j); },
         saveAnnotations: (j) => { store.saved.notes = JSON.parse(j); },
@@ -193,6 +193,10 @@ const log = [];
       const t1 = await total();
       await page.evaluate(() => { delete window.__reloj; });
       ok(t1 - t0 === 8 * 60000, `${name}: tiempo leído con tope de 5 min y sin contar la pausa (${(t1 - t0) / 60000} min, deben ser 8)`);
+      // El de otro dispositivo (10 min) ya estaba: se suma al de este, sin pisarlo
+      const dv = await page.evaluate(() => window.__atrio.saved.stats?.dev || {});
+      // (antes del reloj simulado, el lector ya había contado unos segundos de verdad: t0 incluye los 10 min de la otra)
+      ok(dv.otra?.total === 600000 && dv.tablet?.total === t0 - 600000 + 480000 && t1 === dv.otra.total + dv.tablet.total, `${name}: el tiempo de otro dispositivo se conserva y se suma (otra ${(dv.otra?.total || 0) / 60000} + esta ${((dv.tablet?.total || 0) / 60000).toFixed(1)} = ${(t1 / 60000).toFixed(1)} min)`);
     }
     // Lo que queda: páginas del capítulo (y del libro, aproximadas) en la línea de abajo
     const estado = () => page.evaluate(() => [document.querySelector('#e-izq').textContent, document.querySelector('#e-der').textContent, document.querySelector('foliate-view').renderer.pages]);

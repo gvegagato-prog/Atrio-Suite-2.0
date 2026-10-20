@@ -81,6 +81,28 @@ function unite(win, lose) {
 // Lo más lejos que has llegado en un libro (en cualquier dispositivo): lo demás de la versión más nueva y esto del que
 // más lejos llegó (igual que Store.uniteLectura en el móvil)
 const LEJOS = ['bestCfi', 'bestFrac', 'bestLabel'];
+// El tiempo leído, por dispositivo (stats.dev): de cada uno lo más alto y «total»/«days» = la suma (igual que
+// ReadStats.merge en el móvil; un tiempo antiguo sin repartir cuenta solo si no hay cubos por dispositivo)
+function mergeStats(x, y) {
+  const devOf = (st) => (st && st.dev) || ((st && Number(st.total) > 0) ? { legacy: { total: Number(st.total), days: st.days || {} } } : {});
+  const hasReal = !!((x && x.dev) || (y && y.dev));
+  const dev = {};
+  for (const src of [devOf(x), devOf(y)]) for (const [id, b] of Object.entries(src)) {
+    if (hasReal && id === 'legacy') continue;
+    const cur = dev[id];
+    if (!cur) { dev[id] = { total: Number(b.total) || 0, days: { ...(b.days || {}) } }; continue; }
+    const days = { ...cur.days };
+    for (const [k, v] of Object.entries(b.days || {})) days[k] = Math.max(Number(days[k]) || 0, Number(v) || 0);
+    dev[id] = { total: Math.max(cur.total, Number(b.total) || 0), days };
+  }
+  let total = 0; const days = {};
+  for (const b of Object.values(dev)) {
+    total += b.total;
+    for (const [k, v] of Object.entries(b.days)) days[k] = (days[k] || 0) + (Number(v) || 0);
+  }
+  return { dev, total, days };
+}
+
 function uniteLectura(a, b) {
   const [base, otra] = upd(b) > upd(a) ? [b, a] : [a, b];
   const so = otra.s || {};
@@ -88,6 +110,7 @@ function uniteLectura(a, b) {
   const out = { ...base, s: { ...so, ...(base.s || {}) } };
   if ((Number(so.bestFrac) || 0) <= (Number((base.s || {}).bestFrac) || 0)) for (const k of LEJOS) if (base.s && k in base.s) out.s[k] = base.s[k];
   if ((Number(so.bestFrac) || 0) > (Number(out.s.bestFrac) || 0)) for (const k of LEJOS) if (k in so) out.s[k] = so[k];
+  if ((a.s && a.s.stats) || (b.s && b.s.stats)) out.s.stats = mergeStats(a.s && a.s.stats, b.s && b.s.stats);
   out.updated = Math.max(upd(a), upd(b));
   return out;
 }
