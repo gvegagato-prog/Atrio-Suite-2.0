@@ -952,10 +952,12 @@ ${doc.querySelector('parsererror').innerText}`)
         const $container = await this.#loadXML('META-INF/container.xml')
         if (!$container) throw new Error('Failed to load container file')
 
-        const opfs = Array.from(
-            $container.getElementsByTagNameNS(NS.CONTAINER, 'rootfile'),
-            getAttributes('full-path', 'media-type'))
-            .filter(file => file.mediaType === 'application/oebps-package+xml')
+        // (cualquier espacio de nombres: hay EPUB mal generados que lo escriben sin «names:tc:»; y si el tipo de archivo
+        // no es el estándar, se usa el primero que traiga ruta)
+        const roots = Array.from($container.getElementsByTagNameNS('*', 'rootfile'), getAttributes('full-path', 'media-type'))
+            .filter(file => file.fullPath)
+        const opfs = roots.filter(file => file.mediaType === 'application/oebps-package+xml')
+        if (!opfs.length && roots.length) opfs.push(roots[0])
 
         if (!opfs.length) throw new Error('No package document defined in container')
         const opfPath = opfs[0].fullPath

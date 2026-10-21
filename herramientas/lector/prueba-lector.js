@@ -461,6 +461,22 @@ const log = [];
     ok(abierto, `posición de otro dispositivo que no encaja: abre igual (${abierto ? 'abierto' : await page.textContent('#carga-txt')})`);
     await ctx.close();
   }
+  // Un EPUB mal generado (el espacio de nombres de container.xml sin «names:tc:»): abre igual
+  {
+    book = path.join(__dirname, 'atrio-prueba-espacio.epub');
+    const ctx = await browser.newContext({ viewport: TAM, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => log.push('pageerror ' + e.message));
+    await page.addInitScript(() => {
+      window.Atrio = new Proxy({ state: () => JSON.stringify({ title: 'Mal generado', file: 'espacio.epub', location: null, settings: {}, annotations: [], bookmarks: [], stats: {} }) },
+        { get: (t, k) => t[k] || (() => {}) });
+    });
+    await page.goto(`http://localhost:${port}/assets/lector/index.html`);
+    await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {});
+    const abierto = !!(await page.$('#carga.fuera'));
+    ok(abierto, `EPUB con el espacio de nombres de container.xml mal escrito: abre igual (${abierto ? 'abierto' : await page.textContent('#carga-txt')})`);
+    await ctx.close();
+  }
   await browser.close();
   srv.close();
   const errs = log.filter((l) => !/favicon/.test(l));

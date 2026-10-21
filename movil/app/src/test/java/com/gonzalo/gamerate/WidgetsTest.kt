@@ -126,8 +126,10 @@ class WidgetsTest {
                 p.bitmap(ctx, w, h, false, 1.6f).compress(Bitmap.CompressFormat.PNG, 100, it)
             }
         }
-        // La racha: 6 días seguidos de lectura
-        assertEquals(6, Widgets.racha(Widgets.minutosPorDia(WDatos(ctx))))
+        // La racha: al menos los 6 días seguidos de lectura sembrados (otros datos de ejemplo, fechados «a primeros de mes
+        // + n días», pueden alargarla un día según el día del mes en que se pasen las pruebas; p. ej. el 21)
+        val racha = Widgets.racha(Widgets.minutosPorDia(WDatos(ctx)))
+        assertTrue("racha de $racha", racha in 6..7)
         // Las esquinas quedan recortadas (transparentes) y el centro, pintado
         val b = Widgets.componer(ctx, WTipo.LEYENDO, 1, 330f, 165f).bitmap(ctx, 330f, 165f, false, 2f)
         assertEquals(0, Color.alpha(b.getPixel(0, 0)))
