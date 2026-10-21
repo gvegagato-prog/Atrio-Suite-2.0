@@ -23,7 +23,7 @@ import java.io.File
  * raíz no se puede escribir y lo tuyo va en «Mi carpeta» (visibility is_private_space).
  */
 class FakeKDrive(private val drive: String = "777", private val token: String = "tok") {
-    class F(val id: Long, val name: String, val dir: Boolean, val parent: Long, var bytes: ByteArray = ByteArray(0), val visibility: String = "")
+    class F(val id: Long, val name: String, val dir: Boolean, val parent: Long, var bytes: ByteArray = ByteArray(0), val visibility: String = "", var trashed: Boolean = false)
     val files = java.util.Collections.synchronizedMap(linkedMapOf(
         1L to F(1, "", true, 0, visibility = "is_root"), 2L to F(2, "Mi carpeta", true, 1, visibility = "is_private_space"),
         3L to F(3, "Documentos comunes", true, 1, visibility = "is_team_space")))
@@ -52,7 +52,7 @@ class FakeKDrive(private val drive: String = "777", private val token: String = 
         return cur
     }
     private fun put(dir: Long, name: String, b: ByteArray): F {
-        files.values.firstOrNull { it.parent == dir && !it.dir && it.name == name }?.let { it.bytes = b; return it } // conflict=version
+        files.values.firstOrNull { it.parent == dir && !it.dir && !it.trashed && it.name == name }?.let { it.bytes = b; return it } // conflict=version
         val id = next++; files[id] = F(id, name, false, dir, b); return files[id]!!
     }
 
@@ -72,8 +72,12 @@ class FakeKDrive(private val drive: String = "777", private val token: String = 
         val denied = err(403, "You do not have the required permissions")
         synchronized(files) {
             if (method == "GET") id("""^/files/(\d+)/files$""")?.toLong()?.let { d ->
-                return ok(JSONArray().apply { files.values.filter { it.parent == d }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("type", if (it.dir) "dir" else "file").put("visibility", it.visibility)
+                return ok(JSONArray().apply { files.values.filter { it.parent == d && !it.trashed }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("type", if (it.dir) "dir" else "file").put("visibility", it.visibility)
                     .put("extension_type", if (it.dir) "" else if (Regex("(?i)\\.(png|jpe?g)$").containsMatchIn(it.name)) "image" else "unknown")) } })
+            }
+            if (method == "GET") id("""^/files/(\d+)$""")?.toLong()?.let { f ->
+                val x = files[f] ?: return err(404, "not_found")
+                return ok(JSONObject().put("id", x.id).put("name", x.name).put("parent_id", x.parent).put("type", if (x.dir) "dir" else "file").put("status", if (x.trashed) "trashed" else "ok"))
             }
             if (method == "POST") id("""^/files/(\d+)/directory$""")?.toLong()?.let { d ->
                 if (d == 1L) return denied
@@ -240,6 +244,49 @@ class NubeTest {
         l.getJSONObject("s").put("bestFrac", 0.1).put("bestCfi", "epubcfi(/6/2)").put("fraction", 0.1); l.put("updated", System.currentTimeMillis() + 120_000)
         s.mergeRemote(r.toString())
         assertEquals(0.8, BookFiles.progress(ctx, 501).toDouble(), 0.001)
+    }
+
+    /** Subiste un archivo equivocado: borrarlo de kDrive a mano, o cambiar el archivo del libro, no puede dejar el registro atascado. */
+    @Test fun archivoBorradoDeLaNube() = runBlocking {
+        KDrive.save(ctx, "tok", "777")
+        val s = Store(ctx)
+        s.save(listOf(Game(601, "Coiling Dragon", "", 80)), 1)
+        val zip = File(ctx.cacheDir, "mal.zip").apply { writeBytes(ByteArray(3000) { 1 }) }
+        BookFiles.attachFile(ctx, 601, zip, "mal.zip")
+        assertTrue(NubeSync.run(ctx).startsWith("1 subido"))
+        val viejo = s.loadNube().first { it.k == "libro:601" }.f
+        // Al día mientras siga ahí
+        assertEquals("Todo al día", NubeSync.run(ctx, verify = true))
+        // A la papelera de kDrive: sin comprobar no se entera; comprobando, vuelve a subir
+        k.files[viejo]!!.trashed = true
+        assertEquals("Todo al día", NubeSync.run(ctx))
+        assertTrue(NubeSync.run(ctx, verify = true).startsWith("1 subido"))
+        val nuevo = s.loadNube().first { it.k == "libro:601" }.f
+        assertTrue(nuevo != viejo)
+        // Borrado del todo
+        k.files.remove(nuevo)
+        assertTrue(NubeSync.run(ctx, verify = true).startsWith("1 subido"))
+        // Otro archivo en el mismo libro (otro tamaño): se sube el nuevo sin tocar nada más
+        val epub = File(ctx.cacheDir, "bien.epub").apply { writeBytes(ByteArray(5000) { 2 }) }
+        BookFiles.attach(ctx, 601, Uri.fromFile(epub))
+        assertTrue("el registro viejo ya no está", s.loadNube().none { it.k == "libro:601" })
+        assertTrue(NubeSync.run(ctx).startsWith("1 subido"))
+        assertTrue(k.files.values.any { !it.dir && it.bytes.size == 5000 && !it.trashed })
+        assertEquals("Todo al día", NubeSync.run(ctx, verify = true))
+    }
+
+    /** «Bajar de tu nube» cuando el archivo ya no está: avisa y limpia el registro. */
+    @Test fun bajarLoQueYaNoEsta() = runBlocking {
+        KDrive.save(ctx, "tok", "777")
+        val s = Store(ctx)
+        s.save(listOf(Game(602, "Libro", "", 80)), 1)
+        BookFiles.attachFile(ctx, 602, File(ctx.cacheDir, "l.epub").apply { writeBytes(ByteArray(2000) { 3 }) }, "l.epub")
+        NubeSync.run(ctx)
+        val f = s.loadNube().first { it.k == "libro:602" }.f
+        k.files.remove(f)
+        val e = runCatching { NubeSync.fetchBook(ctx, 602) }.exceptionOrNull()
+        assertTrue("${e?.message}", e?.message?.contains("ya no está") == true)
+        assertTrue(s.loadNube().none { it.k == "libro:602" })
     }
 
     /** Todas las imágenes que pones tú: portada, fondo, logo y las de las casillas de la revista, en la carpeta de su ficha. */

@@ -102,6 +102,8 @@ object BookFiles {
         // Un archivo distinto empieza de cero (los subrayados de otro archivo no encajarían). Lo leído que llegó
         // de otro dispositivo (aún sin archivo aquí) se conserva, y también si es el mismo archivo.
         val old = state(ctx, id)
+        // Otro archivo para este libro (p. ej. te equivocaste y subiste un zip): el de tu nube ya no vale, se sube el nuevo
+        if (old.has("uri") && (old.optString("uri") != uri.toString() || old.optString("name") != name)) runCatching { Store(ctx).removeNube("libro:$id") }
         val o = if (old.optString("uri") == uri.toString() || !old.has("uri") || old.optString("name") == name) old else JSONObject()
         put(ctx, id, o.put("uri", uri.toString()).put("name", name).put("added", System.currentTimeMillis()))
     }

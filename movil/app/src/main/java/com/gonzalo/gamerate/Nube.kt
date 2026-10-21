@@ -317,6 +317,19 @@ object KDrive {
         if (!tmp.renameTo(dest)) { tmp.copyTo(dest, true); tmp.delete() }
     }
 
+    /**
+     * ¿Sigue ese archivo en tu kDrive, en su carpeta? (false si lo borraste, lo mandaste a la papelera o ya no está;
+     * null si no se puede saber —sin red, otro error— y entonces se da por bueno.) No se fía de cómo marque kDrive lo
+     * borrado: pregunta por el archivo, y mira si su carpeta lo lista.
+     */
+    fun exists(ctx: Context, file: Long): Boolean? = try {
+        val d = call(ctx, "GET", "/3/drive/${drive(ctx)}/files/$file").optJSONObject("data")
+        val parent = d?.optLong("parent_id", 0L) ?: 0L
+        if (d == null) null else if (parent <= 0L) true else children(ctx, parent).any { it.id == file }
+    } catch (e: Fail) {
+        if (e.message?.startsWith("No encuentro") == true || e.message?.contains("not_found", true) == true) false else null
+    } catch (e: Exception) { null }
+
     /** ¿Responde tu kDrive con este token? (lista su raíz; falla si el número o el token no valen). */
     fun reach(ctx: Context) { children(ctx, 1) }
 
@@ -328,10 +341,11 @@ object NubeSync {
     var running by mutableStateOf(false)
     var status by mutableStateOf("")
 
-    fun enqueue(ctx: Context) {
+    fun enqueue(ctx: Context, verify: Boolean = false) {
         // Sin kDrive aquí, solo si hay algo tuyo que bajar por su enlace (tus portadas)
         if (!KDrive.on(ctx) && Store(ctx).loadNube().none { it.k.startsWith("foto:") && it.l.isNotBlank() }) return
         val req = OneTimeWorkRequestBuilder<NubeWorker>()
+            .setInputData(androidx.work.workDataOf("verify" to verify))
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
         // KEEP: si ya está subiendo, que siga (antes se cortaba al abrir o cerrar la app y volvía a empezar)
         WorkManager.getInstance(ctx).enqueueUniqueWork("kdrive", ExistingWorkPolicy.KEEP, req)
@@ -432,7 +446,7 @@ object NubeSync {
     }
 
     /** Sube lo que falte y baja lo que falte aquí. Devuelve un resumen. */
-    suspend fun run(ctx: Context, foreground: (suspend (String, Int) -> Unit)? = null): String = withContext(Dispatchers.IO) {
+    suspend fun run(ctx: Context, verify: Boolean = false, foreground: (suspend (String, Int) -> Unit)? = null): String = withContext(Dispatchers.IO) {
         // Sin tu kDrive en este dispositivo no se sube nada, pero lo tuyo se baja igual por sus enlaces
         val on = KDrive.on(ctx)
         val store = Store(ctx)
@@ -457,8 +471,19 @@ object NubeSync {
             if (on) {
             // Libros: el archivo que tengas adjunto, con su enlace para tu pareja
             val titles = (store.load(1).map { it.id to it.name } + store.loadPlays(1).map { it.id to it.name }).toMap()
+            // Comprobar que lo subido sigue en tu kDrive (a mano, o cada 6 h): si lo borraste de allí, se vuelve a subir
+            val np = ctx.getSharedPreferences("nube", Context.MODE_PRIVATE)
+            val comprobar = verify || System.currentTimeMillis() - np.getLong("verificadoEn", 0L) > 6 * 3600_000L
+            if (comprobar) np.edit().putLong("verificadoEn", System.currentTimeMillis()).apply()
             for ((id, u) in localBooks(ctx)) {
-                if (have.containsKey("libro:$id")) continue
+                val rec = have["libro:$id"]
+                if (rec != null) {
+                    val tam = runCatching { sizeOf(ctx, Uri.parse(u)) }.getOrDefault(0L)
+                    // Otro archivo (su tamaño ha cambiado) o ya no está en tu kDrive: el apunte viejo se quita y se sube de nuevo
+                    val sobra = (tam > 0 && tam != rec.s) || (comprobar && KDrive.exists(ctx, rec.f) == false)
+                    if (!sobra) continue
+                    store.removeNube("libro:$id")
+                }
                 try {
                     val uri = Uri.parse(u)
                     val size = sizeOf(ctx, uri)
@@ -547,7 +572,11 @@ object NubeSync {
     suspend fun fetchBook(ctx: Context, id: Long): Boolean = withContext(Dispatchers.IO) {
         val x = Store(ctx).loadNube().find { it.k == "libro:$id" } ?: return@withContext false
         val dest = File(File(ctx.filesDir, "libros"), "$id.${x.n.substringAfterLast('.', "epub")}")
-        bajar(ctx, x, dest)
+        try { bajar(ctx, x, dest) } catch (e: Exception) {
+            // Si ya no está en tu kDrive, el apunte sobra: deja de ofrecerse «Bajar de tu nube» y el libro se puede volver a subir
+            if (e.message?.contains("ya no está") == true) Store(ctx).removeNube("libro:$id")
+            throw e
+        }
         BookFiles.attachFile(ctx, id, dest, x.n)
         true
     }
@@ -711,7 +740,7 @@ class NubeWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
 
     override suspend fun doWork(): Result {
         var fg = true
-        var msg = NubeSync.run(applicationContext) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } }
+        var msg = NubeSync.run(applicationContext, inputData.getBoolean("verify", false)) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } }
         // Si mientras subía pusiste otra foto, otra pasada (hasta dos más)
         repeat(2) { if (NubeSync.fotosPorSubir(applicationContext)) msg = NubeSync.run(applicationContext) { t, p -> if (fg) try { aviso(t, p) } catch (e: Exception) { fg = false } } }
         // Lo subido, a tu cuenta enseguida (aunque la app esté cerrada): así tus otros dispositivos lo ven ya
@@ -763,7 +792,7 @@ fun NubeSettings(say: (String) -> Unit) {
         Plegado("Todas, salvo las que quites de la nube al verlas. Normalmente las sube el PC al hacerlas; desde aquí se suben las que falten.")
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // En segundo plano (con su aviso): no se corta aunque salgas de aquí o cierres la app
-            Button({ NubeSync.enqueue(ctx); say("Sincronizando con tu nube en segundo plano") }, enabled = !NubeSync.running, shape = pillShape()) { Text(if (NubeSync.running) "Sincronizando…" else "Sincronizar ahora") }
+            Button({ NubeSync.enqueue(ctx, verify = true); say("Sincronizando con tu nube en segundo plano") }, enabled = !NubeSync.running, shape = pillShape()) { Text(if (NubeSync.running) "Sincronizando…" else "Sincronizar ahora") }
             OutlinedButton({ KDrive.forget(ctx); on = false; token = ""; say("Nube desconectada (lo subido sigue en tu kDrive)") }, shape = pillShape()) { Text("Desconectar") }
         }
     }
