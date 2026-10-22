@@ -122,6 +122,7 @@ open class EdicionesTest {
         // un acento encima de la edición
         rule.onAllNodesWithText("FUCSIA")[0].performScrollTo().performClick(); rule.waitForIdle()
         assertEquals(0xFFE6007E, Skin.tones.general)
+        rule.onAllNodesWithText("SALVIA")[0].performScrollTo(); shoot("apariencia_acentos")
         Ediciones.aplicar(EDICIONES.first(), ctx)
         assertEquals("con «De la edición», el acento de Atrio", PALETTES.first { it.id == "revista" }.light.general, Skin.tones.general)
     }

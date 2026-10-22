@@ -65,8 +65,6 @@ data class Edicion(
     val genero: String,
     /** La cabecera de la portada (el nombre de la revista). */
     val cabecera: String,
-    /** La línea bajo la cabecera; «%s» es tu nombre. */
-    val lema: String,
     /** El pie de la portada. */
     val pie: String,
     val paleta: Palette,
@@ -174,36 +172,36 @@ private val P_VIAJES = Palette("ed_viajes", "Viajes", "Ediciones",
 private const val AMARILLO_MARCO = 0xFFFFCE00
 
 val EDICIONES: List<Edicion> = listOf(
-    Edicion("atrio", "Atrio", "La de siempre: papel crema, serif cálida y rojo de imprenta", "ATRIO", "La colección de %s, al día", "Atrio · hecho en casa",
+    Edicion("atrio", "Atrio", "La de siempre: papel crema, serif cálida y rojo de imprenta", "ATRIO", "Atrio · hecho en casa",
         P_ATRIO, AtrioDisplay, AtrioBody),
-    Edicion("dominical", "Dominical", "Suplemento de domingo: azul noche, gótica en la cabecera, filete doble y cifras en azul", "El Atrio", "Suplemento semanal · la colección de %s", "El Atrio · edición dominical",
+    Edicion("dominical", "Dominical", "Suplemento de domingo: azul noche, gótica en la cabecera, filete doble y cifras en azul", "El Atrio", "El Atrio · edición dominical",
         P_DOMINICAL, PLAYFAIR, SOURCE_SERIF, letraCabecera = FRAKTUR, cabPeso = FontWeight.Normal, cabTrack = 0f, cabCentro = true, doble = true, cabColor = true, fileteColor = true, cifrasColor = true,
         widget = LetrasWidget(R.font.ed_playfair_bold, R.font.ed_playfair_italic, R.font.ed_sourceserif_bold, R.font.ed_sourceserif_regular)),
-    Edicion("moda", "Moda", "De moda: blanco, Bodoni enorme en granate y filetes finísimos", "ATRIO", "Edición de colección · %s", "ATRIO · PARÍS · MADRID · TU SOFÁ",
+    Edicion("moda", "Moda", "De moda: blanco, Bodoni enorme en granate y filetes finísimos", "ATRIO", "ATRIO · PARÍS · MADRID · TU SOFÁ",
         P_MODA, BODONI, JOST, cabPeso = FontWeight.Normal, cabTrack = -0.04f, cabCentro = true, filete = 0.5f, cabColor = true, cifrasColor = true, portada = Portada.SOBRE_FOTO,
         widget = LetrasWidget(R.font.ed_bodoni_regular, R.font.ed_bodoni_italic, R.font.ed_jost_semibold, R.font.ed_jost_regular)),
-    Edicion("cultural", "Cultural", "Semanario de letras: verde inglés, Caslon y antetítulos en cursiva", "Atrio", "Crítica, lecturas y partidas de %s", "Atrio · fundada en tu casa",
+    Edicion("cultural", "Cultural", "Semanario de letras: verde inglés, Caslon y antetítulos en cursiva", "Atrio", "Atrio · fundada en tu casa",
         P_CULTURAL, CASLON_DISPLAY, CASLON, cabPeso = FontWeight.Normal, cabTrack = 0.01f, cabCentro = true, filete = 0.75f, antetitulos = Antetitulos.CURSIVA,
         cabColor = true, fileteColor = true, cifrasColor = true,
         widget = LetrasWidget(R.font.ed_caslondisplay, R.font.ed_caslon_italic, R.font.ed_caslon_bold, R.font.ed_caslon_regular)),
-    Edicion("popular", "Popular", "Semanario popular: la cabecera en una banda cereza, letra gorda y franjas de color", "ATRIO", "¡Todo lo que juega, lee y ve %s!", "ATRIO · cada semana, en tu casa",
+    Edicion("popular", "Popular", "Semanario popular: la cabecera en una banda cereza, letra gorda y franjas de color", "ATRIO", "ATRIO · cada semana, en tu casa",
         P_POPULAR, ANTON, BARLOW, letraEtiquetas = BARLOW, cabPeso = FontWeight.Normal, cabTrack = 0.02f, cabCentro = true, cabEscala = 1.5f, banda = true,
         antetitulos = Antetitulos.FRANJA, cifrasColor = true, filete = 1.5f, portada = Portada.BLOQUE,
         widget = LetrasWidget(R.font.ed_anton, R.font.ed_barlow_italic, R.font.ed_barlow_bold, R.font.ed_barlow_medium)),
-    Edicion("tecno", "Tecnología", "De tecnología: grotesca, letra de máquina y filetes azul eléctrico", "[ATRIO]", "%s // tu colección, compilada", "[ATRIO] // fin de la transmisión",
+    Edicion("tecno", "Tecnología", "De tecnología: grotesca, letra de máquina y filetes azul eléctrico", "[ATRIO]", "[ATRIO] // fin de la transmisión",
         P_TECNO, GROTESK, PLEX, letraEtiquetas = PLEX_MONO, cabTrack = -0.05f, filete = 2f, antetitulos = Antetitulos.CODIGO, fileteColor = true,
         widget = LetrasWidget(R.font.ed_spacegrotesk_bold, R.font.ed_plexsans_italic, R.font.ed_plexsans_bold, R.font.ed_plexsans_regular)),
-    Edicion("musica", "Música", "De música: banda ocre, letra de cartel en mayúsculas y fotos con contraste", "ATRIO", "Lo que suena en casa de %s", "ATRIO · SUBE EL VOLUMEN",
+    Edicion("musica", "Música", "De música: banda ocre, letra de cartel en mayúsculas y fotos con contraste", "ATRIO", "ATRIO · SUBE EL VOLUMEN",
         P_MUSICA, BIG_SHOULDERS, WORK_SANS, letraEtiquetas = BIG_SHOULDERS, cabPeso = FontWeight.Normal, cabTrack = -0.01f, cabEscala = 1.6f, filete = 2.5f,
         antetitulos = Antetitulos.CONDENSADA, titularesMayus = true, fotos = Fotos.CONTRASTE, banda = true, cifrasColor = true, portada = Portada.BLOQUE,
         widget = LetrasWidget(R.font.ed_bigshoulders_black, R.font.ed_worksans_italic, R.font.ed_worksans_bold, R.font.ed_worksans_medium)),
-    Edicion("cine", "Cine", "Cuadernos de cine: papel amarillento, marrón tabaco, didona gorda y fotos en sepia", "Cuadernos de Atrio", "Las películas, series y libros de %s", "Cuadernos de Atrio · nº del día",
+    Edicion("cine", "Cine", "Cuadernos de cine: papel amarillento, marrón tabaco, didona gorda y fotos en sepia", "Cuadernos de Atrio", "Cuadernos de Atrio · nº del día",
         P_CINE, ABRIL, KARLA, cabPeso = FontWeight.Normal, cabTrack = -0.02f, fotos = Fotos.SEPIA, cabColor = true, fileteColor = true, cifrasColor = true, portada = Portada.SOBRE_FOTO,
         widget = LetrasWidget(R.font.ed_abril, R.font.ed_karla_italic, R.font.ed_karla_bold, R.font.ed_karla_medium)),
-    Edicion("fanzine", "Fanzine", "Fotocopiado en casa: letras recortadas, máquina de escribir y fotos en blanco y negro", "¡ATRIO!", "hecho a mano por %s · tirada: 1", "¡ATRIO! · fotocopia y reparte",
+    Edicion("fanzine", "Fanzine", "Fotocopiado en casa: letras recortadas, máquina de escribir y fotos en blanco y negro", "¡ATRIO!", "¡ATRIO! · fotocopia y reparte",
         P_FANZINE, ARCHIVO_BLACK, COURIER, letraEtiquetas = COURIER, cabTrack = -0.04f, giro = -2.5f, filete = 2f, antetitulos = Antetitulos.INVERTIDA, fotos = Fotos.BN,
         widget = LetrasWidget(R.font.ed_archivoblack, R.font.ed_courier_italic, R.font.ed_courier_bold, R.font.ed_courier_regular)),
-    Edicion("viajes", "Viajes", "De viajes y naturaleza: el marco amarillo, una serif clásica y mucho aire", "ATRIO", "Expediciones y hallazgos de %s", "Atrio · explora tu colección",
+    Edicion("viajes", "Viajes", "De viajes y naturaleza: el marco amarillo, una serif clásica y mucho aire", "ATRIO", "Atrio · explora tu colección",
         P_VIAJES, CORMORANT, LATO, cabTrack = 0.06f, cabCentro = true, marco = AMARILLO_MARCO, filete = 1f, portada = Portada.SOBRE_FOTO,
         widget = LetrasWidget(R.font.ed_cormorant_bold, R.font.ed_cormorant_italic, R.font.ed_lato_bold, R.font.ed_lato_regular)),
 )
@@ -346,8 +344,6 @@ fun MuestraEdicion(e: Edicion, elegida: Boolean, nombre: String, modifier: Modif
             if (e.doble) { Box(Modifier.fillMaxWidth().height(0.5.dp).background(cf)); Spacer(Modifier.height(1.5.dp)) }
             Box(Modifier.fillMaxWidth().height((2f * e.filete).coerceAtLeast(0.5f).dp).background(cf))
         }
-        Text(e.lema.format(nombre), color = gris, fontFamily = e.titulos, fontStyle = FontStyle.Italic, fontSize = 10.sp, lineHeight = 12.sp,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.weight(1f))
         Antetitulo("En portada", tam = 8.sp, color = tinta, e = e, acento = acento, papel = papel)
         Spacer(Modifier.height(4.dp))

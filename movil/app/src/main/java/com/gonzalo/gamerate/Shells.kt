@@ -145,8 +145,6 @@ private fun RevistaHome(m: ShellModel) {
             }
             Rule(1.dp)
         }
-        Text(Ediciones.actual.lema.format(m.name).let { if (m.readOnly) it.removeSuffix(", al día") else it }, color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp).llega(1))
-
         Box(Modifier.llega(1)) { RevistaLectura(all.filter { it.kind.isBook }) }
 
         // Las secciones de la revista, como el menú de una web: sin título, justo antes de la portada
