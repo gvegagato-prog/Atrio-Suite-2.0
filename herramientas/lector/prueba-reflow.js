@@ -78,6 +78,9 @@ const norm = (t) => t.replace(/\s+/g, ' ').trim();
     for (const f of sobran.slice(0, 4)) console.log('    sobra:', f.slice(0, 120));
     const cursivas = r.blocks.filter((b) => b.it && b.it.length).length;
     console.log('  párrafos con cursiva:', cursivas);
+    const saltos = r.blocks.filter((b) => b.k === 'p' && b.t.includes('\n'));
+    console.log('  párrafos con saltos de línea (versos):', saltos.length);
+    if (process.env.SALTOS) for (const b of saltos.slice(0, 8)) console.log('    ' + JSON.stringify(b.t.slice(0, 160)));
   }
   await browser.close(); srv.close();
 })();

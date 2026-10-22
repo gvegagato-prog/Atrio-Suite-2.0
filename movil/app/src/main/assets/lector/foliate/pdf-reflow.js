@@ -6,7 +6,7 @@
 import { abrirPDF, portadaPDF } from './pdf.js'
 
 // Si cambia cómo se reconstruye el texto, sube este número: la posición guardada ya no encajaría del todo
-export const VERSION = 5
+export const VERSION = 6
 
 const FUENTE_I = /ital|obli|cursiv|kursiv|slanted|-it\b|\bit$/i
 const FUENTE_B = /bold|black|heavy|semibold|demi|\bbd\b|-bd\b|negrita|fett|extrabold/i
@@ -144,6 +144,9 @@ export async function extraer(pdf, { onProgress, cancelado } = {}) {
     const piezas = new Array(pdf.numPages)
     let hechas = 0
     const una = async n => {
+        try { await unaPagina(n) } catch (e) { console.warn('pdf-reflow: página', n, e); piezas[n - 1] = { W: 600, H: 800, items: [] } }
+    }
+    const unaPagina = async n => {
         const page = await pdf.getPage(n)
         const vp = page.getViewport({ scale: 1 })
         const tc = await page.getTextContent()
@@ -309,7 +312,8 @@ export function analizar(pages, { outline } = {}) {
     let notas = []                  // notas al pie de la página: van detrás del párrafo que estaba abierto
     const sueltaNotas = () => { for (const n of notas) blocks.push(n); notas = [] }
     const cierra = () => { if (par) blocks.push(par); par = null; prev = null; sueltaNotas() }
-    const abre = (l, page) => { par = { k: 'p', runs: [], page }; prev = null }
+    const abre = (l, page) => { par = { k: 'p', runs: [], page, lineas: 0, l0: l }; prev = null }
+    let porSangria = 0, porHueco = 0     // cómo empiezan los párrafos en este libro: con sangría o con espacio
     const centro = (l, p, k) => { const [m, b] = MB(k, l); return Math.abs((l.x0 + l.x1) / 2 - (m + b) / 2) < p.w * 0.045 }
 
     limpias.forEach((p, pi) => {
@@ -376,8 +380,10 @@ export function analizar(pages, { outline } = {}) {
                 continue
             }
             // línea de texto
+            const anterior = prev
             let nuevo = !par
             let salto = false   // salto de línea dentro del párrafo (versos, cartas, letras de canciones)
+            let llena = true    // la línea anterior llega al borde: un guion al final parte una palabra (si no, es del texto: «cue-»)
             if (par && prev) {
                 const P = prev
                 const mismaPag = prev.pi === pi
@@ -390,12 +396,20 @@ export function analizar(pages, { outline } = {}) {
                 const cabe = !/[\u00AD\u2010\u2011-]$/.test(textoDe(P.l).trim()) && bb - P.l.x1 > (pal.length + 1) * cw * 1.04
                 const corta = justificado ? P.l.x1 < bb - body * 0.9 : (P.l.x1 < bb - 0.3 * (bb - mb) || cabe)
                 const finP = FIN_RE.test(textoDe(P.l).trim())
+                llena = P.l.x1 > bb - (justificado ? body * 1.5 : 0.25 * (bb - mb)) || Math.abs(P.l.x1 - l.x1) < 0.6
+                    || !!(P.ant && Math.abs(P.ant.x1 - P.l.x1) < 0.6)
                 if (gap != null && gap > lead * 1.38) nuevo = true
-                else if (sangra && !l.cap && !(capX != null && capN > 0 && Math.abs(l.x0 - capX) < 2)) nuevo = true
+                // (una cita o una carta sangrada entera: líneas seguidas con la misma sangría, y la anterior llena, son el mismo párrafo)
+                else if (sangra && !l.cap && !(capX != null && capN > 0 && Math.abs(l.x0 - capX) < 2)
+                    && !(mismaPag && Math.abs(l.x0 - P.l.x0) < 1.5 && !finP && !empiezaDialogo(texto)
+                        // (la anterior llega hasta el borde derecho del bloque, justificado: el mismo que esta línea, o que la de antes)
+                        && (Math.abs(P.l.x1 - l.x1) < 0.6 || (P.ant && Math.abs(P.ant.x0 - P.l.x0) < 1.5 && Math.abs(P.ant.x1 - P.l.x1) < 0.6)))) nuevo = true
                 else if (empiezaDialogo(texto) && (finP || corta)) nuevo = true
                 else if (corta && finP) nuevo = true
                 // una línea corta que no acaba en punto y tras la que sigue otra: el autor cortó ahí la línea (verso)
-                else if (!finP && P.l.x1 < bb - (justificado ? body * 2.5 : 0.3 * (bb - mb)) && !/[,;]$/.test(textoDe(P.l).trim()) && /^[\p{Lu}¿¡«“"]/u.test(texto)) salto = true
+                else if (!finP && cabe && P.l.x1 < bb - (justificado ? body * 2.5 : 0.3 * (bb - mb)) && !/[\u00AD\u2010\u2011-]$/.test(textoDe(P.l).trim())
+                    // (en un bloque sangrado, como una carta, las líneas llegan todas al mismo borde derecho: no son versos)
+                    && Math.abs(P.l.x1 - l.x1) >= 0.6 && !(P.ant && Math.abs(P.ant.x1 - P.l.x1) < 0.6)) salto = true
             }
             if (nuevo) {
                 // un hueco de una línea entera (o más) entre dos párrafos: cambio de escena sin símbolos
@@ -410,18 +424,29 @@ export function analizar(pages, { outline } = {}) {
             if (par.runs.length) {
                 const u = par.runs[par.runs.length - 1]
                 const primero = lr[0].t.replace(/^\s+/, '')
-                if (/\p{L}[­‐‑-]$/u.test(u.t) && /^\p{Ll}/u.test(primero)) {
+                if (/\p{L}[­‐‑-]$/u.test(u.t) && /^\p{Ll}/u.test(primero) && !llena) u.t = u.t.replace(/\s+$/, '') + '\n'
+                else if (/\p{L}[­‐‑-]$/u.test(u.t) && /^\p{Ll}/u.test(primero)) {
                     // «franco-» + «prusiano»: si el libro escribe «franco-prusiano» en otro sitio, el guion es de la palabra
                     const ini = (u.t.match(/(\p{L}+)[­‐‑-]$/u) || [])[1] || '', fin = (primero.match(/^\p{L}+/u) || [''])[0]
                     const propio = u.t.length > 0 && compuestas.has((ini + '-' + fin).toLowerCase()) && !palabras.has((ini + fin).toLowerCase())
                     if (!propio) u.t = u.t.slice(0, -1)
                 }
                 else if (/[­]$/.test(u.t)) u.t = u.t.slice(0, -1)
+                else if (/^[,.;:!?)\]»”’…]/.test(primero)) u.t = u.t.replace(/\s+$/, '')
                 else u.t = u.t.replace(/\s+$/, '') + (salto ? '\n' : ' ')
                 lr[0].t = lr[0].t.replace(/^\s+/, '')
             } else lr[0].t = lr[0].t.replace(/^\s+/, '')
             par.runs.push(...lr)
-            prev = { l, pi }
+            par.lineas++
+            if (par.lineas === 1) {
+                // alineación de un párrafo de una línea: centrado (epígrafe, «FIN») o a la derecha (una firma)
+                const [m0, b0] = MB(k, l), anchoT = b0 - m0
+                const centrada = Math.abs((l.x0 + l.x1) / 2 - (m0 + b0) / 2) < anchoT * 0.04 && l.x0 - m0 > anchoT * 0.12
+                const derecha = Math.abs(l.x1 - b0) < body * 0.6 && l.x0 - m0 > anchoT * 0.35
+                par.al = centrada ? 'c' : derecha ? 'd' : null
+                if (anterior && anterior.pi === pi) { if (l.y - anterior.l.y > lead * 1.38) porHueco++; else if (l.x0 - m0 > Math.max(body * 0.55, 4)) porSangria++ }
+            } else par.al = null
+            prev = { l, pi, ant: anterior?.pi === pi && !nuevo ? anterior.l : null }
         }
         // las notas al pie de esta página
         let nota = null
@@ -441,7 +466,7 @@ export function analizar(pages, { outline } = {}) {
         if (b.k === 'p' || b.k === 'n') {
             b.runs = fusiona(b.runs.map(r => ({ ...r, t: limpia(r.t) })))
             if (!b.runs.length || !b.runs.some(r => r.t.trim())) b.k = 'x'
-        } else if (b.k === 'h') b.lines = b.lines.map(t => segmenta(limpia(letras(t)), palabras)).filter(Boolean)
+        } else if (b.k === 'h') b.lines = b.lines.map(t => limpia(letras(t, palabras))).filter(Boolean)
     }
     const out = blocks.filter(b => b.k !== 'x')
     // un título solo cuenta como capítulo si tras él hay texto (no en la portada ni en la página de créditos)
@@ -451,7 +476,9 @@ export function analizar(pages, { outline } = {}) {
         for (let j = i + 1; j < out.length && out[j].k !== 'h'; j++) if (out[j].k === 'p') n += out[j].runs.reduce((a, r) => a + r.t.length, 0)
         if (n < 250) b.cap = false
     })
-    return { blocks: out, stats: { body, lead, justificado, marg, borde, paginas: pages.length, outline: !!outline } }
+    // Párrafos «como el libro»: separados por espacio y sin sangría, o con sangría
+    const estilo = porHueco > porSangria * 1.5 && porHueco >= 8 ? 'bloque' : 'sangria'
+    return { blocks: out, estilo, stats: { body, lead, justificado, marg, borde, paginas: pages.length, outline: !!outline, estilo } }
 }
 
 /** «Lacasadelfaro» → «La casa del faro» con las palabras del propio libro (títulos con las letras separadas, donde pdf.js no ve los espacios). */
@@ -461,9 +488,9 @@ export function segmenta(texto, palabras) {
     const total = [...palabras.values()].reduce((a, b) => a + b, 0)
     return texto.split(' ').map(tok => {
         const t = tok.toLowerCase()
-        if (t.length < 10 || palabras.has(t) || !/^\p{L}+$/u.test(tok)) return tok
+        if (t.length < 8 || palabras.has(t) || !/^\p{L}+$/u.test(tok)) return tok
         const n = t.length
-        const coste = new Array(n + 1).fill(Infinity), ant = new Array(n + 1).fill(-1)
+        const coste = new Array(n + 1).fill(Infinity), ant = new Array(n + 1).fill(-1), raras = new Array(n + 1).fill(0)
         coste[0] = 0
         for (let i = 1; i <= n; i++) for (let j = Math.max(0, i - 20); j < i; j++) {
             if (coste[j] === Infinity) continue
@@ -476,9 +503,9 @@ export function segmenta(texto, palabras) {
             else if (len >= 4 && len < n) k = 14 + 2 * len  // una palabra que el libro no usa (el título puede tener alguna)
             else continue
             k += coste[j]
-            if (k < coste[i]) { coste[i] = k; ant[i] = j }
+            if (k < coste[i]) { coste[i] = k; ant[i] = j; raras[i] = raras[j] + (c ? 0 : len) }
         }
-        if (coste[n] === Infinity) return tok
+        if (coste[n] === Infinity || raras[n] > n * 0.35) return tok
         const cortes = []
         for (let i = n; i > 0; i = ant[i]) cortes.unshift(i)
         if (cortes.length < 2) return tok
@@ -492,10 +519,11 @@ function limpia(t) {
     return t.replace(/[ﬀ-ﬆ]/g, c => LIG[c] || c).replace(/­/g, '').replace(/[​﻿]/g, '').replace(/[ \t -  ]+/g, ' ').replace(/(?:\.\s?){4,}/g, ' … ')
 }
 /** «C A P Í T U L O  1» → «CAPÍTULO 1» (títulos con las letras muy separadas). */
-function letras(t) {
+function letras(t, palabras) {
     const tk = t.split(/ {2,}/).map(w => {
         const ls = w.split(' ')
-        return ls.length >= 4 && ls.filter(x => x.length === 1).length >= ls.length * 0.75 ? ls.join('') : w
+        // (si no se ven los huecos entre palabras, se buscan con las palabras del propio libro)
+        return ls.length >= 4 && ls.filter(x => x.length === 1).length >= ls.length * 0.75 ? (palabras ? segmenta(ls.join(''), palabras) : ls.join('')) : w
     })
     return tk.join('  ')
 }
@@ -583,14 +611,16 @@ export function capitulos(blocks, { outline, paginas } = {}) {
 const norm = t => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
 const coincide = (a, b) => { a = norm(a); b = norm(b); return !!a && !!b && (a.includes(b) || b.includes(a)) }
 
-function htmlDe(cap, lang, idx) {
+function htmlDe(cap, lang, idx, estilo) {
     const partes = cap.blocks.map(b => {
         if (b.k === 'h') return `<h2>${lineasTitulo(b.lines).map(esc).join('<br/>')}</h2>`
         if (b.k === 'sep') return b.hueco ? '<p class="sep esp">&#160;</p>' : '<p class="sep">* * *</p>'
         if (b.k === 'n') return `<p class="nota">${runsHTML(b.runs)}</p>`
-        return `<p>${runsHTML(b.runs)}</p>`
+        const verso = b.runs.some(r => r.t.includes('\n'))
+        const clase = b.al === 'c' ? 'centro' : b.al === 'd' ? 'derecha' : verso ? 'verso' : ''
+        return `<p${clase ? ` class="${clase}"` : ''}>${runsHTML(b.runs)}</p>`
     })
-    return `<!DOCTYPE html><html class="atrio-reflow" lang="${lang}" xml:lang="${lang}"><head><meta charset="utf-8"/><title>${esc(cap.titulo)}</title></head><body>${partes.join('\n')}</body></html>`
+    return `<!DOCTYPE html><html class="atrio-reflow${estilo === 'bloque' ? ' bloque' : ''}" lang="${lang}" xml:lang="${lang}"><head><meta charset="utf-8"/><title>${esc(cap.titulo)}</title></head><body>${partes.join('\n')}</body></html>`
 }
 
 // ---------------------------------------------------------------- 4. Caché (la extracción es lo lento)
@@ -617,13 +647,28 @@ async function guardaCache(clave, v) {
     try {
         await limite((async () => {
             const db = await idb()
-            // solo se guardan los últimos libros: se borra lo anterior
             const tx = db.transaction('x', 'readwrite'); const st = tx.objectStore('x')
-            const claves = await new Promise(ok => { const q = st.getAllKeys(); q.onsuccess = () => ok(q.result || []); q.onerror = () => ok([]) })
-            for (const k of claves.slice(0, Math.max(0, claves.length - 5))) st.delete(k)
+            // solo se guardan los cinco últimos libros: el índice dice cuándo se usó cada uno
+            const indice = await new Promise(ok => { const q = st.get('__indice'); q.onsuccess = () => ok(Array.isArray(q.result) ? q.result : []); q.onerror = () => ok([]) })
+            const nuevo = [...indice.filter(x => x.k !== clave), { k: clave, t: Date.now() }].sort((a, b) => b.t - a.t)
+            for (const x of nuevo.slice(5)) st.delete(x.k)
+            st.put(nuevo.slice(0, 5), '__indice')
             st.put(v, clave)
             await new Promise(ok => { tx.oncomplete = ok; tx.onerror = ok; tx.onabort = ok })
         })(), 8000)
+    } catch (e) { }
+}
+
+/** Apunta que este libro se ha usado ahora (para no borrarlo de la caché antes que otros). */
+async function tocaCache(clave) {
+    try {
+        await limite((async () => {
+            const db = await idb()
+            const tx = db.transaction('x', 'readwrite'); const st = tx.objectStore('x')
+            const q = st.get('__indice')
+            q.onsuccess = () => { const ind = Array.isArray(q.result) ? q.result : []; st.put([{ k: clave, t: Date.now() }, ...ind.filter(x => x.k !== clave)].slice(0, 5), '__indice') }
+            await new Promise(ok => { tx.oncomplete = ok; tx.onerror = ok; tx.onabort = ok })
+        })(), 3000)
     } catch (e) { }
 }
 
@@ -646,6 +691,7 @@ export async function makePDFReflow(file, { onProgress, cancelado, forzar } = {}
     const pdf = await abrirPDF(file, { fontExtraProperties: true })
     const clave = `v${VERSION}|${file.name}|${file.size}|${await huella(file)}`
     let pages = (await leeCache(clave))?.pages
+    if (pages) tocaCache(clave)
     if (!pages) {
         try { pages = await extraer(pdf, { onProgress, cancelado }) } catch (e) { try { pdf.destroy() } catch (x) { } throw e }
         const chars = pages.reduce((a, p) => a + p.lines.reduce((b, l) => b + l.n, 0), 0)
@@ -675,7 +721,7 @@ export async function makePDFReflow(file, { onProgress, cancelado, forzar } = {}
         }
     } catch (e) { }
 
-    const { blocks } = analizar(pages, { outline })
+    const { blocks, estilo } = analizar(pages, { outline })
     // Poco texto por página (un cómic, un libro ilustrado, un folleto): adaptarlo estropearía más que ayuda
     const letrasTotal = blocks.reduce((a, b) => a + (b.k === 'p' ? b.runs.reduce((x, r) => x + r.t.length, 0) : 0), 0)
     if (!forzar && letrasTotal / pages.length < 350) {
@@ -685,7 +731,8 @@ export async function makePDFReflow(file, { onProgress, cancelado, forzar } = {}
     }
     const caps = capitulos(blocks, { outline, paginas: pages.length })
     const todo = blocks.filter(b => b.k === 'p').map(textoBloque).join(' ')
-    const lang = (typeof metadata?.get?.('dc:language') === 'string' && metadata.get('dc:language').slice(0, 2)) || idioma(todo)
+    const lang = ((typeof metadata?.get?.('dc:language') === 'string' && metadata.get('dc:language').slice(0, 2).toLowerCase().replace(/[^a-z]/g, '')) || '').length === 2
+        ? metadata.get('dc:language').slice(0, 2).toLowerCase() : idioma(todo)
 
     const urls = []
     const book = { rendition: { layout: 'reflowable' }, dir: 'ltr' }
@@ -696,7 +743,7 @@ export async function makePDFReflow(file, { onProgress, cancelado, forzar } = {}
         description: metadata?.get?.('dc:description') ?? info?.Subject,
     }
     book.sections = caps.map((c, index) => {
-        const html = htmlDe(c, lang, index)
+        const html = htmlDe(c, lang, index, estilo)
         const blob = new Blob([html], { type: 'text/html' })
         const url = URL.createObjectURL(blob)
         urls.push(url)

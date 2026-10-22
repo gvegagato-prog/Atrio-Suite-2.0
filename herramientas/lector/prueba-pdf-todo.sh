@@ -41,6 +41,8 @@ for f in sangria bloque derecha cap notas palabras indice t-discreto t-numero t-
 done
 echo "== plano (sin sangría ni espacio entre párrafos: a veces no se puede saber dónde acaba un párrafo; basta el 90 %)"
 node $AQUI/prueba-reflow.js $OUT/nov/plano.pdf $OUT/nov/plano.json | grep "exactos [0-9]*$"
+echo "== casos del análisis"
+node $AQUI/prueba-analizar.js | grep -v "^  ✔" ; node $AQUI/prueba-analizar.js | grep -q "✘" && FALLOS=$((FALLOS+1))
 echo "== lector"
 node $AQUI/prueba-pdf-texto.js $OUT/nov/sangria.pdf $OUT/nov/escaneado.pdf $OUT/capturas $OUT/nov/ilustrado.pdf | grep -v "^  ✔" ; node $AQUI/prueba-pdf-texto.js $OUT/nov/sangria.pdf $OUT/nov/escaneado.pdf $OUT/capturas $OUT/nov/ilustrado.pdf | grep -q "✘" && FALLOS=$((FALLOS+1))
 echo "fallos: $FALLOS"

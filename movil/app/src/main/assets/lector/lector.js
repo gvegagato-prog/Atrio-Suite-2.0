@@ -162,6 +162,16 @@ async function abrir() {
         if (st.fraction > 0 && st.fraction < 1) await view.goToFraction(st.fraction)
         else await view.renderer.next()
     }
+    // PDF como texto: la posición guardada (de otro dispositivo, o de una versión anterior de Atrio que reconstruía el
+    // texto algo distinto) tiene que caer donde dice su porcentaje; si cae lejos, manda el porcentaje
+    if (reflow && !st.goto && typeof donde === 'string' && st.fraction > 0 && st.fraction < 1) {
+        await new Promise(r => setTimeout(r, 60))
+        const f = last?.fraction
+        if (typeof f === 'number' && Math.abs(f - st.fraction) > 0.03) {
+            console.warn('Lector: la posición guardada no cuadra con su porcentaje', f, st.fraction)
+            try { await view.goToFraction(st.fraction) } catch (e) { }
+        }
+    }
     paso = 'listo'
     // Leyendo hacia abajo, los botones de volumen no pasan página (son el volumen de siempre)
     try { A.volumeKeys?.(!haciaAbajo()) } catch (e) { }
@@ -231,6 +241,10 @@ html.atrio-reflow h2 { text-align: center !important; font-size: 1.3em; line-hei
 html.atrio-reflow p { text-indent: 1.4em; margin: 0; }
 html.atrio-reflow h2 + p, html.atrio-reflow p.sep + p { text-indent: 0; }
 html.atrio-reflow p.sep { text-align: center !important; text-indent: 0; margin: 1.4em 0; letter-spacing: .3em; }
+html.atrio-reflow.bloque p { text-indent: 0; margin: 0 0 .75em; }
+html.atrio-reflow p.centro { text-align: center !important; text-indent: 0; margin: .6em 0; }
+html.atrio-reflow p.derecha { text-align: right !important; text-indent: 0; margin: .4em 0; }
+html.atrio-reflow p.verso { text-indent: 0; text-align: left !important; margin: .5em 0; }
 html.atrio-reflow p.sep.esp { margin: .9em 0; letter-spacing: 0; }
 html.atrio-reflow p.nota { font-size: .8em; text-indent: 0; opacity: .85; margin: .6em 0; }
 ::highlight(atrio) { background-color: ${fg}; color: ${bg}; }`
