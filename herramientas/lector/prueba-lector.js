@@ -60,7 +60,7 @@ const log = [];
       const store = { saved: {} };
       window.__atrio = store;
       window.Atrio = {
-        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: {}, annotations: [], bookmarks: [], device: 'tablet', stats: { dev: { otra: { total: 600000, days: { '2020-01-01': 600000 } } }, total: 600000, days: { '2020-01-01': 600000 } }, accent: { light: '#2F5D8A', dark: '#7FA7C4' } }),
+        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: nm.endsWith('pdf') ? { pdfTexto: false } : {}, annotations: [], bookmarks: [], device: 'tablet', stats: { dev: { otra: { total: 600000, days: { '2020-01-01': 600000 } } }, total: 600000, days: { '2020-01-01': 600000 } }, accent: { light: '#2F5D8A', dark: '#7FA7C4' } }),
         saveProgress: (cfi, f, l) => { store.saved.progress = { cfi, f, l }; },
         saveSettings: (j) => { store.saved.settings = JSON.parse(j); },
         saveAnnotations: (j) => { store.saved.notes = JSON.parse(j); },

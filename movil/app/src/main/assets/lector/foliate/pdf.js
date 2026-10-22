@@ -112,19 +112,27 @@ const makeTOCItem = item => ({
     subitems: item.items.length ? item.items.map(makeTOCItem) : null,
 })
 
-export const makePDF = async file => {
+// Atrio: el documento de pdf.js (también lo usa el modo «texto adaptable», pdf-reflow.js)
+export const abrirPDF = async (file, extra = {}) => {
     const transport = new pdfjsLib.PDFDataRangeTransport(file.size, [])
     transport.requestDataRange = (begin, end) => {
         file.slice(begin, end).arrayBuffer().then(chunk => {
             transport.onDataRange(begin, chunk)
         })
     }
-    const pdf = await pdfjsLib.getDocument({
+    return await pdfjsLib.getDocument({
         range: transport,
         cMapUrl: pdfjsPath('cmaps/'),
         standardFontDataUrl: pdfjsPath('standard_fonts/'),
         isEvalSupported: false,
+        ...extra,
     }).promise
+}
+
+export const portadaPDF = async pdf => renderPage(await pdf.getPage(1), true)
+
+export const makePDF = async file => {
+    const pdf = await abrirPDF(file)
 
     const book = { rendition: { layout: 'pre-paginated' } }
 

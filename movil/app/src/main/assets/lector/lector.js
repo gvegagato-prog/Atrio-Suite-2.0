@@ -16,6 +16,8 @@ const S = Object.assign({
     nightAuto: false,
     // PDF y cómics: «pages» página a página; «scroll», deslizando hacia abajo; «strip», tira continua sin huecos (manga)
     pdfFlow: 'pages',
+    // PDF: el texto adaptado a la pantalla (novelas) o la página tal cual
+    pdfTexto: true,
 }, st.settings || {})
 // El brillo va en la escala del control de Android (la que ves en la barra del sistema, no la de la luz real):
 // antes iba en luz real y con un mínimo del 2 %, que en la barra del sistema es como un 25 % y por eso brillaba
@@ -43,8 +45,15 @@ function recontar() {
     stats.total = t; stats.days = d
 }
 recontar()
-let notes = st.annotations || []      // { value, text, note, created, index, label } (el color de antes ya no se usa)
-let marks = st.bookmarks || []        // { value, label, fraction, created }
+// En un PDF, lo subrayado y los marcadores de la página original y los del texto adaptado no se mezclan (sus
+// posiciones no valen en el otro formato): m = 'r' es del texto adaptado. Se guardan todos juntos.
+let notesAll = st.annotations || [], marksAll = st.bookmarks || []
+let notes = notesAll      // { value, text, note, created, index, label, m } (el color de antes ya no se usa)
+let marks = marksAll      // { value, label, fraction, created, m }
+const delModo = n => !esPDF || (n.m === 'r') === reflow
+function separaModo() {
+    notes = notesAll.filter(delModo); marks = marksAll.filter(delModo)
+}
 const THEMES = [['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
 const FONTS = [['original', 'Original'], ['atrio', 'Fraunces'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
 // El acento de la app (el que elegiste en Apariencia), en su versión clara y oscura
@@ -56,7 +65,7 @@ const theme = () => (S.nightAuto && isNight() && !DARK_THEMES.includes(S.theme))
 // Cada diez minutos se mira si ha cambiado (al anochecer, sin cerrar el libro)
 let lastTheme = null
 setInterval(() => { if (view && S.nightAuto && theme() !== lastTheme) applySettings() }, 600000)
-let view, isPDF = false, last = null, chromeOn = false, selection = null
+let view, isPDF = false, esPDF = false, reflow = false, last = null, chromeOn = false, selection = null
 
 // ---------------------------------------------------------------- Utilidades
 const debounce = (f, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), ms) } }
@@ -65,12 +74,13 @@ const pct = f => Math.round((f || 0) * 100) + '%'
 const fecha = t => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 function aviso(t) { const a = $('#aviso'); a.textContent = t; a.classList.add('on'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.remove('on'), 1800) }
 const saveSettings = () => A.saveSettings(JSON.stringify(S))
-const saveNotes = () => A.saveAnnotations(JSON.stringify(notes))
-const saveMarks = () => A.saveBookmarks(JSON.stringify(marks))
+const saveNotes = () => { notesAll = [...notesAll.filter(n => !delModo(n)), ...notes]; A.saveAnnotations(JSON.stringify(notesAll)) }
+const saveMarks = () => { marksAll = [...marksAll.filter(n => !delModo(n)), ...marks]; A.saveBookmarks(JSON.stringify(marksAll)) }
 const label = () => last?.tocItem?.label?.trim() || ''
 
 // ---------------------------------------------------------------- Abrir el libro
 let paso = 'inicio'
+let avisoPDF = ''
 function fallo(e) {
     console.error('Lector: fallo en «' + paso + '»', e && (e.stack || e.message || e))
     $('#carga').classList.remove('fuera')
@@ -94,13 +104,31 @@ async function abrir() {
         const res = await fetch('/libro/' + encodeURIComponent(st.file))
         if (!res.ok) throw new Error('No se puede leer el archivo (' + res.status + '). ¿Lo has movido o borrado?')
         const file = new File([await res.blob()], st.file)
+        // PDF: el texto adaptado a la pantalla (si tiene texto) o la página original
+        esPDF = new TextDecoder('latin1').decode(await file.slice(0, 1024).arrayBuffer()).includes('%PDF-')
+        reflow = false
+        let libro = file
+        if (esPDF && S.pdfTexto !== false) {
+            try {
+                paso = 'preparar el texto del PDF'
+                const { makePDFReflow } = await import('./foliate/pdf-reflow.js')
+                const cargaTxt = $('#carga-txt')
+                libro = await makePDFReflow(file, { onProgress: (n, t) => { cargaTxt.textContent = `Preparando el texto del PDF… ${Math.round(100 * n / t)} %` } })
+                reflow = true
+            } catch (e) {
+                libro = file
+                if (e?.sinTexto) avisoPDF = 'Este PDF no tiene texto (parece escaneado): se ve como página.'
+                else { console.warn('Lector: no se pudo adaptar el texto del PDF', e); avisoPDF = 'No se ha podido adaptar el texto de este PDF: se ve como página.' }
+            }
+        }
+        separaModo()
         paso = 'preparar el visor'
         view = document.createElement('foliate-view')
         // (solo cuenta en PDF y cómics: los EPUB tienen su propio «Pasar página»)
         view.dataset.fxlFlow = S.pdfFlow || 'pages'
         $('#libro').append(view)
         paso = 'descomprimir el libro'
-        await view.open(file)
+        await view.open(libro)
     } catch (e) {
         fallo(e)
         return
@@ -116,8 +144,14 @@ async function abrir() {
     if (!st.title) $('#t-libro').textContent = (typeof view.book.metadata?.title === 'string' ? view.book.metadata.title : '') || ''
     applySettings()
     // Desde la ficha del libro se puede abrir directamente en un subrayado
+    // La posición de la página original y la del texto adaptado no valen la una en la otra: en ese caso, por el porcentaje
+    const buena = c => !c || (reflow ? c.includes('!') : (!esPDF || !c.includes('!')))
+    let donde = st.goto && buena(st.goto) ? st.goto : (st.location && buena(st.location) ? st.location : null)
+    if (!donde && (st.goto || st.location) && st.fraction > 0 && st.fraction < 1) donde = { fraction: st.fraction }
+    if (!buena(st.goto)) st.goto = null
+    if (!buena(st.location)) st.location = null
     try {
-        await view.init({ lastLocation: st.goto || st.location || null, showTextStart: !st.location && !st.goto })
+        await view.init({ lastLocation: donde || null, showTextStart: !donde })
     } catch (e) {
         // La posición guardada no encaja con este archivo (llegó de otro dispositivo con otra edición, o el archivo
         // cambió): en lugar de no abrir, se abre por el mismo porcentaje (o por el principio)
@@ -131,6 +165,7 @@ async function abrir() {
     // Leyendo hacia abajo, los botones de volumen no pasan página (son el volumen de siempre)
     try { A.volumeKeys?.(!haciaAbajo()) } catch (e) { }
     $('#carga').classList.add('fuera')
+    if (avisoPDF) { aviso(avisoPDF); avisoPDF = '' }
     showChrome(true)
     setTimeout(() => showChrome(false), 1600)
 }
@@ -148,6 +183,7 @@ async function reabrir() {
     docs.clear()
     last = null; lastTurn = null
     if (loc) st.location = loc
+    if (last?.fraction > 0) st.fraction = last.fraction
     st.goto = null
     await open()
 }
@@ -181,6 +217,11 @@ img, svg, video { max-width: 100%; ${dark ? 'filter: brightness(.86);' : ''} }
 pre { white-space: pre-wrap !important; }
 aside[epub|type~="footnote"], aside[epub|type~="endnote"], aside[epub|type~="rearnote"] { display: none; }
 html, body, body * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
+html.atrio-reflow h2 { text-align: center !important; font-size: 1.3em; line-height: 1.25; margin: 2.4em 0 1.3em; -webkit-hyphens: manual; hyphens: manual; font-weight: 700; }
+html.atrio-reflow p { text-indent: 1.4em; margin: 0; }
+html.atrio-reflow h2 + p, html.atrio-reflow p.sep + p { text-indent: 0; }
+html.atrio-reflow p.sep { text-align: center !important; text-indent: 0; margin: 1.4em 0; letter-spacing: .3em; }
+html.atrio-reflow p.nota { font-size: .8em; text-indent: 0; opacity: .85; margin: .6em 0; }
 ::highlight(atrio) { background-color: ${fg}; color: ${bg}; }`
 }
 
@@ -792,7 +833,7 @@ function addNote(doc, index, r) {
     const value = view.getCFI(index, r)
     const old = notes.find(x => x.value === value)
     if (old) return old
-    const n = { value, color: 'subrayado', text, note: '', created: Date.now(), index, label: label() }
+    const n = { value, color: 'subrayado', text, note: '', created: Date.now(), index, label: label(), ...(reflow ? { m: 'r' } : {}) }
     notes.push(n)
     rangeCache.get(doc)?.set(value, r.cloneRange())
     paint(index)
@@ -882,6 +923,10 @@ function openSettings() {
       <h3>Tema</h3>
       <div class="fila">${THEMES.map(([v, t]) => `<button class="tema ${S.theme === v ? 'on' : ''}" data-theme-btn="${v}" title="${t}" style="background:var(--t-${v})">Aa</button>`).join('')}</div>
       <div class="fila" style="margin-top:10px">${chips([[false, 'Siempre este'], [true, 'Noche de 21:00 a 7:00']], S.nightAuto, 'nightAuto')}</div>
+      ${esPDF ? `
+        <h3>Formato del PDF</h3>
+        <div class="fila">${chips([[true, 'Texto adaptable (novelas)'], [false, 'Página original']], reflow, 'pdfTexto')}</div>
+        ${!reflow && S.pdfTexto !== false ? '<p class="sub" style="margin-top:6px">Este PDF no tiene texto que adaptar, así que se ve como página.</p>' : ''}` : ''}
       ${isPDF ? `
         <h3>Pasar página</h3>
         <div class="fila">${chips([['pages', 'Página a página'], ['scroll', 'Deslizando hacia abajo'], ['strip', 'Tira continua (manga, webtoon)']], S.pdfFlow, 'pdfFlow')}</div>
@@ -926,6 +971,7 @@ function openSettings() {
             if (v === 'true' || v === 'false') v = v === 'true'
             else if (/^\d+$/.test(v)) v = Number(v)
             S[k] = v; applySettings(); saveSettings()
+            if (k === 'pdfTexto') { if (v !== reflow) reabrir(); else openSettings(); return }
             if (k === 'pdfFlow' && isPDF && (v === 'pages') !== !haciaAbajo()) { reabrir(); return }
             if (k === 'pdfFlow' && isPDF) view.renderer?.setAttribute('gap', v === 'strip' ? '0' : '10')
             openSettings()
@@ -1301,7 +1347,7 @@ $('#b-buscar').onclick = () => openSearch()
 $('#b-marca').onclick = () => {
     const m = currentMark()
     if (m) { marks = marks.filter(x => x !== m); aviso('Marcador quitado') }
-    else if (last) { marks.push({ value: last.cfi, label: label() || pct(last.fraction), fraction: last.fraction || 0, created: Date.now() }); aviso('Página marcada') }
+    else if (last) { marks.push({ value: last.cfi, label: label() || pct(last.fraction), fraction: last.fraction || 0, created: Date.now(), ...(reflow ? { m: 'r' } : {}) }); aviso('Página marcada') }
     $('#b-marca').classList.toggle('on', !!currentMark())
     $('#b-marca-cinta')?.classList.toggle('oculta', !currentMark())
     saveMarks()

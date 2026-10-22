@@ -283,7 +283,8 @@ class View {
         })
     }
     render(layout) {
-        if (!layout) return
+        // (Atrio: un cambio de tamaño puede llegar cuando esta página ya se quitó para poner la siguiente)
+        if (!layout || !this.document?.documentElement) return
         this.#column = layout.flow !== 'scrolled'
         this.#layout = layout
         if (this.#column) this.columnize(layout)
@@ -752,7 +753,8 @@ export class Paginator extends HTMLElement {
         return { height, width, margin, gap, columnWidth }
     }
     render() {
-        if (!this.#view) return
+        // (Atrio: sin página cargada —se está cambiando de capítulo— no hay nada que maquetar)
+        if (!this.#view?.document?.documentElement) return
         this.#view.render(this.#beforeRender({
             vertical: this.#vertical,
             rtl: this.#rtl,
@@ -1129,11 +1131,14 @@ export class Paginator extends HTMLElement {
         } else $style.textContent = styles
 
         // NOTE: needs `requestAnimationFrame` in Chromium
-        requestAnimationFrame(() =>
-            this.#background.style.background = getBackground(this.#view.document))
+        // (Atrio: si el libro se cierra o se vuelve a abrir mientras tanto, ya no hay página)
+        requestAnimationFrame(() => {
+            const d = this.#view?.document
+            if (d) this.#background.style.background = getBackground(d)
+        })
 
         // needed because the resize observer doesn't work in Firefox
-        this.#view?.document?.fonts?.ready?.then(() => this.#view.expand())
+        this.#view?.document?.fonts?.ready?.then(() => this.#view?.expand())
     }
     focusView() {
         this.#view.document.defaultView.focus()
