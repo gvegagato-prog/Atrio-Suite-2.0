@@ -124,7 +124,7 @@ fun MagScore(general: Int, scores: List<Int>, kind: Kind, big: Dp = 0.dp) {
     // En una casilla estrecha, la cifra encoge (nunca se parte en dos líneas)
     val k = (LocalCellFraction.current / 0.5f).coerceIn(0.55f, 1f)
     Row(verticalAlignment = Alignment.Bottom) {
-        Text("$general", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = (84 * k).sp, lineHeight = (80 * k).sp, letterSpacing = (-3 * k).sp, maxLines = 1, softWrap = false)
+        Text("$general", color = ColorCifras, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = (84 * k).sp, lineHeight = (80 * k).sp, letterSpacing = (-3 * k).sp, maxLines = 1, softWrap = false)
         Text("/100", color = Muted, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 12.dp))
     }
     if (kind.crit > 1) {

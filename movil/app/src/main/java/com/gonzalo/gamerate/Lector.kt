@@ -541,6 +541,14 @@ class ReaderActivity : ComponentActivity() {
             window.attributes = window.attributes.apply { screenBrightness = if (v < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else brilloLineal(v.toFloat()) }
         }
 
+        /** El brillo que hay ahora (el del lector o, en automático, el del móvil), en la escala de la barra (0–1). */
+        @JavascriptInterface
+        fun brilloActual(): Double {
+            val o = window.attributes.screenBrightness
+            if (o >= 0f) return brilloBarra(o).toDouble()
+            return (brilloSistema(contentResolver)?.let { brilloBarra(it) } ?: 0.5f).toDouble()
+        }
+
         @JavascriptInterface
         fun volumeKeys(on: Boolean) { volumeTurns = on }
 
@@ -779,7 +787,30 @@ fun BookNotesBox(id: Long, name: String) {
 internal fun brilloLineal(g: Float): Float {
     val x = g.coerceIn(0f, 1f)
     val r = if (x <= 0.5f) (x / 0.5f) * (x / 0.5f) else kotlin.math.exp((x - 0.55991073f) / 0.17883277f) + 0.28466892f
-    return (r / 12f).coerceIn(0f, 1f)
+    // (nunca 0 del todo: hay móviles que con 0 apagan la luz de la pantalla en lugar de dejarla al mínimo)
+    return (r / 12f).coerceIn(BRILLO_MINIMO, 1f)
+}
+
+/** El mínimo de luz que se pide (un paso de 255: lo más bajo que da la pantalla sin apagarse). */
+internal const val BRILLO_MINIMO = 1f / 255f
+
+/** Lo contrario de [brilloLineal]: de luz real (0–1) a la posición en la barra (0–1). */
+internal fun brilloBarra(lineal: Float): Float {
+    val r = lineal.coerceIn(0f, 1f) * 12f
+    val x = if (r <= 1f) 0.5f * kotlin.math.sqrt(r) else 0.17883277f * kotlin.math.ln(r - 0.28466892f) + 0.55991073f
+    return if (lineal <= BRILLO_MINIMO) 0f else x.coerceIn(0f, 1f)
+}
+
+/**
+ * El brillo del móvil en luz real (0–1), o null si no se puede leer. En Android 11+ está en coma flotante
+ * («screen_brightness_float»); si no, el entero de siempre, que en la mayoría va de 0 a 255 pero en algunos (Xiaomi,
+ * OPPO…) llega a 1023, 2047 o 4095: se toma el tope más pequeño en el que cabe.
+ */
+internal fun brilloSistema(cr: android.content.ContentResolver): Float? {
+    runCatching { android.provider.Settings.System.getFloat(cr, "screen_brightness_float") }.getOrNull()?.let { if (it in 0f..1f) return it }
+    val v = runCatching { android.provider.Settings.System.getInt(cr, android.provider.Settings.System.SCREEN_BRIGHTNESS) }.getOrNull() ?: return null
+    val tope = listOf(255, 1023, 2047, 4095, 8191).firstOrNull { v <= it } ?: return null
+    return v.toFloat() / tope
 }
 
 /** «7 h 32 min», «45 min». */

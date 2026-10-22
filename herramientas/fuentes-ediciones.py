@@ -67,6 +67,12 @@ FUENTES = {
     'ed_lato_bold': ('Lato', 700, False),
     'ed_lato_black': ('Lato', 900, False),
     'ed_lato_italic': ('Lato', 400, True),
+    'ed_bigshoulders_black': ('Big Shoulders Display', 800, False),
+    'ed_worksans_regular': ('Work Sans', 400, False),
+    'ed_worksans_medium': ('Work Sans', 500, False),
+    'ed_worksans_semibold': ('Work Sans', 600, False),
+    'ed_worksans_bold': ('Work Sans', 700, False),
+    'ed_worksans_italic': ('Work Sans', 400, True),
 }
 
 # Latín (con sus acentos), puntuación, comillas, flechas, ✓, ★, cuadraditos y algún símbolo

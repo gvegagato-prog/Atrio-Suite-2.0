@@ -167,7 +167,7 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
         FitTitle("Hollow Knight: Silksong", 44.sp, 46.sp, letterSpacing = (-1).sp)
         Box(Modifier.padding(vertical = 10.dp).fillMaxWidth().height(1.dp).background(Charcoal))
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("92", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 64.sp, lineHeight = 64.sp)
+            Text("92", color = ColorCifras, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 64.sp, lineHeight = 64.sp)
             Text("/100", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))
             Spacer(Modifier.weight(1f))
             Text("APUNTAR NOTAS →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(bottom = 12.dp))

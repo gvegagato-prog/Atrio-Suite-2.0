@@ -74,6 +74,12 @@ const pct = f => Math.round((f || 0) * 100) + '%'
 const fecha = t => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 function aviso(t) { const a = $('#aviso'); a.textContent = t; a.classList.add('on'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.remove('on'), 1800) }
 const saveSettings = () => A.saveSettings(JSON.stringify(S))
+/** El brillo de ahora en la escala de la barra: el elegido o, en automático, el que tiene el móvil. */
+const brilloAhora = () => {
+    if (S.brightness >= 0) return S.brightness
+    try { const v = A.brilloActual?.(); if (typeof v === 'number' && v >= 0 && v <= 1) return Math.round(v * 100) / 100 } catch (e) { }
+    return 0.5
+}
 const saveNotes = () => { notesAll = [...notesAll.filter(n => !delModo(n)), ...notes]; A.saveAnnotations(JSON.stringify(notesAll)) }
 const saveMarks = () => { marksAll = [...marksAll.filter(n => !delModo(n)), ...marks]; A.saveBookmarks(JSON.stringify(marksAll)) }
 const label = () => last?.tocItem?.label?.trim() || ''
@@ -469,14 +475,15 @@ function onLoad({ detail: { doc, index } }) {
     // Mantener pulsado (sin mover el dedo): la palabra de debajo. Mientras, la página NO se mueve.
     let t0 = null, holding = false, holdTimer = 0, swiped = false, held = false
     // Brillo: deslizar arriba o abajo por el borde izquierdo de la pantalla (como en los lectores de tinta)
-    let edge = false, glow = null
+    let edge = false, glow = null, glowY = 0
     const topX = x => x + (doc.defaultView.frameElement?.getBoundingClientRect().left || 0)
     win.addEventListener('touchstart', e => {
         const t = e.touches[0]
         t0 = t ? { x: t.clientX, y: t.clientY, time: e.timeStamp } : null
         swiped = false; held = false; holding = false
-        // (leyendo hacia abajo, el borde también sirve para desplazar: ahí no se toca el brillo)
-        edge = !!t && e.touches.length === 1 && topX(t.clientX) < window.innerWidth * 0.1 && !haciaAbajo()
+        // (leyendo hacia abajo, el borde también sirve para desplazar: ahí no se toca el brillo; con el menú abierto,
+        // deslizar hacia abajo es para cerrarlo. La franja es estrecha: en la tableta, un 10 % eran 12 cm de pantalla)
+        edge = !!t && e.touches.length === 1 && topX(t.clientX) < Math.min(32, window.innerWidth * 0.06) && !haciaAbajo() && !chromeOn
         glow = null
         clearTimeout(holdTimer)
         if (t && e.touches.length === 1) holdTimer = setTimeout(() => {
@@ -488,9 +495,11 @@ function onLoad({ detail: { doc, index } }) {
         const t = e.touches[0]
         if (t0 && t && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) > 12 && !holding) clearTimeout(holdTimer)
         if (edge && t0 && t && !holding) {
-            const dx = t.clientX - t0.x, dy = t.clientY - t0.y
-            if (glow === null && Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx) * 1.6) glow = S.brightness < 0 ? 0.5 : S.brightness
+            const dx = t.clientX - t0.x, dy0 = t.clientY - t0.y
+            // empieza en el brillo que hay de verdad (en automático, el del móvil), sin saltos: cuenta desde aquí
+            if (glow === null && Math.abs(dy0) > 24 && Math.abs(dy0) > Math.abs(dx) * 2) { glow = brilloAhora(); glowY = t.clientY }
             if (glow !== null) {
+                const dy = t.clientY - glowY
                 S.brightness = Math.round(Math.min(1, Math.max(0, glow - dy / (window.innerHeight * 0.7))) * 100) / 100
                 A.setBrightness(S.brightness)
                 aviso('Brillo ' + Math.round(S.brightness * 100) + ' %')
@@ -1018,7 +1027,7 @@ function openBrightness() {
     openPanel(`<h2>Brillo</h2>
       <div class="fila"><button class="chip ${S.brightness < 0 ? 'on' : ''}" id="br-auto">Automático (el del móvil)</button></div>
       <h3>Brillo de esta pantalla</h3>
-      <input class="deslizar" type="range" id="br" min="0" max="1" step="0.01" value="${S.brightness < 0 ? 0.5 : S.brightness}">
+      <input class="deslizar" type="range" id="br" min="0" max="1" step="0.01" value="${brilloAhora()}">
       <p class="sub">Del todo a la izquierda es el mínimo de la pantalla, el mismo que el del móvil.</p>
       <h3>Luz cálida (menos luz azul)</h3>
       <input class="deslizar" type="range" id="warm" min="0" max="1" step="0.05" value="${S.warm}">`, el => {

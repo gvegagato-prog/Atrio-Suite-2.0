@@ -213,15 +213,49 @@ private fun RevistaHome(m: ShellModel) {
                         Text("$label →", color = Red2, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
                     }
                 }
-                if (ancha) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                val ed = Ediciones.actual
+                val (fs0, lh0) = headlineSize(e.name)
+                val meta = listOf(kindShort(e.kind), e.creator, if (e.minutes > 0 && !e.kind.isBook) hoursText(e.minutes) else "").filter { it.isNotBlank() }.joinToString(" · ")
+                val cambiar: @Composable () -> Unit = {
+                    if (!m.readOnly && m.pickImage != null) Text("CAMBIAR IMAGEN", color = Grey2, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                        modifier = Modifier.padding(top = 6.dp).press { m.pickImage.invoke(o) }.padding(vertical = 4.dp))
+                }
+                when {
+                    // Moda, viajes, cine: la foto manda y el titular va encima, en blanco, sobre un degradado
+                    ed.portada == Portada.SOBRE_FOTO -> Column(Modifier.fillMaxWidth()) {
+                        Box(Modifier.fillMaxWidth().aspectRatio(if (ancha) 2.1f else if (ancho >= 700) 1.3f else 0.86f)) {
+                            imagen(Modifier.matchParentSize())
+                            Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.42f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.78f))))
+                            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
+                                FitTitle(e.name, fs0, lh0, color = Color.White, letterSpacing = (-1.5).sp, modifier = Modifier.fillMaxWidth().press { m.open(e) })
+                                Text(meta, color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                                if (!m.readOnly) Text("${m.primaryLabel(o).first} →", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                                    modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
+                            }
+                        }
+                        cambiar()
+                    }
+                    // Popular, música: el titular en un bloque del color de la edición, bajo la foto
+                    ed.portada == Portada.BLOQUE -> Column(Modifier.fillMaxWidth()) {
+                        imagen(Modifier.fillMaxWidth().aspectRatio(if (ancha) 2.4f else if (ancho >= 700) 1.7f else 1.3f))
+                        val sobreColor = sobre(Red2, Paper2, Ink2)
+                        Column(Modifier.fillMaxWidth().background(Red2).padding(horizontal = 16.dp, vertical = 14.dp)) {
+                            FitTitle(e.name, fs0, lh0, color = sobreColor, letterSpacing = (-1).sp, modifier = Modifier.fillMaxWidth().press { m.open(e) })
+                            Text(meta, color = sobreColor.copy(alpha = 0.85f), fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
+                            if (!m.readOnly) Text("${m.primaryLabel(o).first.uppercase()} →", color = sobreColor, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp,
+                                modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
+                        }
+                        cambiar()
+                    }
+                    ancha -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         imagen(Modifier.weight(1.35f).aspectRatio(1.45f))
                         Spacer(Modifier.width(28.dp))
                         Column(Modifier.weight(1f), content = textos)
                     }
-                } else Column(Modifier.fillMaxWidth()) {
-                    imagen(Modifier.fillMaxWidth().aspectRatio(if (ancho >= 700) 1.6f else 1.35f))
-                    textos()
+                    else -> Column(Modifier.fillMaxWidth()) {
+                        imagen(Modifier.fillMaxWidth().aspectRatio(if (ancho >= 700) 1.6f else 1.35f))
+                        textos()
+                    }
                 }
             }
         }
@@ -255,7 +289,7 @@ private fun RevistaHome(m: ShellModel) {
             val numW = with(density) { best.maxOf { measurer.measure("${it.score}", numStyle).size.width }.toDp() } + 16.dp
             best.forEach { e ->
                 Row(Modifier.fillMaxWidth().press(haptic = false) { m.open(e) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${e.score}", color = Ink2, style = numStyle, maxLines = 1, softWrap = false, modifier = Modifier.width(maxOf(numW, 100.dp)))
+                    Text("${e.score}", color = ColorCifras, style = numStyle, maxLines = 1, softWrap = false, modifier = Modifier.width(maxOf(numW, 100.dp)))
                     if (Skin.listCovers) { ListCover(e.cover, e.name, 52.dp, 74.dp); Spacer(Modifier.width(14.dp)) }
                     Column(Modifier.weight(1f)) {
                         FitTitle(e.name, 20.sp, 23.sp, color = Ink2, fontWeight = FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis)
