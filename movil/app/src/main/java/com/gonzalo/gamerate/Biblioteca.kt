@@ -338,7 +338,7 @@ private fun RevistaLibrary(l: LibUi) {
 @Composable
 internal fun ListCover(url: String, name: String, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp) {
     Box(Modifier.size(w, h).background(Sand), contentAlignment = Alignment.Center) {
-        if (url.isNotBlank()) coil.compose.AsyncImage(url, name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+        if (url.isNotBlank()) coil.compose.AsyncImage(url, name, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop, colorFilter = Ediciones.filtro)
         else Text(name.take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = Muted)
     }
 }

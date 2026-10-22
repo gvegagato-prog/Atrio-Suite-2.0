@@ -95,11 +95,11 @@ val AtrioBody = FontFamily(
     Font(R.font.body_bold, FontWeight.ExtraBold)
 )
 
-/** Letra de títulos elegida (Ajustes → Estilo). */
-val Display: FontFamily get() = Skin.family(Skin.display) ?: AtrioDisplay
+/** Letra de títulos: la de la edición de la revista (Ediciones.kt). */
+val Display: FontFamily get() = if (Skin.revista) Ediciones.actual.titulos else Skin.family(Skin.display) ?: AtrioDisplay
 
-/** Letra del texto elegida. */
-val Body: FontFamily get() = Skin.family(Skin.body) ?: AtrioBody
+/** Letra del texto: la de la edición. */
+val Body: FontFamily get() = if (Skin.revista) Ediciones.actual.texto else Skin.family(Skin.body) ?: AtrioBody
 
 private val base = Typography()
 

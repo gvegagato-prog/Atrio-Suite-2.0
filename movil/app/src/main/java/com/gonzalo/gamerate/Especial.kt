@@ -162,8 +162,8 @@ fun NumeroEspecial(name: String, kinds: List<Kind>, entries: (Kind) -> List<Shel
                 Spacer(Modifier.width(16.dp))
                 if (i > 0) EsLink("${years[i - 1]}", Muted) { year = years[i - 1] }
             }
-            Text("ATRIO", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 6.dp))
-            EsRule(3.dp)
+            Cabecera(30.sp, Modifier.padding(top = 6.dp))
+            FileteCabecera(3.dp)
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Text("NÚMERO ESPECIAL", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
                 Spacer(Modifier.weight(1f))

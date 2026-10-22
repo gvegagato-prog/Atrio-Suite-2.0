@@ -1,5 +1,7 @@
 package com.gonzalo.gamerate
 
+import androidx.compose.ui.graphics.toArgb
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -134,6 +136,23 @@ class WidgetsTest {
         val b = Widgets.componer(ctx, WTipo.LEYENDO, 1, 330f, 165f).bitmap(ctx, 330f, 165f, false, 2f)
         assertEquals(0, Color.alpha(b.getPixel(0, 0)))
         assertEquals(255, Color.alpha(b.getPixel(b.width / 2, b.height / 2)))
+    }
+
+    /** Los widgets con el papel y las letras de cada edición de la revista. */
+    @Test
+    fun ediciones() = runBlocking {
+        seed()
+        val p = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE)
+        for (e in EDICIONES) {
+            p.edit().putString("skin_edicion", e.id).putString("skin_accent_id", "edicion").commit()
+            val b = Widgets.componer(ctx, WTipo.LEYENDO, 1, 330f, 165f).bitmap(ctx, 330f, 165f, false, 2f)
+            guardar("edicion_${e.id}_leyendo", b)
+            guardar("edicion_${e.id}_cita", Widgets.componer(ctx, WTipo.CITA, 1, 330f, 165f).bitmap(ctx, 330f, 165f, true, 2f))
+            // el papel de la edición (un punto del borde, donde no hay nada dibujado)
+            assertEquals("${e.id}: su papel", e.paleta.light.cPaper.toArgb(), b.getPixel(b.width / 2, 3))
+        }
+        p.edit().putString("skin_edicion", "atrio").commit()
+        Unit
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.gonzalo.gamerate
 
+import androidx.compose.ui.graphics.toArgb
+
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -135,22 +137,24 @@ class Hoja(val ctx: Context, val w: Float, val h: Float, val noche: Boolean, s: 
     val bm: Bitmap = Bitmap.createBitmap(max(1, (w * s).roundToInt()), max(1, (h * s).roundToInt()), Bitmap.Config.ARGB_8888)
     val c = Canvas(bm).apply { scale(bm.width / w, bm.height / h) }
 
-    // El papel de la revista (Skin.kt, paleta «revista»)
-    val papel = (if (noche) 0xFF141210 else 0xFFF3EEE4).toInt()
-    val crudo = (if (noche) 0xFF1C1916 else 0xFFFAF6EE).toInt()
-    val tinta = (if (noche) 0xFFF1EBE0 else 0xFF15120F).toInt()
-    val gris = (if (noche) 0xFF9C9387 else 0xFF7C746A).toInt()
-    val linea = (if (noche) 0xFF2E2924 else 0xFFD9D0C1).toInt()
-    val arena = (if (noche) 0xFF221E1A else 0xFFE9E2D5).toInt()
+    // El papel de la revista: el de la edición elegida (Ediciones.kt)
+    val edicion = Ediciones.guardada(ctx)
+    private val tonos = if (noche) edicion.paleta.dark else edicion.paleta.light
+    val papel = tonos.cPaper.toArgb()
+    val crudo = tonos.cCrudo.toArgb()
+    val tinta = tonos.cInk.toArgb()
+    val gris = tonos.cMuted.toArgb()
+    val linea = tonos.cLine.toArgb()
+    val arena = tonos.cSand.toArgb()
     val acento = Widgets.acento(ctx, noche)
     /** El acento sobre una foto oscura (el claro se lee mejor). */
     val acentoFoto = Widgets.acento(ctx, true)
     val radio = 22f
 
-    val fTitular: Typeface get() = Widgets.fuente(ctx, R.font.display_semibold)
-    val fCursiva: Typeface get() = Widgets.fuente(ctx, R.font.display_italic)
-    val fNegrita: Typeface get() = Widgets.fuente(ctx, R.font.body_bold)
-    val fTexto: Typeface get() = Widgets.fuente(ctx, R.font.body_medium)
+    val fTitular: Typeface get() = Widgets.fuente(ctx, edicion.widget.titular)
+    val fCursiva: Typeface get() = Widgets.fuente(ctx, edicion.widget.cursiva)
+    val fNegrita: Typeface get() = Widgets.fuente(ctx, edicion.widget.negrita)
+    val fTexto: Typeface get() = Widgets.fuente(ctx, edicion.widget.texto)
 
     /** Recorta las esquinas (suaves, con antialias). */
     fun terminar() {
@@ -303,9 +307,9 @@ object Widgets {
 
     /** El acento elegido en Estilo (en oscuro, su versión clara). */
     fun acento(ctx: Context, noche: Boolean): Int {
-        val id = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).getString("skin_accent_id", "rojo")
-        val a = ACCENT_COLORS.firstOrNull { it.id == id } ?: ACCENT_COLORS.first()
-        return (if (noche) a.dark else a.light).toInt()
+        val id = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).getString("skin_accent_id", "edicion")
+        val (l, d) = acentoDe(Ediciones.guardada(ctx), id)
+        return (if (noche) d else l).toInt()
     }
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("widgets", Context.MODE_PRIVATE)

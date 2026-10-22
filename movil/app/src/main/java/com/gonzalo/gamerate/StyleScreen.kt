@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -62,16 +63,16 @@ object AppIcon {
     fun drawableId(ctx: Context, id: String) = ctx.resources.getIdentifier("icon_$id", "mipmap", ctx.packageName)
 }
 
-/** Resumen de la apariencia (para la fila de Perfil): «Claro · acento rojo». */
+/** Resumen de la apariencia (para la fila de Perfil): «Edición Moda · claro · acento de la edición». */
 fun skinSummary(): String {
-    val tema = when (Mode.themeMode) { 1 -> "Claro"; 2 -> "Oscuro"; else -> "Claro u oscuro según el móvil" }
-    val acento = ACCENT_COLORS.firstOrNull { it.id == Skin.accentId }?.name ?: "Rojo"
-    return "$tema · acento ${acento.lowercase()}"
+    val tema = when (Mode.themeMode) { 1 -> "claro"; 2 -> "oscuro"; else -> "claro u oscuro según el móvil" }
+    val acento = ACCENT_COLORS.firstOrNull { it.id == Skin.accentId }?.name?.lowercase() ?: "de la edición"
+    return "Edición ${Ediciones.actual.nombre} · $tema · acento $acento"
 }
 
 /**
- * Apariencia: lo único que se cambia es si la revista va en claro u oscuro (o como el móvil) y el color del acento
- * (antetítulos, cifras, enlaces y botones). Se ve al momento en la muestra de abajo y en toda la app.
+ * Apariencia: la edición de la revista (su papel, sus letras, su cabecera, sus filetes y sus fotos), si va en claro u
+ * oscuro (o como el móvil) y el color del acento (antetítulos, cifras, enlaces y botones). Se ve al momento en toda la app.
  */
 @Composable
 fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAMETER") onLook: (Look) -> Unit = {}, onClose: () -> Unit) {
@@ -88,6 +89,30 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
             .verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)
     ) {
         TopBar("Ajustes", onClose, "Apariencia")
+
+        // Edición: la misma revista con el aire de otra
+        SectionTitle("Edición")
+        Text("La misma revista, con el aire de otra: su papel, sus letras, su cabecera y sus fotos.", color = Muted, fontSize = 13.sp)
+        Spacer(Modifier.height(12.dp))
+        val nombre = remember { Store(ctx).myName.ifBlank { "tu casa" } }
+        val porFila = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600) 4 else 2
+        EDICIONES.chunked(porFila).forEach { fila ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                fila.forEach { e ->
+                    val on = Skin.edicion == e.id
+                    Column(Modifier.weight(1f).clickable { if (!on) withReveal { Ediciones.aplicar(e, ctx) } }) {
+                        MuestraEdicion(e, on, nombre)
+                        Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(e.nombre.uppercase(), color = if (on) Charcoal else Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                            if (on) Text("✓", color = ColGeneral, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                        }
+                        Text(e.genero, color = Muted, fontSize = 11.sp, lineHeight = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                repeat(porFila - fila.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
 
         // Tema
         SectionTitle("Tema")
@@ -107,9 +132,9 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
 
         // Acento
         SectionTitle("Acento")
-        Text("El color de los antetítulos, las cifras, los enlaces y los botones.", color = Muted, fontSize = 13.sp)
+        Text("El color de los antetítulos, las cifras, los enlaces y los botones. «De la edición» usa el suyo.", color = Muted, fontSize = 13.sp)
         Spacer(Modifier.height(12.dp))
-        ACCENT_COLORS.chunked(4).forEach { row ->
+        (listOf(Accent("edicion", "De la edición", Ediciones.actual.paleta.light.general or 0xFF000000, Ediciones.actual.paleta.dark.general or 0xFF000000)) + ACCENT_COLORS).chunked(4).forEach { row ->
             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { a ->
                     val on = Skin.accentId == a.id
@@ -123,7 +148,10 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
                             Modifier.fillMaxWidth().aspectRatio(1f).background(c)
                                 .then(if (on) Modifier.border(3.dp, Charcoal) else Modifier),
                             contentAlignment = Alignment.Center
-                        ) { if (on) Text("✓", color = if (a.id == "tinta") Paper else Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp) }
+                        ) {
+                            if (on) Text("✓", color = if (a.id == "tinta" || (a.id == "edicion" && c.luminance() < 0.12f && !Mode.dark)) Paper else Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                            else if (a.id == "edicion") Text("Aa", color = Color.White, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
                         Text(a.name.uppercase(), color = if (on) Charcoal else Muted, fontSize = 10.sp, fontWeight = FontWeight.Black,
                             letterSpacing = 1.2.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1)
                     }
@@ -135,7 +163,7 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
 
         // Muestra: así se ve una ficha con lo elegido
         SectionTitle("Así queda")
-        Text("JUGANDO · VIDEOJUEGOS · TEAM CHERRY", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        Antetitulo("Jugando · Videojuegos · Team Cherry", tam = 11.sp, color = ColGeneral, conCuadro = false)
         FitTitle("Hollow Knight: Silksong", 44.sp, 46.sp, letterSpacing = (-1).sp)
         Box(Modifier.padding(vertical = 10.dp).fillMaxWidth().height(1.dp).background(Charcoal))
         Row(verticalAlignment = Alignment.Bottom) {

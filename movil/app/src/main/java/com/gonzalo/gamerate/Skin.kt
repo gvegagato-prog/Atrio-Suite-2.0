@@ -48,7 +48,7 @@ data class FontChoice(val name: String, val weights: IntArray)
 /** Combinación lista: paleta + letra de títulos + letra del texto. */
 data class SkinStyle(val id: String, val name: String, val desc: String, val palette: String, val display: String, val body: String, val form: String = "clasico")
 
-private fun t(
+internal fun t(
     paper: Long, crudo: Long, ink: Long, general: Long, gfx: Long, story: Long, music: Long, gameplay: Long, gold: Long,
     sand: Long = 0, line: Long = 0, edge: Long = 0, muted: Long = 0
 ) = Tones(paper or 0xFF000000, crudo or 0xFF000000, ink or 0xFF000000, general or 0xFF000000, gfx or 0xFF000000, story or 0xFF000000,
@@ -296,8 +296,16 @@ val ACCENT_COLORS = listOf(
     Accent("naranja", "Naranja", 0xFFC8642D, 0xFFE8894F),
     Accent("rosa", "Rosa", 0xFFB83A6B, 0xFFE07AA1),
     Accent("morado", "Morado", 0xFF7A4E8C, 0xFFB48BC4),
-    Accent("tinta", "Tinta", 0xFF15120F, 0xFFF1EBE0)
+    Accent("tinta", "Tinta", 0xFF15120F, 0xFFF1EBE0),
+    Accent("electrico", "Eléctrico", 0xFF1F4BFF, 0xFF7D95FF),
+    Accent("fucsia", "Fucsia", 0xFFE6007E, 0xFFFF4DA6),
+    Accent("amarillo", "Amarillo", 0xFFA87600, 0xFFFFCE00),
+    Accent("turquesa", "Turquesa", 0xFF0F7C80, 0xFF5CC8C9),
 )
+
+/** El acento en claro y en oscuro: el elegido o, con «edicion», el de la edición. */
+fun acentoDe(e: Edicion, id: String?): Pair<Long, Long> =
+    ACCENT_COLORS.firstOrNull { it.id == id }?.let { it.light to it.dark } ?: ((e.paleta.light.general or 0xFF000000) to (e.paleta.dark.general or 0xFF000000))
 
 /** Tamaños del texto. */
 val TEXT_SCALES = listOf(0.9f to "Pequeño", 1f to "Normal", 1.12f to "Grande", 1.25f to "Enorme")
@@ -317,8 +325,16 @@ object Skin {
     var motion by mutableStateOf(0)
     /** Color de acento propio (0 = el de la paleta). Solo para la interfaz antigua; en la revista va [accentId]. */
     var accent by mutableStateOf(0L)
-    /** Acento de la revista (uno de [ACCENT_COLORS]). */
-    var accentId by mutableStateOf("rojo")
+    /** Acento de la revista (uno de [ACCENT_COLORS], o «edicion»: el de la edición). */
+    var accentId by mutableStateOf("edicion")
+    /** Edición de la revista (Ediciones.kt): su papel, sus letras, su cabecera… */
+    var edicion by mutableStateOf("atrio")
+
+    /** Pone el papel de la edición (las letras las da Theme.kt según la edición). */
+    fun ponEdicion() {
+        palette = Ediciones.actual.paleta; display = "Atrio"; body = "Atrio"
+        form = FORMS.first { it.id == "revista" }; gauge = null; chameleon = false; textScale = 1f
+    }
     /** Tamaño de las portadas en las bibliotecas: 0 normal, 1 grandes, 2 pequeñas. */
     var covers by mutableStateOf(0)
     /** Revista: las listas con la portada al lado del título (como las sagas), en lugar de solo títulos. */
@@ -333,7 +349,7 @@ object Skin {
     fun applyShell(i: Int, ctx: Context) {
         shell = i
         when (i) {
-            2 -> { palette = PALETTES.first { it.id == "revista" }; display = "Atrio"; body = "Atrio"; form = FORMS.first { it.id == "revista" }; gauge = null; chameleon = false }
+            2 -> ponEdicion()
         }
         save(ctx)
     }
@@ -345,7 +361,7 @@ object Skin {
 
     /** Tonos que se ven ahora (según el modo claro u oscuro). */
     val tones: Tones get() = override ?: base.let { b ->
-        if (revista) ACCENT_COLORS.firstOrNull { it.id == accentId && it.id != "rojo" }?.let { a -> b.copy(general = if (Mode.dark) a.dark else a.light) } ?: b
+        if (revista) ACCENT_COLORS.firstOrNull { it.id == accentId }?.let { a -> b.copy(general = if (Mode.dark) a.dark else a.light) } ?: b
         else if (accent != 0L) b.copy(general = accent) else b
     }
     /** Tonos de la paleta elegida, sin camaleón. */
@@ -408,7 +424,8 @@ object Skin {
         chameleon = p.getBoolean("skin_chameleon", true)
         motion = p.getInt("skin_motion", 0)
         accent = p.getLong("skin_accent", 0L)
-        accentId = p.getString("skin_accent_id", "rojo")?.takeIf { id -> ACCENT_COLORS.any { it.id == id } } ?: "rojo"
+        accentId = p.getString("skin_accent_id", "edicion")?.takeIf { id -> id == "edicion" || ACCENT_COLORS.any { it.id == id } } ?: "edicion"
+        edicion = Ediciones.porId(p.getString("skin_edicion", "atrio")).id
         covers = p.getInt("skin_covers", 0)
         listCovers = p.getBoolean("skin_listcovers", false)
         dockLabels = p.getBoolean("skin_docklabels", true)
@@ -418,18 +435,15 @@ object Skin {
             p.edit().putBoolean("shell_v3", true).apply()
             applyShell(shell, ctx)
         }
-        // La revista ya no se personaliza (solo claro/oscuro y el acento): siempre su papel, sus letras y su forma
-        if (shell == 2) {
-            palette = PALETTES.first { it.id == "revista" }; display = "Atrio"; body = "Atrio"
-            form = FORMS.first { it.id == "revista" }; gauge = null; chameleon = false; textScale = 1f
-        }
+        // La revista: el papel, las letras y la forma de su edición (más claro/oscuro y el acento)
+        if (shell == 2) ponEdicion()
     }
 
     fun save(ctx: Context) {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
             .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
-            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putInt("skin_covers", covers).putBoolean("skin_listcovers", listCovers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
+            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putString("skin_edicion", edicion).putInt("skin_covers", covers).putBoolean("skin_listcovers", listCovers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
         ajustesCambiados(ctx)
         Widgets.pedir(ctx)
     }

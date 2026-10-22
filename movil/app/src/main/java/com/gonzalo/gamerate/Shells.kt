@@ -136,8 +136,8 @@ private fun RevistaHome(m: ShellModel) {
         val ancha = ancho >= 900
         // Cabecera de revista
         Column(Modifier.llega(0)) {
-            Text("ATRIO", color = Ink2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = if (ancho >= 700) 132.sp else 92.sp, lineHeight = if (ancho >= 700) 132.sp else 92.sp, letterSpacing = (-3).sp, modifier = Modifier.padding(top = 8.dp))
-            Rule(3.dp)
+            Cabecera(if (ancho >= 700) 132.sp else 92.sp, Modifier.padding(top = 8.dp), color = Ink2)
+            FileteCabecera(3.dp)
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                 Text("Nº ${today.dayOfYear}", color = Ink2, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(Modifier.weight(1f))
@@ -145,7 +145,7 @@ private fun RevistaHome(m: ShellModel) {
             }
             Rule(1.dp)
         }
-        Text(if (m.readOnly) "La colección de ${m.name}" else "La colección de ${m.name}, al día", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp).llega(1))
+        Text(Ediciones.actual.lema.format(m.name).let { if (m.readOnly) it.removeSuffix(", al día") else it }, color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp).llega(1))
 
         Box(Modifier.llega(1)) { RevistaLectura(all.filter { it.kind.isBook }) }
 
@@ -193,7 +193,7 @@ private fun RevistaHome(m: ShellModel) {
                 val e = ShellEntry(o.kind, o.play, null)
                 val art = e.hero.ifBlank { e.cover }
                 val imagen: @Composable (Modifier) -> Unit = { mod ->
-                    if (art.isNotBlank()) AsyncImage(art, e.name, mod.press { m.open(e) }, contentScale = ContentScale.Crop)
+                    if (art.isNotBlank()) AsyncImage(art, e.name, mod.press { m.open(e) }, contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                     else Box(mod.background(Sand).press { m.open(e) }, contentAlignment = Alignment.Center) {
                         Text("Sin imagen", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 18.sp)
                     }
@@ -270,7 +270,7 @@ private fun RevistaHome(m: ShellModel) {
         RevistaEfemerides(all) { m.open(it) }
 
         Spacer(Modifier.height(40.dp))
-        Text("Atrio · hecho en casa", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 13.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+        Text(Ediciones.actual.pie, color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 13.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         Spacer(Modifier.height(24.dp))
     }
 }
@@ -295,14 +295,11 @@ private fun RevistaMenu(m: ShellModel) {
 }
 
 @Composable
-private fun Rule(h: androidx.compose.ui.unit.Dp, c: Color = Charcoal) = Box(Modifier.fillMaxWidth().height(h).background(c))
+private fun Rule(h: androidx.compose.ui.unit.Dp, c: Color = Charcoal) = Filete(h, c)
 
 @Composable
 private fun RevSection(t: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 10.dp)) {
-        Box(Modifier.size(10.dp).background(Red2)); Spacer(Modifier.width(8.dp))
-        Text(t.uppercase(), color = Ink2, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-    }
+    Antetitulo(t, Modifier.padding(bottom = 10.dp), color = Ink2)
 }
 
 @Composable

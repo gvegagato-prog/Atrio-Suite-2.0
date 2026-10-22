@@ -443,6 +443,7 @@ fun FramedImage(c: MagCell, modifier: Modifier) {
             translationX = c.ox * size.width; translationY = c.oy * size.height
         },
         contentScale = if (c.fit) ContentScale.Fit else ContentScale.Crop,
+        colorFilter = Ediciones.filtro,
         onSuccess = { st: coil.compose.AsyncImagePainter.State.Success ->
             val sz = st.painter.intrinsicSize
             if (sz.width > 0f && sz.height > 0f && sz.width.isFinite()) MagImages.ratios[c.image] = sz.width / sz.height

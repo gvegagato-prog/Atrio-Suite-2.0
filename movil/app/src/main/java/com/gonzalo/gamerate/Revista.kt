@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun MagLabel(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text.uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+        Box(Modifier.weight(1f)) { Antetitulo(text, tam = 12.sp, conCuadro = false) }
         if (action != null && onAction != null) Text(action.uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
             modifier = Modifier.clickable(onClick = onAction).padding(4.dp))
     }
@@ -48,7 +48,7 @@ fun MagLabel(text: String, action: String? = null, onAction: (() -> Unit)? = nul
 fun MagFull(label: String?, action: String? = null, onAction: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
         // Sin antetítulo, lo de dentro (paneles de progreso, partes…) ya trae su propio filete
-        if (label != null) Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+        if (label != null) Filete(2.dp)
         Column(Modifier.fillMaxWidth().padding(top = if (label != null) 12.dp else 0.dp, bottom = 18.dp)) {
             if (label != null) MagLabel(label, action, onAction)
             content()
@@ -65,7 +65,7 @@ fun MagSplit(
     leftAction: Pair<String, () -> Unit>? = null, rightAction: Pair<String, () -> Unit>? = null
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
-        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+        Filete(2.dp)
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             Column(Modifier.weight(leftWeight).padding(top = 12.dp, bottom = 18.dp, end = 12.dp)) {
                 MagLabel(left, leftAction?.first, leftAction?.second); leftContent()

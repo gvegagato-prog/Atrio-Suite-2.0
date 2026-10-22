@@ -203,7 +203,7 @@ fun SagaCover(saga: Saga, books: List<SagaBook>, w: Dp, h: Dp, modifier: Modifie
         if (saga.cover.isNotBlank() || covers.size <= 1) {
             val c = saga.cover.ifBlank { covers.firstOrNull().orEmpty() }
             Box(Modifier.fillMaxSize().clip(shp(6.dp)).background(Sand)) {
-                if (c.isNotBlank()) AsyncImage(c, saga.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (c.isNotBlank()) AsyncImage(c, saga.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                 else Text(saga.name.take(1).uppercase(), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = (h.value * 0.4f).sp, modifier = Modifier.align(Alignment.Center))
             }
             return@Box
@@ -220,7 +220,7 @@ fun SagaCover(saga: Saga, books: List<SagaBook>, w: Dp, h: Dp, modifier: Modifie
             Box(
                 Modifier.offset(x = dx, y = h * 0.04f * i).size(cw, ch).rotate((i - (n - 1) / 2f) * 3.5f)
                     .clip(shp(5.dp)).background(Sand).border(1.dp, Paper, shp(5.dp))
-            ) { AsyncImage(covers[i], null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+            ) { AsyncImage(covers[i], null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro) }
         }
     }
 }
@@ -353,12 +353,12 @@ fun SagaScreen(
                     // La elegida, si no es de ninguna de sus fichas (buscada o tuya)
                     if (saga.cover.isNotBlank() && books.none { it.cover == saga.cover }) {
                         Box(Modifier.size(64.dp, 92.dp).clip(shp(6.dp)).border(2.dp, ColGeneral, shp(6.dp))) {
-                            AsyncImage(saga.cover, saga.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            AsyncImage(saga.cover, saga.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                         }
                     }
                     books.filter { it.cover.isNotBlank() }.distinctBy { it.cover }.forEach { b ->
                         Box(Modifier.size(64.dp, 92.dp).clip(shp(6.dp)).then(if (saga.cover == b.cover) Modifier.border(2.dp, ColGeneral, shp(6.dp)) else Modifier).clickable { onSave(saga.copy(cover = b.cover)) }) {
-                            AsyncImage(b.cover, b.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            AsyncImage(b.cover, b.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                         }
                     }
                     SagaCoverButton("⌕", "BUSCAR") { searching = true }
@@ -418,7 +418,7 @@ fun SagaScreen(
                 Row(Modifier.fillMaxWidth().clickable(enabled = !editing) { onOpenBook(b) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("%02d".format(i + 1), color = ColGeneral, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.width(40.dp))
                     Box(Modifier.size(42.dp, 62.dp).clip(shp(4.dp)).background(Sand)) {
-                        if (b.cover.isNotBlank()) AsyncImage(b.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        if (b.cover.isNotBlank()) AsyncImage(b.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -574,7 +574,7 @@ fun SagaCoverSearchBody(name0: String, kind: Kind, sgdbKey: String, tmdbKey: Str
                         val x = hits[i]
                         Row(Modifier.fillMaxWidth().clickable { open(x) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(34.dp, 50.dp).clip(shp(3.dp)).background(Sand)) {
-                                if (x.cover.isNotBlank()) AsyncImage(x.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                if (x.cover.isNotBlank()) AsyncImage(x.cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                             }
                             Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
@@ -589,7 +589,7 @@ fun SagaCoverSearchBody(name0: String, kind: Kind, sgdbKey: String, tmdbKey: Str
                             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 rows[i].forEach { (thumb, full) ->
                                     Box(Modifier.weight(1f).aspectRatio(2f / 3f).clip(shp(5.dp)).background(Sand).clickable { onPick(full) }) {
-                                        AsyncImage(thumb, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                        AsyncImage(thumb, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                                     }
                                 }
                                 repeat(3 - rows[i].size) { Spacer(Modifier.weight(1f)) }

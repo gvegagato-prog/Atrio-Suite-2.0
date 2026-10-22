@@ -158,10 +158,9 @@ fun BigHeader(title: String, overline: String? = null, modifier: Modifier = Modi
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
     if (Skin.revista) {
-        // Revista: cuadradito rojo y versalitas espaciadas
+        // Revista: el antetítulo de la edición (cuadradito y versalitas, cursiva, recortado…)
         Row(modifier.fillMaxWidth().padding(top = 26.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).background(ColGeneral)); Spacer(Modifier.width(8.dp))
-            Text(text.uppercase(), fontWeight = FontWeight.Black, fontSize = 13.sp, letterSpacing = 2.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.weight(1f)) { Antetitulo(text) }
             if (action != null && onAction != null) Text("$action →", color = ColGeneral, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.press(onClick = onAction).padding(6.dp))
         }
         return
@@ -335,7 +334,7 @@ fun CoverCard(
             if (cover.isBlank()) {
                 Text(name.trim().take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 54.sp, color = Muted)
             } else {
-                AsyncImage(cover, name, Modifier.fillMaxSize().graphicsLayer { alpha = if (dim) 0.45f else 1f }, contentScale = ContentScale.Crop)
+                AsyncImage(cover, name, Modifier.fillMaxSize().graphicsLayer { alpha = if (dim) 0.45f else 1f }, contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
             }
         }
         // Degradado y título
@@ -409,7 +408,7 @@ fun HeroHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     if (cover.isBlank()) Text(title.take(1).uppercase(), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 44.sp, color = Muted)
-                    else AsyncImage(cover, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    else AsyncImage(cover, title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f).padding(bottom = 4.dp)) {
@@ -531,15 +530,20 @@ fun FitTitle(
     modifier: Modifier = Modifier, color: Color = Color.Unspecified,
     letterSpacing: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
     fontWeight: FontWeight = FontWeight.Bold, maxLines: Int = Int.MAX_VALUE, overflow: TextOverflow = TextOverflow.Clip,
-    fontStyle: androidx.compose.ui.text.font.FontStyle? = null, minSize: Float = 14f
+    fontStyle: androidx.compose.ui.text.font.FontStyle? = null, minSize: Float = 14f,
+    family: androidx.compose.ui.text.font.FontFamily = Display, align: androidx.compose.ui.text.style.TextAlign? = null,
+    /** Todo en una línea (cabeceras): se mide el texto entero, no la palabra más larga. */
+    unaLinea: Boolean = false,
+    /** Escribirlo como la edición de la revista (en la de música, en mayúsculas). */
+    conEdicion: Boolean = true
 ) {
+    @Suppress("NAME_SHADOWING") val text = if (Skin.revista && conEdicion) Ediciones.titular(text) else text
     // El ancho que hay se lee al colocarlo (sin BoxWithConstraints, que no vale dentro de filas de alto intrínseco)
     var maxPx by remember { mutableStateOf(0) }
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
-    val family = Display
-    val size = remember(text, fontSize, maxPx, family, fontWeight, letterSpacing) {
+    val size = remember(text, fontSize, maxPx, family, fontWeight, letterSpacing, unaLinea) {
         if (maxPx <= 0 || maxPx == Constraints.Infinity) return@remember fontSize.value
-        val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val words = if (unaLinea) listOf(text) else text.split(Regex("\\s+")).filter { it.isNotEmpty() }
         if (words.isEmpty()) return@remember fontSize.value
         var s = fontSize.value
         while (s > minSize) {
@@ -555,7 +559,7 @@ fun FitTitle(
     Text(
         text, color = color, fontFamily = family, fontWeight = fontWeight, fontStyle = fontStyle, fontSize = size.sp,
         lineHeight = if (lineHeight.isSp) (lineHeight.value * k).sp else lineHeight,
-        letterSpacing = letterSpacing, maxLines = maxLines, overflow = overflow,
+        letterSpacing = letterSpacing, maxLines = maxLines, overflow = overflow, textAlign = align,
         modifier = modifier.layout { measurable, constraints ->
             if (constraints.maxWidth != maxPx) maxPx = constraints.maxWidth
             val pl = measurable.measure(constraints)

@@ -619,10 +619,10 @@ class ReaderActivity : ComponentActivity() {
 
     /** El acento elegido en Apariencia (claro y oscuro), para que el lector vaya a juego con la app. */
     private fun accentJson(): JSONObject {
-        val idA = getSharedPreferences("gamerate", MODE_PRIVATE).getString("skin_accent_id", "rojo")
-        val a = ACCENT_COLORS.firstOrNull { it.id == idA } ?: ACCENT_COLORS.first()
+        val idA = getSharedPreferences("gamerate", MODE_PRIVATE).getString("skin_accent_id", "edicion")
+        val (al, ad) = acentoDe(Ediciones.guardada(this), idA)
         fun hex(c: Long) = String.format("#%06X", (c and 0xFFFFFF))
-        return JSONObject().put("light", hex(a.light)).put("dark", hex(a.dark))
+        return JSONObject().put("light", hex(al)).put("dark", hex(ad))
     }
 
     private fun answer(id: String, o: JSONObject) = runOnUiThread {
