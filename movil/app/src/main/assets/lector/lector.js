@@ -17,7 +17,7 @@ const S = Object.assign({
     // PDF y cómics: «pages» página a página; «scroll», deslizando hacia abajo; «strip», tira continua sin huecos (manga)
     pdfFlow: 'pages',
     // PDF: el texto adaptado a la pantalla (novelas) o la página tal cual
-    pdfTexto: true,
+    pdfTexto: true, pdfForzar: false,      // (pdfForzar: «Texto adaptable» elegido a mano, vale aunque el PDF tenga poco texto por página)
 }, st.settings || {})
 // El brillo va en la escala del control de Android (la que ves en la barra del sistema, no la de la luz real):
 // antes iba en luz real y con un mínimo del 2 %, que en la barra del sistema es como un 25 % y por eso brillaba
@@ -113,11 +113,12 @@ async function abrir() {
                 paso = 'preparar el texto del PDF'
                 const { makePDFReflow } = await import('./foliate/pdf-reflow.js')
                 const cargaTxt = $('#carga-txt')
-                libro = await makePDFReflow(file, { onProgress: (n, t) => { cargaTxt.textContent = `Preparando el texto del PDF… ${Math.round(100 * n / t)} %` } })
+                libro = await makePDFReflow(file, { forzar: !!S.pdfForzar, onProgress: (n, t) => { cargaTxt.textContent = `Preparando el texto del PDF… ${Math.round(100 * n / t)} % (solo la primera vez)` } })
                 reflow = true
             } catch (e) {
                 libro = file
                 if (e?.sinTexto) avisoPDF = 'Este PDF no tiene texto (parece escaneado): se ve como página.'
+                else if (e?.pocoTexto) avisoPDF = 'Este PDF tiene muy poco texto por página (¿cómic o libro ilustrado?): se ve como página. Letra → Texto adaptable lo fuerza.'
                 else { console.warn('Lector: no se pudo adaptar el texto del PDF', e); avisoPDF = 'No se ha podido adaptar el texto de este PDF: se ve como página.' }
             }
         }
@@ -166,6 +167,15 @@ async function abrir() {
     try { A.volumeKeys?.(!haciaAbajo()) } catch (e) { }
     $('#carga').classList.add('fuera')
     if (avisoPDF) { aviso(avisoPDF); avisoPDF = '' }
+    else if (reflow) {
+        // La primera vez que se abre un PDF como texto, se dice cómo volver a la página original
+        try {
+            if (!localStorage.getItem('atrioPdfTexto')) {
+                localStorage.setItem('atrioPdfTexto', '1')
+                setTimeout(() => aviso('PDF adaptado como texto · Letra → Formato del PDF para ver la página original'), 2400)
+            }
+        } catch (e) { }
+    }
     showChrome(true)
     setTimeout(() => showChrome(false), 1600)
 }
@@ -221,6 +231,7 @@ html.atrio-reflow h2 { text-align: center !important; font-size: 1.3em; line-hei
 html.atrio-reflow p { text-indent: 1.4em; margin: 0; }
 html.atrio-reflow h2 + p, html.atrio-reflow p.sep + p { text-indent: 0; }
 html.atrio-reflow p.sep { text-align: center !important; text-indent: 0; margin: 1.4em 0; letter-spacing: .3em; }
+html.atrio-reflow p.sep.esp { margin: .9em 0; letter-spacing: 0; }
 html.atrio-reflow p.nota { font-size: .8em; text-indent: 0; opacity: .85; margin: .6em 0; }
 ::highlight(atrio) { background-color: ${fg}; color: ${bg}; }`
 }
@@ -971,7 +982,11 @@ function openSettings() {
             if (v === 'true' || v === 'false') v = v === 'true'
             else if (/^\d+$/.test(v)) v = Number(v)
             S[k] = v; applySettings(); saveSettings()
-            if (k === 'pdfTexto') { if (v !== reflow) reabrir(); else openSettings(); return }
+            if (k === 'pdfTexto') {
+                // «Texto adaptable» elegido a mano vale aunque el PDF tenga poco texto por página
+                S.pdfForzar = v === true; saveSettings()
+                if (v !== reflow) reabrir(); else openSettings(); return
+            }
             if (k === 'pdfFlow' && isPDF && (v === 'pages') !== !haciaAbajo()) { reabrir(); return }
             if (k === 'pdfFlow' && isPDF) view.renderer?.setAttribute('gap', v === 'strip' ? '0' : '10')
             openSettings()

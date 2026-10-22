@@ -40,7 +40,9 @@ const norm = (t) => t.replace(/\s+/g, ' ').trim();
     const pages = await m.extraer(doc);
     const t1 = performance.now();
     const a = m.analizar(pages);
-    const caps = m.capitulos(a.blocks, { paginas: pages.length });
+    let outline = null;
+    try { const o = await doc.getOutline(); if (o) { outline = []; for (const it of o) outline.push({ title: it.title, page: await doc.getPageIndex((typeof it.dest === 'string' ? await doc.getDestination(it.dest) : it.dest)[0]), nivel: 0 }); } } catch (e) { }
+    const caps = m.capitulos(a.blocks, { paginas: pages.length, outline });
     const t2 = performance.now();
     return {
       ms: [Math.round(t1 - t0), Math.round(t2 - t1)], paginas: pages.length, columnas: pages.filter((p) => p.cols).length, stats: a.stats,
@@ -53,6 +55,7 @@ const norm = (t) => t.replace(/\s+/g, ' ').trim();
   console.log('  páginas a dos columnas:', r.columnas);
   console.log('  cuerpo', r.stats.body, 'interlineado', r.stats.lead, 'justificado', r.stats.justificado, 'márgenes', r.stats.marg, 'borde', r.stats.borde);
   console.log('  capítulos:', r.caps.map((c) => `${c.titulo} (${c.n})`).join(' | '));
+  if (process.env.SEPS) r.blocks.forEach((b, i) => { if (b.k === 'sep') console.log(`  [sep p${b.page}] ${(r.blocks[i - 1] || {}).t?.slice(-50)} ⟂ ${(r.blocks[i + 1] || {}).t?.slice(0, 50)}`); });
   if (vuelca) for (const b of r.blocks.slice(0, 60)) console.log(`  [${b.k} p${b.page}${b.cap ? ' CAP' : ''}] ${b.t.slice(0, 110)}`);
   if (verdadF) {
     const v = JSON.parse(fs.readFileSync(verdadF, 'utf8'));
@@ -66,7 +69,9 @@ const norm = (t) => t.replace(/\s+/g, ' ').trim();
     ok(exactos / verdad.length >= 0.97, `≥ 97 % de los párrafos exactos (${Math.round((100 * exactos) / verdad.length)} %)`);
     ok(Math.abs(sacados.length - verdad.length) <= verdad.length * 0.03, 'nº de párrafos parecido');
     const seps = r.blocks.filter((b) => b.k === 'sep').length;
-    ok(seps === v.parrafos.filter((p) => p === '* * *').length, `separadores de escena: ${seps}`);
+    const sepsV = v.parrafos.filter((p) => p === '* * *').length;
+    // (un cambio de escena que cae justo al final o al principio de una página, sin símbolo, no se puede ver)
+    ok(seps <= sepsV && seps >= sepsV * (process.env.HUECO ? 0.6 : 1), `separadores de escena: ${seps} de ${sepsV}`);
     const chs = r.blocks.filter((b) => b.k === 'h' && b.cap).length;
     ok(chs === v.capitulos.length, `capítulos detectados: ${chs} de ${v.capitulos.length}`);
     for (const f of faltan.slice(0, 4)) console.log('    falta:', f.slice(0, 120));

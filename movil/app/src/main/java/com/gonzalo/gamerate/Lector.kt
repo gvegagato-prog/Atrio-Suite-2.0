@@ -358,6 +358,7 @@ class ReaderActivity : ComponentActivity() {
      */
     private fun ajustesDe(o: JSONObject): JSONObject {
         val base = runCatching { JSONObject(getSharedPreferences("lector", MODE_PRIVATE).getString("ajustes", "{}") ?: "{}") }.getOrElse { JSONObject() }
+        base.remove("pdfTexto"); base.remove("pdfForzar")   // el formato del PDF (texto adaptable o página) es de cada libro, no un punto de partida para los demás
         o.optJSONObject("settings")?.let { b -> for (k in b.keys()) base.put(k, b.get(k)) }
         return base
     }
@@ -511,7 +512,7 @@ class ReaderActivity : ComponentActivity() {
         @JavascriptInterface
         fun saveSettings(json: String) {
             edit { it.put("settings", JSONObject(json)) }
-            getSharedPreferences("lector", MODE_PRIVATE).edit().putString("ajustes", json).apply()
+            getSharedPreferences("lector", MODE_PRIVATE).edit().putString("ajustes", runCatching { JSONObject(json).apply { remove("pdfTexto"); remove("pdfForzar") }.toString() }.getOrDefault(json)).apply()
             ajustesCambiados(this@ReaderActivity)
         }
 

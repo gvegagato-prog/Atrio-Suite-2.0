@@ -129,6 +129,7 @@ class Maqueta:
         if self.pag: self.pie(); self.pie_y_cabecera(); self.c.showPage()
         self.pag += 1
         self.y = self.H - self.ms
+        self.col_top = self.y
         self.col = 0
         self.cabecera = cabecera
 
@@ -136,18 +137,34 @@ class Maqueta:
         c = self.c
         if not getattr(self, 'cabecera', True): return
         c.setFont('I', 8.5)
-        txt = 'A. Prueba' if self.pag % 2 == 0 else 'La casa del faro'
+        txt = 'A. Prueba' if self.pag % 2 == 0 else (self.a.cabecera == 'capitulo' and getattr(self, 'titulo_actual', None) or 'La casa del faro')
         c.drawCentredString(self.W / 2, self.H - 34, txt)
         c.setFont('R', 9.5)
         c.drawCentredString(self.W / 2, 30, str(self.pag - 2))
 
     def salto_col(self):
         if self.col + 1 < self.cols:
-            self.col += 1; self.y = self.H - self.ms
+            self.col += 1; self.y = self.col_top
         else:
             self.nueva()
 
+    def linea_palabras(self, runs, x, y, ancho_l, justificar):
+        """Cada palabra como una pieza de texto aparte y sin espacios en el texto: el hueco es solo posición."""
+        c = self.c
+        natural = sum(ancho(r[0], r[1], self.pt) for r in runs)
+        espacios = sum(r[0].count(' ') for r in runs)
+        extra = (ancho_l - natural) / espacios if (justificar and espacios) else 0
+        for txt, f in runs:
+            partes = txt.split(' ')
+            for k, parte in enumerate(partes):
+                if k > 0: x += ancho(' ', 'R', self.pt) + extra
+                if parte:
+                    if f == 'S': c.setFont('R', self.pt * 0.65); c.drawString(x, y + self.pt * 0.4, parte)
+                    else: c.setFont(f, self.pt); c.drawString(x, y, parte)
+                    x += ancho(parte, f, self.pt)
+
     def linea(self, runs, x, y, ancho_l, justificar, centrar=False):
+        if self.a.palabras: return self.linea_palabras(runs, x, y, ancho_l, justificar)
         c = self.c
         t = c.beginText(); t.setTextOrigin(x, y)
         espacios = sum(r[0].count(' ') for r in runs)
@@ -212,6 +229,19 @@ class Maqueta:
                     w_acum += sp + wi; i += 1
                 else:
                     txt = texto_p(w)
+                    guion = [m_.end() for m_ in re.finditer('-', txt) if 1 < m_.end() < len(txt)]
+                    for k in reversed(guion):
+                        a_, b_ = parte(w, k)
+                        if w_acum + sp + ancho_p(a_, self.pt) <= disp:
+                            pre = ' ' if runs else ''
+                            for j, (t, f) in enumerate(a_): runs.append(((pre if j == 0 else '') + t, f))
+                            toks[i] = b_
+                            w_acum += sp + ancho_p(a_, self.pt)
+                            break
+                    else:
+                        guion = []
+                    if guion and toks[i] is not w:
+                        break
                     for k in reversed(silabas(txt)):
                         a_, b_ = parte(w, k)
                         if w_acum + sp + ancho_p(a_, self.pt) + ancho('-', a_[-1][1], self.pt) <= disp and k >= 2 and len(txt) - k >= 2 and re.match(r'^[a-záéíóúüñA-Z]+$', txt):
@@ -234,8 +264,11 @@ class Maqueta:
         if a.estilo == 'bloque': self.y -= 0.55 * self.lead
 
     def escena(self):
-        self.y -= self.lead * 0.5
         self.verdad.append('* * *')
+        if self.a.escena == 'hueco':
+            self.y -= self.lead
+            return
+        self.y -= self.lead * 0.5
         if self.y - self.lead * 2 < self.mb: self.salto_col()
         self.c.setFont('R', self.pt)
         self.c.drawCentredString(self.x0() + self.ancho_col / 2, self.y, '*   *   *')
@@ -252,6 +285,11 @@ class Maqueta:
             self.y -= 30
             c.setFont('B', 19); c.drawCentredString(self.W / 2, self.y, titulo)
             self.y -= 40
+        elif modo == 'espaciado':
+            t = c.beginText(); t.setTextOrigin(self.W / 2 - 45, self.y); t.setCharSpace(2.4); t.setFont('R', 10); t.textOut(f'CAPÍTULO {n}')
+            self.y -= 30
+            t.setTextOrigin(self.W / 2 - 100, self.y); t.setFont('B', 19); t.textOut(titulo); t.setCharSpace(0); c.drawText(t)
+            self.y -= 40
         elif modo == 'discreto':
             c.setFont('B', 11); c.drawCentredString(self.W / 2, self.y, f'Capítulo {n}')
             self.y -= 36
@@ -262,6 +300,10 @@ class Maqueta:
             rom = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][n - 1]
             c.setFont('R', 14); c.drawCentredString(self.W / 2, self.y, rom)
             self.y -= 40
+        self.titulo_actual = titulo
+        if self.a.indice:
+            self.c.bookmarkPage(f'cap{n}'); self.c.addOutlineEntry(f'Capítulo {n}: {titulo}', f'cap{n}', level=0)
+        self.col_top = self.y
         self.verdad.append(f'## CAPÍTULO {n} · {titulo}')
 
     def portada(self):
@@ -282,7 +324,10 @@ class Maqueta:
         self.pie(); self.pie_y_cabecera(); self.c.save()
 
 
-def contenido(rnd, n_par, notas=False):
+COMPUESTAS = ['Era un asunto teórico-práctico más complicado de lo previsto', 'El acuerdo franco-prusiano había quedado atrás', 'Fue un tratado hispano-americano y nada más', 'Hablaban en un tono tragicómico-melancólico muy raro']
+
+
+def contenido(rnd, n_par, notas=False, compuestas=False):
     """Párrafos de un capítulo: [('p', texto) | ('escena',)]"""
     out = []
     for k in range(n_par):
@@ -295,6 +340,7 @@ def contenido(rnd, n_par, notas=False):
             n = rnd.randint(2, 7)
             s = [rnd.choice(NARRA) for _ in range(n)]
             if rnd.random() < 0.4: s[rnd.randrange(n)] += ' ' + rnd.choice(ITAL).replace('*', '*') + ' lo sabía.'
+            if compuestas and rnd.random() < 0.5: s[rnd.randrange(n)] += ' ' + rnd.choice(COMPUESTAS) + '.'
             if notas and rnd.random() < 0.18: s[rnd.randrange(n)] += f'^{rnd.randint(1, 9)}{{Nota del traductor: expresión local.}}'
             out.append(('p', ' '.join(s)))
     return out
@@ -306,7 +352,12 @@ def main():
     ap.add_argument('--estilo', default='sangria', choices=['sangria', 'bloque', 'derecha', 'plano'])
     ap.add_argument('--columnas', type=int, default=1)
     ap.add_argument('--capitular', action='store_true')
-    ap.add_argument('--titulo', default='normal', choices=['normal', 'discreto', 'numero', 'romano'])
+    ap.add_argument('--titulo', default='normal', choices=['normal', 'discreto', 'numero', 'romano', 'espaciado'])
+    ap.add_argument('--cabecera', default='libro', choices=['libro', 'capitulo'])
+    ap.add_argument('--compuestas', action='store_true')
+    ap.add_argument('--indice', action='store_true', help='con índice (marcadores) del PDF')
+    ap.add_argument('--palabras', action='store_true', help='cada palabra suelta, sin espacios en el texto (como algunos PDF de editorial)')
+    ap.add_argument('--escena', default='asteriscos', choices=['asteriscos', 'hueco'])
     ap.add_argument('--notas', action='store_true')
     ap.add_argument('--capitulos', type=int, default=6)
     ap.add_argument('--parrafos', type=int, default=26)
@@ -317,7 +368,7 @@ def main():
     for n in range(1, a.capitulos + 1):
         m.capitulo(n, TITULOS[(n - 1) % len(TITULOS)])
         primero = True
-        for item in contenido(rnd, a.parrafos, a.notas):
+        for item in contenido(rnd, a.parrafos, a.notas, a.compuestas):
             if item[0] == 'escena': m.escena(); primero = True
             else:
                 m.parrafo(item[1], primero=primero and item[0] == 'p', capital=a.capitular and primero and item[0] == 'p'); primero = False

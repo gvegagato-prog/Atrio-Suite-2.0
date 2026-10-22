@@ -8,7 +8,7 @@ const path = require('path');
 const { chromium } = require(process.env.PW || 'playwright');
 const TAM = (() => { const [w, h] = (process.env.LECTOR_TAM || '412x860').split('x').map(Number); return { width: w, height: h }; })();
 const ASSETS = path.resolve(__dirname, '../../movil/app/src/main/assets');
-const [novela, escaneado, out] = process.argv.slice(2);
+const [novela, escaneado, out, ilustrado] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
 const MIME = { html: 'text/html', js: 'text/javascript', mjs: 'text/javascript', css: 'text/css', json: 'application/json' };
 let book = novela;
@@ -153,6 +153,24 @@ const ok = (c, m) => { console.log((c ? '  ✔ ' : '  ✘ ') + m); if (!c) proce
     ok(a.abierto && !e.reflow && e.pdf, 'un PDF sin texto se abre como página');
     const aviso = await a.page.evaluate(() => document.querySelector('#aviso')?.textContent || '');
     ok(/no tiene texto|escaneado/i.test(aviso) || true, `avisa («${aviso}»)`);
+    await a.cierra();
+    book = novela;
+  }
+  // ---- 7. Un libro ilustrado (poco texto por página) se ve como página, y «Texto adaptable» lo fuerza
+  if (ilustrado) {
+    console.log('Libro ilustrado');
+    book = ilustrado;
+    a = await abre({}, 'ilustrado');
+    let e = await info(a.page);
+    ok(a.abierto && !e.reflow && e.pdf, 'con poco texto por página se abre como página');
+    const aviso = await a.page.evaluate(() => document.querySelector('#aviso')?.textContent || '');
+    ok(/poco texto/i.test(aviso), `avisa («${aviso.slice(0, 60)}…»)`);
+    await a.page.evaluate(() => document.querySelector('#b-ajustes')?.click());
+    await a.page.waitForTimeout(400);
+    await a.page.evaluate(() => document.querySelector('.chip[data-k="pdfTexto"][data-v="true"]')?.click());
+    for (let k = 0; k < 60; k++) { await a.page.waitForTimeout(500); if ((await info(a.page)).reflow) break; }
+    e = await info(a.page);
+    ok(e.reflow, 'elegir «Texto adaptable» a mano lo fuerza');
     await a.cierra();
     book = novela;
   }
