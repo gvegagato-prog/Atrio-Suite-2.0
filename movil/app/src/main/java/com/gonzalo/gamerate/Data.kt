@@ -55,6 +55,9 @@ class Kind(
     /** Tiene fondos en internet para elegir (juegos, películas y series). */
     val hasHero: Boolean get() = isGame || isMovie || isTv
 
+    /** Admite un fondo propio (de tus archivos, de la galería o la propia portada): libros y lo creado a mano además. */
+    val admiteFondo: Boolean get() = hasHero || isBook || custom
+
     /** Tiene horas y duración (solo videojuegos). */
     val isGame: Boolean get() = id == 0
 }
@@ -816,7 +819,7 @@ class Store(ctx: Context) {
     /** Lo que se comparte con la pareja: tus datos, recomendaciones y reacciones, sin la API key. */
     fun syncData(): String {
         val o = JSONObject()
-        for (n in listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura")) {
+        for (n in listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura", "maquetas")) {
             o.put(n, JSONArray(p.getString(n, "[]")))
         }
         val ks = kinds
@@ -966,6 +969,7 @@ class Store(ctx: Context) {
         ed.commit()
         applyKeys(r.optJSONObject("keys"), onlyEmpty = true)
         applyLecturas()
+        applyMaquetas()
         r.optJSONObject("ajustes")?.let { applyAjustes(it) }
         r.optJSONObject("goals")?.let { g ->
             val y = LocalDate.now().year
@@ -1040,7 +1044,7 @@ class Store(ctx: Context) {
         Widgets.pedir(app)
     }
 
-    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura")
+    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura", "maquetas")
 
     // ---- Tu nube (kDrive): lo subido, para que tus otros dispositivos y tu pareja lo encuentren ----
     fun loadNube(): List<NubeFile> = try {
@@ -1063,6 +1067,72 @@ class Store(ctx: Context) {
     /** Capturas que no quieres en la nube. */
     fun shotNoCloud(id: String): Boolean = p.getStringSet("shotsNoCloud", emptySet())?.contains(id) == true
     fun setShotNoCloud(id: String) { p.edit().putStringSet("shotsNoCloud", (p.getStringSet("shotsNoCloud", emptySet()) ?: emptySet()) + id).apply(); ajustesCambiados(app) }
+
+    // ---- La maqueta de cada ficha (qué casilla va dónde, tus textos, tus fotos) y la de cada categoría: viaja con la cuenta ----
+    // La copia que se usa es la de las preferencias «maqueta» (MagLayouts); la lista «maquetas» es la que viaja. Cada
+    // ficha lleva su hora: gana la más nueva. Una maqueta restablecida (borrada) se borra en los demás dispositivos.
+    private fun maquetaPrefs() = app.getSharedPreferences("maqueta", Context.MODE_PRIVATE)
+    private fun claveMaqueta(k: String) = Regex("""^(tpl:)?[pv]:\d+(:\d+)?$""").matches(k)
+    private fun maquetasLista(): JSONArray = try { JSONArray(p.getString("maquetas", "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
+
+    /** Una maqueta que cambia aquí (ficha o categoría): se apunta para subirla con la cuenta. */
+    fun saveMaqueta(key: String, json: String) {
+        if (!claveMaqueta(key)) return
+        val id = nubeId(key); val now = System.currentTimeMillis()
+        val a = maquetasLista(); val out = JSONArray()
+        for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") != id) out.put(it) }
+        out.put(JSONObject().put("id", id).put("k", key).put("j", json).put("updated", now))
+        val ed = p.edit(); writeList("maquetas", out, ed); ed.putLong("dirtyAt", now); ed.commit()
+        maquetaPrefs().edit().putLong("@at:$key", now).apply()
+    }
+
+    /** Maquetas restablecidas aquí: se borran también de la cuenta. */
+    fun removeMaquetas(keys: List<String>) {
+        val ids = keys.filter { claveMaqueta(it) }.map { nubeId(it) }.toSet()
+        if (ids.isEmpty()) return
+        val a = maquetasLista(); val out = JSONArray()
+        for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") !in ids) out.put(it) }
+        val ed = p.edit(); writeList("maquetas", out, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
+        val mp = maquetaPrefs().edit(); keys.forEach { mp.remove("@at:$it") }; mp.apply()
+    }
+
+    /**
+     * Pone las maquetas de la cuenta en las preferencias que usa la pantalla (la más nueva de cada ficha) y sube las que
+     * solo estaban aquí (las de antes de esta versión). Devuelve true si ha cambiado alguna de las que se ven.
+     */
+    fun applyMaquetas(): Boolean {
+        val mp = maquetaPrefs()
+        val a = maquetasLista()
+        val ed = mp.edit()
+        var changed = false
+        val hay = HashSet<String>()
+        for (i in 0 until a.length()) {
+            val o = a.optJSONObject(i) ?: continue
+            val k = o.optString("k"); val j = o.optString("j")
+            if (!claveMaqueta(k) || j.isBlank()) continue
+            hay.add(k)
+            val at = mp.getLong("@at:$k", 0L)
+            val cur = mp.getString(k, null)
+            if (cur == null || o.optLong("updated") > at) {
+                if (cur != j) { ed.putString(k, j); changed = true }
+                ed.putLong("@at:$k", o.optLong("updated"))
+            }
+        }
+        val subir = ArrayList<Pair<String, String>>()
+        for ((k, v) in mp.all) {
+            if (k.startsWith("@at:") && k.substring(4) !in hay) {
+                // Estaba en la cuenta y ya no: se restableció en otro dispositivo
+                val key = k.substring(4)
+                if (mp.contains(key)) { ed.remove(key); changed = true }
+                ed.remove(k)
+            } else if (v is String && claveMaqueta(k) && k !in hay && !mp.contains("@at:$k")) subir.add(k to v)
+        }
+        ed.apply()
+        // Las de antes de esta versión (sin hora): suben tal cual
+        for ((k, v) in subir) saveMaqueta(k, v)
+        if (changed) MagLayouts.cambiaron()
+        return changed
+    }
 
     // ---- Lo leído de cada libro (posición, subrayados, notas, marcadores): viaja con la cuenta ----
     /** Copia el estado del lector de un libro a la cuenta (sin la dirección del archivo, que es de este dispositivo). */
@@ -1169,7 +1239,7 @@ class Store(ctx: Context) {
         backup.put("kinds", JSONArray(oldKindsTxt))
         val ed = p.edit()
         // Una copia antigua sin sagas no borra las tuyas
-        names.forEach { if (it != "sagas" || o.has("sagas")) writeList(it, o.optJSONArray(it) ?: JSONArray(), ed) }
+        names.forEach { if ((it != "sagas" || o.has("sagas")) && (it != "maquetas" || o.has("maquetas"))) writeList(it, o.optJSONArray(it) ?: JSONArray(), ed) }
         if (withKinds) ed.putString("kinds", (o.optJSONArray("kinds") ?: JSONArray()).toString())
         ed.apply()
         try {

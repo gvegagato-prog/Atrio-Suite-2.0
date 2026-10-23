@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -191,7 +192,13 @@ private fun RevistaHome(m: ShellModel) {
                 val e = ShellEntry(o.kind, o.play, null)
                 val art = e.hero.ifBlank { e.cover }
                 val imagen: @Composable (Modifier) -> Unit = { mod ->
-                    if (art.isNotBlank()) AsyncImage(art, e.name, mod.press { m.open(e) }, contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
+                    // Sin fondo propio, la portada (vertical) no se recorta: va entera sobre sí misma, desenfocada
+                    if (art.isNotBlank() && e.hero.isBlank()) Box(mod.clipToBounds().press { m.open(e) }, contentAlignment = Alignment.Center) {
+                        AsyncImage(art, null, Modifier.fillMaxSize().blur(24.dp), contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.18f)))
+                        AsyncImage(art, e.name, Modifier.fillMaxSize().padding(10.dp), contentScale = ContentScale.Fit, colorFilter = Ediciones.filtro)
+                    }
+                    else if (art.isNotBlank()) AsyncImage(art, e.name, mod.press { m.open(e) }, contentScale = ContentScale.Crop, colorFilter = Ediciones.filtro)
                     else Box(mod.background(Sand).press { m.open(e) }, contentAlignment = Alignment.Center) {
                         Text("Sin imagen", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 18.sp)
                     }

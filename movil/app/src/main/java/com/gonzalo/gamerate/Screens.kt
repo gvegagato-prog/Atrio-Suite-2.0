@@ -664,7 +664,9 @@ fun ArtScreen(
     /** Empezar en «Archivo» (lo creado a mano no tiene imágenes en internet). */
     startLocal: Boolean = false,
     /** Una foto de otro dispositivo tuyo ya descargada aquí: para el fondo o la portada, con su dirección. */
-    onArrived: ((hero: Boolean, url: String) -> Unit)? = null
+    onArrived: ((hero: Boolean, url: String) -> Unit)? = null,
+    /** Hay fondos en internet para elegir (pestaña «Fondos»); si no, el fondo solo sale de «Archivo». */
+    fondosWeb: Boolean = true
 ) {
     var list by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var msg by remember { mutableStateOf("Cargando…") }
@@ -724,7 +726,7 @@ fun ArtScreen(
         // Pestañas: Portadas · Fondos · Archivo
         val tabs = buildList {
             add(0 to "Portadas")
-            if (hasHero) add(1 to "Fondos")
+            if (hasHero && fondosWeb) add(1 to "Fondos")
             if (onLocal != null) add(2 to "Archivo")
         }
         if (tabs.size > 1) {
@@ -840,6 +842,14 @@ private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boo
         }
         Text(if (now.isNotBlank()) "Ahora" else "", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(14.dp))
+        // El fondo puede ser la propia portada (si no, se pone otra imagen aparte)
+        if (hero && onArrived != null && game.cover.isNotBlank() && game.hero != game.cover) {
+            Button({ onArrived(game.cover) }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                Text("Usar la portada como fondo")
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         Button({ onPick(true) }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Rounded.FolderOpen, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
             Text("Elegir de mis archivos")

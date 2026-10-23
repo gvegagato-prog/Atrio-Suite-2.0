@@ -1187,7 +1187,7 @@ fun App(
                                 pickImage = if (pv) null else ({ o ->
                                     val pl = o.play
                                     section = o.kind.id
-                                    screen = Screen.Art(Game(pl.id, pl.name, pl.cover, hero = pl.hero, creator = pl.creator), o.kind.hasHero, false, false, pl, home = true)
+                                    screen = Screen.Art(Game(pl.id, pl.name, pl.cover, hero = pl.hero, creator = pl.creator), o.kind.admiteFondo, false, false, pl, home = true)
                                 })
                             ))
                         } else InicioScreen(
@@ -1395,6 +1395,7 @@ fun App(
                         else if (kind.isTv) TvMaze.images(s.game.id, s.hero)
                         else if (kind.custom) emptyList()
                         // Libros importados que Open Library no reconoció: portadas de lo que sale al buscar su título.
+                        else if (s.hero && kind.isBook) emptyList()
                         else if (kind.isBook) OpenLib.covers(s.game.id).ifEmpty { OpenLib.coversByTitle(s.game.name) }
                         else if (s.hero) Sgdb.heroes(s.game.id, key)
                         else Sgdb.covers(s.game.id, key)
@@ -1419,8 +1420,9 @@ fun App(
                     },
                     search = if (kind.isBook && !s.hero) ({ q -> OpenLib.coversFor(q) }) else null,
                     translate = if (kind.isBook && !s.hero) ({ q -> TitleEn.translate(q)?.let { it.title to it.source } }) else null,
-                    hasHero = kind.hasHero,
-                    startLocal = kind.custom || !isWebId(s.game.id),
+                    hasHero = kind.admiteFondo,
+                    fondosWeb = kind.hasHero,
+                    startLocal = kind.custom || !isWebId(s.game.id) || (s.hero && !kind.hasHero),
                     onTab = { h -> screen = Screen.Art(s.game, h, s.isNew, s.chain, s.play, s.home) },
                     onLocal = { h, files ->
                         pickImage(files) { url ->

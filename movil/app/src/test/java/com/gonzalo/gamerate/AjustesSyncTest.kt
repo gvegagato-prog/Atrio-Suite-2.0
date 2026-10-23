@@ -24,9 +24,10 @@ class AjustesSyncTest {
         ctx.getSharedPreferences("lector", Context.MODE_PRIVATE).edit().putString("ajustes", JSONObject().put("theme", "negro").put("size", 120).put("brightness", 0.3).toString()).commit()
         ajustesCambiados(ctx)
         ctx.getSharedPreferences("maqueta", Context.MODE_PRIVATE).edit().putString("v:0:1", "[{\"c\":[]}]").commit()
+        ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).edit().remove("maquetas").commit()
         BookFiles.put(ctx, 7, JSONObject().put("fraction", 0.5).put("settings", JSONObject().put("size", 120).put("brightness", 0.3).put("pdfFlow", "strip")))
         val data = s.syncData()
-        assertTrue("la maqueta no viaja", !data.contains("v:0:1"))
+        assertTrue("una maqueta que no se ha guardado desde la pantalla no viaja sola", !data.contains("\"j\""))
         assertTrue("el brillo no viaja", !data.contains("\"brightness\""))
         assertTrue("la letra no viaja", !data.contains("\"size\":120"))
 
@@ -45,7 +46,7 @@ class AjustesSyncTest {
         assertEquals("y en el libro, también", 0.8, BookFiles.state(ctx, 7).getJSONObject("settings").getDouble("brightness"), 0.0)
         assertEquals("y su letra", 90, BookFiles.state(ctx, 7).getJSONObject("settings").getInt("size"))
         assertEquals("lo demás del libro sí viaja (este, hacia abajo)", "strip", BookFiles.state(ctx, 7).getJSONObject("settings").getString("pdfFlow"))
-        assertEquals("la maqueta de la tablet se queda", "TABLETA", ctx.getSharedPreferences("maqueta", Context.MODE_PRIVATE).getString("v:0:1", ""))
+        assertEquals("la maqueta local de la tablet se queda", "TABLETA", ctx.getSharedPreferences("maqueta", Context.MODE_PRIVATE).getString("v:0:1", ""))
         // Un dispositivo nuevo que entra con tu cuenta (se queda con lo de la cuenta): también por dónde vas y los ajustes
         ctx.getSharedPreferences("lector", Context.MODE_PRIVATE).edit().clear().commit()
         g.edit().putLong("ajustesAt", 0L).putBoolean("skin_listcovers", false).commit()

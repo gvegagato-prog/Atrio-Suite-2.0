@@ -216,7 +216,7 @@ fun RevistaGameRead(
     ).joinToString(" · ")
     if (deck.isNotBlank()) Text(deck, color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
     if (theirs != null) Box(Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) { TheirReaction(partnerName, theirs) }
-    if (designing) DesignHint(onData = onEdit, name = g.name, onDelete = onDelete, onArt = onArt, hasHero = kind.hasHero)
+    if (designing) DesignHint(onData = onEdit, name = g.name, onDelete = onDelete, onArt = onArt, hasHero = kind.admiteFondo)
     Spacer(Modifier.height(14.dp))
 
     val defs = linkedMapOf<String, MagDef>()

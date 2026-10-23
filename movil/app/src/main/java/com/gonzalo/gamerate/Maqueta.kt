@@ -96,13 +96,30 @@ object MagLayouts {
 
     /** La maqueta de esta ficha; si no tiene, la de su categoría; si no, null (la de siempre). */
     fun load(ctx: Context, key: String, tpl: String): List<MagRowSpec>? = fromJson(prefs(ctx).getString(key, null)) ?: fromJson(prefs(ctx).getString(tpl, null))
-    fun save(ctx: Context, key: String, rows: List<MagRowSpec>) { prefs(ctx).edit().putString(key, toJson(rows)).apply() }
+    /** Sube un número cuando llega de otro dispositivo una maqueta nueva: las páginas abiertas la vuelven a leer. */
+    private val ver = androidx.compose.runtime.mutableIntStateOf(0)
+    val version: Int get() = ver.intValue
+    fun cambiaron() { android.os.Handler(android.os.Looper.getMainLooper()).post { ver.intValue++ } }
+
+    /** Guarda la maqueta de esta ficha: aquí y en tu cuenta (se ve igual en tus demás dispositivos, con sus fotos). */
+    fun save(ctx: Context, key: String, rows: List<MagRowSpec>) {
+        val j = toJson(rows)
+        prefs(ctx).edit().putString(key, j).commit()
+        runCatching { Store(ctx).saveMaqueta(key, j) }
+        // Una foto tuya en una casilla: a tu nube, para que las demás la tengan
+        if (rows.any { r -> r.cells.any { it.image.startsWith("file:") } }) runCatching { NubeSync.enqueue(ctx) }
+    }
     fun saveTemplate(ctx: Context, tpl: String, rows: List<MagRowSpec>) {
         // Para la categoría no se copian los textos ni las imágenes de esta ficha: solo dónde va cada cosa
         val clean = rows.map { r -> r.copy(cells = r.cells.map { c -> if (c.type == "texto" || c.type == "imagen") MagCell("vacio") else c }) }
-        prefs(ctx).edit().putString(tpl, toJson(clean)).apply()
+        val j = toJson(clean)
+        prefs(ctx).edit().putString(tpl, j).commit()
+        runCatching { Store(ctx).saveMaqueta(tpl, j) }
     }
-    fun reset(ctx: Context, key: String, tpl: String) { prefs(ctx).edit().remove(key).remove(tpl).apply() }
+    fun reset(ctx: Context, key: String, tpl: String) {
+        prefs(ctx).edit().remove(key).remove(tpl).commit()
+        runCatching { Store(ctx).removeMaquetas(listOf(key, tpl)) }
+    }
 
     /** Casillas nuevas de esta versión (p. ej. «subrayados»): a las maquetas ya guardadas se les añade una vez,
      *  en su propia fila detrás de [after]; si luego la quitas, no vuelve. */
@@ -158,7 +175,8 @@ fun MagPage(
     kind: Kind, itemId: Long, itemName: String, designing: Boolean
 ) {
     val ctx = LocalContext.current
-    var rows by remember(key) {
+    // (de nuevo cuando llega una maqueta de otro dispositivo)
+    var rows by remember(key, MagLayouts.version) {
         mutableStateOf(MagLayouts.load(ctx, key, tpl)?.let { saved ->
             if ("subrayados" in defs) MagLayouts.withNew(ctx, key, saved, "subrayados", "lectura") else saved
         } ?: defaults)

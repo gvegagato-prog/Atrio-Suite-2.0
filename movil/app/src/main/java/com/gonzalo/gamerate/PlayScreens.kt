@@ -100,7 +100,7 @@ fun PlayDetailScreen(
             if (deck.isNotBlank()) Text(deck, color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 17.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
             partner?.reactsToMe?.get(p.id)?.let { Box(Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) { TheirReaction(partnerName, it) } }
             Spacer(Modifier.height(14.dp))
-            if (designing) DesignHint(onData = { designing = false; editing = true }, name = p.name, onDelete = { onDelete(p) }, onArt = { hero -> onArt(p, hero) }, hasHero = kind.hasHero)
+            if (designing) DesignHint(onData = { designing = false; editing = true }, name = p.name, onDelete = { onDelete(p) }, onArt = { hero -> onArt(p, hero) }, hasHero = kind.admiteFondo)
 
             val defs = linkedMapOf<String, MagDef>()
             if (kind.isGame) defs["guias"] = MagDef("Guías") { GuidesSection(p.id, p.name, inCell = true) }
