@@ -859,6 +859,15 @@ private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boo
             Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
             Text("Desde la galería")
         }
+        // De internet: Google Imágenes dentro de la app
+        val web = Internet.pick
+        if (web != null && onArrived != null) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton({ web(game.name + if (hero) " fondo" else "") { url -> onArrived(url) } }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Rounded.Search, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                Text("Buscar en internet")
+            }
+        }
         // Una imagen de tu kDrive (la que quieras, de cualquier carpeta)
         val nube = NubeHub.pickFromCloud
         if (nube != null && onArrived != null) {

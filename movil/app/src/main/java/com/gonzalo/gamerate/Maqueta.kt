@@ -428,6 +428,7 @@ fun MagPage(
                             Spacer(Modifier.height(12.dp))
                             Tool("DESDE LA GALERÍA →") { pick(false, use) }
                             val nube = NubeHub.pickFromCloud
+                            Internet.pick?.let { web -> Spacer(Modifier.height(12.dp)); Tool("BUSCAR EN INTERNET →") { web(itemName, use) } }
                             if (nube != null) { Spacer(Modifier.height(12.dp)); Tool("DE TU NUBE →") { nube(use) } }
                             Spacer(Modifier.height(12.dp))
                             Text(if (nube != null) "Se guarda en este móvil y en tu nube, en la carpeta de esta ficha. Luego puedes encuadrarla." else "Se guarda en este móvil: tu pareja y el PC no la verán. Luego puedes encuadrarla.", color = Muted, fontSize = 12.sp)

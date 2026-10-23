@@ -72,9 +72,16 @@ fun CustomAddScreen(
         AlertDialog(
             onDismissRequest = { asking = null },
             title = { Text(if (forHero) "Foto de fondo" else "Foto de portada", fontFamily = Display) },
-            text = { Text("¿De dónde la sacas?") },
-            confirmButton = { TextButton({ asking = null; onPhoto(true) { if (forHero) hero = it else cover = it } }) { Text("De mis archivos") } },
-            dismissButton = { TextButton({ asking = null; onPhoto(false) { if (forHero) hero = it else cover = it } }) { Text("De la galería") } }
+            text = {
+                val use: (String) -> Unit = { if (forHero) hero = it else cover = it }
+                Column {
+                    Text("¿De dónde la sacas?")
+                    TextButton({ asking = null; onPhoto(true, use) }) { Text("De mis archivos") }
+                    TextButton({ asking = null; onPhoto(false, use) }) { Text("De la galería") }
+                    Internet.pick?.let { web -> TextButton({ asking = null; web(name.ifBlank { creator } + if (forHero) " fondo" else "", use) }) { Text("De internet") } }
+                }
+            },
+            confirmButton = { TextButton({ asking = null }) { Text("Cancelar") } }
         )
     }
     Column(

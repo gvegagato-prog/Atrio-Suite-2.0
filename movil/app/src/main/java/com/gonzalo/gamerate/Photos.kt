@@ -33,6 +33,13 @@ object Photos {
         reduced(ctx, if (bytes != null) ImageDecoder.createSource(ByteBuffer.wrap(bytes)) else ImageDecoder.createSource(ctx.contentResolver, uri), base)
     }
 
+    /** Guarda una imagen que viene de internet (sus bytes): el original y la copia reducida, como una foto elegida. */
+    suspend fun importBytes(ctx: Context, bytes: ByteArray, mime: String?): String = withContext(Dispatchers.IO) {
+        val base = "foto_${System.currentTimeMillis()}"
+        try { File(origDir(ctx), "$base.${extOf(mime)}").writeBytes(bytes) } catch (e: Exception) { /* sin original */ }
+        reduced(ctx, ImageDecoder.createSource(ByteBuffer.wrap(bytes)), base)
+    }
+
     /** La copia reducida (la que se ve en la app) a partir de cualquier imagen. */
     private fun reduced(ctx: Context, src: ImageDecoder.Source, base: String): String {
         val bm = ImageDecoder.decodeBitmap(src) { dec, info, _ ->

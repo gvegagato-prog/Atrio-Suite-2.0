@@ -57,4 +57,20 @@ Edificio (en aragonés).
         assertTrue("casa" in Diccionario.candidates("casas"))
         assertEquals("hidalgo", Diccionario.candidates("Hidalgo")[0])
     }
+
+    @Test
+    fun formasSeReconocen() {
+        assertEquals("falda", Diccionario.lemmaDe("Forma del plural de falda."))
+        assertEquals("amigo", Diccionario.lemmaDe("Forma del femenino plural de amigo."))
+        assertEquals("amigar", Diccionario.lemmaDe("Segunda persona del singular (tú) del presente de indicativo de amigar."))
+        assertEquals("bello", Diccionario.lemmaDe("Superlativo de bello."))
+        assertEquals(null, Diccionario.lemmaDe("Prenda de vestir que cae desde la cintura."))
+        assertEquals(null, Diccionario.lemmaDe("Forma de gobierno en la que manda uno solo."))
+    }
+
+    @Test
+    fun soloFormasSeDevuelvenSiNoHayOtraCosa() {
+        val ex = "\n== Español ==\n=== Forma sustantiva femenina ===\n1\nForma del plural de falda.\n"
+        assertEquals(listOf("Forma del plural de falda."), Diccionario.parse(ex))
+    }
 }

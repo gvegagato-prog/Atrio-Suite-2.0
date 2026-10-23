@@ -808,6 +808,9 @@ fun App(
     // De tu nube: el explorador de tu kDrive (con la nube conectada)
     var nubePick by remember { mutableStateOf<((String) -> Unit)?>(null) }
     SideEffect { NubeHub.pickFromCloud = if (KDrive.on(ctx) && !pv) ({ cb -> nubePick = cb }) else null }
+    // De internet: Google Imágenes dentro de la app
+    var webPick by remember { mutableStateOf<Pair<String, (String) -> Unit>?>(null) }
+    SideEffect { Internet.pick = if (!pv) ({ q, cb -> webPick = q to cb }) else null }
 
     // ---- Cambiar entre tu app y la de tu pareja ----
     fun togglePartner() {
@@ -1669,6 +1672,9 @@ fun App(
         if (shareUrl.isNotEmpty()) {
             if (!store.paired) { LaunchedEffect(shareUrl) { say("Para guardar webs en tus juegos del PC, entra antes en tu cuenta"); onShareHandled() } }
             else ShareToGameDialog(shareUrl, shareTitle, onDismiss = { onShareHandled() }, say = { say(it) })
+        }
+        webPick?.let { (q, cb) ->
+            InternetPicker(q, onPick = { url -> webPick = null; cb(url); NubeSync.enqueue(ctx) }, onDismiss = { webPick = null })
         }
         nubePick?.let { cb ->
             NubePicker(onPick = { url -> nubePick = null; cb(url); NubeSync.enqueue(ctx) }, onDismiss = { nubePick = null })
