@@ -33,6 +33,7 @@ fun ProfileScreen(
     store: Store, partner: Partner?,
     onStyle: () -> Unit, onSettings: () -> Unit, onSuite: () -> Unit,
     onMassScores: () -> Unit,
+    onDuelos: () -> Unit = {},
     goalGames: Int, goalBooks: Int, onGoal: (Int, Int) -> Unit,
     couple: @Composable () -> Unit,
     onBack: () -> Unit
@@ -133,6 +134,9 @@ fun ProfileScreen(
         Spacer(Modifier.height(12.dp))
 
         ProfileRow(Icons.Rounded.Edit, "Cambiar notas en masa", "Elige varios y repasa sus notas uno tras otro (p. ej. tras importar)", Modifier.rise(5), onMassScores)
+        Spacer(Modifier.height(12.dp))
+
+        ProfileRow(Icons.Rounded.Edit, "Duelos de libros", "Ordena tus libros con «¿cuál te gustó más?» y reparte notas sin empates (p. ej. tras importar)", Modifier.rise(5), onDuelos)
         Spacer(Modifier.height(12.dp))
 
         ProfileRow(Icons.Rounded.Tune, "Ajustes", "Claves de servicios, importar de otras apps, Drive y copias", Modifier.rise(5), onSettings)

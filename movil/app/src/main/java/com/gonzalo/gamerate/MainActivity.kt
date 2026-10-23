@@ -68,6 +68,8 @@ sealed interface Screen {
     class Saga(val id: Long) : Screen
     /** Cambiar notas en masa (desde Perfil o Ajustes); [back] es adonde se vuelve. */
     class MassScore(val back: Screen) : Screen
+    /** Ordenar los libros por duelos y repartir sus notas; [back] es adonde se vuelve. */
+    class Duelos(val back: Screen) : Screen
 }
 
 class MainActivity : ComponentActivity() {

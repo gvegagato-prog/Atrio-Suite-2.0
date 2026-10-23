@@ -336,7 +336,7 @@ fun SettingsScreen(
     driveName: String?, driveInfo: String, onDriveLink: () -> Unit, onDriveRestore: () -> Unit,
     onDriveNow: () -> Unit, onDriveUnlink: () -> Unit,
     couple: @Composable () -> Unit,
-    importMsg: String = "", onGoodreads: () -> Unit = {}, onBookmory: () -> Unit = {}, onMassScores: () -> Unit = {},
+    importMsg: String = "", onGoodreads: () -> Unit = {}, onBookmory: () -> Unit = {}, onMassScores: () -> Unit = {}, onDuelos: () -> Unit = {},
     steamKey: String = "", steamUser: String = "", onSteam: (String, String) -> Unit = { _, _ -> },
     /** Tu nube (kDrive): libros, fotos y capturas en todos tus dispositivos. */
     nube: (@Composable () -> Unit)? = null,
@@ -452,6 +452,13 @@ fun SettingsScreen(
                     "«Los de estrellas» elige de golpe los que tienen notas de estrellas (20, 40, 60, 80 o 100), que es como llegan de Goodreads y Bookmory."
             )
             OutlinedButton(onMassScores, shape = pillShape()) { Text("Cambiar notas en masa") }
+            Spacer(Modifier.height(14.dp))
+            Text("Duelos de libros", fontWeight = FontWeight.SemiBold)
+            Plegado(
+                "Para libros con nota de estrellas (muchos 100, 90, 80…): te enseña dos libros y tocas el que más te gustó. Con las respuestas ordena todos tus libros y reparte las notas sin empates. " +
+                    "Se hace a ratos y se guarda solo; al terminar puedes deshacerlo."
+            )
+            OutlinedButton(onDuelos, shape = pillShape()) { Text("Duelos de libros") }
         }
 
         if (nube != null) SettingsSection("Tu nube (kDrive)", 395) { nube() }
