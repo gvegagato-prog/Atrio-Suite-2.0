@@ -78,7 +78,7 @@ fun CustomAddScreen(
                     Text("¿De dónde la sacas?")
                     TextButton({ asking = null; onPhoto(true, use) }) { Text("De mis archivos") }
                     TextButton({ asking = null; onPhoto(false, use) }) { Text("De la galería") }
-                    Internet.pick?.let { web -> TextButton({ asking = null; web(name.ifBlank { creator } + if (forHero) " fondo" else "", use) }) { Text("De internet") } }
+                    Internet.pick?.let { web -> TextButton({ asking = null; web((name.ifBlank { creator } + if (forHero) " fondo" else "").trim(), use) }) { Text("De internet") } }
                 }
             },
             confirmButton = { TextButton({ asking = null }) { Text("Cancelar") } }

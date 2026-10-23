@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -64,6 +65,9 @@ object Internet {
         return runCatching { URLDecoder.decode(m.groupValues[1], "UTF-8") }.getOrNull()?.takeIf { it.startsWith("http") }
     }
 
+    /** Una miniatura de Google (de la cuadrícula de resultados), no la imagen de verdad. */
+    fun esMiniatura(u: String) = u.startsWith("data:") || u.contains("encrypted-tbn") || u.contains("gstatic.com/")
+
     /** Los bytes de una imagen (dirección http/https o data:) y su tipo. */
     fun descargar(url: String, ua: String): Pair<ByteArray, String?> {
         if (url.startsWith("data:")) {
@@ -107,7 +111,6 @@ var all=[].slice.call(document.images).filter(vis);
 all.forEach(function(i){var s=i.currentSrc||i.src||'';if(!s)return;var r=i.getBoundingClientRect();var a=r.width*r.height;
  var a2=i.closest&&i.closest('a');var h=a2?a2.href:'';var m=/[?&]imgurl=([^&]+)/.exec(h);
  var full=m?decodeURIComponent(m[1]):null;
- if(full&&a>=(bestLow?bestLow.a:0)){bestLow=bestLow||{};}
  var o={u:full||s,a:a,w:i.naturalWidth||0,low:!full&&tbn(s)};
  if(o.low){if(!bestLow||a>bestLow.a)bestLow=o;}else{if(!best||a>best.a)best=o;}});
 var r=best||bestLow;return JSON.stringify(r?{u:r.u,w:r.w,low:!!r.low}:{});}catch(e){return JSON.stringify({err:String(e)});}})()"""
@@ -140,6 +143,14 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
         }
     }
 
+    // Una miniatura (la de la cuadrícula de Google, pequeña): se avisa, y si vuelves a pulsar, se usa igual
+    var miniatura by remember { mutableStateOf("") }
+    fun usarOMiniatura(u: String, low: Boolean) {
+        if (!low || miniatura == u) { miniatura = ""; usar(u); return }
+        miniatura = u
+        msg = "Eso es la miniatura (se vería borrosa): tócala, espera a que se vea grande y pulsa «Usar esta imagen». Si aun así la quieres, pulsa otra vez."
+    }
+
     fun usarLaAbierta() {
         val w = web ?: return
         w.evaluateJavascript(Internet.JS_ELEGIDA) { r ->
@@ -148,16 +159,15 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
             val u = o.optString("u")
             when {
                 u.isBlank() -> msg = "No veo ninguna imagen abierta: toca una de los resultados y espera a que se vea grande."
-                o.optBoolean("low") -> { msg = "Solo está la miniatura: espera a que cargue la imagen grande y pulsa otra vez."; if (o.optInt("w") >= 300) usar(u) }
-                else -> usar(u)
+                else -> usarOMiniatura(u, o.optBoolean("low"))
             }
         }
     }
 
-    BackHandler { val w = web; if (w != null && w.canGoBack()) w.goBack() else onDismiss() }
-
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Column(Modifier.fillMaxSize().background(Paper).statusBarsPadding().navigationBarsPadding()) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnBackPress = false)) {
+        // Atrás: primero por las páginas que has abierto dentro; luego se cierra
+        BackHandler { val w = web; if (w != null && w.canGoBack()) w.goBack() else onDismiss() }
+        Column(Modifier.fillMaxSize().background(Paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 BackButton(onDismiss)
                 OutlinedTextField(
@@ -174,7 +184,10 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                        // Como el Chrome del móvil (con «wv», algunas webs dan una versión recortada)
+                        settings.userAgentString = settings.userAgentString.replace("; wv)", ")")
                         CookieManager.getInstance().setAcceptCookie(true)
+                        CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                         webChromeClient = WebChromeClient()
                         webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest): Boolean {
@@ -191,7 +204,7 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                                 WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE, WebView.HitTestResult.SRC_ANCHOR_TYPE -> Internet.deImgres(extra) ?: extra.takeIf { h.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE }
                                 else -> null
                             }
-                            if (!u.isNullOrBlank() && (u.startsWith("http") || u.startsWith("data:"))) { usar(u); true } else false
+                            if (!u.isNullOrBlank() && (u.startsWith("http") || u.startsWith("data:"))) { usarOMiniatura(u, Internet.esMiniatura(u) && Internet.deImgres(extra) == null); true } else false
                         }
                         loadUrl(Internet.searchUrl(initialQuery))
                         web = this

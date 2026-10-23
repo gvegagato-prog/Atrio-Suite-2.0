@@ -597,9 +597,11 @@ class ReaderActivity : ComponentActivity() {
                 o.put("lang", lang)
                 if (lang != "und") o.put("langName", Diccionario.langName(lang))
                 try {
-                    val (found, defs) = Diccionario.define(word, if (lang == "es" || lang == "und") "Español" else Diccionario.langName(lang))
+                    val d = Diccionario.define(word, if (lang == "es" || lang == "und") "Español" else Diccionario.langName(lang))
+                    val (found, defs) = d.palabra to d.defs
                     o.put("defs", org.json.JSONArray(defs))
                     if (defs.isNotEmpty() && found.lowercase() != word.lowercase()) o.put("lemma", found)
+                    if (d.nota.isNotBlank()) o.put("nota", d.nota.trimEnd('.'))
                     if (defs.isEmpty()) o.put("msg", "El Wikcionario no tiene esta palabra. Prueba con la RAE.")
                 } catch (e: Exception) {
                     o.put("msg", "No se ha podido consultar el Wikcionario (¿sin conexión?).")

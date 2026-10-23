@@ -78,7 +78,9 @@ object Diccionario {
     }
 
     private val FORMA = Regex(
-        "^(?:Forma|Plural|Singular|Femenino|Masculino|Superlativo|Diminutivo|Aumentativo|Despectivo|Participio|Gerundio|Infinitivo|Imperativo|Primera|Segunda|Tercera)\\b.{0,110}?\\bde(?:l)?\\s+(?:verbo\\s+|la\\s+|lo\\s+)?([\\p{L}]+)\\.?$"
+        "^(?:Forma\\s+(?:flexiva\\s+|verbal\\s+|sustantiva\\s+|adjetiva\\s+|conjugada\\s+)?(?:(?:del|de la)\\s+)?(?:plural|singular|femenin\\w*|masculin\\w*|diminutiv\\w*|aumentativ\\w*|superlativ\\w*|flexiva|verbal|sustantiva|adjetiva|conjugada|enclítica|apocopada)" +
+            "|Plural|Singular|Femenino|Masculino|Superlativo|Diminutivo|Aumentativo|Participio|Gerundio|Infinitivo|Imperativo|(?:Primera|Segunda|Tercera)\\s+persona)" +
+            "\\b.{0,120}?\\bde(?:l)?\\s+(?:verbo\\s+|la\\s+|lo\\s+)?([\\p{L}]+)\\.?$"
     )
     private val VERBAL = Regex("^(?:Primera|Segunda|Tercera|Participio|Gerundio|Infinitivo|Imperativo|Forma verbal)\\b.*")
 
@@ -107,29 +109,34 @@ object Diccionario {
         return out.toList()
     }
 
+    /** Lo que se enseña: la palabra con la que se ha encontrado, sus acepciones y, si era una forma de otra, cuál («Forma del plural de falda.»). */
+    data class Definicion(val palabra: String, val defs: List<String>, val nota: String = "")
+
     /**
-     * Las acepciones de una palabra y la palabra con la que se han encontrado. Si la palabra es solo una forma de otra
-     * (faldas = «plural de falda», corría = «forma de correr»), se va a la palabra de verdad y se enseña su significado.
+     * Las acepciones de una palabra. Si la palabra es solo una forma de otra (faldas = «plural de falda»,
+     * corría = «forma de correr»), se va a la palabra de verdad y se enseña su significado, con la nota de qué forma es.
      */
-    fun define(word: String, langName: String = "Español", prof: Int = 0): Pair<String, List<String>> {
-        for (t in candidates(word).take(5)) {
+    fun define(word: String, langName: String = "Español", prof: Int = 0): Definicion {
+        for (t in candidates(word).take(if (prof == 0) 5 else 2)) {
             val ex = extract(t) ?: continue
             val all = parseAll(ex, langName)
             if (all.isEmpty()) continue
             val real = all.filter { lemmaDe(it) == null }
-            if (real.isNotEmpty()) return t to real.take(4)
+            if (real.isNotEmpty()) return Definicion(t, real.take(4))
             if (prof < 2) {
                 // Primero las formas de sustantivo o adjetivo; las verbales, al final
-                val lemas = all.sortedBy { if (VERBAL.matches(it)) 1 else 0 }.mapNotNull { lemmaDe(it) }.distinct().filter { !it.equals(t, true) }.take(2)
-                val sacados = lemas.mapNotNull { l -> runCatching { define(l, langName, prof + 1) }.getOrNull()?.takeIf { it.second.isNotEmpty() } }
+                val formas = all.sortedBy { if (VERBAL.matches(it)) 1 else 0 }
+                val lemas = formas.mapNotNull { lemmaDe(it) }.distinct().filter { !it.equals(t, true) }.take(2)
+                val sacados = lemas.mapNotNull { l -> runCatching { define(l, langName, prof + 1) }.getOrNull()?.takeIf { it.defs.isNotEmpty() } }
                 if (sacados.isNotEmpty()) {
-                    val defs = if (sacados.size == 1) sacados[0].second else sacados.flatMap { (l, d) -> d.take(3).map { "($l) $it" } }
-                    return sacados[0].first to defs
+                    val defs = if (sacados.size == 1) sacados[0].defs else sacados.flatMap { d -> d.defs.take(3).map { "(${d.palabra}) $it" } }
+                    val nota = formas.firstOrNull { lemmaDe(it)?.equals(lemas.first(), true) == true }.orEmpty()
+                    return Definicion(sacados[0].palabra, defs, nota)
                 }
             }
-            return t to all.take(4)
+            return Definicion(t, all.take(4))
         }
-        return word to emptyList()
+        return Definicion(word, emptyList())
     }
 
     /** El idioma de un texto (código BCP-47, «und» si no se sabe). */

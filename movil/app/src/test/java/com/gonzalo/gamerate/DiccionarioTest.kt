@@ -66,6 +66,13 @@ Edificio (en aragonés).
         assertEquals("bello", Diccionario.lemmaDe("Superlativo de bello."))
         assertEquals(null, Diccionario.lemmaDe("Prenda de vestir que cae desde la cintura."))
         assertEquals(null, Diccionario.lemmaDe("Forma de gobierno en la que manda uno solo."))
+        assertEquals(null, Diccionario.lemmaDe("Forma de gobierno de Venecia."))
+        assertEquals(null, Diccionario.lemmaDe("Primera parte de Fausto."))
+        assertEquals("correr", Diccionario.lemmaDe("Primera persona del singular (yo) del pretérito imperfecto de indicativo de correr."))
+        assertEquals("ojo", Diccionario.lemmaDe("Forma del plural de ojo."))
+        assertEquals("poner", Diccionario.lemmaDe("Tercera persona del singular (él, ella, ello; usted) del pretérito perfecto simple de indicativo de poner."))
+        assertEquals("dar", Diccionario.lemmaDe("Gerundio de dar."))
+        assertEquals("gato", Diccionario.lemmaDe("Diminutivo de gato."))
     }
 
     @Test
