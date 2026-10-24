@@ -310,6 +310,9 @@ fun SagaScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     var name by remember(saga.id) { mutableStateOf(saga.name) }
+    var copiarDe by remember { mutableStateOf<Long?>(null) }
+    var copiaMsg by remember { mutableStateOf("") }
+    var hayCopia by remember(saga.id) { mutableStateOf(MagLayouts.hayCopia(ctx, "saga:${saga.id}")) }
     // Una imagen tuya, de la galería o de tus archivos: se copia a la app (como las portadas de las fichas)
     fun local(uri: android.net.Uri?) {
         if (uri != null) scope.launch { runCatching { Photos.import(ctx, uri) }.getOrNull()?.let { onSave(saga.copy(cover = it)) } }
@@ -443,6 +446,16 @@ fun SagaScreen(
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
             }
+            // La misma página para todos: las fotos, casillas y encuadres de uno, copiados a los demás
+            if (books.size >= 2) {
+                Spacer(Modifier.height(18.dp))
+                Text("LA MISMA PÁGINA PARA TODOS", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                Text("Copia la disposición de la página de uno (fotos, casillas, encuadres, todo) a los demás de la saga, para que se vean iguales.", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                Text("COPIAR LA PÁGINA DE UN LIBRO →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.clickable { copiarDe = books.first().id; copiaMsg = "" }.padding(vertical = 10.dp))
+                if (hayCopia) Text("DESHACER LA ÚLTIMA COPIA", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+                    modifier = Modifier.clickable { MagLayouts.deshacerCopia(ctx, "saga:${saga.id}"); hayCopia = false; copiaMsg = "Devuelto como estaba." }.padding(vertical = 6.dp))
+                if (copiaMsg.isNotBlank()) Text(copiaMsg, color = Charcoal, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            }
             if (editing) {
                 Text("BORRAR LA SAGA", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                     modifier = Modifier.clickable { confirmDelete = true }.padding(vertical = 22.dp))
@@ -456,6 +469,40 @@ fun SagaScreen(
         onDone = { _, ids -> adding = false; if (ids.isNotEmpty()) onSave(saga.copy(items = saga.items + ids)) },
         onDismiss = { adding = false }
     )
+    copiarDe?.let { origen ->
+        fun hazlo(soloSin: Boolean) {
+            val n = MagLayouts.copiar(ctx, saga.kind, origen, books.map { it.id }, soloSin, "saga:${saga.id}")
+            copiarDe = null
+            hayCopia = MagLayouts.hayCopia(ctx, "saga:${saga.id}")
+            copiaMsg = when {
+                n < 0 -> "Ese libro aún no tiene una disposición propia: ábrelo, pulsa Editar, ponla como quieras y vuelve aquí."
+                n == 0 -> "No había a quién copiársela."
+                else -> "Copiada a $n ${if (n == 1) "libro" else "libros"}."
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { copiarDe = null },
+            title = { Text("Copiar la página de…", fontFamily = Display) },
+            text = {
+                Column {
+                    Text("Se copia a todos los demás de la saga, con sus fotos y encuadres. Elige de cuál:", fontSize = 14.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+                        books.forEachIndexed { i, b ->
+                            Row(Modifier.fillMaxWidth().clickable { copiarDe = b.id }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (b.id == origen) "●" else "○", color = ColGeneral, modifier = Modifier.width(26.dp))
+                                Text("%02d  ".format(i + 1) + b.name, fontWeight = if (b.id == origen) FontWeight.Bold else FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Lo que tuvieran los demás se sustituye (puedes deshacerlo).", color = Muted, fontSize = 12.sp)
+                }
+            },
+            confirmButton = { TextButton({ hazlo(false) }) { Text("Copiar a todos") } },
+            dismissButton = { Row { TextButton({ hazlo(true) }) { Text("Solo a los sin página") }; TextButton({ copiarDe = null }) { Text("Cancelar") } } }
+        )
+    }
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("¿Borrar la saga?", fontFamily = Display) },

@@ -23,4 +23,22 @@ class InternetTest {
     @Test fun buscar() {
         assertEquals("https://www.google.com/search?udm=2&hl=es&q=red+rising+portada", Internet.searchUrl("  red rising portada "))
     }
+
+    @Test fun fuentes() {
+        assertEquals(listOf("google", "artstation", "pinterest", "newgrounds"), Internet.fuentes.map { it.id })
+        assertEquals("https://www.newgrounds.com/search/conduct/art?terms=red+rising", Internet.searchUrl("red rising", Internet.fuente("newgrounds")))
+        assertEquals("https://www.artstation.com/search?sort_by=relevance&query=red+rising", Internet.searchUrl("red rising", Internet.fuente("artstation")))
+        assertEquals("https://www.pinterest.com/search/pins/?q=red+rising", Internet.searchUrl("red rising", Internet.fuente("pinterest")))
+        assertEquals("google", Internet.fuente("otra").id)
+    }
+
+    @Test fun mejoresDirecciones() {
+        val pin = "https://i.pinimg.com/236x/ab/cd/ef/abcdef.jpg"
+        assertEquals(listOf("https://i.pinimg.com/originals/ab/cd/ef/abcdef.jpg", "https://i.pinimg.com/736x/ab/cd/ef/abcdef.jpg", pin), Internet.candidatas(pin))
+        assertEquals(listOf("https://i.pinimg.com/originals/a.jpg", "https://i.pinimg.com/736x/a.jpg"), Internet.candidatas("https://i.pinimg.com/474x/a.jpg").dropLast(1))
+        val art = "https://cdna.artstation.com/p/assets/images/images/001/small_square/x.jpg?1"
+        assertEquals("https://cdna.artstation.com/p/assets/images/images/001/large/x.jpg?1", Internet.candidatas(art)[0])
+        assertEquals(art, Internet.candidatas(art).last())
+        assertEquals(listOf("https://a.com/x.jpg"), Internet.candidatas("https://a.com/x.jpg"))
+    }
 }

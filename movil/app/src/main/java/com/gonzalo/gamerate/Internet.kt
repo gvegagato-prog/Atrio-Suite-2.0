@@ -1,6 +1,7 @@
 package com.gonzalo.gamerate
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -9,6 +10,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,7 +59,37 @@ object Internet {
     /** Lo pone la app: abre el buscador con una búsqueda inicial y devuelve la foto ya guardada en este móvil. */
     var pick: ((query: String, (String) -> Unit) -> Unit)? = null
 
-    fun searchUrl(q: String) = "https://www.google.com/search?udm=2&hl=es&q=" + URLEncoder.encode(q.trim(), "UTF-8")
+    /** Una web de imágenes donde buscar: cómo se llama y cómo es su búsqueda. */
+    class Fuente(val id: String, val nombre: String, val url: (String) -> String)
+
+    val fuentes = listOf(
+        Fuente("google", "Google Imágenes") { q -> "https://www.google.com/search?udm=2&hl=es&q=" + enc(q) },
+        Fuente("artstation", "ArtStation") { q -> "https://www.artstation.com/search?sort_by=relevance&query=" + enc(q) },
+        Fuente("pinterest", "Pinterest") { q -> "https://www.pinterest.com/search/pins/?q=" + enc(q) },
+        Fuente("newgrounds", "Newgrounds") { q -> "https://www.newgrounds.com/search/conduct/art?terms=" + enc(q) }
+    )
+    private fun enc(q: String) = URLEncoder.encode(q.trim(), "UTF-8")
+    fun fuente(id: String?) = fuentes.firstOrNull { it.id == id } ?: fuentes[0]
+
+    fun searchUrl(q: String, f: Fuente = fuentes[0]) = f.url(q)
+
+    /**
+     * Las direcciones a probar para una imagen, de mejor a peor calidad: las webs enseñan miniaturas y guardan la grande con
+     * otro tamaño en la dirección (Pinterest: /236x/ → /originals/). La última es siempre la que se vio.
+     */
+    fun candidatas(url: String): List<String> {
+        val out = ArrayList<String>()
+        if (url.contains("pinimg.com/")) {
+            val m = Regex("(pinimg\\.com)/(\\d+x)/").find(url)
+            if (m != null) { out += url.replace("/${m.groupValues[2]}/", "/originals/"); if (m.groupValues[2] != "736x") out += url.replace("/${m.groupValues[2]}/", "/736x/") }
+        }
+        if (url.contains("artstation.com/")) {
+            val r = Regex("/(micro_square|smaller_square|small_square|small|medium)/")
+            if (r.containsMatchIn(url)) out += r.replace(url, "/large/")
+        }
+        out += url
+        return out.distinct()
+    }
 
     /** De un enlace de Google Imágenes (/imgres?imgurl=…), la dirección de la imagen. */
     fun deImgres(href: String): String? {
@@ -79,9 +111,9 @@ object Internet {
         }
         var last: Exception? = null
         // Algunas webs no dejan sacar sus imágenes sin venir de una página: se prueba también así
-        for (referer in listOf<String?>(null, "https://www.google.com/")) {
+        for (u in candidatas(url)) for (referer in listOf<String?>(null, "https://www.google.com/")) {
             try {
-                val c = URL(url).openConnection() as HttpURLConnection
+                val c = URL(u).openConnection() as HttpURLConnection
                 c.setRequestProperty("User-Agent", ua)
                 c.setRequestProperty("Accept", "image/*,*/*;q=0.8")
                 if (referer != null) c.setRequestProperty("Referer", referer)
@@ -122,9 +154,12 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf(initialQuery) }
+    val prefs = remember { ctx.getSharedPreferences("internet", Context.MODE_PRIVATE) }
+    var fuente by remember { mutableStateOf(Internet.fuente(prefs.getString("fuente", null))) }
     var web by remember { mutableStateOf<WebView?>(null) }
     var msg by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    fun buscar() { msg = ""; web?.loadUrl(Internet.searchUrl(query, fuente)) }
 
     fun usar(raw: String) {
         if (busy) return
@@ -168,15 +203,21 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
         // Atrás: primero por las páginas que has abierto dentro; luego se cierra
         BackHandler { val w = web; if (w != null && w.canGoBack()) w.goBack() else onDismiss() }
         Column(Modifier.fillMaxSize().background(Paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
+            // De dónde: tres webs de imágenes
+            Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(start = 12.dp, end = 12.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Internet.fuentes.forEach { f ->
+                    SoftChip(f.nombre, f.id == fuente.id) { fuente = f; prefs.edit().putString("fuente", f.id).apply(); web?.loadUrl(Internet.searchUrl(query, f)); msg = "" }
+                }
+            }
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 BackButton(onDismiss)
                 OutlinedTextField(
                     query, { query = it }, Modifier.weight(1f).padding(horizontal = 6.dp),
-                    singleLine = true, shape = shp(14.dp), label = { Text("Buscar imagen en Google") },
+                    singleLine = true, shape = shp(14.dp), label = { Text("Buscar en ${fuente.nombre}") },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { msg = ""; web?.loadUrl(Internet.searchUrl(query)) })
+                    keyboardActions = KeyboardActions(onSearch = { buscar() })
                 )
-                IconButton({ msg = ""; web?.loadUrl(Internet.searchUrl(query)) }) { Icon(Icons.Rounded.Search, "Buscar") }
+                IconButton({ buscar() }) { Icon(Icons.Rounded.Search, "Buscar") }
             }
             AndroidView(
                 factory = { c ->
@@ -206,7 +247,7 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                             }
                             if (!u.isNullOrBlank() && (u.startsWith("http") || u.startsWith("data:"))) { usarOMiniatura(u, Internet.esMiniatura(u) && Internet.deImgres(extra) == null); true } else false
                         }
-                        loadUrl(Internet.searchUrl(initialQuery))
+                        loadUrl(Internet.searchUrl(initialQuery, fuente))
                         web = this
                     }
                 },
@@ -214,7 +255,7 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                 onRelease = { it.stopLoading(); it.destroy(); web = null }
             )
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(msg.ifBlank { "Toca una imagen para verla grande y pulsa «Usar esta imagen». También vale mantener pulsada una imagen." }, color = Muted, fontSize = 12.sp)
+                Text(msg.ifBlank { "Toca una imagen para verla grande y pulsa «Usar esta imagen». También vale mantener pulsada una imagen." + if (fuente.id == "google") "" else " Se intenta bajar en su tamaño original." }, color = Muted, fontSize = 12.sp)
                 Button({ usarLaAbierta() }, enabled = !busy, shape = pillShape(), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Bajando…" else "Usar esta imagen") }
             }
         }

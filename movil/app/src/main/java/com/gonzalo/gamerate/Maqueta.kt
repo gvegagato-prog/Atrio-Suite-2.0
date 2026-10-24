@@ -121,6 +121,51 @@ object MagLayouts {
         runCatching { Store(ctx).removeMaquetas(listOf(key, tpl)) }
     }
 
+    /** ¿Tiene esta ficha una disposición propia? (de «Leído» o «En curso») */
+    fun tiene(ctx: Context, kindId: Int, id: Long) = prefs(ctx).let { it.contains("p:$kindId:$id") || it.contains("v:$kindId:$id") }
+
+    /**
+     * Copia la disposición de una ficha en otras (casillas, textos, fotos, encuadre, todo): la de la página de «en curso»
+     * y la de la página de «leído», cada una en la suya. Si la de origen solo tiene una, vale para las dos.
+     * Guarda lo que había para poder [deshacerCopia]. Devuelve cuántas fichas han cambiado, o -1 si el origen no tiene nada.
+     */
+    fun copiar(ctx: Context, kindId: Int, from: Long, to: List<Long>, soloSinDiseno: Boolean, undo: String): Int {
+        val p = prefs(ctx)
+        val sp = p.getString("p:$kindId:$from", null); val sv = p.getString("v:$kindId:$from", null)
+        if (sp == null && sv == null) return -1
+        val srcP = sp ?: sv!!; val srcV = sv ?: sp!!
+        val destinos = to.filter { it != from && !(soloSinDiseno && tiene(ctx, kindId, it)) }
+        val antes = JSONObject()
+        val ed = p.edit()
+        val nuevos = ArrayList<Pair<String, String>>()
+        for (id in destinos) for ((pre, j) in listOf("p" to srcP, "v" to srcV)) {
+            val k = "$pre:$kindId:$id"
+            antes.put(k, p.getString(k, null) ?: JSONObject.NULL)
+            ed.putString(k, j); nuevos += k to j
+        }
+        ed.putString("@undo:$undo", antes.toString()).commit()
+        nuevos.forEach { (k, j) -> runCatching { Store(ctx).saveMaqueta(k, j) } }
+        if (srcP.contains("\"file:") || srcV.contains("\"file:")) runCatching { NubeSync.enqueue(ctx) }
+        cambiaron()
+        return destinos.size
+    }
+
+    fun hayCopia(ctx: Context, undo: String) = prefs(ctx).contains("@undo:$undo")
+
+    /** Devuelve a las fichas lo que tenían antes de la última copia. */
+    fun deshacerCopia(ctx: Context, undo: String) {
+        val p = prefs(ctx)
+        val antes = try { JSONObject(p.getString("@undo:$undo", null) ?: return) } catch (e: Exception) { p.edit().remove("@undo:$undo").commit(); return }
+        val ed = p.edit()
+        val quitar = ArrayList<String>(); val poner = ArrayList<Pair<String, String>>()
+        antes.keys().forEach { k -> if (antes.isNull(k)) { ed.remove(k); quitar += k } else { val j = antes.getString(k); ed.putString(k, j); poner += k to j } }
+        ed.remove("@undo:$undo").commit()
+        val st = Store(ctx)
+        if (quitar.isNotEmpty()) runCatching { st.removeMaquetas(quitar) }
+        poner.forEach { (k, j) -> runCatching { st.saveMaqueta(k, j) } }
+        cambiaron()
+    }
+
     /** Casillas nuevas de esta versión (p. ej. «subrayados»): a las maquetas ya guardadas se les añade una vez,
      *  en su propia fila detrás de [after]; si luego la quitas, no vuelve. */
     fun withNew(ctx: Context, key: String, rows: List<MagRowSpec>, mod: String, after: String): List<MagRowSpec> {
