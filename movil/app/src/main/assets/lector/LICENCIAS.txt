@@ -4,3 +4,6 @@ foliate-js (https://github.com/johnfactotum/foliate-js) — MIT License, Copyrig
 PDF.js 5.5.207, versión «legacy» (https://github.com/mozilla/pdf.js) — Apache License 2.0, Mozilla Foundation.
 zip.js (vendor/zip.js) — BSD 3-Clause, Gildas Lormeau. fflate (vendor/fflate.js) — MIT, Arjun Barrett.
 Fraunces (fuentes/display_*.ttf), la letra de titulares de Atrio — SIL Open Font License 1.1, The Fraunces Project Authors.
+Literata (fuentes/literata*.ttf) — SIL Open Font License 1.1, The Literata Project Authors (TypeTogether). Ver fuentes/OFL-Literata.txt.
+EB Garamond (fuentes/garamond*.ttf) — SIL Open Font License 1.1, The EB Garamond Project Authors. Ver fuentes/OFL-EBGaramond.txt.
+Atkinson Hyperlegible (fuentes/atkinson_*.ttf) — SIL Open Font License 1.1, Braille Institute of America. Ver fuentes/OFL-Atkinson.txt.

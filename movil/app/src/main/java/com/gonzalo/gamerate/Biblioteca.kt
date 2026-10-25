@@ -290,9 +290,9 @@ private fun RevistaLibrary(l: LibUi) {
             if (l.searching) SearchPill(l.query, "Buscar en ${l.kind.title.lowercase()}", Modifier.fillMaxWidth().padding(vertical = 8.dp)) { l.setQuery(it) }
             Segmented(l.labels, l.segment, counts = l.counts) { l.onSegment(it) }
             Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                if (l.onDiscover != null) TextLink("DESCUBRIR →", ColGeneral, l.onDiscover)
+                if (l.onDiscover != null) TextLink("DESCUBRIR\u00A0→", ColGeneral, l.onDiscover)
                 // En el móvil la pestaña «Sagas» queda al final de la fila: aquí, a mano
-                if (l.labels.size > 4 && l.segment != 4) TextLink("SAGAS →", onClick = { l.onSegment(4) })
+                if (l.labels.size > 4 && l.segment != 4) TextLink("SAGAS\u00A0→", onClick = { l.onSegment(4) })
                 if (l.segment == 1 && l.onWheel != null && l.counts[1] > 0) TextLink("RULETA", onClick = l.onWheel)
                 if (l.segment == 2) {
                     listOf("NOTA", "RECIENTES", "NOMBRE").forEachIndexed { i, n -> TextLink(n, if (l.sort == i) ColGeneral else Muted) { l.setSort(i) } }

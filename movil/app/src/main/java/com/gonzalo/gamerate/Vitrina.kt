@@ -161,7 +161,7 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = 
         // Revista: el antetítulo de la edición (cuadradito y versalitas, cursiva, recortado…)
         Row(modifier.fillMaxWidth().padding(top = 26.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { Antetitulo(text) }
-            if (action != null && onAction != null) Text("$action →", color = ColGeneral, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.press(onClick = onAction).padding(6.dp))
+            if (action != null && onAction != null) Text("$action\u00A0→", color = ColGeneral, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.press(onClick = onAction).padding(6.dp))
         }
         return
     }

@@ -123,14 +123,6 @@ object Ediciones {
     /** La de las preferencias guardadas (para los widgets, que no tienen Skin en memoria). */
     fun guardada(ctx: Context): Edicion = porId(ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).getString("skin_edicion", "atrio"))
 
-    /** Elegir edición: su papel y sus letras, y el acento vuelve a ser el suyo. */
-    fun aplicar(e: Edicion, ctx: Context) {
-        Skin.edicion = e.id
-        Skin.accentId = "edicion"
-        Skin.ponEdicion()
-        Skin.save(ctx)
-    }
-
     /** El filtro de las fotos de la edición (null = en color). */
     val filtro: ColorFilter? get() = when (actual.fotos) {
         Fotos.COLOR -> null

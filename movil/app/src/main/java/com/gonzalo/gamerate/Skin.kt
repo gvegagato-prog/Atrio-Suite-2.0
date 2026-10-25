@@ -460,6 +460,16 @@ object Skin {
         }
         // La revista: el papel, las letras y la forma de su edición (más claro/oscuro y el acento)
         if (shell == 2) ponEdicion()
+        // El tamaño del texto de la app (Apariencia), en tanto por ciento
+        if (shell == 2) textScale = p.getInt("skin_escala", 100).coerceIn(80, 140) / 100f
+    }
+
+    /** Tamaños del texto de la app que se pueden elegir (por ciento). */
+    val ESCALAS = listOf(90 to "Pequeño", 100 to "Normal", 112 to "Grande", 125 to "Muy grande")
+    fun ponEscala(ctx: Context, pct: Int) {
+        textScale = pct.coerceIn(80, 140) / 100f
+        prefs(ctx).edit().putInt("skin_escala", pct.coerceIn(80, 140)).apply()
+        save(ctx)
     }
 
     fun save(ctx: Context) {

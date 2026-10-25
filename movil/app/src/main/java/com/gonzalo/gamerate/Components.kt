@@ -426,3 +426,16 @@ fun Cover(url: String, name: String, modifier: Modifier, alpha: Float = 1f) {
         }
     }
 }
+
+/** Sube cada vez que la pantalla vuelve a verse (al volver del lector, de otra app…): para releer lo que cambia fuera. */
+@Composable
+fun rememberResumeTick(): Int {
+    var tick by remember { mutableStateOf(0) }
+    val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(life) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, ev -> if (ev == androidx.lifecycle.Lifecycle.Event.ON_RESUME) tick++ }
+        life.lifecycle.addObserver(obs)
+        onDispose { life.lifecycle.removeObserver(obs) }
+    }
+    return tick
+}

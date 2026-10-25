@@ -63,17 +63,17 @@ class NotasEnMasaTest {
         tap("Videojuegos"); tap("Hades II")
         assertTrue(rule.onAllNodesWithText("3 elegidos").fetchSemanticsNodes().isNotEmpty())
         shoot("2_elegidos")
-        tap("REPASAR →")
+        tap("REPASAR\u00A0→")
         assertTrue(rule.onAllNodesWithText("1 de 3").fetchSemanticsNodes().isNotEmpty())
         shoot("3_repasar")
         // El primero: otra nota general escrita a mano, y guardar
         rule.onAllNodes(hasSetTextAction())[0].performTextReplacement("95"); rule.waitForIdle()
-        tap("GUARDAR →")
+        tap("GUARDAR\u00A0→")
         assertTrue(rule.onAllNodesWithText("2 de 3").fetchSemanticsNodes().isNotEmpty())
         // Volver al anterior: ya con su nota nueva
         tap("← ANTERIOR")
         assertTrue(rule.onAllNodesWithText("Tenía un 95").fetchSemanticsNodes().isNotEmpty())
-        tap("GUARDAR →")   // sin cambios: no cuenta
+        tap("GUARDAR\u00A0→")   // sin cambios: no cuenta
         tap("SALTAR")
         assertTrue(rule.onAllNodesWithText("3 de 3").fetchSemanticsNodes().isNotEmpty())
         rule.onAllNodes(hasSetTextAction())[0].performTextReplacement("70"); rule.waitForIdle()
@@ -83,7 +83,7 @@ class NotasEnMasaTest {
         val all = (books + games).associate { it.name to it.general }
         // Lo elegido va en el orden en que se eligió: Dune, Fundación (saltado), Hades II
         assertEquals(95, all["Dune"]); assertEquals(60, all["Fundación"]); assertEquals(70, all["Hades II"]); assertEquals(87, all["Hyperion"])
-        tap("VOLVER →")
+        tap("VOLVER\u00A0→")
         assertEquals(1, backs)
     }
 }

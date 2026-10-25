@@ -253,12 +253,12 @@ fun PlayButtons(key: String, name: String, modifier: Modifier = Modifier, onLaun
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val canPc = pc != null && !running
             Column(Modifier.fillMaxWidth().clickable(enabled = canPc && !busyPc) { launch() }) {
-                Text(if (busyPc) "Abriendo…" else if (running) "En marcha" else "Jugar en el PC →", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+                Text(if (busyPc) "Abriendo…" else if (running) "En marcha" else "Jugar en el PC\u00A0→", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp,
                     color = if (canPc || running) Charcoal else Muted)
                 Text((pc?.let { if (running) "Ya en ${it.name}" else "En ${it.name}" } ?: "PC apagado").uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             Column(Modifier.fillMaxWidth().clickable(enabled = !busySt) { stream() }) {
-                Text(if (busySt) "Conectando…" else "Streaming →", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = ColGeneral)
+                Text(if (busySt) "Conectando…" else "Streaming\u00A0→", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = ColGeneral)
                 Text((if (running) "Seguir en el móvil" else "En este móvil").uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
         }

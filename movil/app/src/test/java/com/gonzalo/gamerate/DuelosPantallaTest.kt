@@ -52,16 +52,16 @@ class DuelosPantallaTest {
         fun tap(t: String) { rule.onAllNodesWithText(t)[0].performClick(); rule.waitForIdle() }
         shoot("1_intro")
         rule.onAllNodesWithText("14 libros").assertCountEquals1()
-        tap("EMPEZAR →")
+        tap("EMPEZAR\u00A0→")
         shoot("2_duelo")
         repeat(9) {
             val n = nombres.first { rule.onAllNodesWithText(it).fetchSemanticsNodes().isNotEmpty() }
             tap(n)
         }
         shoot("3_duelo9")
-        tap("VER NOTAS →")
+        tap("VER NOTAS\u00A0→")
         shoot("4_notas")
-        tap("APLICAR →")
+        tap("APLICAR\u00A0→")
         tap("Aplicar")
         val nuevas = books.filter { it.id != 99L }.map { it.general }
         println("NOTAS NUEVAS: $nuevas")

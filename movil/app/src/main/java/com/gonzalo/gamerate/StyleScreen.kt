@@ -67,7 +67,8 @@ object AppIcon {
 fun skinSummary(): String {
     val tema = when (Mode.themeMode) { 1 -> "claro"; 2 -> "oscuro"; else -> "claro u oscuro según el móvil" }
     val acento = ACCENT_COLORS.firstOrNull { it.id == Skin.accentId }?.name?.lowercase() ?: "rojo"
-    return "$tema · acento $acento"
+    val texto = Skin.ESCALAS.firstOrNull { kotlin.math.abs(Skin.textScale * 100 - it.first) < 1f }?.takeIf { it.first != 100 }?.second?.lowercase()
+    return "$tema · acento $acento" + (texto?.let { " · texto $it" } ?: "")
 }
 
 /**
@@ -106,14 +107,29 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
         }
         Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
 
+        // Tamaño del texto de toda la app
+        SectionTitle("Tamaño del texto")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Bottom) {
+            Skin.ESCALAS.forEach { (pct, nombre) ->
+                val on = kotlin.math.abs(Skin.textScale * 100 - pct) < 1f
+                Column(Modifier.weight(1f).clickable { if (!on) Skin.ponEscala(ctx, pct) }.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    // (la muestra, sin la escala ya puesta: cada «Aa» a su tamaño real)
+                    Text("Aa", fontFamily = Display, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, fontSize = (22f * pct / 100f / Skin.textScale).sp, color = if (on) Charcoal else Muted)
+                    Text(nombre.uppercase(), color = if (on) ColGeneral else Muted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+
         // Acento
         SectionTitle("Acento")
         Text("El color de los antetítulos, las cifras, los enlaces y los botones. ", color = Muted, fontSize = 13.sp)
         Spacer(Modifier.height(12.dp))
-        (listOf(Accent("edicion", "Rojo", Ediciones.actual.paleta.light.general or 0xFF000000, Ediciones.actual.paleta.dark.general or 0xFF000000)) + ACCENT_COLORS).chunked(4).forEach { row ->
+        // (el rojo de siempre: sin ediciones, «el de la edición» y «Rojo» eran el mismo color repetido)
+        ACCENT_COLORS.chunked(4).forEach { row ->
             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { a ->
-                    val on = Skin.accentId == a.id
+                    val on = Skin.accentId == a.id || (a.id == "rojo" && Skin.accentId == "edicion")
                     val c = Color(if (Mode.dark) a.dark else a.light)
                     Column(
                         // Se guarda dentro del cambio: withReveal lo hace más tarde (tras la foto de la pantalla)
@@ -146,7 +162,7 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
             Text("92", color = ColorCifras, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 64.sp, lineHeight = 64.sp)
             Text("/100", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))
             Spacer(Modifier.weight(1f))
-            Text("APUNTAR NOTAS →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(bottom = 12.dp))
+            Text("APUNTAR NOTAS\u00A0→", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(bottom = 12.dp))
         }
         Spacer(Modifier.height(32.dp))
     }

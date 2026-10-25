@@ -265,7 +265,7 @@ fun SagaList(
                         Text(sg.name.ifBlank { sg.why }, fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 22.sp)
                         Text(books.joinToString(" · ").uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
-                    Text("CREAR →", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                    Text("CREAR\u00A0→", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
             }
@@ -451,7 +451,7 @@ fun SagaScreen(
                 Spacer(Modifier.height(18.dp))
                 Text("LA MISMA PÁGINA PARA TODOS", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                 Text("Copia la disposición de la página de uno (fotos, casillas, encuadres, todo) a los demás de la saga, para que se vean iguales.", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                Text("COPIAR LA PÁGINA DE UN LIBRO →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.clickable { copiarDe = books.first().id; copiaMsg = "" }.padding(vertical = 10.dp))
+                Text("COPIAR LA PÁGINA DE UN LIBRO\u00A0→", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.clickable { copiarDe = books.first().id; copiaMsg = "" }.padding(vertical = 10.dp))
                 if (hayCopia) Text("DESHACER LA ÚLTIMA COPIA", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
                     modifier = Modifier.clickable { MagLayouts.deshacerCopia(ctx, "saga:${saga.id}"); hayCopia = false; copiaMsg = "Devuelto como estaba." }.padding(vertical = 6.dp))
                 if (copiaMsg.isNotBlank()) Text(copiaMsg, color = Charcoal, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))

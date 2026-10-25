@@ -472,6 +472,7 @@ class Store(ctx: Context) {
             lp.edit().putString("ajustes", l.toString()).apply()
         }
         // La app aplica lo nuevo enseguida (Skin y el tema están en memoria)
+        if (Skin.revista) Skin.textScale = p.getInt("skin_escala", 100).coerceIn(80, 140) / 100f
         AjustesHub.version++
     }
 
@@ -642,6 +643,14 @@ class Store(ctx: Context) {
 
     // ---- Objetivos anuales ----
     fun goal(kind: Int, year: Int): Int = p.getInt("goal_${kind}_$year", 0)
+    /** Minutos de lectura al día que te propones (0 = sin objetivo). Viaja con tus ajustes a tus otros dispositivos. */
+    var metaLectura: Int
+        get() = p.getInt("meta_lectura", 0)
+        set(v) { p.edit().putInt("meta_lectura", v.coerceIn(0, 600)).apply(); ajustesCambiados(app) }
+    /** A qué hora avisar si aún no has cumplido el objetivo de lectura (-1 = sin aviso). Solo en este dispositivo. */
+    var avisoLectura: Int
+        get() = p.getInt("aviso_lectura", -1)
+        set(v) { p.edit().putInt("aviso_lectura", v).apply() }
     fun setGoal(kind: Int, year: Int, v: Int) { p.edit().putInt("goal_${kind}_$year", v.coerceIn(0, 999)).apply() }
 
     // ---- Modo pareja ----
@@ -1304,7 +1313,7 @@ class Store(ctx: Context) {
 }
 
 /** Las preferencias de apariencia que viajan con tu cuenta (las de esta pantalla, como el tamaño de letra, no). */
-internal val AJUSTES_SKIN = setOf("theme31", "skin_accent", "skin_accent_id", "skin_edicion", "skin_listcovers", "skin_motion", "skin_shell", "skin_covers", "skin_docklabels")
+internal val AJUSTES_SKIN = setOf("meta_lectura", "skin_escala", "theme31", "skin_accent", "skin_accent_id", "skin_edicion", "skin_listcovers", "skin_motion", "skin_shell", "skin_covers", "skin_docklabels")
 
 /** Cambió un ajuste que viaja con tu cuenta: se apunta la hora y queda pendiente de subir. */
 fun ajustesCambiados(ctx: Context) {

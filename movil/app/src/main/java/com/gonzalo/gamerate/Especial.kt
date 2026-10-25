@@ -80,7 +80,7 @@ fun RevistaCita(books: List<ShellEntry>) {
             ("— " + listOf(c.bookName, c.author).filter { it.isNotBlank() }.joinToString(", ")).uppercase(),
             color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 10.dp)
         )
-        if (all.size > 1) EsLink("OTRA CITA →") { shift++ }
+        if (all.size > 1) EsLink("OTRA CITA\u00A0→") { shift++ }
     }
 }
 
@@ -313,23 +313,55 @@ fun readingStreak(days: Map<String, Long>, today: LocalDate = LocalDate.now()): 
     return n
 }
 
-/** Una línea en la portada: lo que has leído hoy y cuántos días llevas seguidos. */
+/**
+ * En la portada, lo que llevas leyendo: hoy (y tu objetivo, si tienes), los días seguidos y la semana en barras
+ * (cada día, lo que leíste; la raya fina es tu objetivo).
+ */
 @Composable
 fun RevistaLectura(books: List<ShellEntry>) {
     val ctx = LocalContext.current
-    val days = remember(books.map { it.id }) { readingDays(ctx, books) }
-    val todayMin = (days[LocalDate.now().toString()] ?: 0L) / 60_000L
+    val vuelve = rememberResumeTick()
+    val days = remember(books.map { it.id }, vuelve) { readingDays(ctx, books) }
+    val meta = remember(vuelve) { Store(ctx).metaLectura }
+    val hoy = LocalDate.now()
+    val todayMin = (days[hoy.toString()] ?: 0L) / 60_000L
     val streak = readingStreak(days)
-    if (todayMin < 1 && streak < 2) return
-    Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).background(ColGeneral)); Spacer(Modifier.width(8.dp))
-        Text(
-            listOfNotNull(
-                "LECTURA",
-                if (todayMin >= 1) (if (todayMin < 60) "$todayMin MIN HOY" else "${todayMin / 60} H ${todayMin % 60} MIN HOY") else null,
-                if (streak >= 2) "$streak DÍAS SEGUIDOS" else null
-            ).joinToString(" · "),
-            fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp
-        )
+    val semana = (6 downTo 0).map { hoy.minusDays(it.toLong()) }.map { d -> d to (days[d.toString()] ?: 0L) / 60_000L }
+    val algo = semana.any { it.second >= 1 }
+    if (!algo && meta <= 0 && streak < 2) return
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).background(ColGeneral)); Spacer(Modifier.width(8.dp))
+            Text(
+                listOfNotNull(
+                    "LECTURA",
+                    when {
+                        meta > 0 && todayMin >= meta -> "OBJETIVO CUMPLIDO · ${readTime(todayMin).uppercase()} HOY"
+                        meta > 0 -> "$todayMin DE $meta MIN HOY"
+                        todayMin >= 1 -> "${readTime(todayMin).uppercase()} HOY"
+                        else -> null
+                    },
+                    if (streak >= 2) "$streak DÍAS SEGUIDOS" else null
+                ).joinToString(" · "),
+                fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                color = if (meta > 0 && todayMin >= meta) ColGeneral else Charcoal
+            )
+        }
+        if (algo) {
+            val tope = maxOf(semana.maxOf { it.second }, meta.toLong(), 1L).toFloat()
+            // Cada día, una barra (en el acento si cumpliste el objetivo); la del día sin leer, una raya fina
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                semana.forEach { (d, m) ->
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.fillMaxWidth(0.62f).height(30.dp), contentAlignment = Alignment.BottomCenter) {
+                            Box(Modifier.fillMaxWidth().height(if (m >= 1) maxOf(3f, 30f * m / tope).dp else 1.dp)
+                                .background(if (m >= 1) (if (meta > 0 && m >= meta) ColGeneral else Charcoal) else Line))
+                        }
+                        Text(d.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale("es", "ES")).uppercase(), fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                            color = if (d == hoy) ColGeneral else Muted, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+            }
+        }
     }
 }

@@ -174,7 +174,7 @@ fun GuidesSection(id: Long, name: String, modifier: Modifier = Modifier, inCell:
         if (list.isEmpty()) Text("Ninguna todavía.", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 16.sp)
         Spacer(Modifier.height(6.dp))
         if (inCell) Text("+ AÑADIR", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable { adding = true }.padding(vertical = 4.dp))
-        Text("BUSCAR GUÍAS →", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+        Text("BUSCAR GUÍAS\u00A0→", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
             modifier = Modifier.clickable { Guides.opener?.invoke(Guide("Buscar guías", "https://duckduckgo.com/?q=" + Uri.encode("$name guía"), "sug")) }.padding(vertical = 4.dp))
         if (msg.isNotEmpty()) Text(msg, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
     } else

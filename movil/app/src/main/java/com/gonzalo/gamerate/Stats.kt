@@ -195,6 +195,21 @@ private fun BigNumber(value: String, label: String, modifier: Modifier = Modifie
     }
 }
 
+/** Lo leído con el lector en un año (o en todo, con null): total, días, racha más larga, por meses y por libro. */
+class TiempoLeyendo(val total: Long, val dias: Int, val racha: Int, val meses: List<Pair<String, Long>>, val libros: List<Pair<Long, Long>>)
+
+fun tiempoLeyendo(leido: Map<Long, Map<Long, Long>>, year: Int?, hoy: LocalDate = LocalDate.now()): TiempoLeyendo {
+    val dentro = leido.filterKeys { d -> year == null || LocalDate.ofEpochDay(d).year == year }
+    val porDia = dentro.mapValues { it.value.values.sum() }.filterValues { it >= 60_000L }
+    var racha = 0; var cur = 0; var prev = Long.MIN_VALUE
+    for (d in porDia.keys.sorted()) { cur = if (d == prev + 1) cur + 1 else 1; racha = maxOf(racha, cur); prev = d }
+    val meses = if (year != null) (1..12).map { YearMonth.of(year, it) } else (11 downTo 0).map { YearMonth.from(hoy).minusMonths(it.toLong()) }
+    val porMes = meses.map { m -> monthLabel(m) to dentro.filterKeys { YearMonth.from(LocalDate.ofEpochDay(it)) == m }.values.sumOf { it.values.sum() } }
+    val libros = HashMap<Long, Long>()
+    dentro.values.forEach { m -> m.forEach { (id, ms) -> libros[id] = (libros[id] ?: 0L) + ms } }
+    return TiempoLeyendo(dentro.values.sumOf { it.values.sum() }, porDia.size, racha, porMes, libros.entries.sortedByDescending { it.value }.map { it.key to it.value })
+}
+
 private fun nameScore(g: Game?): String = if (g == null) "—" else g.name + " (" + g.general + ")"
 
 @Composable
@@ -242,7 +257,7 @@ fun StatsScreen(
         // Tu año entero, como número especial de la revista (el año elegido arriba; con «Todo», este)
         if (onSpecial != null) {
             val y = year ?: thisYear
-            Text("VER TU $y, NÚMERO ESPECIAL →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            Text("VER TU $y, NÚMERO ESPECIAL\u00A0→", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 14.dp).press { onSpecial(y) }.padding(vertical = 6.dp))
         }
 
@@ -359,6 +374,7 @@ fun StatsScreen(
                     }
                 }
             }
+            if (kind.isBook && !useP) TiempoLeyendoSection(year, games, plays)
 
             Section("Tiempo") {
                 if (st.dated == 0) {
@@ -470,6 +486,44 @@ fun StatsScreen(
                         Spacer(Modifier.height(6.dp))
                         Text("Os han encantado a los dos (85+): " + cmp.bothLoved.joinToString(", "), fontSize = 13.sp)
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Cifras de libros: el tiempo leído con el lector de Atrio (de todos tus dispositivos). */
+@Composable
+private fun TiempoLeyendoSection(year: Int?, games: List<Game>, plays: List<Play>) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val vuelve = rememberResumeTick()
+    val t = remember(year, vuelve) { tiempoLeyendo(BookFiles.leidoPorDia(ctx), year) }
+    if (t.total < 60_000L) return
+    Section("Tiempo leyendo") {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BigNumber(readTime(t.total / 60_000L), if (year == null) "leyendo en total" else "leyendo en $year", Modifier.weight(1f))
+            BigNumber("${t.dias}", if (t.dias == 1) "día con lectura" else "días con lectura", Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        if (t.dias > 0) Stat("Media los días que lees", readTime(t.total / t.dias / 60_000L))
+        if (t.racha > 1) Stat("Racha más larga", "${t.racha} días seguidos")
+        val nombre = { id: Long -> (plays.find { it.id == id }?.name ?: games.find { it.id == id }?.name) }
+        t.libros.mapNotNull { (id, ms) -> nombre(id)?.let { it to ms } }.take(3).forEachIndexed { i, (n, ms) ->
+            Stat(if (i == 0) "El que más tiempo te ha llevado" else "", "$n (${readTime(ms / 60_000L)})")
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(if (year == null) "Horas leyendo en los últimos 12 meses" else "Horas leyendo en $year", color = UiSoft, fontSize = 13.sp)
+        val mx = (t.meses.maxOfOrNull { it.second } ?: 1L).coerceAtLeast(1L)
+        Row(Modifier.fillMaxWidth().height(110.dp).padding(top = 8.dp), verticalAlignment = Alignment.Bottom) {
+            t.meses.forEach { (m, ms) ->
+                val h = ms / 3_600_000.0
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(if (ms >= 60_000L) (if (h >= 10) "${h.roundToInt()}" else f1(h)) else "", fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Box(
+                        Modifier.fillMaxWidth(0.45f).height((ms.toFloat() / mx * 62f).dp.coerceAtLeast(2.dp))
+                            .background(if (ms >= 60_000L) ColGeneral else Line, shp(3.dp))
+                    )
+                    Text(m, fontSize = 11.sp, color = UiSoft)
                 }
             }
         }

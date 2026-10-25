@@ -126,6 +126,21 @@ object BookFiles {
         return gone
     }
 
+    /** Lo leído con el lector, por día: día (desde 1970) → libro → ms (lo de todos tus dispositivos). */
+    fun leidoPorDia(ctx: Context): Map<Long, Map<Long, Long>> {
+        val out = HashMap<Long, HashMap<Long, Long>>()
+        for ((k, v) in prefs(ctx).all) {
+            val id = k.toLongOrNull() ?: continue
+            val days = runCatching { JSONObject(v as String).optJSONObject("stats")?.optJSONObject("days") }.getOrNull() ?: continue
+            for (d in days.keys()) {
+                val ep = runCatching { java.time.LocalDate.parse(d).toEpochDay() }.getOrNull() ?: continue
+                val ms = days.optLong(d, 0L)
+                if (ms > 0L) out.getOrPut(ep) { HashMap() }[id] = ms
+            }
+        }
+        return out
+    }
+
     fun detach(ctx: Context, id: Long) {
         val uri = get(ctx, id)
         if (uri != null) try { ctx.contentResolver.releasePersistableUriPermission(Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (e: Exception) { }
@@ -304,11 +319,15 @@ class ReaderActivity : ComponentActivity() {
             runCatching { kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(2500) { Couple.syncOwn(Store(app)) } } }
             runOnUiThread { if (!isDestroyed) web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html") }
         }.start() else web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html")
-        // Atrás solo cierra lo que haya abierto encima (una nota, un panel, el menú): del libro se sale desde el menú
+        // Atrás cierra primero lo que haya abierto encima (una nota, un panel, el menú); con nada encima, pulsado dos
+        // veces seguidas sale del libro (una sola vez no, para no salir sin querer)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 web.evaluateJavascript("window.atrioBack ? atrioBack() : false") { r ->
-                    if (r != "true") android.widget.Toast.makeText(this@ReaderActivity, "Para salir: toca el centro de la pantalla y luego ✕", android.widget.Toast.LENGTH_SHORT).show()
+                    if (r == "true") return@evaluateJavascript
+                    val now = android.os.SystemClock.uptimeMillis()
+                    if (now - atrasEn < 2200) web.evaluateJavascript("window.atrioPausa && atrioPausa(true)") { salir() }
+                    else { atrasEn = now; android.widget.Toast.makeText(this@ReaderActivity, "Pulsa atrás otra vez para salir del libro", android.widget.Toast.LENGTH_SHORT).show() }
                 }
             }
         })
@@ -391,7 +410,22 @@ class ReaderActivity : ComponentActivity() {
     /** Abrir otra app (compartir, el navegador). */
     private fun fuera(i: Intent) { try { startActivity(i) } catch (e: Exception) { } }
 
-    private fun salir() = finish()
+    private var atrasEn = 0L
+
+    /** Al cerrar el libro, lo que llevas hoy: «Hoy has leído 25 min · vas por el 34 %». */
+    private fun salir() {
+        resumenDeHoy()?.let { android.widget.Toast.makeText(applicationContext, it, android.widget.Toast.LENGTH_SHORT).show() }
+        finish()
+    }
+
+    private fun resumenDeHoy(): String? {
+        val o = BookFiles.state(this, id)
+        val ms = o.optJSONObject("stats")?.optJSONObject("days")?.optLong(java.time.LocalDate.now().toString()) ?: 0L
+        val min = ms / 60000L
+        if (min < 1) return null
+        val pct = (o.optDouble("fraction", 0.0) * 100).toInt()
+        return "Hoy has leído ${readTime(min)}" + if (pct in 1..99) " · vas por el $pct %" else ""
+    }
 
     // El tiempo leído se para al salir a otra app o apagar la pantalla (salvo si te lo está leyendo en voz alta)
     override fun onPause() {
@@ -489,6 +523,7 @@ class ReaderActivity : ComponentActivity() {
                 .put("stats", o.optJSONObject("stats") ?: JSONObject())
                 .put("device", Store(this@ReaderActivity).deviceId)
                 .put("accent", accentJson())
+                .put("meta", Store(this@ReaderActivity).metaLectura)
                 .put("settings", ajustesDe(o))
                 .put("annotations", o.optJSONArray("notes") ?: org.json.JSONArray())
                 .put("bookmarks", o.optJSONArray("marks") ?: org.json.JSONArray())
@@ -728,14 +763,15 @@ fun BookFileBar(id: Long, name: String) {
 }
 
 /** Un subrayado del lector (con su nota, si tiene). */
-data class BookNote(val value: String, val text: String, val note: String, val label: String, val created: Long, val index: Int)
+data class BookNote(val value: String, val text: String, val note: String, val label: String, val created: Long, val index: Int, val frac: Double = -1.0)
 
 fun bookNotes(ctx: Context, id: Long): List<BookNote> {
     val a = BookFiles.state(ctx, id).optJSONArray("notes") ?: return emptyList()
     return (0 until a.length()).mapNotNull { i ->
         val o = a.optJSONObject(i) ?: return@mapNotNull null
-        BookNote(o.optString("value"), o.optString("text"), o.optString("note"), o.optString("label"), o.optLong("created"), o.optInt("index"))
-    }.sortedWith(compareBy({ it.index }, { it.created }))
+        BookNote(o.optString("value"), o.optString("text"), o.optString("note"), o.optString("label"), o.optLong("created"), o.optInt("index"),
+            if (o.isNull("frac") || !o.has("frac")) -1.0 else o.optDouble("frac", -1.0))
+    }.sortedWith(compareBy({ it.index }, { if (it.frac >= 0) it.frac else Double.MAX_VALUE }, { it.created }))
 }
 
 /** La casilla «Subrayados y notas» de la ficha de un libro: tocar uno abre el libro ahí. */
@@ -777,7 +813,7 @@ fun BookNotesBox(id: Long, name: String) {
                 color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 4.dp))
         }
     }
-    if (notes.size > 4) Text(if (all) "VER MENOS" else "VER LOS ${notes.size} →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
+    if (notes.size > 4) Text(if (all) "VER MENOS" else "VER LOS ${notes.size}\u00A0→", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
         modifier = Modifier.clickable { all = !all }.padding(top = 10.dp, bottom = 4.dp))
 }
 

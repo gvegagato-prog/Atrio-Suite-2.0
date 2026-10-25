@@ -42,6 +42,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -60,17 +62,19 @@ import java.util.Locale
 class CalItem(
     val id: Long, val name: String, val cover: String,
     val s: Long, val e: Long, val realEnd: Long, val isPlay: Boolean,
-    val rated: Boolean = false, val score: Int = 0
+    val rated: Boolean = false, val score: Int = 0,
+    /** De qué categoría es (en el Diario con «Todo» se mezclan). */
+    val kind: Int = -1
 )
 
-fun calItems(games: List<Game>, plays: List<Play>): List<CalItem> {
+fun calItems(games: List<Game>, plays: List<Play>, kind: Int = -1): List<CalItem> {
     val t = today()
     val out = ArrayList<CalItem>()
     fun add(id: Long, name: String, cover: String, start: Long, end: Long, isPlay: Boolean, score: Int = -1) {
         if (start <= 0L && end <= 0L) return
         val s = if (start > 0L) start else end
         val e = if (end > 0L) maxOf(end, s) else maxOf(t, s)
-        out.add(CalItem(id, name, cover, s, e, end, isPlay, score >= 0, maxOf(score, 0)))
+        out.add(CalItem(id, name, cover, s, e, end, isPlay, score >= 0, maxOf(score, 0), kind))
     }
     plays.forEach { add(it.id, it.name, it.cover, it.start, it.end, true) }
     games.forEach { add(it.id, it.name, it.cover, it.start, it.end, false, it.general) }
@@ -89,17 +93,27 @@ fun rangeText(c: CalItem): String {
     }
 }
 
+/** «14 h 20 min», «45 min». */
+private fun durMs(ms: Long): String = readTime((ms + 30_000L) / 60_000L)
+
 @Composable
 fun CalendarScreen(
     kind: Kind, games: List<Game>, plays: List<Play>, partner: PartnerSide?,
-    onMenu: () -> Unit, heading: String? = null, top: @Composable () -> Unit = {}, onOpen: (CalItem) -> Unit
+    onMenu: () -> Unit, heading: String? = null, top: @Composable () -> Unit = {},
+    /** Lo que se enseña ya preparado (el Diario, con varias categorías): lo tuyo y lo de tu pareja. */
+    items: List<CalItem>? = null, itemsP: List<CalItem>? = null,
+    /** Lo leído con el lector: día → libro → ms (solo lo tuyo). */
+    leido: Map<Long, Map<Long, Long>> = emptyMap(), nombreLibro: (Long) -> String = { "" }, onOpenLeido: (Long) -> Unit = {},
+    onOpen: (CalItem) -> Unit
 ) {
     var sel by remember { mutableStateOf<Long?>(null) }
     val showPartner = Mode.calP
     val useP = showPartner && partner != null
-    val cal = remember(games, plays, partner, useP) {
-        if (useP) calItems(partner!!.games, partner.plays) else calItems(games, plays)
+    val cal = remember(games, plays, partner, useP, items, itemsP) {
+        if (items != null) (if (useP) itemsP ?: emptyList() else items)
+        else if (useP) calItems(partner!!.games, partner.plays) else calItems(games, plays)
     }
+    val lee = if (useP) emptyMap() else leido
     var ym by remember { mutableStateOf(YearMonth.now()) }
 
     val monthName = ym.month.getDisplayName(java.time.format.TextStyle.FULL, Locale("es", "ES"))
@@ -141,6 +155,21 @@ fun CalendarScreen(
             MonthArrow(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Mes siguiente") { ym = ym.plusMonths(1) }
         }
 
+        // Lo del mes en una línea: terminados, empezados y el tiempo leído
+        run {
+            val d0 = ym.atDay(1).toEpochDay(); val d1 = ym.atEndOfMonth().toEpochDay()
+            val fin = cal.count { it.realEnd in d0..d1 }
+            val emp = cal.count { it.s in d0..d1 }
+            val ms = (d0..d1).sumOf { d -> lee[d]?.values?.sum() ?: 0L }
+            val dias = (d0..d1).count { d -> (lee[d]?.values?.sum() ?: 0L) >= 60_000L }
+            val partes = listOfNotNull(
+                if (fin > 0) "$fin terminado${if (fin == 1) "" else "s"}" else null,
+                if (emp > 0) "$emp empezado${if (emp == 1) "" else "s"}" else null,
+                if (ms >= 60_000L) "${durMs(ms)} leyendo · $dias día${if (dias == 1) "" else "s"}" else null
+            )
+            Text(if (partes.isEmpty()) "Nada este mes" else partes.joinToString(" · "), color = Muted, fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))
+        }
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
             listOf("L", "M", "X", "J", "V", "S", "D").forEach { d ->
                 Text(
@@ -156,7 +185,17 @@ fun CalendarScreen(
         val gridKey = kind.id to useP
         val snaps = remember { mutableMapOf<Pair<Int, Boolean>, List<CalItem>>() }
         snaps[gridKey] = cal
-        androidx.compose.animation.Crossfade(gridKey, Modifier.fillMaxWidth().weight(1f), androidx.compose.animation.core.tween(Motion.ms(220)), label = "diario") { gk ->
+        // Deslizar de lado cambia de mes
+        var arrastre by remember { mutableStateOf(0f) }
+        val umbral = with(androidx.compose.ui.platform.LocalDensity.current) { 70.dp.toPx() }
+        val desliza = Modifier.pointerInput(Unit) {
+            detectHorizontalDragGestures(
+                onDragStart = { arrastre = 0f },
+                onDragEnd = { if (arrastre < -umbral) ym = ym.plusMonths(1) else if (arrastre > umbral) ym = ym.minusMonths(1); arrastre = 0f },
+                onDragCancel = { arrastre = 0f }
+            ) { _, dx -> arrastre += dx }
+        }
+        androidx.compose.animation.Crossfade(gridKey, Modifier.fillMaxWidth().weight(1f).then(desliza), androidx.compose.animation.core.tween(Motion.ms(220)), label = "diario") { gk ->
         val cal = snaps[gk] ?: cal
         Column(Modifier.fillMaxSize()) {
             for (w in 0 until weeks) {
@@ -169,11 +208,12 @@ fun CalendarScreen(
                         } else {
                             val ep = ym.atDay(dayNum).toEpochDay()
                             val items = cal.filter { it.s <= ep && ep <= it.e }
+                            val ms = lee[ep]?.values?.sum() ?: 0L
                             DayCell(
                                 dayNum, ep, items, ep == todayDay,
                                 cellMod.appear(220 + w * 70 + c * 15).then(
-                                    if (items.isNotEmpty()) Modifier.pop { sel = ep } else Modifier
-                                )
+                                    if (items.isNotEmpty() || ms >= 60_000L) Modifier.pop { sel = ep } else Modifier
+                                ), leido = ms
                             )
                         }
                     }
@@ -185,7 +225,8 @@ fun CalendarScreen(
     val d = sel
     if (d != null) {
         val items = cal.filter { it.s <= d && d <= it.e }
-        DayDialog(d, items, if (useP) partner?.name else null, { c -> sel = null; onOpen(c) }) { sel = null }
+        val dia = lee[d].orEmpty().filterValues { it >= 60_000L }.entries.sortedByDescending { it.value }.map { (id, ms) -> Triple(id, nombreLibro(id), ms) }
+        DayDialog(d, items, if (useP) partner?.name else null, { c -> sel = null; onOpen(c) }, dia, { id -> sel = null; onOpenLeido(id) }) { sel = null }
     }
 }
 
@@ -198,7 +239,10 @@ private fun MonthArrow(icon: androidx.compose.ui.graphics.vector.ImageVector, de
 }
 
 @Composable
-private fun DayDialog(ep: Long, items: List<CalItem>, partnerName: String?, onOpen: (CalItem) -> Unit, onDismiss: () -> Unit) {
+private fun DayDialog(
+    ep: Long, items: List<CalItem>, partnerName: String?, onOpen: (CalItem) -> Unit,
+    leido: List<Triple<Long, String, Long>> = emptyList(), onOpenLeido: (Long) -> Unit = {}, onDismiss: () -> Unit
+) {
     val title = LocalDate.ofEpochDay(ep).format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale("es", "ES")))
         .replaceFirstChar { it.uppercase() }
     AlertDialog(
@@ -224,6 +268,17 @@ private fun DayDialog(ep: Long, items: List<CalItem>, partnerName: String?, onOp
                             Text(rangeText(c), color = Muted, fontSize = 12.sp)
                         }
                         if (c.rated) Mark(c, 0L, Modifier)
+                    }
+                }
+                // Lo que leíste ese día con el lector
+                if (leido.isNotEmpty()) {
+                    Text("LEÍSTE ${durMs(leido.sumOf { it.third }).uppercase()}", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp,
+                        modifier = Modifier.padding(top = if (items.isEmpty()) 0.dp else 14.dp, bottom = 4.dp))
+                    leido.forEach { (id, nm, ms) ->
+                        Row(Modifier.fillMaxWidth().clickable(enabled = nm.isNotBlank()) { onOpenLeido(id) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(nm.ifBlank { "Un libro que ya no está" }, Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis, fontFamily = Display, fontSize = 16.sp)
+                            Text(durMs(ms), color = Muted, fontSize = 13.sp, modifier = Modifier.padding(start = 10.dp))
+                        }
                     }
                 }
             }
@@ -260,14 +315,20 @@ fun Mark(c: CalItem, ep: Long, modifier: Modifier) {
 }
 
 @Composable
-fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: Modifier) {
+fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: Modifier, leido: Long = 0L) {
+    // Los días que leíste con el lector: una raya del acento (más gruesa cuanto más leíste: hasta una hora)
+    val lee = leido >= 60_000L
+    val raya = if (lee) (1.5f + 2.5f * (leido.coerceAtMost(3_600_000L) / 3_600_000f)) else 0f
     if (Skin.revista) {
         // Revista: sin cajas; filete fino arriba, el número en la letra de titulares (hoy, en rojo) y el título debajo
         Column(modifier.padding(horizontal = 2.dp).drawBehind {
             drawLine(if (isToday) ColGeneral else Charcoal.copy(alpha = 0.35f), Offset(0f, 0f), Offset(size.width, 0f), if (isToday) 3.dp.toPx() else 1.dp.toPx())
         }.padding(top = 4.dp)) {
-            Text("$day", color = when { isToday -> ColGeneral; cs.isEmpty() -> Muted; else -> Charcoal }, fontFamily = Display,
-                fontWeight = if (isToday || cs.isNotEmpty()) FontWeight.Bold else FontWeight.Normal, fontSize = 15.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("$day", color = when { isToday -> ColGeneral; cs.isEmpty() && !lee -> Muted; else -> Charcoal }, fontFamily = Display,
+                    fontWeight = if (isToday || cs.isNotEmpty() || lee) FontWeight.Bold else FontWeight.Normal, fontSize = 15.sp)
+                if (lee) Box(Modifier.padding(start = 4.dp).weight(1f).height(raya.dp).background(ColGeneral.copy(alpha = 0.75f)))
+            }
             if (cs.isNotEmpty()) {
                 // Lo que terminaste ese día, con su portada (como en el widget del Diario); si no, el título
                 val fin = cs.firstOrNull { it.realEnd > 0L && it.e == ep && it.cover.isNotBlank() }
@@ -290,13 +351,15 @@ fun DayCell(day: Int, ep: Long, cs: List<CalItem>, isToday: Boolean, modifier: M
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // El número va encima de la portada, sin taparla.
-        Text(
-            "" + day,
-            modifier = Modifier.padding(top = 3.dp, bottom = 2.dp),
-            color = if (cs.isEmpty() && !isToday) Muted else Charcoal,
-            fontSize = 11.sp,
-            fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Normal
-        )
+        Row(Modifier.padding(top = 3.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "" + day,
+                color = if (cs.isEmpty() && !isToday && !lee) Muted else Charcoal,
+                fontSize = 11.sp,
+                fontWeight = if (isToday || lee) FontWeight.SemiBold else FontWeight.Normal
+            )
+            if (lee) Box(Modifier.padding(start = 3.dp).size(5.dp).background(ColGeneral, CircleShape))
+        }
         Box(Modifier.weight(1f).fillMaxWidth().padding(start = 2.dp, end = 2.dp, bottom = 2.dp)) {
             if (cs.isNotEmpty() && Skin.revista) {
                 // Revista: sin portadas; el título en letra pequeña y cuántos más hay

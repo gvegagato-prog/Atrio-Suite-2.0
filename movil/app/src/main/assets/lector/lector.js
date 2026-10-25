@@ -2,6 +2,7 @@
 // Todo se guarda en el móvil a través de window.Atrio (puente con la app): posición, ajustes, subrayados y marcadores.
 import './foliate/view.js'
 import { FootnoteHandler } from './foliate/footnotes.js'
+import { compare as cfiCompare } from './foliate/epubcfi.js'
 
 const A = window.Atrio
 const $ = s => document.querySelector(s)
@@ -18,6 +19,9 @@ const S = Object.assign({
     pdfFlow: 'pages',
     // PDF: el texto adaptado a la pantalla (novelas) o la página tal cual
     pdfTexto: true, pdfForzar: false,      // (pdfForzar: «Texto adaptable» elegido a mano, vale aunque el PDF tenga poco texto por página)
+    // Atrio 6.62: los toques de los lados («normal»: izquierda atrás y derecha adelante; «adelante»: los dos lados
+    // adelante, para leer con una mano), los botones de volumen para pasar página y la letra algo más gruesa (Literata)
+    tapZones: 'normal', volPages: true, weight: 0,
 }, st.settings || {})
 // El brillo va en la escala del control de Android (la que ves en la barra del sistema, no la de la luz real):
 // antes iba en luz real y con un mínimo del 2 %, que en la barra del sistema es como un 25 % y por eso brillaba
@@ -54,8 +58,10 @@ const delModo = n => !esPDF || (n.m === 'r') === reflow
 function separaModo() {
     notes = notesAll.filter(delModo); marks = marksAll.filter(delModo)
 }
+/** Las letras de la app con grosor variable (se pueden poner un poco más gruesas). */
+const VARIABLES = ['literata', 'garamond']
 const THEMES = [['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
-const FONTS = [['original', 'Original'], ['atrio', 'Fraunces'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
+const FONTS = [['original', 'Original'], ['literata', 'Literata'], ['garamond', 'Garamond'], ['atrio', 'Fraunces'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
 // El acento de la app (el que elegiste en Apariencia), en su versión clara y oscura
 const ACCENT = st.accent || { light: '#C8372D', dark: '#E0533F' }
 const DARK_THEMES = ['gris', 'noche', 'negro']
@@ -72,7 +78,19 @@ const debounce = (f, ms) => { let t; return (...a) => { clearTimeout(t); t = set
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const pct = f => Math.round((f || 0) * 100) + '%'
 const fecha = t => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
-function aviso(t) { const a = $('#aviso'); a.textContent = t; a.classList.add('on'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.remove('on'), 1800) }
+/** Un aviso corto abajo. Con [deshacer], lleva su botón y dura más. */
+function aviso(t, deshacer) {
+    const a = $('#aviso')
+    a.replaceChildren(document.createTextNode(t))
+    a.classList.toggle('con-boton', !!deshacer)
+    if (deshacer) {
+        const b = document.createElement('button')
+        b.textContent = 'Deshacer'
+        b.onclick = e => { e.stopPropagation(); a.classList.remove('on'); deshacer() }
+        a.append(b)
+    }
+    a.classList.add('on'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.remove('on'), deshacer ? 4500 : 1800)
+}
 const saveSettings = () => A.saveSettings(JSON.stringify(S))
 /** El brillo de ahora en la escala de la barra: el elegido o, en automático, el que tiene el móvil. */
 const brilloAhora = () => {
@@ -147,7 +165,11 @@ async function abrir() {
     view.addEventListener('relocate', onRelocate)
     view.addEventListener('external-link', e => { e.preventDefault(); A.openUrl(e.detail.a.href) })
     // Notas al pie: se abren en una hoja abajo, sin perder la página
-    view.addEventListener('link', e => footnotes.handle(view.book, e)?.catch(err => { console.warn(err); view.goTo(e.detail.href) }))
+    view.addEventListener('link', e => {
+        const p = footnotes.handle(view.book, e)
+        if (!p) { saltoDesde(); return }   // (un enlace a otra parte del libro: se puede volver)
+        p.catch(err => { console.warn(err); saltoDesde(); view.goTo(e.detail.href) })
+    })
     if (!st.title) $('#t-libro').textContent = (typeof view.book.metadata?.title === 'string' ? view.book.metadata.title : '') || ''
     applySettings()
     // Desde la ficha del libro se puede abrir directamente en un subrayado
@@ -180,7 +202,7 @@ async function abrir() {
     }
     paso = 'listo'
     // Leyendo hacia abajo, los botones de volumen no pasan página (son el volumen de siempre)
-    try { A.volumeKeys?.(!haciaAbajo()) } catch (e) { }
+    volumen()
     $('#carga').classList.add('fuera')
     if (avisoPDF) { aviso(avisoPDF); avisoPDF = '' }
     else if (reflow) {
@@ -196,6 +218,8 @@ async function abrir() {
     setTimeout(() => showChrome(false), 1600)
 }
 
+/** Los botones de volumen pasan página si lo quieres, salvo leyendo hacia abajo o en voz alta (ahí son el volumen). */
+function volumen() { try { A.volumeKeys?.(S.volPages !== false && !haciaAbajo() && !vozOn) } catch (e) { } }
 /** PDF o cómic leyendo hacia abajo (las páginas una debajo de otra). */
 const haciaAbajo = () => isPDF && view?.renderer?.localName === 'foliate-fxl-scroll'
 /** Cambiar entre página a página y hacia abajo: se vuelve a abrir el libro en la misma página. */
@@ -207,9 +231,10 @@ async function reabrir() {
     try { view.book?.destroy?.() } catch (e) { }
     view.remove()
     docs.clear()
+    const fr = last?.fraction
     last = null; lastTurn = null
     if (loc) st.location = loc
-    if (last?.fraction > 0) st.fraction = last.fraction
+    if (fr > 0) st.fraction = fr
     st.goto = null
     await open()
 }
@@ -219,7 +244,7 @@ function css() {
     const cs = getComputedStyle(document.body)
     const fg = cs.getPropertyValue('--fg').trim(), bg = cs.getPropertyValue('--bg').trim(), accent = cs.getPropertyValue('--accent').trim()
     const dark = DARK_THEMES.includes(theme())
-    const fam = { original: '', atrio: 'AtrioSerif, Georgia, serif', serif: 'Georgia, "Noto Serif", serif', sans: 'system-ui, Roboto, "Noto Sans", sans-serif', facil: 'Verdana, "Atkinson Hyperlegible", sans-serif', mono: '"Roboto Mono", "Noto Sans Mono", monospace' }[S.font]
+    const fam = { original: '', literata: 'AtrioLiterata, Georgia, serif', garamond: 'AtrioGaramond, Georgia, serif', atrio: 'AtrioSerif, Georgia, serif', serif: 'Georgia, "Noto Serif", serif', sans: 'system-ui, Roboto, "Noto Sans", sans-serif', facil: 'AtrioAtkinson, Verdana, sans-serif', mono: '"Roboto Mono", "Noto Sans Mono", monospace' }[S.font]
     const font = location.origin + '/assets/lector/fuentes/'
     const hy = S.hyphens ? 'auto' : 'manual'
     const para = [
@@ -232,11 +257,20 @@ function css() {
 @font-face { font-family: AtrioSerif; src: url("${font}display_regular.ttf"); font-weight: 400; }
 @font-face { font-family: AtrioSerif; src: url("${font}display_semibold.ttf"); font-weight: 600 900; }
 @font-face { font-family: AtrioSerif; src: url("${font}display_italic.ttf"); font-style: italic; }
+@font-face { font-family: AtrioLiterata; src: url("${font}literata.ttf"); font-weight: 200 900; }
+@font-face { font-family: AtrioLiterata; src: url("${font}literata_italic.ttf"); font-weight: 200 900; font-style: italic; }
+@font-face { font-family: AtrioGaramond; src: url("${font}garamond.ttf"); font-weight: 400 800; }
+@font-face { font-family: AtrioGaramond; src: url("${font}garamond_italic.ttf"); font-weight: 400 800; font-style: italic; }
+@font-face { font-family: AtrioAtkinson; src: url("${font}atkinson_regular.ttf"); font-weight: 400; }
+@font-face { font-family: AtrioAtkinson; src: url("${font}atkinson_bold.ttf"); font-weight: 700; }
+@font-face { font-family: AtrioAtkinson; src: url("${font}atkinson_italic.ttf"); font-weight: 400; font-style: italic; }
+@font-face { font-family: AtrioAtkinson; src: url("${font}atkinson_bolditalic.ttf"); font-weight: 700; font-style: italic; }
 html { color: ${fg} !important; background: transparent !important; font-size: ${S.size}% !important; color-scheme: ${dark ? 'dark' : 'light'}; }
 body { background: transparent !important; color: inherit !important; ${fam ? `font-family: ${fam} !important;` : ''} }
 ${fam ? 'body *:not(code):not(pre) { font-family: inherit !important; }' : ''}
 p, li, blockquote, dd { line-height: ${S.spacing} !important; text-align: ${S.justify ? 'justify' : 'start'}; -webkit-hyphens: ${hy}; hyphens: ${hy}; widows: 2; orphans: 2; }
 ${para}
+${S.weight && VARIABLES.includes(S.font) ? 'body, p, li, blockquote, dd { font-weight: ' + (S.font === 'garamond' ? 500 : 480) + '; }' : ''}
 h1, h2, h3, h4, p, li, span, div { color: inherit !important; }
 a:link, a:visited { color: ${accent} !important; }
 img, svg, video { max-width: 100%; ${dark ? 'filter: brightness(.86);' : ''} }
@@ -284,7 +318,8 @@ function applySettings() {
         else view.renderer.removeAttribute('animated')
     }
     A.setBrightness(S.brightness)
-    A.keepScreenOn(!!S.keepOn)
+    despierta()
+    volumen()
     repaintAll()
     let w = $('#calido')
     if (!w) { w = document.createElement('div'); w.id = 'calido'; document.body.append(w) }
@@ -342,9 +377,30 @@ function sumar(now) {
     mio.days[d] = (mio.days[d] || 0) + add
     recontar()
     saveStats()
+    metaHoy()
 }
+// Tu objetivo de lectura del día (minutos, en Perfil): al cumplirlo mientras lees, un aviso (una vez)
+const META = Number(st.meta) || 0
+let metaDia = null
+function metaHoy() {
+    if (!META) return
+    const d = today(), hecho = (stats.days[d] || 0) >= META * 60000
+    if (metaDia === null || metaDia.d !== d) { metaDia = { d, ok: hecho }; return }   // (lo cumplido antes de abrir el libro no avisa)
+    if (hecho && !metaDia.ok) { metaDia.ok = true; aviso('Objetivo de hoy cumplido: ' + META + ' min') }
+}
+metaHoy()
 /** Cualquier movimiento o toque: lo de antes cuenta (hasta 5 min) y el contador sigue. */
-function mueve() { sumar(ahora()) }
+function mueve() { sumar(ahora()); despierta() }
+// La pantalla encendida mientras lees; si pasan 10 minutos sin tocar nada (te has dormido leyendo), se deja apagar
+// como siempre y vuelve a quedarse encendida en cuanto la tocas
+const DESPIERTA = 10 * 60000
+let despiertaT = 0, despiertaOn = null
+function despierta() {
+    const on = !!S.keepOn
+    if (on !== despiertaOn) { despiertaOn = on; try { A.keepScreenOn(on) } catch (e) { } }
+    clearTimeout(despiertaT)
+    if (on) despiertaT = setTimeout(() => { despiertaOn = false; try { A.keepScreenOn(false) } catch (e) { } }, DESPIERTA)
+}
 window.atrioPausa = on => {
     if (on) { sumar(ahora()); enPausa = true; try { A.saveStats(JSON.stringify(stats)) } catch (e) { } }
     else if (enPausa) { enPausa = false; activo = ahora() }
@@ -437,6 +493,8 @@ function drawStatus(detail) {
 function onRelocate({ detail }) {
     last = detail
     track(detail)
+    pasoVuelta()
+    pasoBusqueda()
     drawStatus(detail)
     $('#b-marca-cinta')?.classList.toggle('oculta', !currentMark())
     $('#p-barra').value = detail.fraction ?? 0
@@ -448,12 +506,53 @@ function onRelocate({ detail }) {
     $('#b-marca').classList.toggle('on', !!currentMark())
     saveProgress()
 }
+$('#p-barra').addEventListener('pointerdown', () => { if (!vuelta || vuelta.pasos > 0) saltoDesde(); arrastra = true })
+$('#p-barra').addEventListener('change', () => { arrastra = false })
 $('#p-barra').addEventListener('input', e => view?.goToFraction(parseFloat(e.target.value)))
 
+/** El capítulo (o la página del PDF) que se ve. */
+const idxAhora = () => last?.section?.current ?? last?.index ?? null
+/** El marcador de la página que se ve: el que cae dentro de lo que hay en pantalla (los de antes, por el porcentaje). */
 function currentMark() {
     if (!last) return null
-    return marks.find(m => Math.abs((m.fraction || 0) - (last.fraction || 0)) < 0.0025)
+    const idx = idxAhora()
+    const cerca = m => Math.abs((m.fraction || 0) - (last.fraction || 0)) < 0.0025
+    return marks.find(m => {
+        if (m.index == null || idx == null) return cerca(m)
+        if (m.index !== idx) return false
+        if (isPDF) return true
+        const doc = liveDoc(idx), r = doc && rangeOf(doc, m.value), vis = last.range
+        if (!r || !vis || vis.startContainer?.ownerDocument !== doc) return cerca(m)
+        try { return vis.comparePoint(r.startContainer, r.startOffset) === 0 } catch (e) { return cerca(m) }
+    })
 }
+
+// ---------------------------------------------------------------- Volver a donde estabas
+// Al saltar (índice, búsqueda, notas, marcadores, «Ir a», la barra o un enlace) se ofrece volver a la página de antes,
+// hasta que pasas unas cuantas páginas desde el sitio nuevo
+let vuelta = null      // { cfi, fraction, pasos }
+function saltoDesde() {
+    if (!last?.cfi) return
+    vuelta = { cfi: last.cfi, fraction: last.fraction || 0, pasos: -1 }
+    pintaVuelta()
+}
+let arrastra = false
+function pasoVuelta() {
+    if (!vuelta || arrastra) return
+    if (++vuelta.pasos > 5) { vuelta = null; pintaVuelta() }
+}
+function pintaVuelta() {
+    let b = $('#volver')
+    if (!b) {
+        b = document.createElement('button'); b.id = 'volver'; b.className = 'volver oculta'
+        b.onclick = () => { const v = vuelta; vuelta = null; pintaVuelta(); if (v) view.goTo(v.cfi).catch(() => view.goToFraction(v.fraction)) }
+        document.body.append(b)
+    }
+    b.classList.toggle('oculta', !vuelta)
+    if (vuelta) b.textContent = '← Volver a donde estabas (' + pct(vuelta.fraction) + ')'
+}
+/** Ir a un sitio del libro desde un panel: con la vuelta preparada. */
+function irA(target) { saltoDesde(); closePanel(); return view.goTo(target) }
 
 // ---------------------------------------------------------------- Toques
 // La app avisa cuando sabe cuánto ocupan las barras del móvil
@@ -476,8 +575,16 @@ function onLoad({ detail: { doc, index } }) {
     let t0 = null, holding = false, holdTimer = 0, swiped = false, held = false
     // Brillo: deslizar arriba o abajo por el borde izquierdo de la pantalla (como en los lectores de tinta)
     let edge = false, glow = null, glowY = 0
+    // Pellizcar con dos dedos (libros de texto): la letra más grande o más pequeña
+    let pinch = null
+    const dist2 = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY)
     const topX = x => x + (doc.defaultView.frameElement?.getBoundingClientRect().left || 0)
     win.addEventListener('touchstart', e => {
+        if (e.touches.length === 2 && !isPDF) {
+            clearTimeout(holdTimer); holding = false; edge = false; glow = null
+            pinch = { d0: dist2(e.touches) || 1, size0: S.size, size: S.size }
+            e.stopPropagation(); return
+        }
         const t = e.touches[0]
         t0 = t ? { x: t.clientX, y: t.clientY, time: e.timeStamp } : null
         swiped = false; held = false; holding = false
@@ -492,6 +599,14 @@ function onLoad({ detail: { doc, index } }) {
         }, 450)
     }, { capture: true, passive: true })
     win.addEventListener('touchmove', e => {
+        if (pinch) {
+            if (e.touches.length === 2) {
+                const k = dist2(e.touches) / pinch.d0
+                const n = Math.min(240, Math.max(60, Math.round(pinch.size0 * Math.pow(k, 0.8) / 10) * 10))
+                if (n !== pinch.size) { pinch.size = n; aviso('Letra ' + n + ' %') }
+            }
+            e.stopPropagation(); return
+        }
         const t = e.touches[0]
         if (t0 && t && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) > 12 && !holding) clearTimeout(holdTimer)
         if (edge && t0 && t && !holding) {
@@ -510,6 +625,12 @@ function onLoad({ detail: { doc, index } }) {
     }, { capture: true, passive: true })
     win.addEventListener('touchend', e => {
         clearTimeout(holdTimer)
+        if (pinch) {
+            if (e.touches.length) return
+            const p = pinch; pinch = null; swiped = true; holding = false
+            if (p.size !== S.size) { S.size = p.size; applySettings(); saveSettings() }
+            return
+        }
         const t = e.changedTouches[0]
         // (el touchend sí le llega a foliate: así la página vuelve a su sitio si se llegó a mover un poco al empezar)
         if (glow !== null) { glow = null; edge = false; swiped = true; saveSettings(); holding = false; return }
@@ -574,8 +695,9 @@ function onLoad({ detail: { doc, index } }) {
                 const fr = doc.defaultView.frameElement?.getBoundingClientRect()
                 const x = e.clientX + (fr ? fr.left : 0)
                 const w = window.innerWidth
-                if (x < w * 0.27) { view.goLeft(); if (chromeOn) showChrome(false); return }
-                if (x > w * 0.73) { view.goRight(); if (chromeOn) showChrome(false); return }
+                const unaMano = S.tapZones === 'adelante'
+                if (x < w * 0.27) { if (unaMano) view.next(); else view.goLeft(); if (chromeOn) showChrome(false); return }
+                if (x > w * 0.73) { if (unaMano) view.next(); else view.goRight(); if (chromeOn) showChrome(false); return }
             }
             // El menú: tocando en el centro de verdad (la zona del medio, ni bordes ni arriba ni abajo); con el menú
             // abierto, tocar en cualquier sitio lo cierra
@@ -868,7 +990,7 @@ function addNote(doc, index, r) {
     const value = view.getCFI(index, r)
     const old = notes.find(x => x.value === value)
     if (old) return old
-    const n = { value, color: 'subrayado', text, note: '', created: Date.now(), index, label: label(), ...(reflow ? { m: 'r' } : {}) }
+    const n = { value, color: 'subrayado', text, note: '', created: Date.now(), index, label: label(), frac: last?.fraction ?? null, ...(reflow ? { m: 'r' } : {}) }
     notes.push(n)
     rangeCache.get(doc)?.set(value, r.cloneRange())
     paint(index)
@@ -916,14 +1038,24 @@ $('#s-borrar').addEventListener('click', () => {
     const n = selection?.note
     hideSel()
     if (!n) return
-    removeNote(n)
-    aviso('Subrayado quitado')
+    removeNoteUndo(n)
 })
 function removeNote(n) {
     notes = notes.filter(x => x !== n)
     paint(n.index)
     saveNotes()
 }
+/** Quitar con «Deshacer»: vuelve tal cual (con su nota). */
+function removeNoteUndo(n, after) {
+    removeNote(n)
+    aviso('Subrayado quitado', () => { if (!notes.includes(n)) { notes.push(n); paint(n.index); saveNotes(); after?.() } })
+}
+/** Los subrayados en el orden del libro (dentro de un capítulo, por su sitio en el texto). */
+const enOrden = list => [...list].sort((a, b) => {
+    if (a.index !== b.index) return (a.index ?? 0) - (b.index ?? 0)
+    try { const c = cfiCompare(a.value, b.value); if (c) return c } catch (e) { }
+    return (a.created || 0) - (b.created || 0)
+})
 
 // ---------------------------------------------------------------- Paneles
 function openPanel(html, after) {
@@ -949,7 +1081,8 @@ function editNote(n, after) {
     })
 }
 
-// Ajustes de letra
+// Ajustes de letra: lo de siempre a la vista; lo demás, en «Más opciones»
+let masOpciones = false
 function openSettings() {
     // Al tocar una opción el panel se repinta: que no vuelva arriba del todo
     const keep = $('#panel').classList.contains('on') ? $('#panel-cuerpo').scrollTop : 0
@@ -974,27 +1107,40 @@ function openSettings() {
         <div class="paso"><button data-step="size" data-d="-10">−</button><b>${S.size}%</b><button data-step="size" data-d="10">+</button></div>
         <h3>Tipo de letra</h3>
         <div class="fila">${chips(FONTS, S.font, 'font')}</div>
+        ${VARIABLES.includes(S.font) ? `<div class="fila" style="margin-top:8px">${chips([[0, 'Grosor normal'], [1, 'Un poco más gruesa']], S.weight || 0, 'weight')}</div>` : ''}
         <h3>Interlineado</h3>
         <div class="paso"><button data-step="spacing" data-d="-0.1">−</button><b>${S.spacing.toFixed(1)}</b><button data-step="spacing" data-d="0.1">+</button></div>
         <h3>Márgenes</h3>
         <div class="fila">${chips([['s', 'Estrechos'], ['m', 'Normales'], ['l', 'Anchos']], S.margin, 'margin')}</div>
         <h3>Texto</h3>
         <div class="fila">${chips([[true, 'Justificado'], [false, 'Alineado a la izquierda']], S.justify, 'justify')}</div>
-        <div class="fila" style="margin-top:8px">${chips([[true, 'Partir palabras con guion'], [false, 'Sin guiones']], S.hyphens, 'hyphens')}</div>
+      `}
+      <button class="mas" id="mas-opciones">${masOpciones ? 'Menos opciones ▴' : 'Más opciones ▾'}</button>
+      ${!masOpciones ? '' : isPDF ? '' : `
+        <h3>Guiones</h3>
+        <div class="fila">${chips([[true, 'Partir palabras con guion'], [false, 'Sin guiones']], S.hyphens, 'hyphens')}</div>
         <h3>Párrafos</h3>
         <div class="fila">${chips([[0, 'Como el libro'], [1, 'Con un poco de aire'], [2, 'Separados, sin sangría']], S.paraSpace, 'paraSpace')}</div>
         <h3>Pasar página</h3>
         <div class="fila">${chips([['paginated', 'Páginas'], ['scrolled', 'Desplazamiento continuo']], S.flow, 'flow')}</div>
         <div class="fila" style="margin-top:8px">${chips([[true, 'Con animación'], [false, 'Sin animación']], S.animated, 'animated')}</div>
+        ${S.flow === 'paginated' ? `<h3>Tocar los lados</h3>
+        <div class="fila">${chips([['normal', 'Izquierda atrás, derecha adelante'], ['adelante', 'Los dos adelante (una mano)']], S.tapZones || 'normal', 'tapZones')}</div>` : ''}
         <h3>Columnas</h3>
         <div class="fila">${chips([[false, 'Una'], [true, 'Dos en horizontal']], S.columns, 'columns')}</div>
       `}
+      ${!masOpciones ? '' : `
+      ${!haciaAbajo() ? `<h3>Botones de volumen</h3>
+      <div class="fila">${chips([[true, 'Pasan página'], [false, 'Son el volumen']], S.volPages !== false, 'volPages')}</div>` : ''}
       <h3>Abajo de la página</h3>
       <div class="fila">${chips([[true, isPDF ? 'Página y %' : 'Lo que queda del capítulo y %'], [false, 'Nada']], S.status, 'status')}</div>
       <h3>Pantalla</h3>
-      <div class="fila">${chips([[true, 'Siempre encendida'], [false, 'Normal']], S.keepOn, 'keepOn')}</div>
-      <p class="sub" style="margin-top:14px">Truco: desliza el dedo arriba o abajo por el borde izquierdo de la página para cambiar el brillo.</p>`, el => {
+      <div class="fila">${chips([[true, 'Encendida mientras lees'], [false, 'Normal']], S.keepOn, 'keepOn')}</div>
+      ${S.keepOn ? '<p class="sub" style="margin-top:6px">Si pasan 10 minutos sin tocarla, se apaga como siempre.</p>' : ''}
+      `}
+      <p class="sub" style="margin-top:14px">Trucos: pellizca la página con dos dedos para cambiar el tamaño de la letra; desliza el dedo arriba o abajo por el borde izquierdo para el brillo.</p>`, el => {
         el.scrollTop = keep
+        el.querySelector('#mas-opciones').onclick = () => { masOpciones = !masOpciones; openSettings() }
         el.querySelectorAll('[data-theme-btn]').forEach(b => {
             const t = b.dataset.themeBtn
             b.style.background = { papel: '#FBF8F1', sepia: '#F1E6CF', gris: '#2B2D31', noche: '#121317', negro: '#000' }[t]
@@ -1013,6 +1159,7 @@ function openSettings() {
             }
             if (k === 'pdfFlow' && isPDF && (v === 'pages') !== !haciaAbajo()) { reabrir(); return }
             if (k === 'pdfFlow' && isPDF) view.renderer?.setAttribute('gap', v === 'strip' ? '0' : '10')
+            if (k === 'volPages') volumen()
             openSettings()
         })
         el.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
@@ -1059,7 +1206,7 @@ function readingHtml() {
     const s = streak()
     return `<div class="lectura">
         <div><b>${esc(ms2txt(stats.total))}</b><span>${(last?.fraction ?? 0) >= 0.99 ? 'lo has leído en' : 'leído en total'}</span></div>
-        <div><b>${esc(ms2txt(stats.days[today()] || 0))}</b><span>hoy</span></div>
+        <div><b>${esc(ms2txt(stats.days[today()] || 0))}</b><span>hoy${META ? ' · objetivo ' + META + ' min' : ''}</span></div>
         ${r ? `<div><b>${esc(durTxt(r.total) || '—')}</b><span>para acabarlo${S.speed ? ' a tu ritmo' : ''}</span></div>` : ''}
         ${s > 1 ? `<div><b>${s}</b><span>días seguidos</span></div>` : ''}
       </div>`
@@ -1078,14 +1225,14 @@ function openToc() {
       ${items.length ? `<ul class="lista">${items.map(([t, d], i) =>
         `<li class="n${Math.min(d, 3)} ${t.href === cur ? 'actual' : ''}" data-i="${i}">${esc(t.label?.trim() || 'Sin título')}</li>`).join('')}</ul>`
         : '<p class="vacio">Este libro no trae índice.</p>'}`, el => {
-        el.querySelectorAll('li[data-i]').forEach(li => li.onclick = () => { view.goTo(items[li.dataset.i][0].href); closePanel() })
+        el.querySelectorAll('li[data-i]').forEach(li => li.onclick = () => irA(items[li.dataset.i][0].href))
         el.querySelector('.actual')?.scrollIntoView({ block: 'center' })
         const go = () => {
             const n = parseFloat(el.querySelector('#ir-n').value)
             if (!isFinite(n)) return
+            saltoDesde(); closePanel()
             if (isPDF) view.goTo(Math.min(pages, Math.max(1, Math.round(n))) - 1)
             else view.goToFraction(Math.min(100, Math.max(0, n)) / 100)
-            closePanel()
         }
         el.querySelector('#ir-si').onclick = go
         el.querySelector('#ir-n').addEventListener('keydown', e => { if (e.key === 'Enter') go() })
@@ -1093,29 +1240,36 @@ function openToc() {
 }
 
 // Subrayados, notas y marcadores
+let soloConNota = false
 function openNotes(tab = 'notas') {
+    const conNota = notes.filter(n => n.note).length
+    const lista = enOrden(soloConNota ? notes.filter(n => n.note) : notes)
     const list = tab === 'notas'
-        ? (notes.length ? `<ul class="lista">${[...notes].sort((a, b) => (a.index - b.index) || (a.created - b.created)).map((n, i) => `
+        ? (lista.length ? `<ul class="lista">${lista.map(n => `
             <li data-v="${esc(n.value)}"><div class="cita">${esc(n.text)}</div>
               ${n.note ? `<div class="nota">✎ ${esc(n.note)}</div>` : ''}
-              <div class="sub">${esc(n.label || '')} · ${fecha(n.created)}</div>
+              <div class="sub">${esc(n.label || '')}${n.frac != null ? ' · ' + pct(n.frac) : ''} · ${fecha(n.created)}</div>
               <div class="mini"><button data-nota="${esc(n.value)}">${n.note ? 'Editar nota' : 'Añadir nota'}</button><button data-quitar="${esc(n.value)}" class="peligro">Quitar</button></div></li>`).join('')}</ul>`
-            : '<p class="vacio">Mantén pulsada una palabra y toca Subrayar o Nota.</p>')
+            : `<p class="vacio">${notes.length ? 'Ningún subrayado tiene nota todavía.' : 'Mantén pulsada una palabra y toca Subrayar o Nota.'}</p>`)
         : (marks.length ? `<ul class="lista">${[...marks].sort((a, b) => a.fraction - b.fraction).map(m => `
-            <li data-v="${esc(m.value)}"><b>${esc(m.label || 'Marcador')}</b><div class="sub">${pct(m.fraction)} · ${fecha(m.created)}</div></li>`).join('')}</ul>`
+            <li data-v="${esc(m.value)}"><b>${esc(m.label || 'Marcador')}</b><div class="sub">${pct(m.fraction)} · ${fecha(m.created)}</div>
+              <div class="mini"><button data-quitar-marca="${esc(m.value)}" class="peligro">Quitar</button></div></li>`).join('')}</ul>`
             : '<p class="vacio">Toca el marcador de arriba para guardar la página.</p>')
     openPanel(`<h2>Tus notas</h2>
-      <div class="pestanas"><button class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Subrayados y notas (${notes.length})</button>
+      <div class="pestanas"><button class="chip ${tab === 'notas' ? 'on' : ''}" data-tab="notas">Subrayados (${notes.length})</button>
       <button class="chip ${tab === 'marcas' ? 'on' : ''}" data-tab="marcas">Marcadores (${marks.length})</button></div>
+      ${tab === 'notas' && conNota && conNota < notes.length ? `<div class="fila" style="margin-bottom:4px">${[[false, 'Todos'], [true, `Solo con nota (${conNota})`]].map(([v, t]) => `<button class="chip ${soloConNota === v ? 'on' : ''}" data-solo="${v}">${t}</button>`).join('')}</div>` : ''}
       ${list}
       ${tab === 'notas' && notes.length ? '<div class="fila" style="margin-top:14px"><button class="boton suave" id="exportar">Compartir todas</button></div>' : ''}`, el => {
         el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => openNotes(b.dataset.tab))
-        el.querySelectorAll('li[data-v]').forEach(li => li.onclick = () => { view.goTo(li.dataset.v); closePanel() })
+        el.querySelectorAll('[data-solo]').forEach(b => b.onclick = () => { soloConNota = b.dataset.solo === 'true'; openNotes('notas') })
+        el.querySelectorAll('li[data-v]').forEach(li => li.onclick = () => irA(li.dataset.v))
         const byValue = v => notes.find(n => n.value === v)
         el.querySelectorAll('[data-nota]').forEach(b => b.onclick = e => { e.stopPropagation(); const n = byValue(b.dataset.nota); if (n) editNote(n, () => openNotes('notas')) })
-        el.querySelectorAll('[data-quitar]').forEach(b => b.onclick = e => { e.stopPropagation(); const n = byValue(b.dataset.quitar); if (n) { removeNote(n); openNotes('notas') } })
+        el.querySelectorAll('[data-quitar]').forEach(b => b.onclick = e => { e.stopPropagation(); const n = byValue(b.dataset.quitar); if (n) { removeNoteUndo(n, () => openNotes('notas')); openNotes('notas') } })
+        el.querySelectorAll('[data-quitar-marca]').forEach(b => b.onclick = e => { e.stopPropagation(); const m = marks.find(x => x.value === b.dataset.quitarMarca); if (m) { quitaMarca(m); openNotes('marcas') } })
         el.querySelector('#exportar')?.addEventListener('click', () => {
-            const txt = `${st.title || ''}\n\n` + [...notes].sort((a, b) => (a.index - b.index) || (a.created - b.created))
+            const txt = `${st.title || ''}\n\n` + enOrden(notes)
                 .map(n => `«${n.text}»${n.note ? `\n   ✎ ${n.note}` : ''}${n.label ? `\n   — ${n.label}` : ''}`).join('\n\n')
             A.share(txt)
         })
@@ -1123,7 +1277,8 @@ function openNotes(tab = 'notas') {
 }
 
 // Buscar
-function openSearch(q = '') {
+let ultimaBusqueda = ''
+function openSearch(q = ultimaBusqueda) {
     openPanel(`<h2>Buscar en el libro</h2>
       <div class="buscador"><input id="q" placeholder="Palabra o frase" value="${esc(q)}" enterkeyhint="search"><button class="boton" id="q-ir">Buscar</button></div>
       <p class="sub" id="q-estado" style="color:var(--muted);font-size:13px"></p>
@@ -1153,7 +1308,7 @@ async function searchPDF(q, out, estado, run) {
             const li = document.createElement('li')
             li.innerHTML = `<div class="sub">Página ${i}</div>…${esc(text.slice(Math.max(0, at - 40), at))}<mark>${esc(text.slice(at, at + q.length))}</mark>${esc(text.slice(at + q.length, at + q.length + 60))}…`
             const idx = i - 1
-            li.onclick = () => { view.goTo(idx); closePanel() }
+            li.onclick = () => irA(idx)
             out.append(li)
             at = ft.indexOf(nq, at + nq.length)
         }
@@ -1162,8 +1317,38 @@ async function searchPDF(q, out, estado, run) {
     estado.textContent = n ? `${n}${n >= 300 ? '+' : ''} resultados` : 'Nada encontrado.'
 }
 
+/** Lo encontrado en el libro: una raya fina del acento bajo cada vez que sale (no un recuadro rojo). */
+function subraya(rects, { color = '#C8372D' } = {}) {
+    const NS = 'http://www.w3.org/2000/svg'
+    const g = document.createElementNS(NS, 'g')
+    g.setAttribute('fill', color)
+    for (const { left, bottom, width } of rects) {
+        const r = document.createElementNS(NS, 'rect')
+        r.setAttribute('x', left); r.setAttribute('y', bottom - 1); r.setAttribute('width', width); r.setAttribute('height', 2.5)
+        g.append(r)
+    }
+    return g
+}
+// Las rayas de la búsqueda se quitan solas al seguir leyendo (tres páginas después de llegar a un resultado)
+let buscaPasos = null
+function pasoBusqueda() {
+    if (buscaPasos === null) return
+    if (++buscaPasos > 3) { buscaPasos = null; try { view.clearSearch?.() } catch (e) { } }
+}
+/** Lo encontrado, marcado unos segundos al llegar (como un subrayado). */
+async function destella(cfi) {
+    await new Promise(r => setTimeout(r, 250))
+    try {
+        const { index, anchor } = view.resolveCFI(cfi)
+        const doc = liveDoc(index), r = doc && anchor(doc)
+        if (!r || typeof r.getClientRects !== 'function') return
+        mark(index, r)
+        setTimeout(() => { if (!palabra && !pend && !vozOn && marca?.index === index) unmark() }, 2600)
+    } catch (e) { }
+}
 async function runSearch(q, el) {
     if (!q || !view) return
+    ultimaBusqueda = q
     const run = ++searchRun
     if (isPDF && view.book.pdf) {
         const out = el.querySelector('#q-res'), estado = el.querySelector('#q-estado')
@@ -1177,7 +1362,7 @@ async function runSearch(q, el) {
     let n = 0
     estado.textContent = 'Buscando…'
     try {
-        for await (const r of view.search({ query: q })) {
+        for await (const r of view.search({ query: q, draw: subraya, drawOptions: { color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#C8372D' } })) {
             if (run !== searchRun) return
             if (r === 'done') break
             if (r.progress != null) { estado.textContent = `Buscando… ${pct(r.progress)}`; continue }
@@ -1188,7 +1373,7 @@ async function runSearch(q, el) {
                 const li = document.createElement('li')
                 const ex = it.excerpt || {}
                 li.innerHTML = `${r.label ? `<div class="sub">${esc(r.label)}</div>` : ''}…${esc(ex.pre)}<mark>${esc(ex.match)}</mark>${esc(ex.post)}…`
-                li.onclick = () => { view.goTo(it.cfi); closePanel() }
+                li.onclick = () => { buscaPasos = -1; irA(it.cfi).then(() => destella(it.cfi)) }
                 out.append(li)
             }
         }
@@ -1201,7 +1386,7 @@ const footnotes = new FootnoteHandler()
 footnotes.addEventListener('before-render', e => {
     const v = e.detail.view
     // Un enlace dentro de la nota (por ejemplo «volver al texto»): se va allí y se cierra la hoja
-    v.addEventListener('link', ev => { ev.preventDefault(); closePie(); view.goTo(ev.detail.href) })
+    v.addEventListener('link', ev => { ev.preventDefault(); closePie(); saltoDesde(); view.goTo(ev.detail.href) })
     v.addEventListener('external-link', ev => { ev.preventDefault(); A.openUrl(ev.detail.a.href) })
     $('#pie-cuerpo').replaceChildren(v)
     v.renderer.setAttribute('flow', 'scrolled')
@@ -1271,6 +1456,9 @@ function hideImage() { $('#imagen').classList.add('oculta'); $('#imagen img').re
 let voz = null          // { segs: [{ mark, text }], i }
 let vozOn = false, vozPaused = false, vozN = 0
 const RATES = [0.8, 1, 1.25, 1.5, 1.75, 2]
+// Temporizador: parar a los 15, 30 o 60 minutos, o al acabar el capítulo (como en un audiolibro, para dormirse)
+const TEMPOS = [0, 15, 30, 60, 'cap']
+let vozTempo = 0, vozFin = 0
 const bookLang = () => {
     const l = view?.book?.metadata?.language
     return String((Array.isArray(l) ? l[0] : l) || 'es')
@@ -1304,6 +1492,7 @@ async function vozStart() {
     if (isPDF) { aviso('Leer en voz alta funciona con libros de texto (EPUB…), no con PDF'); return }
     hideSel(); hideWord(); closePanel(); showChrome(false)
     vozOn = true; vozPaused = false
+    volumen()
     drawVoz()
     $('#voz').classList.remove('oculta')
     try {
@@ -1324,6 +1513,7 @@ function vozLoad(ssml) {
 /** Lee la frase actual (o pasa a la siguiente si está vacía). */
 function vozSay() {
     if (!vozOn || vozPaused || !voz) return
+    if (vozFin && Date.now() >= vozFin) { aviso('Temporizador: se para la voz'); vozStop(); return }
     let seg = voz.segs[voz.i]
     while (seg && !seg.text) { if (seg.mark) view.tts.setMark(seg.mark); voz.i++; seg = voz.segs[voz.i] }
     if (!seg) { vozLoad(view.tts.next()); return }
@@ -1333,6 +1523,7 @@ function vozSay() {
 }
 window.atrioSpoken = (id, error) => {
     if (id !== 'v' + vozN || !vozOn || vozPaused) return
+    despierta()
     if (error) { aviso('La voz del móvil ha fallado: revisa «Texto a voz» en los ajustes de Android'); vozStop(); return }
     voz.i++
     vozSay()
@@ -1344,6 +1535,7 @@ async function vozNextSection() {
         let next = (cur ?? -1) + 1
         while (next < n && view.book.sections[next].linear === 'no') next++
         if (next >= n) { aviso('Fin del libro'); vozStop(); return }
+        if (vozTempo === 'cap') { aviso('Fin del capítulo: se para la voz'); vozStop(); return }
         await view.goTo(next)
         if (!vozOn) return
         await view.initTTS('sentence', vozMark)
@@ -1359,6 +1551,8 @@ function vozPause() {
 function vozSkip() { if (!vozOn || !voz) return; A.stopSpeaking(); vozPaused = false; voz.i++; vozSay(); drawVoz() }
 function vozStop() {
     vozOn = false; vozPaused = false; voz = null
+    vozTempo = 0; vozFin = 0
+    volumen()
     try { A.stopSpeaking() } catch (e) { }
     unmark()
     $('#voz').classList.add('oculta')
@@ -1366,29 +1560,49 @@ function vozStop() {
 function drawVoz() {
     $('#v-pausa').textContent = vozPaused ? 'Seguir' : 'Pausa'
     $('#v-vel').textContent = String(S.ttsRate).replace('.', ',') + '×'
+    const t = $('#v-tempo')
+    if (t) {
+        const quedan = vozFin ? Math.max(1, Math.ceil((vozFin - Date.now()) / 60000)) : 0
+        t.textContent = vozTempo === 'cap' ? 'Hasta fin de capítulo' : vozTempo ? `Parar en ${quedan} min` : 'Temporizador'
+        t.classList.toggle('on', !!vozTempo)
+    }
 }
+setInterval(() => { if (vozOn && vozFin) drawVoz() }, 30000)
 $('#v-pausa').onclick = vozPause
 $('#v-sig').onclick = vozSkip
 $('#v-parar').onclick = vozStop
+$('#v-tempo').onclick = () => {
+    vozTempo = TEMPOS[(TEMPOS.indexOf(vozTempo) + 1) % TEMPOS.length]
+    vozFin = typeof vozTempo === 'number' && vozTempo > 0 ? Date.now() + vozTempo * 60000 : 0
+    drawVoz()
+    aviso(vozTempo === 'cap' ? 'Se para al acabar el capítulo' : vozTempo ? `Se para dentro de ${vozTempo} min` : 'Sin temporizador')
+}
 $('#v-vel').onclick = () => {
     S.ttsRate = RATES[(RATES.indexOf(S.ttsRate) + 1) % RATES.length] || 1
     saveSettings(); drawVoz()
 }
 
 // ---------------------------------------------------------------- Botones
-$('#b-cerrar').onclick = () => A.close()
+$('#b-cerrar').onclick = () => { window.atrioPausa(true); A.close() }
 $('#b-indice').onclick = openToc
 $('#b-voz').onclick = () => vozOn ? vozStop() : vozStart()
 $('#b-notas').onclick = () => openNotes('notas')
 $('#b-ajustes').onclick = openSettings
 $('#b-brillo').onclick = openBrightness
 $('#b-buscar').onclick = () => openSearch()
-$('#b-marca').onclick = () => {
-    const m = currentMark()
-    if (m) { marks = marks.filter(x => x !== m); aviso('Marcador quitado') }
-    else if (last) { marks.push({ value: last.cfi, label: label() || pct(last.fraction), fraction: last.fraction || 0, created: Date.now(), ...(reflow ? { m: 'r' } : {}) }); aviso('Página marcada') }
+function pintaMarca() {
     $('#b-marca').classList.toggle('on', !!currentMark())
     $('#b-marca-cinta')?.classList.toggle('oculta', !currentMark())
+}
+function quitaMarca(m) {
+    marks = marks.filter(x => x !== m); saveMarks(); pintaMarca()
+    aviso('Marcador quitado', () => { if (!marks.includes(m)) { marks.push(m); saveMarks(); pintaMarca() } })
+}
+$('#b-marca').onclick = () => {
+    const m = currentMark()
+    if (m) { quitaMarca(m); return }
+    if (last) { marks.push({ value: last.cfi, label: label() || pct(last.fraction), fraction: last.fraction || 0, index: idxAhora(), created: Date.now(), ...(reflow ? { m: 'r' } : {}) }); aviso('Página marcada') }
+    pintaMarca()
     saveMarks()
 }
 

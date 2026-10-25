@@ -60,7 +60,7 @@ const log = [];
       const store = { saved: {} };
       window.__atrio = store;
       window.Atrio = {
-        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: nm.endsWith('pdf') ? { pdfTexto: false } : {}, annotations: [], bookmarks: [], device: 'tablet', stats: { dev: { otra: { total: 600000, days: { '2020-01-01': 600000 } } }, total: 600000, days: { '2020-01-01': 600000 } }, accent: { light: '#2F5D8A', dark: '#7FA7C4' } }),
+        state: () => JSON.stringify({ title: nm === 'quijote.epub' ? 'Don Quijote de la Mancha' : 'PDF de prueba', file: nm, location: null, settings: nm.endsWith('pdf') ? { pdfTexto: false } : {}, annotations: [], bookmarks: [], device: 'tablet', meta: 5, stats: { dev: { otra: { total: 600000, days: { '2020-01-01': 600000 } } }, total: 600000, days: { '2020-01-01': 600000 } }, accent: { light: '#2F5D8A', dark: '#7FA7C4' } }),
         saveProgress: (cfi, f, l) => { store.saved.progress = { cfi, f, l }; },
         saveSettings: (j) => { store.saved.settings = JSON.parse(j); },
         saveAnnotations: (j) => { store.saved.notes = JSON.parse(j); },
@@ -74,7 +74,11 @@ const log = [];
         // La voz: cada frase «se lee» en 30 ms
         speak: (t, id) => { (store.spoken ||= []).push(t); setTimeout(() => window.atrioSpoken && window.atrioSpoken(id, false), 30); },
         stopSpeaking: () => { store.stopped = (store.stopped || 0) + 1; },
+        volumeKeys: (on) => { store.vol = on; }, keepScreenOnV: null,
       };
+      window.Atrio.keepScreenOn = (on) => { store.keep = on; };
+      // Los avisos que salen (para comprobar el del objetivo de lectura)
+      document.addEventListener('DOMContentLoaded', () => { const a = document.querySelector('#aviso'); if (a) new MutationObserver(() => { (store.avisos ||= []).push(a.textContent); }).observe(a, { childList: true, subtree: true, characterData: true }); });
     }, name);
     await page.goto(`http://localhost:${port}/assets/lector/index.html`);
     await page.waitForSelector('#carga.fuera', { timeout: 60000 }).catch(() => {});
@@ -193,6 +197,8 @@ const log = [];
       const t1 = await total();
       await page.evaluate(() => { delete window.__reloj; });
       ok(t1 - t0 === 8 * 60000, `${name}: tiempo leído con tope de 5 min y sin contar la pausa (${(t1 - t0) / 60000} min, deben ser 8)`);
+      const avisos = await page.evaluate(() => window.__atrio.avisos || []);
+      ok(avisos.some((t) => /Objetivo de hoy cumplido: 5 min/.test(t)), `${name}: al cumplir el objetivo de lectura del día, lo avisa (${avisos.filter((t) => /Objetivo/.test(t)).join(' | ') || 'nada'})`);
       // El de otro dispositivo (10 min) ya estaba: se suma al de este, sin pisarlo
       const dv = await page.evaluate(() => window.__atrio.saved.stats?.dev || {});
       // (antes del reloj simulado, el lector ya había contado unos segundos de verdad: t0 incluye los 10 min de la otra)
@@ -341,14 +347,129 @@ const log = [];
     // Línea de estado: lo que queda del capítulo (o la página) y el %
     const izq = await page.textContent('#e-izq'), der = await page.textContent('#e-der');
     ok(/%/.test(der) && izq.length > 3, `${name}: línea de estado «${izq} · ${der}»`);
+    // Atrio 6.62: marcadores exactos, deshacer, volver a donde estabas, búsqueda que recuerda, toques a una mano,
+    // pellizcar para la letra, Literata y botones de volumen
+    if (name.endsWith('epub')) {
+      const cerrar = async () => { await page.evaluate(() => { document.querySelector('#panel').classList.remove('on'); document.querySelector('#velo').classList.remove('on'); }); await page.waitForTimeout(450); };
+      await cerrar();
+      const cinta = () => page.$eval('#b-marca-cinta', (e) => !e.classList.contains('oculta'));
+      const sv = () => page.evaluate(() => window.__atrio.saved);
+      // Marcador: solo en su página (antes, con «a menos de 0,25 %», salía también en las páginas de al lado)
+      await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1200);
+      await page.evaluate(() => window.atrioPage(1)); await page.waitForTimeout(700);
+      await page.evaluate(() => document.querySelector('#b-marca').click()); await page.waitForTimeout(400);
+      const m1 = (await sv()).marks || [];
+      ok(m1.length === 1 && typeof m1[0].index === 'number' && (await cinta()), `${name}: marcar la página la guarda con su capítulo (${m1.length}, capítulo ${m1[0]?.index})`);
+      await page.evaluate(() => window.atrioPage(1)); await page.waitForTimeout(800);
+      const fuera = !(await cinta());
+      await page.evaluate(() => window.atrioPage(-1)); await page.waitForTimeout(800);
+      ok(fuera && (await cinta()), `${name}: la cinta del marcador sale solo en su página (en la siguiente: ${fuera ? 'no' : 'sí'}; al volver: ${(await cinta()) ? 'sí' : 'no'})`);
+      await page.evaluate(() => document.querySelector('#b-marca').click()); await page.waitForTimeout(400);
+      const quitado = ((await sv()).marks || []).length === 0 && !(await cinta());
+      await page.screenshot({ path: path.join(out, name + '-13-deshacer.png') });
+      ok(quitado && (await page.$eval('#aviso', (e) => e.classList.contains('con-boton') && /Deshacer/.test(e.textContent))), `${name}: quitar el marcador avisa con «Deshacer»`);
+      await page.click('#aviso button'); await page.waitForTimeout(400);
+      ok(((await sv()).marks || []).length === 1 && (await cinta()), `${name}: «Deshacer» devuelve el marcador`);
+      // Quitar un subrayado también se puede deshacer (con su nota)
+      const n0 = (await sv()).notes || [];
+      if (n0.length) {
+        await page.evaluate(() => { document.querySelector('#b-notas').click(); });
+        await page.waitForTimeout(500);
+        await page.click('[data-quitar]'); await page.waitForTimeout(400);
+        const sinNota = ((await sv()).notes || []).length === n0.length - 1;
+        await page.click('#aviso button'); await page.waitForTimeout(400);
+        const vuelve = (await sv()).notes || [];
+        ok(sinNota && vuelve.length === n0.length && vuelve.some((n) => n.note === 'Nota de prueba'), `${name}: quitar un subrayado y «Deshacer» lo devuelve con su nota`);
+        await cerrar();
+      }
+      // Saltar con el índice: «Volver a donde estabas» y, al tocarlo, se vuelve a la misma página
+      await page.waitForTimeout(300);
+      const antes = (await sv()).progress?.cfi;
+      await page.evaluate(() => document.querySelector('#b-indice').click()); await page.waitForTimeout(500);
+      await page.evaluate(() => { const l = [...document.querySelectorAll('#panel-cuerpo li[data-i]')]; l[l.length > 3 ? 2 : 0].click(); });
+      await page.waitForTimeout(1400);
+      const lejos = (await sv()).progress?.cfi;
+      const pill = await page.evaluate(() => { const b = document.querySelector('#volver'); return b && !b.classList.contains('oculta') ? b.textContent : ''; });
+      ok(lejos !== antes && /Volver a donde estabas/.test(pill), `${name}: tras saltar con el índice sale «${pill}»`);
+      await page.screenshot({ path: path.join(out, name + '-12-volver.png') });
+      await page.click('#volver'); await page.waitForTimeout(1400);
+      const otraVez = (await sv()).progress?.cfi;
+      ok(otraVez === antes && (await page.$eval('#volver', (e) => e.classList.contains('oculta'))), `${name}: «Volver» deja en la página de antes`);
+      // La búsqueda recuerda lo último que buscaste; al tocar un resultado, lo encontrado se marca un momento
+      await page.evaluate(() => document.querySelector('#b-buscar').click()); await page.waitForTimeout(500);
+      const q = await page.inputValue('#q');
+      ok(q === (process.env.BUSCA || 'Mancha'), `${name}: la búsqueda recuerda «${q}»`);
+      await page.waitForFunction(() => document.querySelectorAll('#q-res li').length > 0, null, { timeout: 60000 }).catch(() => {});
+      await page.evaluate(() => document.querySelector('#q-res li').click());
+      await page.waitForTimeout(900);
+      const destello = await page.evaluate(() => { let n = 0; for (const { doc: d } of window.__docs || []) if (d.defaultView) n += d.defaultView.CSS?.highlights?.get('atrio')?.size || 0; return n; });
+      ok(destello > 0 && !!(await page.$('#volver:not(.oculta)')), `${name}: lo encontrado se marca al llegar (${destello}) y se puede volver`);
+      await page.waitForTimeout(3000);
+      // Ajustes: Literata (se carga de verdad), tocar los lados a una mano, botones de volumen
+      await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(300);
+      if (!(await page.$eval('#abajo', (e) => !e.classList.contains('oculta')))) { await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(400); }
+      await page.click('#b-ajustes'); await page.waitForTimeout(500);
+      await page.click('[data-k="font"][data-v="literata"]'); await page.waitForTimeout(1500);
+      const lit = await page.evaluate(async () => {
+        for (const { doc: d } of [...(window.__docs || [])].reverse()) {
+          if (!d.defaultView || !d.body) continue;
+          const p = d.querySelector('p'); if (!p) continue;
+          await d.fonts.ready;
+          return { fam: getComputedStyle(p).fontFamily, ok: d.fonts.check('16px AtrioLiterata') && [...d.fonts].some((f) => f.family.replace(/"/g, '') === 'AtrioLiterata' && f.status === 'loaded') };
+        }
+        return {};
+      });
+      await page.screenshot({ path: path.join(out, name + '-14-literata-ajustes.png') });
+      ok(/AtrioLiterata/.test(lit.fam || '') && lit.ok, `${name}: la letra Literata se carga y se usa (${lit.fam})`);
+      ok(!!(await page.$('[data-k="weight"]')), `${name}: con Literata se puede poner la letra más gruesa`);
+      if (await page.$('#mas-opciones') && !(await page.$('[data-k="tapZones"]'))) { await page.click('#mas-opciones'); await page.waitForTimeout(300); }
+      await page.click('[data-k="tapZones"][data-v="adelante"]'); await page.waitForTimeout(300);
+      await page.click('[data-k="volPages"][data-v="false"]'); await page.waitForTimeout(300);
+      const s2 = (await sv()).settings;
+      ok(s2.tapZones === 'adelante' && s2.volPages === false && (await page.evaluate(() => window.__atrio.vol)) === false, `${name}: guarda «los dos lados adelante» y «volumen para el volumen» (vol ${await page.evaluate(() => window.__atrio.vol)})`);
+      await page.click('[data-k="volPages"][data-v="true"]'); await page.waitForTimeout(300);
+      await cerrar();
+      await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(400);
+      if (await page.$eval('#abajo', (e) => !e.classList.contains('oculta'))) { await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(400); }
+      await page.evaluate(() => window.__view.goTo(13)); await page.waitForTimeout(1200);
+      const fa = await frac();
+      await page.mouse.click(X(30), Y(430)); await page.waitForTimeout(1200);
+      ok((await frac()) > fa, `${name}: a una mano, tocar el lado izquierdo también pasa página (${Math.round(fa * 1000) / 10} → ${Math.round((await frac()) * 1000) / 10} %)`);
+      await page.click('#b-ajustes').catch(() => {});
+      await page.evaluate(() => window.atrioMenu()); await page.waitForTimeout(300);
+      await page.evaluate(() => document.querySelector('#b-ajustes').click()); await page.waitForTimeout(400);
+      if (!(await page.$('[data-k="tapZones"]'))) { await page.click('#mas-opciones'); await page.waitForTimeout(300); }
+      await page.click('[data-k="tapZones"][data-v="normal"]'); await page.waitForTimeout(300);
+      await cerrar();
+      await page.evaluate(() => { if (document.body.classList.contains('menu')) window.atrioMenu(); });
+      // Pellizcar con dos dedos agranda la letra
+      const t0 = (await sv()).settings.size;
+      if (process.env.DEPURA) { page.on('console', (m) => { if (/^(touch|dbg)/.test(m.text())) console.log('    [p]', m.text()); }); await page.evaluate(() => { for (const { doc } of window.__docs) { if (!doc.defaultView) continue; for (const t of ['touchstart', 'touchend']) doc.defaultView.addEventListener(t, (e) => console.log(t, e.touches.length, doc.defaultView.frameElement?.getBoundingClientRect().left), { capture: true }); } console.log('dbg', document.elementFromPoint(180, 420)?.outerHTML?.slice(0, 160), document.elementFromPoint(180, 420)?.parentElement?.id, JSON.stringify([...document.querySelectorAll('.on')].map((e) => e.id))); }); }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: X(180), y: Y(420), id: 1 }, { x: X(230), y: Y(440), id: 2 }] });
+      for (let i = 1; i <= 8; i++) { await page.waitForTimeout(20); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: X(180) - i * 12, y: Y(420) - i * 10, id: 1 }, { x: X(230) + i * 12, y: Y(440) + i * 10, id: 2 }] }); }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await page.waitForTimeout(900);
+      const t1 = (await sv()).settings.size;
+      ok(t1 > t0, `${name}: pellizcar agranda la letra (${t0} → ${t1} %)`);
+      if (t1 !== t0) { await page.evaluate((v) => { window.__atrio.saved.settings.size = v; }, t0); }
+      // La pantalla encendida se pide al leer
+      ok((await page.evaluate(() => window.__atrio.keep)) === true, `${name}: pide la pantalla encendida mientras lees`);
+    }
     // Leer en voz alta (EPUB): lee frases seguidas y se para
     if (name.endsWith('epub')) {
-      await page.evaluate(() => document.querySelector('#b-voz').click()); await page.waitForTimeout(2500);
+      await page.evaluate(() => document.querySelector('#b-voz').click()); await page.waitForTimeout(150);
+      const volVoz = await page.evaluate(() => window.__atrio.vol);
+      await page.waitForTimeout(2350);
       const said = await page.evaluate(() => window.__atrio.spoken || []);
       ok(said.length >= 3, `${name}: lee en voz alta (${said.length} frases: «${(said[0] || '').slice(0, 40)}…»)`);
+      ok(volVoz === false, `${name}: leyendo en voz alta, los botones de volumen son el volumen`);
+      await page.evaluate(() => document.querySelector('#v-tempo').click()); await page.waitForTimeout(200);
+      const tempo = await page.textContent('#v-tempo');
+      ok(/Parar en 15 min/.test(tempo), `${name}: temporizador de la voz («${tempo}»)`);
       await page.screenshot({ path: path.join(out, name + '-11-voz.png') });
       await page.evaluate(() => document.querySelector('#v-parar').click()); await page.waitForTimeout(300);
       ok(await page.$eval('#voz', (e) => e.classList.contains('oculta')), `${name}: «Parar» quita la voz`);
+      ok((await page.evaluate(() => window.__atrio.vol)) === true, `${name}: al parar la voz, el volumen vuelve a pasar página`);
     }
     await ctx.close();
   }

@@ -469,12 +469,12 @@ fun MagPage(
                             Text("Una imagen de tu móvil para esta casilla.", color = Muted, fontSize = 13.sp)
                             Spacer(Modifier.height(12.dp))
                             val use: (String) -> Unit = { url -> setCell(p, MagCell("imagen", image = url, shape = "llenar")); pickingImage = null }
-                            Tool("ELEGIR DE MIS ARCHIVOS →", accent = true) { pick(true, use) }
+                            Tool("ELEGIR DE MIS ARCHIVOS\u00A0→", accent = true) { pick(true, use) }
                             Spacer(Modifier.height(12.dp))
-                            Tool("DESDE LA GALERÍA →") { pick(false, use) }
+                            Tool("DESDE LA GALERÍA\u00A0→") { pick(false, use) }
                             val nube = NubeHub.pickFromCloud
-                            Internet.pick?.let { web -> Spacer(Modifier.height(12.dp)); Tool("BUSCAR EN INTERNET →") { web(itemName, use) } }
-                            if (nube != null) { Spacer(Modifier.height(12.dp)); Tool("DE TU NUBE →") { nube(use) } }
+                            Internet.pick?.let { web -> Spacer(Modifier.height(12.dp)); Tool("BUSCAR EN INTERNET\u00A0→") { web(itemName, use) } }
+                            if (nube != null) { Spacer(Modifier.height(12.dp)); Tool("DE TU NUBE\u00A0→") { nube(use) } }
                             Spacer(Modifier.height(12.dp))
                             Text(if (nube != null) "Se guarda en este móvil y en tu nube, en la carpeta de esta ficha. Luego puedes encuadrarla." else "Se guarda en este móvil: tu pareja y el PC no la verán. Luego puedes encuadrarla.", color = Muted, fontSize = 12.sp)
                         }

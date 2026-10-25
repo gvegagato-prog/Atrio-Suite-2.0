@@ -82,7 +82,7 @@ fun MagSplit(
 @Composable
 fun MagLink(text: String, sub: String? = null, accent: Boolean = false, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 5.dp)) {
-        Text("$text →", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 21.sp, color = if (accent) ColGeneral else Charcoal)
+        Text("$text\u00A0→", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 21.sp, color = if (accent) ColGeneral else Charcoal)
         if (sub != null) Text(sub.uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
     }
 }
@@ -109,12 +109,31 @@ fun MagChoice(options: List<String>, selected: Int, label: String? = null, onPic
 /** Una línea dato · valor con puntos guía (como el índice de una revista). */
 @Composable
 fun MagFact(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Bottom) {
-        Text(label, fontSize = 14.sp, color = Muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        Box(Modifier.weight(1f).height(12.dp).padding(horizontal = 6.dp).drawBehind {
-            drawLine(Muted.copy(alpha = 0.6f), Offset(0f, size.height - 2), Offset(size.width, size.height - 2), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 6f)))
-        })
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+    // La cifra siempre pegada a la derecha y los puntos llenando lo que queda (con dos pesos en una fila, la fila no
+    // llegaba al borde y cada cifra quedaba en un sitio). Sin BoxWithConstraints: las casillas se miden por intrínsecos.
+    androidx.compose.ui.layout.Layout(
+        content = {
+            Text(label, fontSize = 14.sp, color = Muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Box(Modifier.drawBehind {
+                drawLine(Muted.copy(alpha = 0.6f), Offset(0f, size.height - 2), Offset(size.width, size.height - 2), 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(2f, 6f)))
+            })
+            Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+        },
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+    ) { ms, c ->
+        val v = ms[2].measure(androidx.compose.ui.unit.Constraints())
+        val hueco = 6.dp.roundToPx()
+        val ancho = if (c.hasBoundedWidth) c.maxWidth else null
+        val l = ms[0].measure(androidx.compose.ui.unit.Constraints(maxWidth = ancho?.let { ((it - v.width) * 0.75f).toInt().coerceAtLeast(0) } ?: androidx.compose.ui.unit.Constraints.Infinity))
+        val w = ancho ?: (l.width + v.width + hueco * 6)
+        val puntos = (w - l.width - v.width - hueco * 2).coerceAtLeast(0)
+        val h = maxOf(l.height, v.height)
+        val d = ms[1].measure(androidx.compose.ui.unit.Constraints.fixed(puntos, 12.dp.roundToPx().coerceAtMost(h)))
+        layout(w, h) {
+            l.place(0, h - l.height)
+            d.place(l.width + hueco, h - d.height - 3.dp.roundToPx())
+            v.place(w - v.width, h - v.height)
+        }
     }
 }
 
@@ -185,7 +204,7 @@ fun MagHours(mine: Int, main: Int, extra: Int, full: Int, msg: String = "") {
 fun MagFooter(text: String = "Editar", onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
         Box(Modifier.fillMaxWidth().height(3.dp).background(Charcoal))
-        Text("${text.uppercase()} →", color = ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp,
+        Text("${text.uppercase()}\u00A0→", color = ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp,
             modifier = Modifier.clickable(onClick = onClick).padding(vertical = 18.dp))
     }
 }
@@ -271,7 +290,7 @@ fun DesignHint(onData: () -> Unit, name: String = "", onDelete: (() -> Unit)? = 
         Text("Toca una casilla para elegir qué va en ella (o texto libre, o una imagen). Arrastra el círculo de la línea para moverla.",
             fontSize = 13.sp, lineHeight = 18.sp)
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("DATOS Y NOTA →", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable(onClick = onData).padding(vertical = 4.dp))
+            Text("DATOS Y NOTA\u00A0→", color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.clickable(onClick = onData).padding(vertical = 4.dp))
             Spacer(Modifier.weight(1f))
             // Por si lo añadiste por error
             if (onDelete != null) Text("ELIMINAR DE LA APP", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,

@@ -129,6 +129,7 @@ textarea { min-height: 120px; resize: vertical; border: 1px solid var(--fg); pad
 .boton.suave { background: transparent; color: var(--fg); border: 1px solid var(--fg); }
 mark { background: var(--fg); color: var(--bg); }
 .pestanas { display: flex; gap: 18px; margin-bottom: 8px; }
+.mas { margin-top: 22px; padding: 10px 0; font-size: 11px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
 
 /* Lo que llevas leído (en el índice) */
 .lectura { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--fg); border-bottom: 1px solid var(--fg); margin-bottom: 14px; }
@@ -143,6 +144,14 @@ mark { background: var(--fg); color: var(--bg); }
 .aviso { position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 96px); transform: translate(-50%, 20px); opacity: 0; z-index: 60;
   background: var(--fg); color: var(--bg); padding: 10px 16px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; transition: all .25s; pointer-events: none; }
 .aviso.on { opacity: 1; transform: translate(-50%, 0); }
+.aviso.con-boton { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+.aviso.con-boton.on { pointer-events: auto; }
+.aviso button { color: var(--bg); font: inherit; font-weight: 900; border-bottom: 2px solid var(--accent); padding: 2px 0; }
+/* Volver a donde estabas (tras saltar con el índice, la búsqueda, las notas…) */
+.volver { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + 34px); z-index: 18; background: var(--surface); color: var(--fg);
+  border: 1px solid var(--fg); padding: 9px 14px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+body.menu .volver { bottom: calc(var(--safe-bottom) + 132px); }
+.voz button.on { border-bottom: 2px solid var(--bg); padding-bottom: 4px; }
 
 /* Menú de una palabra (mantener pulsado) */
 .pal { position: fixed; z-index: 31; left: 0; right: 0; bottom: 0; max-width: 560px; margin: 0 auto; background: var(--surface); color: var(--fg);

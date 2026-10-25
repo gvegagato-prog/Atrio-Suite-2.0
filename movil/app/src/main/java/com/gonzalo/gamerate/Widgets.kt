@@ -497,7 +497,7 @@ object Widgets {
         val img = imagen(ctx, e.cover, px(ctx, if (compacto) max(w, h) else h * 0.9f))
         val av = d.avance(e)
         val archivo = d.conArchivo(e)
-        val accion = if (archivo) "Leer  →" else "Abrir ficha  →"
+        val accion = if (archivo) "Leer \u00A0→" else "Abrir ficha \u00A0→"
         val zonas = mutableListOf(Zona(0f, 0f, w, h, tocar(d, e), (if (archivo) "Seguir leyendo " else "Abrir ") + e.name))
         if (libros.size > 1) zonas += Zona(w - 72f, 0f, 72f, 42f, op(ctx, WTipo.LEYENDO, id, "sig"), "Otro libro")
         return Pagina(zonas) {
@@ -1029,7 +1029,7 @@ object Widgets {
                 seccion("¿Y ahora qué?", pad, pad, w - 2 * pad, 0xFFFFFFFF.toInt(), acentoFoto)
                 val l = titular(e.name, w - 2 * pad, h * 0.42f, 24f, 12f, 3, 0xFFFFFFFF.toInt())
                 pon(l, pad, h - pad - 22f - l.height)
-                ante("Empezar  →", pad, h - pad - 11f, w * 0.6f, acentoFoto, 8.5f)
+                ante("Empezar \u00A0→", pad, h - pad - 11f, w * 0.6f, acentoFoto, 8.5f)
                 if (lista.size > 1) ante("Otra  ›", w - pad - 60f, h - pad - 11f, 60f, 0xCCFFFFFF.toInt(), 8.5f, Layout.Alignment.ALIGN_OPPOSITE)
                 return@Pagina
             }
@@ -1046,7 +1046,7 @@ object Widgets {
             pon(l, x0, y0)
             pon(capa(meta, tp(fCursiva, 12f, gris), rw, 1), x0, y0 + l.height + 4f)
             c.drawRect(x0, h - pad - 22f, w - pad, h - pad - 21.4f, lleno(linea))
-            ante("$empezar  →", x0, h - pad - 12f, rw * 0.7f, acento)
+            ante("$empezar \u00A0→", x0, h - pad - 12f, rw * 0.7f, acento)
             if (lista.size > 1) ante("Otra  ›", w - pad - 70f, h - pad - 12f, 70f, gris, 9f, Layout.Alignment.ALIGN_OPPOSITE)
         }
     }

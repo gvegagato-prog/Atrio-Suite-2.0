@@ -692,7 +692,7 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
                             Spacer(Modifier.height(10.dp))
                             if (Skin.revista) {
                                 Box(Modifier.fillMaxWidth().height(1.dp).background(Charcoal))
-                                Text("ME DA IGUAL, SIGUIENTE →", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                                Text("ME DA IGUAL, SIGUIENTE\u00A0→", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                                     modifier = Modifier.press { val all = answers + JSONObject(); answers = all; if (i + 1 >= qs.size) finish(all) else idx = i + 1 }.padding(vertical = 14.dp))
                             } else TextButton({ val all = answers + JSONObject(); answers = all; if (i + 1 >= qs.size) finish(all) else idx = i + 1 }) {
                                 Text("Me da igual, siguiente", color = Muted)
@@ -939,7 +939,7 @@ private fun QuizResultsRevista(
                     Text((if (both.isEmpty()) "Sin coincidencias con $partnerName" else "Coincidís con $partnerName").uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                     if (both.isEmpty()) Text("Nada de lo que te sale estaba en su último test. Prueba otra ronda.", fontFamily = Display, fontStyle = italic, fontSize = 16.sp, color = Muted, modifier = Modifier.padding(top = 4.dp))
                     both.take(8).forEach { b ->
-                        Text("${b.title} →", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().press { onOpen(b) }.padding(vertical = 5.dp))
+                        Text("${b.title}\u00A0→", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 24.sp, modifier = Modifier.fillMaxWidth().press { onOpen(b) }.padding(vertical = 5.dp))
                     }
                     if (both.size > 8) Text("Y ${both.size - 8} MÁS", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
@@ -1109,7 +1109,7 @@ private fun QuizItemSheet(it: QuizItem, accent: Color, added: Boolean, rawgKey: 
                         if (!translated) {
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                if (translating) "Traduciendo… (la primera vez se descarga el traductor del inglés, unos 30 MB)" else "TRADUCIR AL ESPAÑOL →",
+                                if (translating) "Traduciendo… (la primera vez se descarga el traductor del inglés, unos 30 MB)" else "TRADUCIR AL ESPAÑOL\u00A0→",
                                 color = if (translating) Muted else accent, fontSize = if (translating) 13.sp else 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
                                 modifier = Modifier.press {
                                     if (translating) return@press

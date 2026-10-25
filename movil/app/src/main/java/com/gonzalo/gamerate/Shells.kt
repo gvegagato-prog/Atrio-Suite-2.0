@@ -215,7 +215,7 @@ private fun RevistaHome(m: ShellModel) {
                     )
                     if (!m.readOnly) {
                         val (label, _) = m.primaryLabel(o)
-                        Text("$label →", color = Red2, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
+                        Text("$label\u00A0→", color = Red2, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
                     }
                 }
                 val ed = Ediciones.actual
@@ -234,7 +234,7 @@ private fun RevistaHome(m: ShellModel) {
                             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
                                 FitTitle(e.name, fs0, lh0, color = Color.White, letterSpacing = (-1.5).sp, modifier = Modifier.fillMaxWidth().press { m.open(e) })
                                 Text(meta, color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-                                if (!m.readOnly) Text("${m.primaryLabel(o).first} →", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                                if (!m.readOnly) Text("${m.primaryLabel(o).first}\u00A0→", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                                     modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
                             }
                         }
@@ -247,7 +247,7 @@ private fun RevistaHome(m: ShellModel) {
                         Column(Modifier.fillMaxWidth().background(Red2).padding(horizontal = 16.dp, vertical = 14.dp)) {
                             FitTitle(e.name, fs0, lh0, color = sobreColor, letterSpacing = (-1).sp, modifier = Modifier.fillMaxWidth().press { m.open(e) })
                             Text(meta, color = sobreColor.copy(alpha = 0.85f), fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
-                            if (!m.readOnly) Text("${m.primaryLabel(o).first.uppercase()} →", color = sobreColor, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp,
+                            if (!m.readOnly) Text("${m.primaryLabel(o).first.uppercase()}\u00A0→", color = sobreColor, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp,
                                 modifier = Modifier.padding(top = 10.dp).press { m.primary(o) })
                         }
                         cambiar()

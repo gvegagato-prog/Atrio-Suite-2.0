@@ -105,6 +105,9 @@ fun App(
     var segment by remember { mutableStateOf(0) }
     var cineTv by remember { mutableStateOf(false) }
     var diaryKind by remember { mutableStateOf(0) }
+    // El Diario con todas las categorías juntas («Todo») o solo una
+    var diaryAll by remember { mutableStateOf(ctx.getSharedPreferences("gamerate", android.content.Context.MODE_PRIVATE).getBoolean("diario_todo", true)) }
+    fun ponDiarioTodo(on: Boolean) { diaryAll = on; ctx.getSharedPreferences("gamerate", android.content.Context.MODE_PRIVATE).edit().putBoolean("diario_todo", on).apply() }
     var wheelOpen by remember { mutableStateOf(false) }
     var partner by remember { mutableStateOf(Couple.cached(store)) }
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
@@ -122,6 +125,7 @@ fun App(
     remember { Mode.look = store.look; true }
     LaunchedEffect(Unit) {
         if (store.paired && store.notifyPartner) PartnerWatch.schedule(ctx)
+        runCatching { LecturaAviso.programa(ctx) }
     }
 
     // Viendo la app de tu pareja (solo lectura).
@@ -1103,22 +1107,45 @@ fun App(
                 when {
                     dest == 4 -> {
                         val dk = if (pv) p!!.kindById(section) else myKinds.find { it.id == section } ?: GAMES
-                        CalendarScreen(dk, myGames, myPlays, side, { go(0) }, heading = "Diario", top = {
+                        // Las categorías que se ven: todas («Todo») o la elegida
+                        val dks = if (diaryAll) sectionKinds else listOf(dk)
+                        val mine = remember(dks, games, plays, books, bplays, extra, extraPlays, p, pv) { dks.flatMap { k -> calItems(gs(k), ps(k), k.id) } }
+                        // Lo de tu pareja, de las categorías que tenéis igual (las propias, con los mismos criterios)
+                        val theirs = if (pv || p == null) null else remember(dks, p) {
+                            dks.flatMap { k ->
+                                if (k.custom && p.match(k)?.labels?.drop(1) != k.labels.drop(1)) emptyList()
+                                else p.side(k).let { ps0 -> calItems(ps0.games, ps0.plays, k.id) }
+                            }
+                        }
+                        val lado = if (theirs != null && p != null) PartnerSide(p.name, emptyList(), emptyList(), emptyMap()) else null
+                        val conLibros = !pv && dks.any { it.isBook }
+                        val vuelve = rememberResumeTick()
+                        val leido = remember(conLibros, syncTick, dest, vuelve) { if (conLibros) BookFiles.leidoPorDia(ctx) else emptyMap() }
+                        CalendarScreen(dk, myGames, myPlays, lado, { go(0) }, heading = "Diario", top = {
                             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                                item { SoftChip("Todo", diaryAll) { ponDiarioTodo(true) } }
                                 items(sectionKinds.size) { i ->
                                     val k = sectionKinds[i]
-                                    SoftChip(k.title, k.id == dk.id) { diaryKind = k.id; section = k.id }
+                                    SoftChip(k.title, !diaryAll && k.id == dk.id) { ponDiarioTodo(false); diaryKind = k.id; section = k.id }
                                 }
                             }
-                        }) { c ->
+                        }, items = mine, itemsP = theirs, leido = leido,
+                            nombreLibro = { id -> (books.find { it.id == id }?.name ?: bplays.find { it.id == id }?.name).orEmpty() },
+                            onOpenLeido = { id ->
+                                section = BOOKS.id
+                                bplays.find { it.id == id }?.let { screen = Screen.PlayDetail(it) } ?: books.find { it.id == id }?.let { screen = Screen.Edit(it, false) }
+                            }) { c ->
+                            val ck = sectionKinds.find { it.id == c.kind } ?: dk
                             if (pv) {
-                                screen = Screen.PartnerItem(dk.id, c.id)
-                            } else if (Mode.calP && side != null) {
-                                screen = Screen.PartnerItem(partner?.match(dk)?.id ?: dk.id, c.id)
-                            } else if (c.isPlay) {
-                                myPlays.find { it.id == c.id }?.let { screen = Screen.PlayDetail(it) }
+                                section = ck.id
+                                screen = Screen.PartnerItem(ck.id, c.id)
+                            } else if (Mode.calP && p != null) {
+                                screen = Screen.PartnerItem(p.match(ck)?.id ?: ck.id, c.id)
                             } else {
-                                myGames.find { it.id == c.id }?.let { screen = Screen.Edit(it, false) }
+                                // (las fichas se abren en su categoría: la sección pasa a la de lo que tocas)
+                                section = ck.id
+                                if (c.isPlay) playsOf(ck).find { it.id == c.id }?.let { screen = Screen.PlayDetail(it) }
+                                else gamesOf(ck).find { it.id == c.id }?.let { screen = Screen.Edit(it, false) }
                             }
                         }
                     }
@@ -1268,6 +1295,10 @@ fun App(
                     onSuite = { screen = Screen.Suite },
                     onMassScores = { screen = Screen.MassScore(Screen.Profile) },
                     onDuelos = { screen = Screen.Duelos(Screen.Profile) },
+                    onPedirAvisos = {
+                        if (android.os.Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                            perm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    },
                     goalGames = goalG, goalBooks = goalB,
                     onGoal = { k, v ->
                         val nv = v.coerceIn(0, 999)

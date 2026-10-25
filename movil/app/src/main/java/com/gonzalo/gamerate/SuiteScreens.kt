@@ -558,7 +558,7 @@ fun SuiteScreen(
                         val nscope = rememberCoroutineScope()
                         val faltan = remember(shots) { if (KDrive.on(nctx)) NubeSync.missingShots(Store(nctx)) else emptyList() }
                         if (faltan.isNotEmpty()) {
-                            Text(if (NubeSync.running) NubeSync.status else "Traer ${faltan.size} de tu nube →", color = ColGeneral, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            Text(if (NubeSync.running) NubeSync.status else "Traer ${faltan.size} de tu nube\u00A0→", color = ColGeneral, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 8.dp).clickable(enabled = !NubeSync.running) {
                                     nscope.launch { NubeSync.running = true; try { NubeSync.fetchShots(nctx, faltan) } finally { NubeSync.running = false } }
                                 })

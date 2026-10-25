@@ -220,7 +220,7 @@ open class Capturas6Test {
         rule.onNodeWithContentDescription("Casilla Imagen").performClick()
         rule.onAllNodesWithText("Cambiar la imagen")[0].performClick(); shoot("r9f_imagen_pestanas")
         rule.onAllNodesWithText("ARCHIVO")[0].performClick(); shoot("r9g_imagen_archivo")
-        org.junit.Assert.assertTrue(rule.onAllNodesWithText("ELEGIR DE MIS ARCHIVOS →").fetchSemanticsNodes().isNotEmpty())
+        org.junit.Assert.assertTrue(rule.onAllNodesWithText("ELEGIR DE MIS ARCHIVOS\u00A0→").fetchSemanticsNodes().isNotEmpty())
         rule.onAllNodesWithText("Cerrar")[0].performClick(); rule.waitForIdle()
         rule.onNodeWithContentDescription("Casilla Imagen").performClick()
         rule.onAllNodesWithText("Encuadrar la imagen")[0].performClick(); shoot("r9b_encuadre")
@@ -238,8 +238,9 @@ open class Capturas6Test {
         rule.onRoot().performTouchInput { swipeUp() }; shoot("r5c_ficha_jugando_3")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        rule.onRoot().performTouchInput { swipeUp() }; rule.onRoot().performTouchInput { swipeUp() }
+        repeat(3) { rule.onRoot().performTouchInput { swipeDown() } }; rule.waitForIdle()
         rule.onAllNodesWithText("Diario")[0].performClick(); shoot("r6_diario")
+        org.junit.Assert.assertTrue("el Diario se abre desde la portada", rule.onAllNodesWithText("Todo").fetchSemanticsNodes().isNotEmpty())
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.runOnUiThread { Mode.dark = true; Mode.themeMode = 2 }
         rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }
@@ -417,10 +418,10 @@ open class Capturas6Test {
         shoot("p00a_portada"); go("Juegos"); go("Pasados"); go("Hades II"); shoot("p00_foto_llena")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p00b_foto_original")
         home()
-        go("Juegos"); go("DESCUBRIR →"); shoot("p01_descubrir")
+        go("Juegos"); go("DESCUBRIR\u00A0→"); shoot("p01_descubrir")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p01b_descubrir_filtros")
         go("5"); shoot("p02_pregunta"); back(); back()
-        go("Libros"); go("DESCUBRIR →"); shoot("p03_descubrir_libro"); home()
+        go("Libros"); go("DESCUBRIR\u00A0→"); shoot("p03_descubrir_libro"); home()
         go("Diario"); shoot("p04_diario"); home()
         go("Estadísticas"); shoot("p05_estadisticas"); home()
         go("Perfil"); shoot("p06_perfil")
@@ -429,15 +430,15 @@ open class Capturas6Test {
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p07b_ajustes"); home()
         go("Juegos"); shoot("p08_biblioteca")
         go("+ AÑADIR"); shoot("p09_buscar"); back()
-        go("Deadlock"); go("Apuntar notas →"); shoot("p10_apunte"); back(); home()
+        go("Deadlock"); go("Apuntar notas\u00A0→"); shoot("p10_apunte"); back(); home()
         go("Perfil"); go("Apariencia"); shoot("p11_apariencia"); back(); home()
         go("PC"); shoot("p12_pc"); home()
-        go("Estadísticas"); go("VER TU ${java.time.LocalDate.now().year}, NÚMERO ESPECIAL →"); shoot("p15_especial")
+        go("Estadísticas"); go("VER TU ${java.time.LocalDate.now().year}, NÚMERO ESPECIAL\u00A0→"); shoot("p15_especial")
         // El número especial es un diálogo: tiene su propia raíz
         val dlg = { rule.onAllNodes(androidx.compose.ui.test.isRoot()).let { it[it.fetchSemanticsNodes().size - 1] } }
         dlg().performTouchInput { swipeUp() }; shoot("p15b_especial")
         dlg().performTouchInput { swipeUp() }; shoot("p15c_especial"); back(); home()
-        go("Libros"); go("DESCUBRIR →"); go("5")
+        go("Libros"); go("DESCUBRIR\u00A0→"); go("5")
         repeat(5) { i -> rule.waitForIdle(); Thread.sleep(300); rule.onAllNodesWithText(if (i % 2 == 0) "A" else "B")[0].performClick() }
         rule.waitUntil(60_000) { rule.onAllNodesWithText("A MI LISTA +").fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("No ha salido nada", substring = true).fetchSemanticsNodes().isNotEmpty() }
         shoot("p13_resultados")

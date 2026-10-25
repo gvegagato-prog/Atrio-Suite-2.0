@@ -1,6 +1,7 @@
 package com.gonzalo.gamerate
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -34,6 +35,8 @@ fun ProfileScreen(
     onStyle: () -> Unit, onSettings: () -> Unit, onSuite: () -> Unit,
     onMassScores: () -> Unit,
     onDuelos: () -> Unit = {},
+    /** Pedir permiso para los avisos (Android 13+). */
+    onPedirAvisos: () -> Unit = {},
     goalGames: Int, goalBooks: Int, onGoal: (Int, Int) -> Unit,
     couple: @Composable () -> Unit,
     onBack: () -> Unit
@@ -122,6 +125,32 @@ fun ProfileScreen(
                 Text(BOOKS.title, Modifier.weight(1f), fontWeight = FontWeight.Medium)
                 Stepper(goalBooks, "", { onGoal(1, goalBooks - 1) }, { onGoal(1, goalBooks + 1) })
             }
+            // Lectura al día (con el lector de Atrio): se ve en la portada, en el Diario y en el propio lector
+            var meta by remember { mutableStateOf(store.metaLectura) }
+            var aviso by remember { mutableStateOf(store.avisoLectura) }
+            fun ponMeta(v: Int) { meta = v.coerceIn(0, 600); store.metaLectura = meta; LecturaAviso.programa(ctx) }
+            fun ponAviso(h: Int) { aviso = h; store.avisoLectura = h; LecturaAviso.programa(ctx) }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Lectura al día", fontWeight = FontWeight.Medium)
+                    Text(if (meta > 0) "minutos con el lector" else "sin objetivo", color = Muted, fontSize = 12.sp)
+                }
+                Stepper(meta, " min", { ponMeta(meta - 5) }, { ponMeta(meta + 5) })
+            }
+            if (meta > 0) {
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Avisarme si no lo cumplo", fontWeight = FontWeight.Medium)
+                        Text(if (aviso >= 0) "a las ${"%02d".format(aviso)}:00, con el libro por el que vas" else "sin aviso", color = Muted, fontSize = 12.sp)
+                    }
+                    androidx.compose.material3.Switch(aviso >= 0, { on -> if (on) { onPedirAvisos(); ponAviso(21) } else ponAviso(-1) })
+                }
+                if (aviso >= 0) Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End) {
+                    Stepper(aviso, ":00", { ponAviso((aviso + 23) % 24) }, { ponAviso((aviso + 1) % 24) })
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -133,11 +162,28 @@ fun ProfileScreen(
         }
         Spacer(Modifier.height(12.dp))
 
-        ProfileRow(Icons.Rounded.Edit, "Cambiar notas en masa", "Elige varios y repasa sus notas uno tras otro (p. ej. tras importar)", Modifier.rise(5), onMassScores)
+        // Repasar notas (sobre todo tras importar): por duelos o una a una
+        var repasar by remember { mutableStateOf(false) }
+        ProfileRow(Icons.Rounded.Edit, "Repasar notas", "Duelos de libros o cambiar varias notas seguidas (p. ej. tras importar)", Modifier.rise(5)) { repasar = true }
         Spacer(Modifier.height(12.dp))
-
-        ProfileRow(Icons.Rounded.Edit, "Duelos de libros", "Ordena tus libros con «¿cuál te gustó más?» y reparte notas sin empates (p. ej. tras importar)", Modifier.rise(5), onDuelos)
-        Spacer(Modifier.height(12.dp))
+        if (repasar) androidx.compose.material3.AlertDialog(
+            onDismissRequest = { repasar = false },
+            title = { Text("Repasar notas", fontFamily = Display) },
+            text = {
+                Column {
+                    Column(Modifier.fillMaxWidth().clickable { repasar = false; onDuelos() }.padding(vertical = 10.dp)) {
+                        Text("Duelos de libros", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text("«¿Cuál te gustó más?» de dos en dos; al final, notas sin empates", color = Muted, fontSize = 13.sp)
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+                    Column(Modifier.fillMaxWidth().clickable { repasar = false; onMassScores() }.padding(vertical = 10.dp)) {
+                        Text("Cambiar notas en masa", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text("Eliges varios y les cambias la nota uno tras otro", color = Muted, fontSize = 13.sp)
+                    }
+                }
+            },
+            confirmButton = { androidx.compose.material3.TextButton({ repasar = false }) { Text("Cancelar") } }
+        )
 
         ProfileRow(Icons.Rounded.Tune, "Ajustes", "Claves de servicios, importar de otras apps, Drive y copias", Modifier.rise(5), onSettings)
         Spacer(Modifier.height(20.dp))

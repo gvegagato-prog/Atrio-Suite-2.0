@@ -145,7 +145,7 @@ private fun DuelosIntro(
             val total = n * Duelos.OBJETIVO / 2
             Text("$n libros", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 40.sp)
             Text("Unos $total duelos en total (cada uno, 3 o 4 segundos): se hacen a ratos, de 20 en 20.", color = Muted, fontSize = 14.sp, modifier = Modifier.padding(bottom = 18.dp))
-            Text(if (enCurso) "SEGUIR · LLEVAS $hechos DUELOS →" else "EMPEZAR →", color = ColGeneral, fontSize = 15.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            Text(if (enCurso) "SEGUIR · LLEVAS $hechos DUELOS\u00A0→" else "EMPEZAR\u00A0→", color = ColGeneral, fontSize = 15.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                 modifier = Modifier.press { onEmpezar(false) }.padding(vertical = 10.dp))
             if (enCurso) Text("EMPEZAR DE CERO", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                 modifier = Modifier.press { onEmpezar(true) }.padding(vertical = 10.dp))
@@ -181,7 +181,7 @@ private fun DuelosJuego(
                 descanso -> Column(Modifier.fillMaxWidth().padding(vertical = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Llevas $sesion seguidos", fontFamily = Display, fontSize = 26.sp, textAlign = TextAlign.Center)
                     Text("Todo está guardado. Puedes dejarlo por hoy y seguir otro día.", color = Muted, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
-                    Text("SEGUIR UN POCO MÁS →", color = ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { descanso = false }.padding(10.dp))
+                    Text("SEGUIR UN POCO MÁS\u00A0→", color = ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { descanso = false }.padding(10.dp))
                     Text("POR HOY YA ESTÁ", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { onSalir() }.padding(10.dp))
                 }
                 a == null || b == null -> Column(Modifier.fillMaxWidth().padding(vertical = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -212,7 +212,7 @@ private fun DuelosJuego(
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             val listo = avance >= 0.25f
             Text(if (listo) "Se guarda solo. Puedes parar cuando quieras." else "Haz unos cuantos duelos para ver las notas.", color = Muted, fontSize = 13.sp, modifier = Modifier.weight(1f))
-            Text("VER NOTAS →", color = if (listo) ColGeneral else Muted, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            Text("VER NOTAS\u00A0→", color = if (listo) ColGeneral else Muted, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                 modifier = Modifier.press(haptic = listo) { if (listo) onTerminar() }.padding(vertical = 8.dp))
         }
     }
@@ -282,7 +282,7 @@ private fun DuelosNotas(libros: List<Game>, notas: Map<Long, Int>, duelos: List<
         Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("← SEGUIR CON DUELOS", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp, modifier = Modifier.weight(1f).press { onBack() }.padding(vertical = 8.dp))
-            Text("APLICAR →", color = ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { confirmar = true }.padding(vertical = 8.dp))
+            Text("APLICAR\u00A0→", color = ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press { confirmar = true }.padding(vertical = 8.dp))
         }
     }
     if (confirmar) AlertDialog(

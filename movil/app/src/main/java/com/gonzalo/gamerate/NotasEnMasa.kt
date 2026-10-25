@@ -117,7 +117,7 @@ private fun MassChoose(
         Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (picked.isEmpty()) "Nada elegido" else "${picked.size} elegido${if (picked.size == 1) "" else "s"}", color = Muted, fontSize = 14.sp, modifier = Modifier.weight(1f))
-            Text("REPASAR →", color = if (picked.isEmpty()) Muted else ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            Text("REPASAR\u00A0→", color = if (picked.isEmpty()) Muted else ColGeneral, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                 modifier = Modifier.press(haptic = picked.isNotEmpty()) { if (picked.isNotEmpty()) onStart() }.padding(vertical = 8.dp))
         }
     }
@@ -165,7 +165,7 @@ private fun MassReview(
                         MassLink("SALTAR", Muted) { onNext(kind, null) }
                         Spacer(Modifier.width(22.dp))
                         val last = pos == list.size - 1
-                        MassLink(if (last) "GUARDAR Y TERMINAR" else "GUARDAR →", ColGeneral) {
+                        MassLink(if (last) "GUARDAR Y TERMINAR" else "GUARDAR\u00A0→", ColGeneral) {
                             onNext(kind, if (v != g.scores()) g.withScores(v).copy(updated = System.currentTimeMillis()) else null)
                         }
                     }
@@ -189,7 +189,7 @@ private fun MassDone(changed: Int, total: Int, onClose: () -> Unit) {
             fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 20.sp, color = Muted
         )
         Spacer(Modifier.height(24.dp))
-        MassLink("VOLVER →", ColGeneral, onClose)
+        MassLink("VOLVER\u00A0→", ColGeneral, onClose)
     }
 }
 
