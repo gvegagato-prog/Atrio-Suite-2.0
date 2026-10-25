@@ -144,7 +144,9 @@ mark { background: var(--fg); color: var(--bg); }
 .aviso { position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 96px); transform: translate(-50%, 20px); opacity: 0; z-index: 60;
   background: var(--fg); color: var(--bg); padding: 10px 16px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; transition: all .25s; pointer-events: none; }
 .aviso.on { opacity: 1; transform: translate(-50%, 0); }
-.aviso.con-boton { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+.aviso { max-width: calc(100vw - 32px); }
+.aviso.con-boton { display: flex; align-items: center; gap: 16px; width: max-content; line-height: 1.35; }
+.aviso.con-boton button { flex: none; white-space: nowrap; }
 .aviso.con-boton.on { pointer-events: auto; }
 .aviso button { color: var(--bg); font: inherit; font-weight: 900; border-bottom: 2px solid var(--accent); padding: 2px 0; }
 /* Volver a donde estabas (tras saltar con el índice, la búsqueda, las notas…) */
@@ -196,3 +198,9 @@ body.menu .volver { bottom: calc(var(--safe-bottom) + 132px); }
 .voz-t { flex: 1 1 100%; font-size: 10px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
 .voz button { color: var(--bg); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 6px 0; }
 .voz button.peligro { margin-left: auto; border-bottom: 2px solid var(--accent); padding-bottom: 4px; }
+
+/* Compartir una cita: la vista previa de la lámina */
+.lamina { border: 1px solid var(--line); min-height: 120px; display: grid; place-items: center; }
+.lamina img { width: 100%; max-width: 420px; display: block; }
+.lamina .gris { color: var(--muted); font-style: italic; font-family: var(--font-titulo); padding: 30px 0; }
+.boton:disabled { opacity: .4; }

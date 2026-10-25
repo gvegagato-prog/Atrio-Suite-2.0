@@ -223,7 +223,11 @@ fun MagPage(
     // (de nuevo cuando llega una maqueta de otro dispositivo)
     var rows by remember(key, MagLayouts.version) {
         mutableStateOf(MagLayouts.load(ctx, key, tpl)?.let { saved ->
-            if ("subrayados" in defs) MagLayouts.withNew(ctx, key, saved, "subrayados", "lectura") else saved
+            var r = saved
+            if ("subrayados" in defs) r = MagLayouts.withNew(ctx, key, r, "subrayados", "lectura")
+            // (Atrio 6.63: «Dónde verla» en pelis y series, detrás de la crítica)
+            if ("donde" in defs) r = MagLayouts.withNew(ctx, key, r, "donde", "critica")
+            r
         } ?: defaults)
     }
     fun set(n: List<MagRowSpec>) { rows = n; MagLayouts.save(ctx, key, n) }

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 'use strict';
-// El brillo del lector: el gesto del borde izquierdo y la barra del panel empiezan en el brillo de verdad (en automático,
-// el del móvil), la franja del borde es estrecha y, con el menú abierto, deslizar no toca el brillo.
+// El brillo en el lector: no tiene brillo propio (usa el del móvil). Deslizar por el borde izquierdo empieza en el brillo
+// del móvil y, al soltar, lo pone en el móvil (con permiso) o solo mientras lees (sin él, y avisa con «Permitir»). La
+// franja del borde es estrecha y, con el menú abierto, deslizar no toca el brillo.
 // Uso: node herramientas/lector/prueba-brillo.js libro.epub
 const http = require('http');
 const fs = require('fs');
@@ -28,13 +29,16 @@ const ok = (c, m) => { console.log((c ? '  ✔ ' : '  ✘ ') + m); if (!c) proce
   const errores = [];
   page.on('pageerror', (e) => errores.push(e.message));
   await page.addInitScript(() => {
-    const st = { brillos: [] };
+    const st = { brillos: [], movil: [], permiso: false, pedido: 0 };
     window.__b = st;
     window.Atrio = new Proxy({
-      state: () => JSON.stringify({ title: 'Prueba', file: 'l.epub', settings: { brightness: -1, brVer: 2 }, annotations: [], bookmarks: [], stats: {}, accent: { light: '#C8372D', dark: '#E0533F' } }),
+      // (un brillo guardado de antes, del 20 %: ya no se usa)
+      state: () => JSON.stringify({ title: 'Prueba', file: 'l.epub', settings: { brightness: 0.2, brVer: 2 }, annotations: [], bookmarks: [], stats: {}, accent: { light: '#C8372D', dark: '#E0533F' } }),
       setBrightness: (v) => st.brillos.push(v),
-      // el móvil está al 62 % de su barra
-      brilloActual: () => 0.62,
+      // el móvil está al 62 % de su barra (o donde lo haya puesto el lector)
+      brilloActual: () => st.actual ?? 0.62,
+      brilloMovil: (v) => { st.movil.push(v); if (!st.permiso) return 'permiso'; st.actual = v; return 'ok'; },
+      pedirPermisoBrillo: () => { st.pedido++; },
       saveSettings: (j) => { st.ajustes = JSON.parse(j); },
     }, { get: (t, k) => (k in t ? t[k] : () => {}) });
   });
@@ -54,31 +58,45 @@ const ok = (c, m) => { console.log((c ? '  ✔ ' : '  ✘ ') + m); if (!c) proce
   console.log('Brillo del lector');
   const menuAbierto = await page.$eval('#abajo', (e) => !e.classList.contains('oculta'));
   if (menuAbierto) { await page.evaluate(() => document.querySelector('#velo')?.click()); await page.waitForTimeout(500); }
-  // 1. Deslizar hacia abajo por el borde, en automático: baja desde el 62 % del móvil (no desde el 50 %)
+  // 0. Sin brillo propio: al abrir no pone ninguno (el 20 % guardado de antes no vale), y no hay botón «Luz»
+  ok((await page.evaluate(() => window.__b.brillos.filter((v) => v >= 0).length)) === 0 && !(await page.$('#b-brillo')), 'al abrir, el brillo es el del móvil (ningún brillo propio ni botón «Luz»)');
+  // 1. Sin permiso: deslizar baja desde el 62 % del móvil; al soltar, se le pide al móvil, no deja, y se queda solo
+  //    mientras lees, con un aviso para dar el permiso
   const antes = await cuantos();
   await desliza(10, 300, 420);
   const b1 = await ultimo();
   const esperado = 0.62 - 120 / (860 * 0.7);
-  ok((await cuantos()) > antes && Math.abs(b1 - esperado) < 0.05, `deslizar 120 px por el borde: del 62 % del móvil al ${Math.round(b1 * 100)} % (≈ ${Math.round(esperado * 100)} %)`);
-  // 2. Fuera de la franja (a 60 px del borde) no se toca el brillo
+  const m1 = await page.evaluate(() => window.__b.movil.at(-1));
+  ok((await cuantos()) > antes && Math.abs(b1 - esperado) < 0.05 && Math.abs(m1 - b1) < 0.001, `deslizar 120 px por el borde: del 62 % del móvil al ${Math.round(b1 * 100)} % (≈ ${Math.round(esperado * 100)} %), y se le pide al móvil`);
+  await page.waitForTimeout(1200);
+  const avisoPermiso = await page.$eval('#aviso', (e) => e.classList.contains('on') && /permiso/.test(e.textContent) && /Permitir/.test(e.textContent));
+  ok(avisoPermiso, 'sin permiso, avisa con «Permitir»');
+  if (avisoPermiso) { await page.click('#aviso button'); await page.waitForTimeout(200); }
+  ok((await page.evaluate(() => window.__b.pedido)) === 1, '«Permitir» abre los ajustes de Android para el permiso');
+  // 2. El siguiente desliz empieza donde lo dejaste (aunque el móvil no lo tenga)
+  await page.evaluate(() => { window.__b.permiso = true; });
+  await desliza(10, 300, 360);
+  const b2 = await ultimo();
+  ok(Math.abs(b2 - (b1 - 60 / (860 * 0.7))) < 0.05, `el siguiente desliz sigue desde ahí (${Math.round(b2 * 100)} %)`);
+  // 3. Con permiso, al soltar va al brillo del móvil
+  ok(Math.abs((await page.evaluate(() => window.__b.actual)) - b2) < 0.001, `con permiso, el brillo queda en el móvil (${Math.round(b2 * 100)} %)`);
+  // 4. Fuera de la franja (a 60 px del borde) no se toca el brillo
   let n0 = await cuantos();
   await desliza(60, 300, 450);
   ok((await cuantos()) === n0, 'a 60 px del borde, deslizar no cambia el brillo');
-  // 3. Con el menú abierto, deslizar hacia abajo (para cerrarlo) no toca el brillo
+  // 5. Con el menú abierto, deslizar hacia abajo (para cerrarlo) no toca el brillo
   await page.evaluate(() => window.atrioMenu ? window.atrioMenu() : null);
   await desliza(206, 600, 380);   // abre el menú
   const abierto = await page.$eval('#abajo', (e) => !e.classList.contains('oculta'));
   n0 = await cuantos();
   await desliza(10, 300, 460);
   ok(abierto && (await cuantos()) === n0, `con el menú abierto, deslizar por el borde no toca el brillo (menú: ${abierto})`);
-  // 4. El panel de brillo: la barra está donde está el brillo de ahora
-  await page.evaluate(() => { document.querySelector('#b-brillo')?.click(); });
-  await page.waitForTimeout(400);
-  const barra = await page.$eval('#br', (e) => parseFloat(e.value));
-  ok(Math.abs(barra - b1) < 0.011, `la barra del panel está en el brillo de ahora (${barra})`);
-  await page.evaluate(() => document.querySelector('#br-auto')?.click()); await page.waitForTimeout(300);
-  const barra2 = await page.$eval('#br', (e) => parseFloat(e.value));
-  ok(Math.abs(barra2 - 0.62) < 0.011 && (await ultimo()) < 0, `en automático, la barra se pone donde está la del móvil (${barra2}) y se le deja el brillo al móvil`);
+  // 6. La luz cálida está ahora en «Letra»
+  await page.evaluate(() => document.querySelector('#b-ajustes').click()); await page.waitForTimeout(500);
+  ok(!!(await page.$('#panel-cuerpo #warm')), 'la luz cálida está en el panel «Letra»');
+  // 7. Lo guardado ya no lleva brillo del lector
+  const aj = await page.evaluate(() => window.__b.ajustes);
+  ok(!aj || !(aj.brightness >= 0), `no se guarda ningún brillo del lector (${aj ? aj.brightness : 'sin guardar'})`);
   ok(errores.length === 0, errores.length ? 'errores: ' + errores.join(' | ') : 'sin errores en la página');
   await browser.close(); srv.close();
 })();

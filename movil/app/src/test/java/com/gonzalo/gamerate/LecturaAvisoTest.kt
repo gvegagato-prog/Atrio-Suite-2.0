@@ -50,6 +50,12 @@ class LecturaAvisoTest {
         val n = Shadows.shadowOf(nm).allNotifications.last()
         val txt = n.extras.getCharSequence("android.title").toString() + " · " + n.extras.getCharSequence("android.text")
         assertTrue(txt, txt.contains("14 de 30") && txt.contains("Dune") && txt.contains("34 %"))
+        // El atajo del icono: «Seguir leyendo» el último abierto (Dune)
+        AtajoLectura.pon(ctx)
+        val sc = ctx.getSystemService(android.content.pm.ShortcutManager::class.java).dynamicShortcuts
+        assertEquals(1, sc.size)
+        assertTrue(sc[0].longLabel.toString(), sc[0].longLabel.toString().contains("Seguir leyendo «Dune» · 34 %"))
+        assertEquals(5L, sc[0].intent?.getLongExtra("leer", 0L))
         // Cumplido: ya no avisa
         st.metaLectura = 10
         assertFalse(LecturaAviso.avisa(ctx))
@@ -58,6 +64,22 @@ class LecturaAvisoTest {
         LecturaAviso.programa(ctx)
         st.avisoLectura = -1
         LecturaAviso.programa(ctx)
+    }
+
+    @Test fun loQueQueda() {
+        val hoy = LocalDate.of(2026, 10, 25)
+        // Un 25 % en 2 h: quedan 6 h; estas dos semanas, 3 h 30 min (15 min al día): se acaba en 24 días
+        val st = JSONObject().put("fraction", 0.25).put("stats", JSONObject().put("total", 120 * 60_000L)
+            .put("days", JSONObject().put(hoy.toString(), 90 * 60_000L).put(hoy.minusDays(3).toString(), 120 * 60_000L).put(hoy.minusDays(30).toString(), 999 * 60_000L)))
+        val (min, fin) = quedaPorLeer(st, hoy)!!
+        assertEquals(360L, min)
+        assertEquals(hoy.plusDays(24), fin)
+        assertEquals("el 18 de noviembre", fmtFin(hoy.plusDays(24), hoy))
+        assertEquals("mañana", fmtFin(hoy.plusDays(1), hoy))
+        // Sin leerlo estas semanas: lo que queda, sin fecha; recién empezado o casi acabado: nada
+        assertEquals(null, quedaPorLeer(JSONObject(st.toString()).apply { getJSONObject("stats").put("days", JSONObject()) }, hoy)?.second)
+        assertEquals(null, quedaPorLeer(JSONObject(st.toString()).put("fraction", 0.01), hoy))
+        assertEquals(null, quedaPorLeer(JSONObject(st.toString()).put("fraction", 0.995), hoy))
     }
 
     @Test fun portadaConLaSemana() {

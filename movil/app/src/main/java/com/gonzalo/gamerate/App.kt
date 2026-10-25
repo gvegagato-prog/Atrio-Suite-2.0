@@ -126,6 +126,7 @@ fun App(
     LaunchedEffect(Unit) {
         if (store.paired && store.notifyPartner) PartnerWatch.schedule(ctx)
         runCatching { LecturaAviso.programa(ctx) }
+        AtajoLectura.pon(ctx)
     }
 
     // Viendo la app de tu pareja (solo lectura).
@@ -1390,8 +1391,9 @@ fun App(
                 ) else SearchScreen(
                     needsKey = kind.isGame || kind.isMovie, key = if (kind.isMovie) store.tmdbKey else key,
                     title = kind.title,
-                    hint = when { kind.isGame -> "Título del juego"; kind.isBook -> "Título o autor"; kind.isMovie -> "Título de la película"; else -> "Título de la serie" },
+                    hint = when { kind.isGame -> "Título del juego"; kind.isBook -> "Título, autor o ISBN"; kind.isMovie -> "Título de la película"; else -> "Título de la serie" },
                     keyMsg = if (kind.isMovie) "Para buscar películas, añade tu clave gratuita de TMDB en Ajustes → Servicios." else "Antes de buscar, añade tu API key en Ajustes.",
+                    escanear = kind.isBook,
                     // Si no aparece en la búsqueda, a mano (con fotos de tus archivos), en cualquier categoría
                     onManual = { name -> screen = Screen.Search(s.forPlay, true, name) },
                     manualText = if (kind.isMovie || kind.isTv) "¿No aparece? Añádela a mano con una foto" else "¿No aparece? Añádelo a mano con una foto",
@@ -1404,7 +1406,7 @@ fun App(
                     },
                     search = { q ->
                         when {
-                            kind.isBook -> OpenLib.search(q)
+                            kind.isBook -> Isbn.limpia(q)?.let { OpenLib.porIsbn(it) } ?: OpenLib.search(q)
                             kind.isMovie -> Tmdb.search(q, store.tmdbKey)
                             kind.isTv -> TvMaze.search(q)
                             else -> Sgdb.search(q, key)

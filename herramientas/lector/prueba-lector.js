@@ -75,6 +75,7 @@ const log = [];
         speak: (t, id) => { (store.spoken ||= []).push(t); setTimeout(() => window.atrioSpoken && window.atrioSpoken(id, false), 30); },
         stopSpeaking: () => { store.stopped = (store.stopped || 0) + 1; },
         volumeKeys: (on) => { store.vol = on; }, keepScreenOnV: null,
+        shareImage: (b) => { store.imagen = b; },
       };
       window.Atrio.keepScreenOn = (on) => { store.keep = on; };
       // Los avisos que salen (para comprobar el del objetivo de lectura)
@@ -323,6 +324,18 @@ const log = [];
         ok(again.vis && again.b === 'Editar nota' && again.t === 'Nota de prueba', `${name}: tocar el subrayado abre su barra con la nota (${JSON.stringify(again)})`);
         await page.screenshot({ path: path.join(out, name + '-8-tocar.png') });
         await page.click('#s-copiar'); await page.waitForTimeout(400);
+        // Compartir la cita como imagen: la lámina con la cita, el libro y el autor
+        await page.mouse.click(w1.x, w1.y); await page.waitForTimeout(700);
+        if (await page.$eval('#sel', (e) => !e.classList.contains('oculta'))) {
+          await page.click('#s-compartir'); await page.waitForTimeout(300);
+          await page.waitForSelector('.lamina img', { timeout: 15000 }).catch(() => {});
+          await page.screenshot({ path: path.join(out, name + '-8b-compartir.png') });
+          await page.click('#c-imagen').catch(() => {}); await page.waitForTimeout(300);
+          const b64 = await page.evaluate(() => window.__atrio.imagen || '');
+          const png = Buffer.from(b64, 'base64');
+          if (png.length) fs.writeFileSync(path.join(out, name + '-8c-lamina.png'), png);
+          ok(png.length > 20000 && png.readUInt32BE(16) === 1080 && png.readUInt32BE(20) === 1350, `${name}: compartir la cita como imagen (PNG ${png.length ? png.readUInt32BE(16) + '×' + png.readUInt32BE(20) : 'nada'}, ${Math.round(png.length / 1024)} KB)`);
+        } else ok(false, `${name}: no vuelve a salir la barra del subrayado para compartirlo`);
       }
       if (name.endsWith('pdf')) {
         const bgc = await page.evaluate(() => window.__view?.style.background || '');

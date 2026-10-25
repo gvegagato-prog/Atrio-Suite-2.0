@@ -52,6 +52,20 @@ object Sgdb {
     }
 }
 
+/** ISBN-10 o ISBN-13 (978/979) válidos, con su dígito de control; lo demás no es un ISBN. */
+object Isbn {
+    fun limpia(raw: String): String? {
+        val t = raw.trim().replace("-", "").replace(" ", "").uppercase()
+        return when {
+            t.length == 13 && t.all { it.isDigit() } && (t.startsWith("978") || t.startsWith("979")) ->
+                t.takeIf { (t.mapIndexed { i, c -> (c - '0') * if (i % 2 == 0) 1 else 3 }.sum()) % 10 == 0 }
+            t.length == 10 && t.take(9).all { it.isDigit() } && (t[9].isDigit() || t[9] == 'X') ->
+                t.takeIf { t.mapIndexed { i, c -> (if (c == 'X') 10 else c - '0') * (10 - i) }.sum() % 11 == 0 }
+            else -> null
+        }
+    }
+}
+
 object OpenLib {
     private const val COVERS = "https://covers.openlibrary.org/b/id"
 
@@ -64,9 +78,13 @@ object OpenLib {
         return c.inputStream.bufferedReader().readText()
     }
 
-    suspend fun search(q: String): List<Hit> = withContext(Dispatchers.IO) {
-        val term = URLEncoder.encode(q.trim(), "UTF-8")
-        val url = "https://openlibrary.org/search.json?q=$term" +
+    suspend fun search(q: String): List<Hit> = buscaEn("q=" + URLEncoder.encode(q.trim(), "UTF-8"))
+
+    /** La obra de un ISBN (el código de barras de la contracubierta, o escrito a mano). */
+    suspend fun porIsbn(isbn: String): List<Hit> = buscaEn("isbn=$isbn")
+
+    private suspend fun buscaEn(filtro: String): List<Hit> = withContext(Dispatchers.IO) {
+        val url = "https://openlibrary.org/search.json?$filtro" +
             "&fields=key,title,author_name,first_publish_year,cover_i,number_of_pages_median&limit=20"
         val docs = JSONObject(fetch(url)).getJSONArray("docs")
         (0 until docs.length()).mapNotNull { i ->

@@ -483,6 +483,7 @@ class ReaderActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        AtajoLectura.pon(applicationContext)
         if (batteryOn) { batteryOn = false; runCatching { unregisterReceiver(battery) } }
         confirmarMasLejos()
         val app = applicationContext
@@ -524,6 +525,7 @@ class ReaderActivity : ComponentActivity() {
                 .put("device", Store(this@ReaderActivity).deviceId)
                 .put("accent", accentJson())
                 .put("meta", Store(this@ReaderActivity).metaLectura)
+                .put("autor", Store(this@ReaderActivity).let { s -> (s.loadPlays(BOOKS.id).find { it.id == id }?.creator ?: s.load(BOOKS.id).find { it.id == id }?.creator).orEmpty() })
                 .put("settings", ajustesDe(o))
                 .put("annotations", o.optJSONArray("notes") ?: org.json.JSONArray())
                 .put("bookmarks", o.optJSONArray("marks") ?: org.json.JSONArray())
@@ -571,9 +573,30 @@ class ReaderActivity : ComponentActivity() {
         @JavascriptInterface
         fun saveBookmarks(json: String) = edit { it.put("marks", org.json.JSONArray(json)) }
 
+        /** El brillo de la ventana mientras deslizas (o el de esta lectura, sin permiso); -1: el del móvil. */
         @JavascriptInterface
         fun setBrightness(v: Double) = runOnUiThread {
             window.attributes = window.attributes.apply { screenBrightness = if (v < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else brilloLineal(v.toFloat()) }
+        }
+
+        /**
+         * Al soltar el dedo: el brillo del móvil (el de sus ajustes), en la escala de la barra (0–1). Contesta «ok»,
+         * «auto» (ok, y el brillo automático se ha apagado para que se quede donde lo pusiste) o «permiso» (Android no
+         * deja: falta «Modificar ajustes del sistema»; el lector se queda con ese brillo solo mientras lo tienes abierto).
+         */
+        @JavascriptInterface
+        fun brilloMovil(v: Double): String {
+            if (!android.provider.Settings.System.canWrite(this@ReaderActivity)) return "permiso"
+            val r = runCatching { BrilloMovil.pon(this@ReaderActivity, brilloLineal(v.toFloat())) }.getOrNull() ?: return "permiso"
+            // Ya lo pone el móvil: la ventana deja de llevar el suyo
+            runOnUiThread { window.attributes = window.attributes.apply { screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE } }
+            return if (r) "auto" else "ok"
+        }
+
+        /** Los ajustes de Android para dar el permiso de cambiar el brillo del móvil. */
+        @JavascriptInterface
+        fun pedirPermisoBrillo() = runOnUiThread {
+            fuera(Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
         }
 
         /** El brillo que hay ahora (el del lector o, en automático, el del móvil), en la escala de la barra (0–1). */
@@ -611,6 +634,19 @@ class ReaderActivity : ComponentActivity() {
         @JavascriptInterface
         fun share(text: String) = runOnUiThread {
             fuera(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Compartir"))
+        }
+
+        /** Compartir una imagen (la lámina de una cita, en PNG y base64). */
+        @JavascriptInterface
+        fun shareImage(b64: String) {
+            val dir = java.io.File(cacheDir, "compartir").apply { mkdirs() }
+            val f = java.io.File(dir, "cita.png")
+            f.writeBytes(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
+            val uri = androidx.core.content.FileProvider.getUriForFile(this@ReaderActivity, "$packageName.archivos", f)
+            runOnUiThread {
+                fuera(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM, uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Compartir la cita"))
+            }
         }
 
         @JavascriptInterface
@@ -758,6 +794,13 @@ fun BookFileBar(id: Long, name: String) {
                 listOfNotNull("${(frac * 100).toInt()} % leído", readTxt, st.optString("label").ifBlank { null }, if (notes > 0) "$notes subrayados" else null, st.optString("name")).joinToString(" · "),
                 color = Muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis
             )
+            // Lo que te queda, a tu ritmo con este libro, y cuándo lo acabas si sigues como estas dos semanas
+            quedaPorLeer(st)?.let { (min, fin) ->
+                Text(
+                    "Te quedan unas ${readTime(min)} a tu ritmo" + (fin?.let { " · al paso de estas semanas, lo acabas ${fmtFin(it)}" } ?: ""),
+                    color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
 }
@@ -851,8 +894,89 @@ internal fun brilloSistema(cr: android.content.ContentResolver): Float? {
     return v.toFloat() / tope
 }
 
+private typealias AjustesSistema = android.provider.Settings.System
+
+/** El brillo del móvil (el de sus ajustes): lo que cambia el lector al deslizar por el borde, con tu permiso. */
+object BrilloMovil {
+    /**
+     * El tope de la escala entera del brillo en este móvil: 255 en casi todos; en algunos (Xiaomi, OPPO…) 1023, 2047 o
+     * 4095. Se mira en la configuración del sistema y, por si acaso, en el valor de ahora (nunca por debajo de él).
+     */
+    fun tope(ctx: Context): Int {
+        val res = android.content.res.Resources.getSystem()
+        val id = res.getIdentifier("config_screenBrightnessSettingMaximum", "integer", "android")
+        val cfg = if (id != 0) runCatching { res.getInteger(id) }.getOrNull()?.takeIf { it in 100..65535 } else null
+        val v = runCatching { android.provider.Settings.System.getInt(ctx.contentResolver, android.provider.Settings.System.SCREEN_BRIGHTNESS) }.getOrNull() ?: 0
+        val porValor = listOf(255, 1023, 2047, 4095, 8191).firstOrNull { v <= it } ?: 255
+        return maxOf(cfg ?: 255, porValor)
+    }
+
+    /** Pone el brillo del móvil (luz real, 0–1). Si estaba en automático lo pasa a manual (si no, Android lo cambiaría solo): devuelve si lo hizo. */
+    fun pon(ctx: Context, lineal: Float): Boolean {
+        val cr = ctx.contentResolver
+        var quitoAuto = false
+        if (runCatching { AjustesSistema.getInt(cr, AjustesSistema.SCREEN_BRIGHTNESS_MODE) }.getOrNull() == AjustesSistema.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
+            AjustesSistema.putInt(cr, AjustesSistema.SCREEN_BRIGHTNESS_MODE, AjustesSistema.SCREEN_BRIGHTNESS_MODE_MANUAL); quitoAuto = true
+        }
+        val t = tope(ctx)
+        AjustesSistema.putInt(cr, AjustesSistema.SCREEN_BRIGHTNESS, kotlin.math.round(lineal.coerceIn(0f, 1f) * t).toInt().coerceIn(1, t))
+        return quitoAuto
+    }
+}
+
 /** «7 h 32 min», «45 min». */
 fun readTime(min: Long): String = if (min < 60) "$min min" else "${min / 60} h${if (min % 60 > 0) " ${min % 60} min" else ""}"
 
 /** Lo que has tardado en leer un libro con el lector de Atrio (minutos; 0 si no lo has leído aquí). */
 fun readMinutes(ctx: Context, id: Long): Long = (BookFiles.state(ctx, id).optJSONObject("stats")?.optLong("total") ?: 0L) / 60000L
+
+/**
+ * Lo que queda de un libro a tu ritmo (minutos), sabiendo lo que has tardado en leer lo que llevas, y el día en que lo
+ * acabarías si sigues leyéndolo como en las dos últimas semanas (null si estas semanas no lo has tocado).
+ */
+fun quedaPorLeer(st: JSONObject, hoy: java.time.LocalDate = java.time.LocalDate.now()): Pair<Long, java.time.LocalDate?>? {
+    val f = st.optDouble("fraction", 0.0)
+    val stats = st.optJSONObject("stats") ?: return null
+    val total = stats.optLong("total", 0L)
+    if (f < 0.03 || f >= 0.99 || total < 10 * 60_000L) return null
+    val queda = (total * (1 - f) / f).toLong()
+    val dias = stats.optJSONObject("days")
+    var reciente = 0L
+    if (dias != null) for (d in 0L until 14L) reciente += dias.optLong(hoy.minusDays(d).toString(), 0L)
+    val porDia = reciente / 14.0
+    val fin = if (porDia >= 60_000.0) hoy.plusDays(kotlin.math.ceil(queda / porDia).toLong().coerceIn(0L, 3650L)) else null
+    return queda / 60_000L to fin
+}
+
+/** «hoy», «mañana», «el 12 de noviembre». */
+fun fmtFin(d: java.time.LocalDate, hoy: java.time.LocalDate = java.time.LocalDate.now()): String = when (d) {
+    hoy -> "hoy"
+    hoy.plusDays(1) -> "mañana"
+    else -> "el " + d.format(java.time.format.DateTimeFormatter.ofPattern(if (d.year == hoy.year) "d 'de' MMMM" else "d 'de' MMMM 'de' yyyy", java.util.Locale("es", "ES")))
+}
+
+/**
+ * El atajo del icono de la app (mantenerlo pulsado): «Seguir leyendo» el último libro que has abierto, directo a tu
+ * página. Se pone al cerrar el lector y al abrir la app; si ya lo acabaste o quitaste su archivo, se quita.
+ */
+object AtajoLectura {
+    private const val ID = "seguir_leyendo"
+    fun pon(ctx: Context) = runCatching {
+        val sm = ctx.getSystemService(android.content.pm.ShortcutManager::class.java) ?: return@runCatching
+        val u = LecturaAviso.ultimo(ctx)
+        val st = Store(ctx)
+        val nombre = u?.let { (id, _) -> st.loadPlays(BOOKS.id).find { it.id == id }?.name ?: st.load(BOOKS.id).find { it.id == id }?.name }
+        if (u == null || nombre == null) { sm.removeDynamicShortcuts(listOf(ID)); return@runCatching }
+        val intent = Intent(ctx, MainActivity::class.java).setAction(Intent.ACTION_VIEW)
+            .putExtra("leer", u.first).putExtra("leer_nombre", nombre).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val corto = if (nombre.length > 22) nombre.take(21).trimEnd() + "…" else nombre
+        val sc = android.content.pm.ShortcutInfo.Builder(ctx, ID)
+            .setShortLabel(corto)
+            .setLongLabel("Seguir leyendo «$nombre»" + if (u.second > 0.005) " · ${(u.second * 100).toInt()} %" else "")
+            .setIcon(android.graphics.drawable.Icon.createWithResource(ctx, R.drawable.sc_book))
+            .setIntent(intent)
+            .setRank(0)
+            .build()
+        sm.dynamicShortcuts = listOf(sc)
+    }
+}

@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -184,6 +185,43 @@ fun MagCritics(kind: Kind, id: Long, name: String) {
     }
 }
 
+/** Dónde verla en España: en qué plataformas está (suscripción, alquiler, compra o gratis), con sus logos. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun MagDonde(kind: Kind, id: Long, name: String) {
+    val ctx = LocalContext.current
+    val key = remember { Store(ctx).tmdbKey }
+    var cargando by remember(id) { mutableStateOf(DondeVer.guardado(kind, id) == null) }
+    val d by produceState(DondeVer.guardado(kind, id), kind.id, id) { value = DondeVer.de(kind, id, name, key); cargando = false }
+    val dd = d
+    when {
+        cargando && dd == null -> Text("Buscando dónde verla…", color = Muted, fontStyle = FontStyle.Italic, fontFamily = Display, fontSize = 15.sp)
+        dd == null && key.isBlank() -> Text("Pon tu clave de TMDB en Ajustes\u00A0→ Servicios para ver en qué plataformas está.", color = Muted, fontStyle = FontStyle.Italic, fontFamily = Display, fontSize = 15.sp)
+        dd == null -> Text("No se ha podido mirar dónde verla (¿sin conexión?).", color = Muted, fontStyle = FontStyle.Italic, fontFamily = Display, fontSize = 15.sp)
+        else -> Column(Modifier.fillMaxWidth().clickable(enabled = dd.link.isNotBlank()) { openUrl(ctx, dd.link) }) {
+            if (dd.emision.isNotBlank()) Text("Se emite en ${dd.emision}", fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 6.dp))
+            if (dd.vacio) {
+                if (key.isBlank()) Text("Con tu clave de TMDB (Ajustes\u00A0→ Servicios), también en qué plataformas está.", color = Muted, fontSize = 13.sp)
+                else Text("Ahora mismo no está en ninguna plataforma en España.", color = Muted, fontStyle = FontStyle.Italic, fontFamily = Display, fontSize = 15.sp)
+            }
+            listOf("En suscripción" to dd.suscripcion, "Gratis" to dd.gratis, "Alquiler" to dd.alquiler, "Compra" to dd.compra).forEach { (t, l) ->
+                if (l.isNotEmpty()) {
+                    Text(t.uppercase(), color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        l.take(8).forEach { p ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (p.logo.isNotBlank()) coil.compose.AsyncImage(p.logo, p.nombre, Modifier.size(28.dp).clip(shp(6.dp)))
+                                Text(p.nombre, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 6.dp), maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            }
+            if (!dd.vacio) Text("DATOS DE JUSTWATCH" + if (dd.link.isNotBlank()) " · VER MÁS\u00A0→" else "", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
 /** Horas: las tuyas en grande y las habituales (historia, extras, completo) con puntos guía. */
 @Composable
 fun MagHours(mine: Int, main: Int, extra: Int, full: Int, msg: String = "") {
@@ -242,6 +280,7 @@ fun RevistaGameRead(
     if (kind.isGame) defs["guias"] = MagDef("Guías") { GuidesSection(g.id, g.name, inCell = true) }
     defs["nota"] = MagDef("Nota") { MagScore(g.general, g.scores(), kind) }
     if (kind.isMovie || kind.isTv) defs["critica"] = MagDef("Crítica") { MagCritics(kind, g.id, g.name) }
+    if (kind.isMovie || kind.isTv) defs["donde"] = MagDef("Dónde verla") { MagDonde(kind, g.id, g.name) }
     if (kind.isBook) defs["lectura"] = MagDef("Lectura") { BookFileBar(g.id, g.name) }
     if (kind.isBook) defs["subrayados"] = MagDef("Subrayados y notas") { BookNotesBox(g.id, g.name) }
     defs["opinion"] = MagDef("Opinión", "Escribir" to onEdit) {
@@ -263,7 +302,7 @@ fun RevistaGameRead(
     defs["datos"] = MagDef("Datos") { GameFacts(g, kind) }
     val defaults = when {
         kind.isGame -> magRows(listOf("guias", "nota"), listOf("opinion"), listOf("horas", "enlaces"), listOf("datos"))
-        kind.isMovie || kind.isTv -> magRows(listOf("critica", "nota"), listOf("opinion"), listOf("datos", "enlaces"))
+        kind.isMovie || kind.isTv -> magRows(listOf("critica", "nota"), listOf("opinion"), listOf("datos", "enlaces"), listOf("donde"))
         kind.isBook -> magRows(listOf("datos", "nota"), listOf("lectura"), listOf("subrayados"), listOf("opinion"), listOf("enlaces"))
         else -> magRows(listOf("datos", "nota"), listOf("opinion"), listOf("enlaces"))
     }

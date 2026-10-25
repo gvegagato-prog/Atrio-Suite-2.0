@@ -10,8 +10,8 @@ android {
         applicationId = "com.gonzalo.gamerate"
         minSdk = 29
         targetSdk = 34
-        versionCode = 90
-        versionName = "6.62"
+        versionCode = 91
+        versionName = "6.63"
         // El traductor del lector trae código nativo por procesador: móviles de 64 bits (arm64) y el emulador de pruebas (x86_64)
         // (-Pabis=arm64-v8a genera la del móvil sola, más ligera)
         ndk { abiFilters += ((project.findProperty("abis") as String?)?.split(",") ?: listOf("arm64-v8a", "x86_64")) }
@@ -84,6 +84,8 @@ dependencies {
     // Lector: traducir palabras sin conexión (el idioma se baja una vez) y saber en qué idioma está el texto
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.mlkit:language-id:17.0.6")
+    // Escanear el código de barras (ISBN) de un libro para añadirlo: el escáner de Google Play services, sin permiso de cámara
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     // Pruebas de la lógica en el ordenador (sin emulador): org.json de verdad en lugar del de Android
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

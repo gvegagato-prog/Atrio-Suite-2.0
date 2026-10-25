@@ -75,6 +75,28 @@ object Tmdb {
             .map { p -> if (hero) "$IMG/w780$p" to "$IMG/w1280$p" else "$IMG/w342$p" to "$IMG/w500$p" }
     }
 
+    /** Dónde verla en España (TMDB con los datos de JustWatch): [path] es «/movie/ID» o «/tv/ID». */
+    fun proveedores(path: String, key: String): Donde? = proveedoresDe(get("$path/watch/providers", key))
+
+    /** Lo de España en la respuesta de «watch/providers». */
+    fun proveedoresDe(o: JSONObject): Donde {
+        val r = o.optJSONObject("results")?.optJSONObject("ES") ?: return Donde("", emptyList(), emptyList(), emptyList(), emptyList())
+        fun lista(k: String) = r.optJSONArray(k)?.let { a ->
+            (0 until a.length()).map { a.getJSONObject(it) }.sortedBy { it.optInt("display_priority", 99) }
+                .map { Plat(it.optString("provider_name"), it.optString("logo_path").takeIf { p -> p.startsWith("/") }?.let { p -> "$IMG/w92$p" } ?: "") }
+                .filter { it.nombre.isNotBlank() }.distinctBy { it.nombre }
+        } ?: emptyList()
+        return Donde(r.optString("link"), lista("flatrate"), lista("rent"), lista("buy"), lista("free") + lista("ads"))
+    }
+
+    /** La primera peli que sale al buscar su título (para las añadidas a mano). */
+    fun primeraPorNombre(q: String, key: String): Long? =
+        get("/search/movie?query=${menc(q)}&language=es-ES&include_adult=false", key).optJSONArray("results")?.optJSONObject(0)?.optLong("id")?.takeIf { it > 0 }
+
+    /** La serie de TMDB que corresponde a un código de IMDb (las series de Atrio son de TVmaze). */
+    fun tvPorImdb(imdb: String, key: String): Long? =
+        get("/find/${menc(imdb)}?external_source=imdb_id", key).optJSONArray("tv_results")?.optJSONObject(0)?.optLong("id")?.takeIf { it > 0 }
+
     /** Director o directores de la película. */
     suspend fun director(id: Long, key: String): String? = withContext(Dispatchers.IO) {
         val crew = get("/movie/$id/credits", key).optJSONArray("crew") ?: return@withContext null
@@ -115,6 +137,19 @@ object TvMaze {
             }
     }
 
+    /** El próximo episodio de una serie (fecha, temporada×episodio y título), o null si no hay anunciado. */
+    suspend fun proximo(id: Long): Proximo? = withContext(Dispatchers.IO) {
+        proximoDe(org.json.JSONObject(mget("$API/shows/$id?embed=nextepisode")))
+    }
+
+    fun proximoDe(o: org.json.JSONObject): Proximo? {
+        val e = o.optJSONObject("_embedded")?.optJSONObject("nextepisode") ?: return null
+        val d = e.optString("airdate").takeIf { it.length == 10 }?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
+        val n = e.optInt("number", 0)
+        val num = if (n > 0) "${e.optInt("season")}×${n.toString().padStart(2, '0')}" else "${e.optInt("season")}×esp."
+        return Proximo(d, num, e.optString("name").takeIf { it != "null" }.orEmpty())
+    }
+
     /** Creadores de la serie. */
     suspend fun creators(id: Long): String? = withContext(Dispatchers.IO) {
         val a = JSONArray(mget("$API/shows/$id/crew"))
@@ -140,5 +175,59 @@ object TvMaze {
                 val num = if (n > 0) "${e.optInt("season")}×${n.toString().padStart(2, '0')}" else "${e.optInt("season")}×esp."
                 "$num · ${e.optString("name")}"
             }
+    }
+}
+
+/** Una plataforma (Netflix, Prime Video…) con su logo. */
+class Plat(val nombre: String, val logo: String)
+
+/** Dónde ver algo en España: en suscripción, alquiler, compra o gratis; y, en series, dónde se emite. */
+class Donde(val link: String, val suscripcion: List<Plat>, val alquiler: List<Plat>, val compra: List<Plat>, val gratis: List<Plat>, val emision: String = "") {
+    val vacio: Boolean get() = suscripcion.isEmpty() && alquiler.isEmpty() && compra.isEmpty() && gratis.isEmpty()
+}
+
+/** Dónde ver una peli o una serie (se guarda unas horas en memoria para no preguntar cada vez). */
+object DondeVer {
+    private val cache = HashMap<String, Pair<Long, Donde?>>()
+    fun guardado(kind: Kind, id: Long): Donde? = cache["${kind.id}:$id"]?.takeIf { System.currentTimeMillis() - it.first < 6 * 3_600_000L }?.second
+
+    suspend fun de(kind: Kind, id: Long, name: String, key: String): Donde? = withContext(Dispatchers.IO) {
+        val ck = "${kind.id}:$id"
+        cache[ck]?.let { (t, d) -> if (System.currentTimeMillis() - t < 6 * 3_600_000L) return@withContext d }
+        val r = runCatching { busca(kind, id, name, key.trim()) }.getOrNull()
+        cache[ck] = System.currentTimeMillis() to r
+        r
+    }
+
+    private fun busca(kind: Kind, id: Long, name: String, key: String): Donde? {
+        if (kind.isMovie) {
+            if (key.isEmpty()) return null
+            val mid = if (isWebId(id)) id else Tmdb.primeraPorNombre(name, key) ?: return null
+            return Tmdb.proveedores("/movie/$mid", key)
+        }
+        // Series (de TVmaze): dónde se emite y, con TMDB, en qué plataformas está
+        val sid = if (isWebId(id)) id else runCatching { kotlinx.coroutines.runBlocking { TvMaze.search(name) }.firstOrNull()?.id }.getOrNull() ?: return null
+        val show = org.json.JSONObject(mget("https://api.tvmaze.com/shows/$sid"))
+        val emision = (show.optJSONObject("webChannel") ?: show.optJSONObject("network"))?.optString("name").orEmpty()
+        val vacio = Donde("", emptyList(), emptyList(), emptyList(), emptyList(), emision)
+        if (key.isEmpty()) return vacio
+        val imdb = show.optJSONObject("externals")?.optString("imdb")?.takeIf { it.startsWith("tt") } ?: return vacio
+        val tv = Tmdb.tvPorImdb(imdb, key) ?: return vacio
+        val d = Tmdb.proveedores("/tv/$tv", key) ?: return vacio
+        return Donde(d.link, d.suscripcion, d.alquiler, d.compra, d.gratis, emision)
+    }
+}
+
+/** El próximo episodio de una serie. */
+class Proximo(val dia: LocalDate, val num: String, val titulo: String)
+
+/** Los próximos episodios de tus series (se guardan unas horas para no preguntar a TVmaze cada vez). */
+object Proximos {
+    private val cache = HashMap<Long, Pair<Long, Proximo?>>()
+    suspend fun de(id: Long): Proximo? {
+        cache[id]?.let { (t, p) -> if (System.currentTimeMillis() - t < 6 * 3_600_000L) return p }
+        val p = runCatching { TvMaze.proximo(id) }.getOrElse { return cache[id]?.second }
+        cache[id] = System.currentTimeMillis() to p
+        return p
     }
 }

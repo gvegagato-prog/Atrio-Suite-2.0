@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
@@ -366,6 +367,38 @@ open class Capturas6Test {
         rule.onAllNodesWithText("Foto de fondo (opcional)")[0].performClick(); shoot("x5_de_donde")
         rule.onAllNodesWithText("De mis archivos")[0].performClick()
         org.junit.Assert.assertEquals(listOf("archivos"), picked)
+    }
+
+    /** Buscar en todo desde la portada: sin tildes, por categorías, y también en lo subrayado de los libros. */
+    @Test
+    fun buscador() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val store = seed()
+        // Un subrayado en «Dune» (libro 201 de las pruebas, o el que sea de los libros)
+        val libro = store.load(BOOKS.id).first()
+        BookFiles.putQuiet(ctx, libro.id, org.json.JSONObject().put("uri", "file:///x.epub").put("notes", org.json.JSONArray().put(org.json.JSONObject().put("value", "epubcfi(/6/4!/4/2/1:0)").put("text", "El miedo mata la mente").put("note", "").put("index", 1))))
+        Skin.load(ctx)
+        Mode.dark = false
+        Mode.themeMode = 1
+        Skin.applyShell(2, ctx)
+        rule.setContent {
+            MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                Surface(Modifier.fillMaxSize(), color = Paper) {
+                    App(store, 0L, false, "") {}
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Buscar")[0].performClick(); rule.waitForIdle()
+        if (System.getProperty("roborazzi.test.record") == "true") shoot("b1_buscar")
+        rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("hades")
+        rule.waitForIdle()
+        if (System.getProperty("roborazzi.test.record") == "true") shoot("b2_buscar_hades")
+        assertTrue("encuentra «Hades II» sin mayúsculas", rule.onAllNodesWithText("Hades II").fetchSemanticsNodes().isNotEmpty())
+        rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextReplacement("MIEDO MENTE")
+        rule.waitForIdle()
+        if (System.getProperty("roborazzi.test.record") == "true") shoot("b3_buscar_cita")
+        assertTrue("y en lo subrayado", rule.onAllNodesWithText("«El miedo mata la mente»").fetchSemanticsNodes().isNotEmpty())
     }
 
     /** Apariencia (se abre desde MainActivity, fuera de App): claro u oscuro y el acento. */

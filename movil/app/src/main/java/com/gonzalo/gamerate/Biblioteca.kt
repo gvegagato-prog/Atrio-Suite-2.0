@@ -36,9 +36,14 @@ import androidx.compose.ui.unit.sp
 
 fun libMatches(q: String, vararg fields: String): Boolean {
     if (q.isBlank()) return true
-    val t = q.trim().lowercase()
-    return fields.any { it.lowercase().contains(t) }
+    // Sin fijarse en tildes ni mayúsculas, y cada palabra en cualquier campo («fundacion asimov» encuentra «Fundación»)
+    val todo = fields.joinToString(" ") { sinTildes(it) }
+    return sinTildes(q).split(' ').filter { it.isNotBlank() }.all { todo.contains(it) }
 }
+
+/** En minúsculas y sin tildes (para buscar). */
+fun sinTildes(s: String): String =
+    java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").lowercase()
 
 /** Un elemento de la cuadrícula: algo en curso (Play), algo terminado y valorado (Game) o una saga que junta varios. */
 internal class Cell(

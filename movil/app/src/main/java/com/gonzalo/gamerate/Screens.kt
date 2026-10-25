@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Casino
@@ -558,7 +559,9 @@ fun SearchScreen(
     keyMsg: String = "Antes de buscar, añade tu API key en Ajustes.",
     /** Si no aparece, añadirlo a mano (con lo que has escrito como nombre). */
     onManual: ((String) -> Unit)? = null,
-    manualText: String = "¿No aparece? Añádelo a mano con una foto"
+    manualText: String = "¿No aparece? Añádelo a mano con una foto",
+    /** Libros: un botón para escanear el código de barras de la contracubierta (el ISBN). */
+    escanear: Boolean = false
 ) {
     var q by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Hit>>(emptyList()) }
@@ -600,8 +603,15 @@ fun SearchScreen(
             Text(keyMsg, color = UiSoft, modifier = Modifier.pill())
             Spacer(Modifier.height(8.dp))
         }
+        val ctx = androidx.compose.ui.platform.LocalContext.current
         Row(verticalAlignment = Alignment.CenterVertically) {
             SearchPill(q, hint, Modifier.weight(1f), onSearch = { now++ }) { q = it }
+            if (escanear) {
+                Spacer(Modifier.width(8.dp))
+                IconButton({
+                    EscanerIsbn.abre(ctx, onIsbn = { isbn -> q = isbn; now++ }, onOtro = { msg = it })
+                }) { Icon(Icons.Rounded.QrCodeScanner, "Escanear el código de barras", tint = UiSoft) }
+            }
         }
         if (onManual != null && q.isBlank()) {
             TextButton({ onManual("") }) { Text(manualText, color = UiSoft, fontSize = 13.sp) }
@@ -932,6 +942,27 @@ fun Plegado(texto: String, titulo: String = "Cómo funciona") {
         )
         androidx.compose.animation.AnimatedVisibility(abierto) {
             Text(texto, color = UiSoft, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+        }
+    }
+}
+
+/** El escáner de códigos de Google Play services: abre la cámara él solo (sin pedir permiso) y devuelve el ISBN. */
+object EscanerIsbn {
+    fun abre(ctx: android.content.Context, onIsbn: (String) -> Unit, onOtro: (String) -> Unit) {
+        val opciones = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13)
+            .enableAutoZoom()
+            .build()
+        try {
+            com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(ctx, opciones).startScan()
+                .addOnSuccessListener { b ->
+                    val isbn = Isbn.limpia(b.rawValue ?: "")
+                    if (isbn != null) onIsbn(isbn)
+                    else onOtro("Ese código no es un ISBN: busca el que empieza por 978 o 979")
+                }
+                .addOnFailureListener { onOtro("No se pudo abrir el escáner: ${it.message ?: "sin Google Play services"}") }
+        } catch (e: Exception) {
+            onOtro("No se pudo abrir el escáner")
         }
     }
 }

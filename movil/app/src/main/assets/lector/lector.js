@@ -23,16 +23,6 @@ const S = Object.assign({
     // adelante, para leer con una mano), los botones de volumen para pasar página y la letra algo más gruesa (Literata)
     tapZones: 'normal', volPages: true, weight: 0,
 }, st.settings || {})
-// El brillo va en la escala del control de Android (la que ves en la barra del sistema, no la de la luz real):
-// antes iba en luz real y con un mínimo del 2 %, que en la barra del sistema es como un 25 % y por eso brillaba
-// más que el resto del móvil. Lo guardado con la escala de antes se pasa a la nueva (curva HLG de AOSP).
-if (S.brVer !== 2) {
-    if (S.brightness >= 0) {
-        const n = Math.max(0, Math.min(1, S.brightness)) * 12
-        S.brightness = Math.round((n <= 1 ? Math.sqrt(n) * 0.5 : 0.17883277 * Math.log(n - 0.28466892) + 0.55991073) * 100) / 100
-    }
-    S.brVer = 2
-}
 // Lo que llevas leído de este libro: tiempo total y por día (ms)
 const stats = Object.assign({ total: 0, days: {} }, st.stats || {})
 // El tiempo leído va por dispositivo (stats.dev): aquí solo se suma en el de este dispositivo, y «total» y «days» son
@@ -79,22 +69,27 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 const pct = f => Math.round((f || 0) * 100) + '%'
 const fecha = t => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 /** Un aviso corto abajo. Con [deshacer], lleva su botón y dura más. */
-function aviso(t, deshacer) {
+function aviso(t, deshacer, etiqueta = 'Deshacer') {
     const a = $('#aviso')
     a.replaceChildren(document.createTextNode(t))
     a.classList.toggle('con-boton', !!deshacer)
     if (deshacer) {
         const b = document.createElement('button')
-        b.textContent = 'Deshacer'
+        b.textContent = etiqueta
         b.onclick = e => { e.stopPropagation(); a.classList.remove('on'); deshacer() }
         a.append(b)
     }
-    a.classList.add('on'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.remove('on'), deshacer ? 4500 : 1800)
+    a.classList.add('on'); clearTimeout(aviso.t); aviso.t = setTimeout(() => a.classList.remove('on'), deshacer ? 5000 : 1800)
 }
 const saveSettings = () => A.saveSettings(JSON.stringify(S))
-/** El brillo de ahora en la escala de la barra: el elegido o, en automático, el que tiene el móvil. */
+// Atrio 6.63: el lector ya no tiene brillo propio: usa el del móvil. Deslizar por el borde izquierdo cambia el brillo
+// del móvil de verdad (con el permiso «Modificar ajustes del sistema»); sin ese permiso, solo mientras tienes el libro abierto.
+S.brightness = -1
+let brilloSesion = -1      // (sin permiso: el brillo que pusiste deslizando, hasta que cierres el libro)
+let brilloAvisado = false
+/** El brillo de ahora en la escala de la barra: el que pusiste deslizando (sin permiso) o el del móvil. */
 const brilloAhora = () => {
-    if (S.brightness >= 0) return S.brightness
+    if (brilloSesion >= 0) return brilloSesion
     try { const v = A.brilloActual?.(); if (typeof v === 'number' && v >= 0 && v <= 1) return Math.round(v * 100) / 100 } catch (e) { }
     return 0.5
 }
@@ -317,13 +312,30 @@ function applySettings() {
         if (S.animated) view.renderer.setAttribute('animated', '')
         else view.renderer.removeAttribute('animated')
     }
-    A.setBrightness(S.brightness)
+    A.setBrightness(brilloSesion)
     despierta()
     volumen()
     repaintAll()
     let w = $('#calido')
     if (!w) { w = document.createElement('div'); w.id = 'calido'; document.body.append(w) }
     Object.assign(w.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: 15, background: `rgba(255,120,20,${S.warm * 0.28})`, mixBlendMode: 'multiply' })
+}
+
+/** Al soltar el dedo: el brillo va al del móvil (si Android deja), o se queda solo mientras lees. */
+function brilloAlMovil(v) {
+    if (!(v >= 0)) return
+    let r = 'permiso'
+    try { r = A.brilloMovil?.(v) || 'permiso' } catch (e) { }
+    if (r === 'ok' || r === 'auto') {
+        brilloSesion = -1
+        if (r === 'auto') aviso('Brillo del móvil al ' + Math.round(v * 100) + ' % · el brillo automático queda apagado')
+        return
+    }
+    brilloSesion = v
+    if (!brilloAvisado) {
+        brilloAvisado = true
+        setTimeout(() => aviso('Para cambiar el brillo del móvil, Android pide permiso', () => { try { A.pedirPermisoBrillo?.() } catch (e) { } }, 'Permitir'), 900)
+    }
 }
 
 // ---------------------------------------------------------------- La hora y la batería (arriba)
@@ -574,7 +586,7 @@ function onLoad({ detail: { doc, index } }) {
     // Mantener pulsado (sin mover el dedo): la palabra de debajo. Mientras, la página NO se mueve.
     let t0 = null, holding = false, holdTimer = 0, swiped = false, held = false
     // Brillo: deslizar arriba o abajo por el borde izquierdo de la pantalla (como en los lectores de tinta)
-    let edge = false, glow = null, glowY = 0
+    let edge = false, glow = null, glowY = 0, glowV = -1
     // Pellizcar con dos dedos (libros de texto): la letra más grande o más pequeña
     let pinch = null
     const dist2 = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY)
@@ -615,9 +627,9 @@ function onLoad({ detail: { doc, index } }) {
             if (glow === null && Math.abs(dy0) > 24 && Math.abs(dy0) > Math.abs(dx) * 2) { glow = brilloAhora(); glowY = t.clientY }
             if (glow !== null) {
                 const dy = t.clientY - glowY
-                S.brightness = Math.round(Math.min(1, Math.max(0, glow - dy / (window.innerHeight * 0.7))) * 100) / 100
-                A.setBrightness(S.brightness)
-                aviso('Brillo ' + Math.round(S.brightness * 100) + ' %')
+                glowV = Math.round(Math.min(1, Math.max(0, glow - dy / (window.innerHeight * 0.7))) * 100) / 100
+                A.setBrightness(glowV)    // (mientras deslizas, al momento; al soltar, al móvil)
+                aviso('Brillo ' + Math.round(glowV * 100) + ' %')
                 e.stopPropagation()
             }
         }
@@ -633,7 +645,7 @@ function onLoad({ detail: { doc, index } }) {
         }
         const t = e.changedTouches[0]
         // (el touchend sí le llega a foliate: así la página vuelve a su sitio si se llegó a mover un poco al empezar)
-        if (glow !== null) { glow = null; edge = false; swiped = true; saveSettings(); holding = false; return }
+        if (glow !== null) { glow = null; edge = false; swiped = true; holding = false; brilloAlMovil(glowV); return }
         // Deslizar hacia arriba abre el menú (y hacia abajo lo cierra). Leyendo hacia abajo no: ahí deslizar mueve el libro
         if (!haciaAbajo() && t0 && t && !holding) {
             const dx = t.clientX - t0.x, dy = t.clientY - t0.y
@@ -1030,9 +1042,83 @@ $('#s-nota').addEventListener('click', () => { const n = selection?.note; hideSe
 $('#s-copiar').addEventListener('click', () => { const t = selection?.note.text; if (t) { A.copy(t); aviso('Copiado') } hideSel() })
 $('#s-compartir').addEventListener('click', () => {
     const n = selection?.note
-    if (n) A.share(`«${n.text}»${n.note ? `\n${n.note}` : ''}\n— ${st.title || ''}`)
     hideSel()
+    if (n) openCompartir(n)
 })
+
+// ---------------------------------------------------------------- Compartir una cita como imagen
+// Una lámina de revista (4:5, la de las redes): el antetítulo, la cita en grande con su comilla del acento, un filete
+// y el libro con su autor. Con los colores del tema que usas (claro u oscuro).
+async function laminaCita(n) {
+    await Promise.all(['600 60px AtrioSerif', 'italic 400 40px AtrioSerif', '400 40px AtrioSerif'].map(f => document.fonts.load(f).catch(() => { })))
+    const W = 1080, H = 1350, M = 96
+    const cs = getComputedStyle(document.body)
+    const bg = cs.getPropertyValue('--bg').trim() || '#FBF8F1', fg = cs.getPropertyValue('--fg').trim() || '#1F1D1A'
+    const muted = cs.getPropertyValue('--muted').trim() || '#857E72', acc = cs.getPropertyValue('--accent').trim() || '#C8372D'
+    const c = document.createElement('canvas'); c.width = W; c.height = H
+    const g = c.getContext('2d')
+    g.fillStyle = bg; g.fillRect(0, 0, W, H)
+    // Antetítulo
+    g.fillStyle = acc; g.fillRect(M, M + 6, 22, 22)
+    g.fillStyle = fg; g.font = '800 26px system-ui, Roboto, sans-serif'
+    if ('letterSpacing' in g) g.letterSpacing = '6px'
+    g.textBaseline = 'top'; g.fillText('SUBRAYADO', M + 40, M + 4)
+    if ('letterSpacing' in g) g.letterSpacing = '0px'
+    g.fillRect(M, M + 56, W - 2 * M, 5)
+    // La cita: lo más grande que quepa (como mucho 12 líneas)
+    const texto = n.text.length > 700 ? n.text.slice(0, 690).replace(/\s+\S*$/, '') + '…' : n.text
+    const lineas = (size) => {
+        g.font = `400 ${size}px AtrioSerif, Georgia, serif`
+        const out = []; let l = ''
+        for (const w of texto.split(/\s+/)) {
+            const t = l ? l + ' ' + w : w
+            if (g.measureText(t).width > W - 2 * M && l) { out.push(l); l = w } else l = t
+        }
+        if (l) out.push(l)
+        return out
+    }
+    let size = 76, ls = lineas(size)
+    const alto = () => ls.length * size * 1.28
+    while (size > 34 && (alto() > H - 2 * M - 420 || ls.length > 12)) { size -= 4; ls = lineas(size) }
+    const y0 = M + 190 + Math.max(0, (H - 2 * M - 470 - alto()) / 2)
+    g.fillStyle = acc; g.font = `600 ${Math.round(size * 2.4)}px AtrioSerif, Georgia, serif`; g.fillText('«', M - 8, y0 - size * 1.95)
+    g.fillStyle = fg; g.font = `400 ${size}px AtrioSerif, Georgia, serif`
+    ls.forEach((l, i) => g.fillText(l, M, y0 + i * size * 1.28))
+    // La nota, si la tiene (en cursiva y del acento)
+    let yn = y0 + alto() + 26
+    if (n.note) {
+        g.fillStyle = acc; g.font = `italic 400 ${Math.max(28, Math.round(size * 0.5))}px AtrioSerif, Georgia, serif`
+        const nota = n.note.length > 140 ? n.note.slice(0, 136) + '…' : n.note
+        g.fillText(nota, M, yn, W - 2 * M)
+    }
+    // Pie: filete, el libro y su autor
+    const yp = H - M - 150
+    g.fillStyle = fg; g.fillRect(M, yp, W - 2 * M, 3)
+    g.font = '600 46px AtrioSerif, Georgia, serif'
+    g.fillText(st.title || '', M, yp + 30, W - 2 * M)
+    g.fillStyle = muted; g.font = '700 26px system-ui, Roboto, sans-serif'
+    if ('letterSpacing' in g) g.letterSpacing = '4px'
+    g.fillText([st.autor, n.label].filter(Boolean).join(' · ').toUpperCase().slice(0, 60), M, yp + 96, W - 2 * M)
+    if ('letterSpacing' in g) g.letterSpacing = '0px'
+    return c
+}
+async function openCompartir(n) {
+    openPanel(`<h2>Compartir</h2>
+      <div class="lamina"><span class="gris">Preparando la imagen…</span></div>
+      <div class="fila" style="margin-top:14px;justify-content:flex-end">
+        <button class="boton suave" id="c-texto">Como texto</button><button class="boton" id="c-imagen" disabled>Como imagen</button>
+      </div>`, async el => {
+        el.querySelector('#c-texto').onclick = () => { closePanel(); A.share(`«${n.text}»${n.note ? `\n${n.note}` : ''}\n— ${st.title || ''}${st.autor ? ', ' + st.autor : ''}`) }
+        try {
+            const c = await laminaCita(n)
+            const url = c.toDataURL('image/png')
+            const img = new Image(); img.src = url; img.alt = 'La cita como imagen'
+            el.querySelector('.lamina').replaceChildren(img)
+            const b = el.querySelector('#c-imagen'); b.disabled = false
+            b.onclick = () => { closePanel(); try { A.shareImage(url.slice(url.indexOf(',') + 1)) } catch (e) { aviso('No se ha podido compartir la imagen') } }
+        } catch (e) { console.warn(e); el.querySelector('.lamina').textContent = 'No se ha podido hacer la imagen.' }
+    })
+}
 $('#s-buscar').addEventListener('click', () => { const t = selection?.note.text; hideSel(); if (t) openSearch(t) })
 $('#s-borrar').addEventListener('click', () => {
     const n = selection?.note
@@ -1091,6 +1177,8 @@ function openSettings() {
       <h3>Tema</h3>
       <div class="fila">${THEMES.map(([v, t]) => `<button class="tema ${S.theme === v ? 'on' : ''}" data-theme-btn="${v}" title="${t}" style="background:var(--t-${v})">Aa</button>`).join('')}</div>
       <div class="fila" style="margin-top:10px">${chips([[false, 'Siempre este'], [true, 'Noche de 21:00 a 7:00']], S.nightAuto, 'nightAuto')}</div>
+      <h3>Luz cálida (menos luz azul)</h3>
+      <input class="deslizar" type="range" id="warm" min="0" max="1" step="0.05" value="${S.warm}">
       ${esPDF ? `
         <h3>Formato del PDF</h3>
         <div class="fila">${chips([[true, 'Texto adaptable (novelas)'], [false, 'Página original']], reflow, 'pdfTexto')}</div>
@@ -1138,9 +1226,11 @@ function openSettings() {
       <div class="fila">${chips([[true, 'Encendida mientras lees'], [false, 'Normal']], S.keepOn, 'keepOn')}</div>
       ${S.keepOn ? '<p class="sub" style="margin-top:6px">Si pasan 10 minutos sin tocarla, se apaga como siempre.</p>' : ''}
       `}
-      <p class="sub" style="margin-top:14px">Trucos: pellizca la página con dos dedos para cambiar el tamaño de la letra; desliza el dedo arriba o abajo por el borde izquierdo para el brillo.</p>`, el => {
+      <p class="sub" style="margin-top:14px">Trucos: pellizca la página con dos dedos para cambiar el tamaño de la letra; desliza el dedo arriba o abajo por el borde izquierdo para el brillo del móvil.</p>`, el => {
         el.scrollTop = keep
         el.querySelector('#mas-opciones').onclick = () => { masOpciones = !masOpciones; openSettings() }
+        el.querySelector('#warm').oninput = e => { S.warm = parseFloat(e.target.value); applySettings() }
+        el.querySelector('#warm').onchange = saveSettings
         el.querySelectorAll('[data-theme-btn]').forEach(b => {
             const t = b.dataset.themeBtn
             b.style.background = { papel: '#FBF8F1', sepia: '#F1E6CF', gris: '#2B2D31', noche: '#121317', negro: '#000' }[t]
@@ -1168,22 +1258,6 @@ function openSettings() {
             if (k === 'spacing') S.spacing = Math.round(Math.min(2.4, Math.max(1.0, S.spacing + d)) * 10) / 10
             applySettings(); saveSettings(); openSettings()
         })
-    })
-}
-
-function openBrightness() {
-    openPanel(`<h2>Brillo</h2>
-      <div class="fila"><button class="chip ${S.brightness < 0 ? 'on' : ''}" id="br-auto">Automático (el del móvil)</button></div>
-      <h3>Brillo de esta pantalla</h3>
-      <input class="deslizar" type="range" id="br" min="0" max="1" step="0.01" value="${brilloAhora()}">
-      <p class="sub">Del todo a la izquierda es el mínimo de la pantalla, el mismo que el del móvil.</p>
-      <h3>Luz cálida (menos luz azul)</h3>
-      <input class="deslizar" type="range" id="warm" min="0" max="1" step="0.05" value="${S.warm}">`, el => {
-        el.querySelector('#br-auto').onclick = () => { S.brightness = -1; applySettings(); saveSettings(); openBrightness() }
-        el.querySelector('#br').oninput = e => { S.brightness = parseFloat(e.target.value); A.setBrightness(S.brightness); el.querySelector('#br-auto').classList.remove('on') }
-        el.querySelector('#br').onchange = saveSettings
-        el.querySelector('#warm').oninput = e => { S.warm = parseFloat(e.target.value); applySettings() }
-        el.querySelector('#warm').onchange = saveSettings
     })
 }
 
@@ -1588,7 +1662,6 @@ $('#b-indice').onclick = openToc
 $('#b-voz').onclick = () => vozOn ? vozStop() : vozStart()
 $('#b-notas').onclick = () => openNotes('notas')
 $('#b-ajustes').onclick = openSettings
-$('#b-brillo').onclick = openBrightness
 $('#b-buscar').onclick = () => openSearch()
 function pintaMarca() {
     $('#b-marca').classList.toggle('on', !!currentMark())
