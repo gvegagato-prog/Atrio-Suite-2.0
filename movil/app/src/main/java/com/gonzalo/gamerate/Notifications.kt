@@ -186,3 +186,65 @@ class LecturaWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         return Result.success()
     }
 }
+
+/**
+ * El recordatorio del diario: a la hora que elijas, si ese día aún no has escrito nada, un aviso con lo que has hecho
+ * (lo leído y lo jugado en el PC) que abre el editor de hoy.
+ */
+object DiarioAviso {
+    fun programa(ctx: Context) { runCatching { programaYa(ctx) } }
+
+    private fun programaYa(ctx: Context) {
+        val h = Store(ctx).avisoDiario
+        val wm = WorkManager.getInstance(ctx)
+        if (h !in 0..23) { wm.cancelUniqueWork("diario"); return }
+        val ahora = LocalDateTime.now()
+        var sig = ahora.toLocalDate().atTime(h, 0)
+        if (!sig.isAfter(ahora)) sig = sig.plusDays(1)
+        val req = PeriodicWorkRequestBuilder<DiarioWorker>(1, TimeUnit.DAYS)
+            .setInitialDelay(Duration.between(ahora, sig).toMinutes().coerceAtLeast(1), TimeUnit.MINUTES)
+            .addTag("h$h")
+            .build()
+        wm.enqueueUniquePeriodicWork("diario", ExistingPeriodicWorkPolicy.UPDATE, req)
+    }
+
+    /** «Hoy: 40 min leyendo · 2 h jugando» (vacío si hoy no hay nada). */
+    fun loDeHoy(ctx: Context, st: Store = Store(ctx)): String {
+        val hoy = LocalDate.now().toEpochDay()
+        val leido = LecturaAviso.hoy(ctx)
+        val jugado = runCatching { HorasPc.porDia(ctx, st.accUid)[hoy]?.values?.sum() ?: 0L }.getOrDefault(0L)
+        val p = ArrayList<String>()
+        if (leido >= 60_000L) p += "${readTime((leido + 30_000L) / 60_000L)} leyendo"
+        if (jugado >= 60_000L) p += "${readTime((jugado + 30_000L) / 60_000L)} jugando"
+        return p.joinToString(" · ")
+    }
+
+    /** El aviso, si hoy aún no has escrito en el diario. */
+    fun avisa(ctx: Context): Boolean {
+        val st = Store(ctx)
+        if (st.avisoDiario !in 0..23) return false
+        val hoy = LocalDate.now().toEpochDay()
+        if (st.loadDiario().any { it.dia == hoy }) return false
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel("diario", "Recordatorio del diario", NotificationManager.IMPORTANCE_DEFAULT))
+        val intent = Intent(ctx, MainActivity::class.java).putExtra("go", "escribir").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val pi = PendingIntent.getActivity(ctx, 2004, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val hecho = loDeHoy(ctx, st)
+        val n = Notification.Builder(ctx, "diario")
+            .setSmallIcon(android.R.drawable.ic_menu_edit)
+            .setContentTitle("¿Qué tal hoy?")
+            .setContentText(if (hecho.isNotBlank()) "Hoy: $hecho. Escríbelo en tu diario." else "Escribe un par de líneas en tu diario.")
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(2004, n)
+        return true
+    }
+}
+
+class DiarioWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
+    override suspend fun doWork(): Result {
+        runCatching { DiarioAviso.avisa(applicationContext) }
+        return Result.success()
+    }
+}

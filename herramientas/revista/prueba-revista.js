@@ -53,6 +53,9 @@ const cuenta = {
       { id: 405, name: 'El imperio final', general: 92, end: H - 400, creator: 'Brandon Sanderson', updated: (H - 400) * DIA },
       { id: 406, name: 'El pozo de la ascensión', general: 88, end: H - 300, creator: 'Brandon Sanderson', updated: (H - 300) * DIA }],
     bplays: [{ id: 402, name: 'El nombre del viento', status: 1, creator: 'Patrick Rothfuss', chapter: 31, pages: 880, start: H - 12, updated: Date.now() - 5e6 }],
+    // El diario: lo escrito hoy (sobre Deadlock) y lo leído hoy con el lector
+    diario: [{ id: Date.now() - 5000, dia: H, x: 'Hoy he jugado con Laura a Deadlock: dos partidas igualadísimas.', sobre: ['0:10'], updated: Date.now() - 5000 }],
+    lectura: [{ id: 402, s: { stats: { days: { [new Date(H * DIA).toISOString().slice(0, 10)]: 35 * 60000 } } }, updated: Date.now() }],
     items_2: [{ id: 27205, name: 'Origen', general: 87, gfx: 80, story: 90, end: H - 70, creator: 'Christopher Nolan', updated: (H - 70) * DIA }],
     iplays_2: [],
     // Una saga con un libro leído (Dune, 89) y otro a medias
@@ -71,7 +74,8 @@ const pc = {
     ...Array.from({ length: 14 }, (_, i) => ({ key: `heroic:${i}`, name: `Juego de Heroic ${i + 1}`, source: 'heroic', sourceLabel: 'Heroic', lastPlayed: 0, steamPlaytime: 0, art: { cover: tapa(String(i + 1), `hsl(${i * 25},50%,40%)`, '#222') } })),
     { key: 'custom:x', name: 'Juego oculto', source: 'custom', sourceLabel: 'Tuyo', hidden: true, art: {} },
   ],
-  play: { sessions: [], active: [] },
+  // Dos horas de Deadlock esta mañana (o lo que llevemos de día)
+  play: { sessions: [['steam:1422450', Math.max(H * DIA + hoy.getTimezoneOffset() * 60000, Date.now() - 3 * 3600e3), Date.now() - 3600e3]], active: [] },
 };
 // Respuestas de internet de mentira
 const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
@@ -198,7 +202,16 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     const edS = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
     ok(edS && edS.op === 'sagaCover' && edS.id === 9002 && edS.cover === 'https://cdn.example/saga.png', `${tema}: portada de la saga guardada (${JSON.stringify(edS)})`);
     await ir({ v: 'diario' }); await shot('06-diario');
-    ok(!(await errorPagina()), `${tema}: diario`);
+    t = await texto();
+    ok(!(await errorPagina()) && t.includes('dos partidas igualadísimas') && /jugando/.test(t) && /35 min leyendo/.test(t) && /Los días de/i.test(t), `${tema}: diario con lo escrito, lo jugado en el PC y lo leído`);
+    await page.click('#pagina button:has-text("Escribir hoy")'); await page.waitForTimeout(300);
+    await page.fill('#capa textarea', 'Escrito desde el PC.');
+    await page.click('#capa button:has-text("Guardar")'); await page.waitForTimeout(300);
+    const edD = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
+    ok(edD && edD.op === 'diarioPut' && edD.item.x === 'Escrito desde el PC.' && edD.item.dia === H && edD.item.id > 0, `${tema}: escribir en el diario desde el PC (${JSON.stringify(edD && edD.op)})`);
+    await page.click('#pagina .nota-diario'); await page.waitForTimeout(300);
+    ok(/Tu diario/i.test(await page.evaluate(() => document.getElementById('capa').innerText)) && (await page.inputValue('#capa textarea')).includes('igualadísimas'), `${tema}: tocar lo escrito lo abre para cambiarlo`);
+    await page.click('#capa button:has-text("Cancelar")'); await page.waitForTimeout(200);
     await ir({ v: 'cifras' }); await shot('07-cifras');
     ok(!(await errorPagina()), `${tema}: cifras`);
     await ir({ v: 'pc' }); await shot('08-pc');

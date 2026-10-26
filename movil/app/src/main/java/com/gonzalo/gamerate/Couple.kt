@@ -94,7 +94,11 @@ class Partner(
     /** Su último test de descubrir de cada tipo (0 juegos, 1 libros, 2 pelis y series). */
     val quizzes: Map<Int, QuizRun> = emptyMap(),
     /** Lo que tiene en su nube (libros, capturas…), con su enlace para abrirlo. */
-    val nube: List<NubeFile> = emptyList()
+    val nube: List<NubeFile> = emptyList(),
+    /** Lo que ha escrito en su diario y quiere que veas. */
+    val diario: List<Nota> = emptyList(),
+    /** Lo que ha leído con el lector: día → libro → ms. */
+    val leido: Map<Long, Map<Long, Long>> = emptyMap()
 ) {
     /** Cartas que le han gustado en "Siguiente". */
     fun likes(kind: Kind) = if (kind.custom) emptyList() else if (kind.isBook) likesBooks else likesGames
@@ -198,6 +202,8 @@ object Couple {
     suspend fun syncOwn(store: Store): Boolean = withContext(Dispatchers.IO) {
         if (!store.paired) return@withContext false
         val changed = Account.mergeOwn(store)
+        // Lo jugado en tus PC (Atrio lo sube aparte): para el diario
+        runCatching { HorasPc.bajar(store.contexto, store) }
         if (changed) SyncBus.changed()
         changed
     }
@@ -221,6 +227,7 @@ object Couple {
         if (!store.paired || store.partnerUid.isBlank()) return@withContext null
         val o = Account.latest(store, store.partnerUid) ?: return@withContext null
         val p = parse(o)
+        runCatching { HorasPc.bajar(store.contexto, store, store.partnerUid) }
         o.remove("_dev")
         store.partnerRaw = o.toString()
         store.partnerId = store.partnerUid
@@ -288,7 +295,10 @@ object Couple {
             ks.associate { it.id to noLocal(gamesFromJson(d.optJSONArray("items_${it.id}") ?: JSONArray())) },
             ks.associate { it.id to noLocalP(playsFromJson(d.optJSONArray("iplays_${it.id}") ?: JSONArray())) },
             quizRunsFromJson(d.optJSONObject("quiz")),
-            (d.optJSONArray("nube") ?: JSONArray()).let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let { o -> nubeFromJson(o) } } }
+            (d.optJSONArray("nube") ?: JSONArray()).let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let { o -> nubeFromJson(o) } } },
+            // (sus fotos del diario solo están en su móvil)
+            notasFromJson(d.optJSONArray("diario")).filter { it.comparte }.map { if (Photos.isLocal(it.foto)) it.copy(foto = "") else it },
+            leidoDeLectura(d.optJSONArray("lectura"))
         )
     }
 

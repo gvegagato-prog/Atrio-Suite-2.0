@@ -241,7 +241,7 @@ open class Capturas6Test {
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         repeat(3) { rule.onRoot().performTouchInput { swipeDown() } }; rule.waitForIdle()
         rule.onAllNodesWithText("Diario")[0].performClick(); shoot("r6_diario")
-        org.junit.Assert.assertTrue("el Diario se abre desde la portada", rule.onAllNodesWithText("Todo").fetchSemanticsNodes().isNotEmpty())
+        org.junit.Assert.assertTrue("el Diario se abre desde la portada", rule.onAllNodesWithText("CALENDARIO").fetchSemanticsNodes().isNotEmpty())
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.runOnUiThread { Mode.dark = true; Mode.themeMode = 2 }
         rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }; rule.onRoot().performTouchInput { swipeDown() }

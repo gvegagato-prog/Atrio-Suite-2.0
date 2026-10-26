@@ -375,6 +375,8 @@ data class Look(
 
 class Store(ctx: Context) {
     private val app = ctx.applicationContext
+    /** El de la app (para lo que se guarda fuera de estas preferencias). */
+    val contexto: Context get() = app
     private val p = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE)
 
     var key: String
@@ -651,6 +653,11 @@ class Store(ctx: Context) {
     var avisoLectura: Int
         get() = p.getInt("aviso_lectura", -1)
         set(v) { p.edit().putInt("aviso_lectura", v).apply() }
+
+    /** A qué hora recordarte escribir en el diario si ese día aún no has escrito (-1 = nunca). Solo en este dispositivo. */
+    var avisoDiario: Int
+        get() = p.getInt("aviso_diario", -1)
+        set(v) { p.edit().putInt("aviso_diario", v).apply() }
     fun setGoal(kind: Int, year: Int, v: Int) { p.edit().putInt("goal_${kind}_$year", v.coerceIn(0, 999)).apply() }
 
     // ---- Modo pareja ----
@@ -828,7 +835,7 @@ class Store(ctx: Context) {
     /** Lo que se comparte con la pareja: tus datos, recomendaciones y reacciones, sin la API key. */
     fun syncData(): String {
         val o = JSONObject()
-        for (n in listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura", "maquetas")) {
+        for (n in dataNames) {
             o.put(n, JSONArray(p.getString(n, "[]")))
         }
         val ks = kinds
@@ -1053,7 +1060,16 @@ class Store(ctx: Context) {
         Widgets.pedir(app)
     }
 
-    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura", "maquetas")
+    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura", "maquetas", "diario")
+
+    // ---- El diario: lo que escribes cada día (viaja con la cuenta como las fichas) ----
+    fun loadDiario(): List<Nota> = try { notasFromJson(JSONArray(p.getString("diario", "[]") ?: "[]")) } catch (e: Exception) { emptyList() }
+
+    fun saveDiario(list: List<Nota>) {
+        val a = JSONArray(); list.forEach { a.put(notaToJson(it)) }
+        val ed = p.edit(); writeList("diario", a, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
+        DiarioHub.notas = list
+    }
 
     // ---- Tu nube (kDrive): lo subido, para que tus otros dispositivos y tu pareja lo encuentren ----
     fun loadNube(): List<NubeFile> = try {
@@ -1248,7 +1264,7 @@ class Store(ctx: Context) {
         backup.put("kinds", JSONArray(oldKindsTxt))
         val ed = p.edit()
         // Una copia antigua sin sagas no borra las tuyas
-        names.forEach { if ((it != "sagas" || o.has("sagas")) && (it != "maquetas" || o.has("maquetas"))) writeList(it, o.optJSONArray(it) ?: JSONArray(), ed) }
+        names.forEach { if ((it != "sagas" || o.has("sagas")) && (it != "maquetas" || o.has("maquetas")) && (it != "diario" || o.has("diario"))) writeList(it, o.optJSONArray(it) ?: JSONArray(), ed) }
         if (withKinds) ed.putString("kinds", (o.optJSONArray("kinds") ?: JSONArray()).toString())
         ed.apply()
         try {

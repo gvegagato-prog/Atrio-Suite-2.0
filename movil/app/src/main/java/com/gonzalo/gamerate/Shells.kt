@@ -368,6 +368,8 @@ private fun BuscadorGeneral(m: ShellModel, onClose: () -> Unit) {
     val citas = remember(libros) { libros.flatMap { e -> bookNotes(ctx, e.id).map { e to it } } }
     val res = remember(q, todo) { if (q.isBlank()) emptyList() else todo.filter { libMatches(q, it.name, it.creator) }.sortedByDescending { it.activity }.take(80) }
     val resCitas = remember(q, citas) { if (q.trim().length < 3) emptyList() else citas.filter { (_, n) -> libMatches(q, n.text, n.note) }.take(40) }
+    // Y en lo que has escrito en tu diario
+    val resNotas = remember(q, DiarioHub.notas) { if (q.trim().length < 3 || m.readOnly) emptyList() else DiarioHub.notas.filter { libMatches(q, it.texto, "") }.sortedByDescending { it.dia }.take(30) }
     val recientes = remember(todo) { todo.sortedByDescending { it.activity }.distinctBy { it.kind.id to it.id }.take(8) }
     androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val foco = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -382,7 +384,7 @@ private fun BuscadorGeneral(m: ShellModel, onClose: () -> Unit) {
                 textStyle = androidx.compose.ui.text.TextStyle(color = Ink2, fontSize = 22.sp, fontFamily = Display),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Red2),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp).focusRequester(foco),
-                decorationBox = { inner -> Box { if (q.isEmpty()) Text("Título, autor, estudio o una frase que subrayaste", color = Grey2, fontSize = 17.sp, fontFamily = Display, fontStyle = FontStyle.Italic); inner() } }
+                decorationBox = { inner -> Box { if (q.isEmpty()) Text("Título, autor, una frase que subrayaste o escribiste", color = Grey2, fontSize = 17.sp, fontFamily = Display, fontStyle = FontStyle.Italic); inner() } }
             )
             LaunchedEffect(Unit) { kotlinx.coroutines.delay(150); runCatching { foco.requestFocus() } }
             Rule(1.dp)
@@ -391,7 +393,7 @@ private fun BuscadorGeneral(m: ShellModel, onClose: () -> Unit) {
                     item { RevSectionPad("Lo último") }
                     items(recientes.size) { i -> ResultadoFila(recientes[i]) { onClose(); m.open(recientes[i]) } }
                 } else {
-                    if (res.isEmpty() && resCitas.isEmpty()) item {
+                    if (res.isEmpty() && resCitas.isEmpty() && resNotas.isEmpty()) item {
                         Text("Nada con «${q.trim()}».", color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 18.sp, modifier = Modifier.padding(vertical = 24.dp))
                     }
                     // Por categorías, en el orden de la portada
@@ -400,6 +402,17 @@ private fun BuscadorGeneral(m: ShellModel, onClose: () -> Unit) {
                         if (deK.isNotEmpty()) {
                             item(key = "k${k.id}") { RevSectionPad("${k.title} · ${deK.size}") }
                             items(deK.size, key = { i -> "e${k.id}-${deK[i].id}-${deK[i].play != null}" }) { i -> ResultadoFila(deK[i]) { onClose(); m.open(deK[i]) } }
+                        }
+                    }
+                    if (resNotas.isNotEmpty()) {
+                        item(key = "notas") { RevSectionPad("En tu diario · ${resNotas.size}") }
+                        items(resNotas.size) { i ->
+                            val n = resNotas[i]
+                            Column(Modifier.fillMaxWidth().press(haptic = false) { onClose(); DiarioHub.editar?.invoke(n) }.padding(vertical = 10.dp)) {
+                                Text(fechaDiario(n.dia).uppercase(), color = Grey2, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                                Text(extracto(n.texto, 220), fontFamily = Display, fontSize = 17.sp, lineHeight = 22.sp, color = Ink2, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                            }
+                            Rule(1.dp, Line)
                         }
                     }
                     if (resCitas.isNotEmpty()) {

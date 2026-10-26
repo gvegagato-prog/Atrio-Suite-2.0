@@ -80,6 +80,22 @@ revista. Arriba, «ATRIO» y tres secciones: **Valorados · Juegos · Revista** 
   entera.
 - **Descubrir juegos:** filtros de años y plataformas.
 
+## El Diario (móvil 6.64 y PC 2.8.5)
+
+Cada día como una página: lo que escribes y lo que hiciste con cada cosa, sin tener que apuntarlo.
+
+- **Solo:** lo que terminas (con tu nota y tu opinión), empiezas o dejas; lo leído con el lector; lo jugado en el PC
+  (Atrio ya sube las partidas a tu cuenta, en `/users/<uid>/horas`); tus apuntes, subrayados y capturas. Todo junto
+  por ficha y por día, del más nuevo al más viejo, con el resumen de cada mes.
+- **Escribir:** varias entradas por día, de qué fichas hablas, una foto de la galería (viaja por tu kDrive) y, con
+  pareja, si quieres que la vea. Se guarda al salir. La lista `diario` viaja con la cuenta como las fichas.
+- **Hoy arriba:** lo escrito, lo hecho y lo que llevas entre manos para apuntar algo en un toque; «tal día como
+  hoy» de otros años y la racha de días seguidos.
+- **Calendario:** lo terminado con su portada, ✎ si escribiste y el tono de cada día según lo que leíste y jugaste.
+- **En la ficha:** la casilla «En tu diario» (lo que has escrito de ella) y «Escribir en el diario» en Enlaces.
+  El buscador general también busca en lo escrito. Recordatorio opcional a la hora que elijas.
+- **PC:** el Diario de la revista enseña lo mismo y deja escribir.
+
 ## Atrio 6 (móvil): cambio completo
 
 La app del móvil se ha rehecho por fuera: otra estética, otra navegación y otras animaciones. Por dentro

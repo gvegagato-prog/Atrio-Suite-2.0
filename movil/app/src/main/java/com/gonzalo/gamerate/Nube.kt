@@ -427,6 +427,8 @@ object NubeSync {
             val k = kinds.find { it.id == sg.kind } ?: BOOKS
             Photos.nameOf(sg.cover)?.let { out.putIfAbsent(it, "Atrio/${safe(k.title)}/Sagas/${safe(sg.name)}/Portadas") }
         }
+        // Las fotos de tu diario
+        store.loadDiario().forEach { n -> Photos.nameOf(n.foto)?.let { out.putIfAbsent(it, "Atrio/Diario/${java.time.LocalDate.ofEpochDay(n.dia).year}") } }
         return out
     }
 

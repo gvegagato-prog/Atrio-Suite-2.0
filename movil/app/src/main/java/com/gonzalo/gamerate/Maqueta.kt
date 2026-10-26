@@ -227,6 +227,8 @@ fun MagPage(
             if ("subrayados" in defs) r = MagLayouts.withNew(ctx, key, r, "subrayados", "lectura")
             // (Atrio 6.63: «Dónde verla» en pelis y series, detrás de la crítica)
             if ("donde" in defs) r = MagLayouts.withNew(ctx, key, r, "donde", "critica")
+            // (Atrio 6.64: «En tu diario», detrás de los apuntes o de la opinión, la primera vez que hay algo escrito)
+            if ("diario" in defs) r = MagLayouts.withNew(ctx, key, r, "diario", if (r.any { row -> row.cells.any { it.type == "apuntes" } }) "apuntes" else "opinion")
             r
         } ?: defaults)
     }

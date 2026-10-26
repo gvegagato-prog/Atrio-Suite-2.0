@@ -85,6 +85,8 @@ fun App(
     var books by remember { mutableStateOf(store.load(1)) }
     var bplays by remember { mutableStateOf(store.loadPlays(1)) }
     var sagas by remember { mutableStateOf(store.loadSagas().also { SagaHub.list = it }) }
+    // Lo que escribes en el diario (varias entradas por día)
+    var notas by remember { mutableStateOf(store.loadDiario().also { DiarioHub.notas = it }) }
     /** Al abrir un libro desde su saga, «volver» lleva a la saga. */
     var volverSaga by remember { mutableStateOf<Long?>(null) }
     /** «Añadir a una saga» desde la ficha de esa ficha: (id, categoría). */
@@ -126,6 +128,7 @@ fun App(
     LaunchedEffect(Unit) {
         if (store.paired && store.notifyPartner) PartnerWatch.schedule(ctx)
         runCatching { LecturaAviso.programa(ctx) }
+        runCatching { DiarioAviso.programa(ctx) }
         AtajoLectura.pon(ctx)
     }
 
@@ -152,6 +155,7 @@ fun App(
         store.savePlays(l, k.id)
     }
 
+    fun setNotas(l: List<Nota>) { notas = l; store.saveDiario(l) }
     fun setSagas(l: List<Saga>) { sagas = l; SagaHub.list = l; store.saveSagas(l) }
     fun saveSaga(s: Saga) = setSagas(sagas.map { if (it.id == s.id) s.copy(updated = now()) else it })
     fun newSaga(name: String, ids: List<Long>, kind: Int): Saga {
@@ -187,6 +191,7 @@ fun App(
         extra = kinds.associate { it.id to store.load(it.id) }
         extraPlays = kinds.associate { it.id to store.loadPlays(it.id) }
         sagas = store.loadSagas(); SagaHub.list = sagas
+        notas = store.loadDiario(); DiarioHub.notas = notas
     }
 
     // Al salir de la app se programa una subida a la nube (y a Drive) que termina aunque la cierres.
@@ -680,6 +685,11 @@ fun App(
     // ---- La suite: apuntes rápidos y capturas ----
     var shooting by remember { mutableStateOf(false) }
     var memoFor by remember { mutableStateOf<Pair<Play, Shot?>?>(null) }
+    /** El editor del diario abierto: el día, la entrada que se cambia (null: nueva) y las fichas ya elegidas. */
+    var escribiendo by remember { mutableStateOf<Triple<Long, Nota?, List<String>>?>(null) }
+    var avisoDiario by remember { mutableStateOf(false) }
+    DiarioHub.escribirSobre = { k, id -> escribiendo = Triple(today(), null, listOf(refDe(k.id, id))) }
+    DiarioHub.editar = { n -> escribiendo = Triple(n.dia, n, emptyList()) }
     var guideSheet by remember { mutableStateOf<PcGame?>(null) }
     // Las guías se abren dentro de la app, encima de lo que estés viendo
     SideEffect { Guides.opener = { g -> guideSheet = null; WebActivity.open(ctx, g) } }
@@ -1016,11 +1026,13 @@ fun App(
     // Desde un widget: una ficha ("item:<categoría>:<id>") o el Diario de una categoría ("diario:<categoría>")
     LaunchedEffect(openGo) {
         val a = openGo.split(':')
-        if (a[0] != "item" && a[0] != "diario" && a[0] != "empezar" && a[0] != "home") return@LaunchedEffect
+        if (a[0] != "item" && a[0] != "diario" && a[0] != "empezar" && a[0] != "home" && a[0] != "escribir") return@LaunchedEffect
         if (Mode.viewP) { Mode.viewP = false; Mode.calP = false }
         val k = myKinds.find { it.id == a.getOrNull(1)?.toIntOrNull() } ?: GAMES
         if (a[0] == "home") go(0)
         else if (a[0] == "diario") { diaryKind = k.id; go(4) }
+        // El aviso del diario: a escribir lo de hoy
+        else if (a[0] == "escribir") { go(4); escribiendo = Triple(today(), null, emptyList()) }
         else if (a[0] == "empezar") {
             // «¿Y ahora qué?»: se empieza y se abre su ficha
             val id = a.getOrNull(2)?.toLongOrNull() ?: 0L
@@ -1107,48 +1119,74 @@ fun App(
 
                 when {
                     dest == 4 -> {
-                        val dk = if (pv) p!!.kindById(section) else myKinds.find { it.id == section } ?: GAMES
-                        // Las categorías que se ven: todas («Todo») o la elegida
+                        // El Diario: lo de cada día (todo o una categoría); con tu pareja, también lo suyo
+                        val dk = if (pv) p!!.kindById(diaryKind) else myKinds.find { it.id == diaryKind } ?: GAMES
                         val dks = if (diaryAll) sectionKinds else listOf(dk)
-                        val mine = remember(dks, games, plays, books, bplays, extra, extraPlays, p, pv) { dks.flatMap { k -> calItems(gs(k), ps(k), k.id) } }
-                        // Lo de tu pareja, de las categorías que tenéis igual (las propias, con los mismos criterios)
-                        val theirs = if (pv || p == null) null else remember(dks, p) {
-                            dks.flatMap { k ->
-                                if (k.custom && p.match(k)?.labels?.drop(1) != k.labels.drop(1)) emptyList()
-                                else p.side(k).let { ps0 -> calItems(ps0.games, ps0.plays, k.id) }
+                        val dePareja = p != null && (pv || Mode.calP)
+                        val vuelve = rememberResumeTick()
+                        var dias by remember { mutableStateOf<List<Dia>?>(null) }
+                        val shots = Suite.localShots
+                        // Al abrirlo, lo último jugado en tus PC (y en los de tu pareja, si es lo suyo)
+                        LaunchedEffect(dePareja, vuelve) {
+                            withContext(Dispatchers.IO) { runCatching { HorasPc.bajar(ctx, store, if (dePareja) store.partnerUid else store.accUid, ya = true) } }
+                        }
+                        LaunchedEffect(dks, games, plays, books, bplays, extra, extraPlays, notas, p, dePareja, syncTick, vuelve, shots, diaryAll, HorasPc.version) {
+                            val fichas = dks.map { k -> Triple(k, if (dePareja) p!!.games(k) else gamesOf(k), if (dePareja) p!!.plays(k) else playsOf(k)) }
+                            val conLibros = dks.any { it.isBook }
+                            val conJuegos = dks.any { it.isGame }
+                            val solo = if (diaryAll) null else setOf(dk.id)
+                            dias = withContext(Dispatchers.Default) {
+                                val f = if (dePareja) FuentesDiario(
+                                    fichas, p!!.diario, if (conLibros) p.leido else emptyMap(),
+                                    if (conJuegos) HorasPc.porDia(ctx, store.partnerUid) else emptyMap(), soloDe = solo
+                                ) else FuentesDiario(
+                                    fichas, notas,
+                                    if (conLibros) BookFiles.leidoPorDia(ctx) else emptyMap(),
+                                    if (conJuegos && store.paired) HorasPc.porDia(ctx, store.accUid) else emptyMap(),
+                                    if (conLibros) (books.map { it.id } + bplays.map { it.id }).distinct().associateWith { bookNotes(ctx, it) }.filterValues { it.isNotEmpty() } else emptyMap(),
+                                    if (conJuegos) shots else emptyList(), solo
+                                )
+                                diasDelDiario(f)
                             }
                         }
-                        val lado = if (theirs != null && p != null) PartnerSide(p.name, emptyList(), emptyList(), emptyMap()) else null
-                        val conLibros = !pv && dks.any { it.isBook }
-                        val vuelve = rememberResumeTick()
-                        val leido = remember(conLibros, syncTick, dest, vuelve) { if (conLibros) BookFiles.leidoPorDia(ctx) else emptyMap() }
-                        CalendarScreen(dk, myGames, myPlays, lado, { go(0) }, heading = "Diario", top = {
-                            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                                item { SoftChip("Todo", diaryAll) { ponDiarioTodo(true) } }
-                                items(sectionKinds.size) { i ->
-                                    val k = sectionKinds[i]
-                                    SoftChip(k.title, !diaryAll && k.id == dk.id) { ponDiarioTodo(false); diaryKind = k.id; section = k.id }
+                        val enCurso = if (dePareja) emptyList() else dks.flatMap { k -> playsOf(k).filter { it.status == 1 }.map { k to it } }.sortedByDescending { it.second.activity }.take(12)
+                        fun refKind(r: String): Pair<Kind, Long>? {
+                            val kid = r.substringBefore(':').toIntOrNull() ?: return null
+                            val id = r.substringAfter(':').toLongOrNull() ?: return null
+                            val k = if (dePareja) p!!.allKinds.find { it.id == kid } else myKinds.find { it.id == kid }
+                            return k?.let { it to id }
+                        }
+                        fun abrirFicha(k: Kind, id: Long) {
+                            when {
+                                pv -> { section = k.id; screen = Screen.PartnerItem(k.id, id) }
+                                dePareja -> screen = Screen.PartnerItem(p!!.match(k)?.id ?: k.id, id)
+                                else -> {
+                                    section = k.id
+                                    playsOf(k).find { it.id == id }?.let { screen = Screen.PlayDetail(it) } ?: gamesOf(k).find { it.id == id }?.let { screen = Screen.Edit(it, false) }
                                 }
                             }
-                        }, items = mine, itemsP = theirs, leido = leido,
-                            nombreLibro = { id -> (books.find { it.id == id }?.name ?: bplays.find { it.id == id }?.name).orEmpty() },
-                            onOpenLeido = { id ->
-                                section = BOOKS.id
-                                bplays.find { it.id == id }?.let { screen = Screen.PlayDetail(it) } ?: books.find { it.id == id }?.let { screen = Screen.Edit(it, false) }
-                            }) { c ->
-                            val ck = sectionKinds.find { it.id == c.kind } ?: dk
-                            if (pv) {
-                                section = ck.id
-                                screen = Screen.PartnerItem(ck.id, c.id)
-                            } else if (Mode.calP && p != null) {
-                                screen = Screen.PartnerItem(p.match(ck)?.id ?: ck.id, c.id)
-                            } else {
-                                // (las fichas se abren en su categoría: la sección pasa a la de lo que tocas)
-                                section = ck.id
-                                if (c.isPlay) playsOf(ck).find { it.id == c.id }?.let { screen = Screen.PlayDetail(it) }
-                                else gamesOf(ck).find { it.id == c.id }?.let { screen = Screen.Edit(it, false) }
-                            }
                         }
+                        DiarioScreen(
+                            dias, enCurso, sectionKinds, if (diaryAll) null else dk.id,
+                            onFiltro = { id -> if (id == null) ponDiarioTodo(true) else { ponDiarioTodo(false); diaryKind = id } },
+                            pareja = p?.name, viendoPareja = dePareja,
+                            onPareja = if (p != null && !pv) ({ withReveal { Mode.calP = !Mode.calP } }) else null,
+                            nombreDe = { r ->
+                                refKind(r)?.let { (k, id) ->
+                                    if (dePareja) (p!!.plays(k).find { it.id == id }?.name ?: p.games(k).find { it.id == id }?.name)
+                                    else (playsOf(k).find { it.id == id }?.name ?: gamesOf(k).find { it.id == id }?.name)
+                                }
+                            },
+                            acc = DiarioAcciones(
+                                abrir = { t -> if (t.id != 0L) abrirFicha(t.kind, t.id) },
+                                cita = { t, n -> ReaderActivity.open(ctx, t.id, t.nombre, n.value) },
+                                captura = { s -> screen = Screen.ShotView(s, screen) },
+                                escribir = { d, n -> escribiendo = Triple(d, n, emptyList()) },
+                                apuntar = { k, pl -> section = k.id; memoFor = pl to null },
+                                abrirRef = { r -> refKind(r)?.let { (k, id) -> abrirFicha(k, id) } },
+                                aviso = { avisoDiario = true }
+                            )
+                        )
                     }
                     dest in 1..3 && section >= 0 -> Library(kind, null)
                     dest == 3 -> Box(Modifier.fillMaxSize().statusBarsPadding().padding(20.dp)) { Text("Aún no hay categoría de películas o series.", color = Muted) }
@@ -1729,6 +1767,44 @@ fun App(
                 onNew = { n -> sagaAdd = null; val sg = newSaga(n, listOf(id), kid); volverSaga = null; screen = Screen.Saga(sg.id) },
                 onDismiss = { sagaAdd = null }, kind = ak)
         }
+        escribiendo?.let { (dia, nota, sobre0) ->
+            val todas = remember(games, plays, books, bplays, extra, extraPlays) {
+                myKinds.flatMap { k -> playsOf(k).map { RefFicha(refDe(k.id, it.id), k, it.name, it.cover) } + gamesOf(k).map { RefFicha(refDe(k.id, it.id), k, it.name, it.cover) } }.distinctBy { it.ref }
+            }
+            // Primero lo de ese día (lo que terminaste, empezaste, apuntaste o leíste) y lo que llevas entre manos
+            val propuestas = remember(dia, todas) {
+                val leidoEse = BookFiles.leidoPorDia(ctx)[dia].orEmpty().filterValues { it >= 60_000L }.keys
+                val ese = myKinds.flatMap { k ->
+                    playsOf(k).filter { pl -> pl.start == dia || pl.end == dia || pl.liveMemos.any { diaDe(it.t) == dia } || pl.entries.any { diaDe(it.time) == dia } || (k.isBook && pl.id in leidoEse) }.map { refDe(k.id, it.id) } +
+                        gamesOf(k).filter { g -> g.end == dia || g.start == dia || (k.isBook && g.id in leidoEse) }.map { refDe(k.id, it.id) }
+                }
+                val curso = myKinds.flatMap { k -> playsOf(k).filter { it.status == 1 }.map { k to it } }.sortedByDescending { it.second.activity }.map { refDe(it.first.id, it.second.id) }
+                (ese + curso).distinct().mapNotNull { r -> todas.find { it.ref == r } }
+            }
+            EscribirDiario(
+                dia, nota, sobre0, propuestas, todas, partner?.name?.takeIf { store.paired && store.partnerUid.isNotBlank() },
+                elegirFoto = { cb -> pickPhoto(cb) },
+                onGuardar = { n ->
+                    setNotas(notas.filter { it.id != n.id } + n)
+                    if (Photos.isLocal(n.foto)) NubeSync.enqueue(ctx)
+                    if (nota == null) say("Guardado en tu diario")
+                },
+                onBorrar = { n ->
+                    val antes = notas
+                    setNotas(notas.filter { it.id != n.id })
+                    undoable("Entrada borrada") { setNotas(antes) }
+                },
+                onCerrar = { escribiendo = null }
+            )
+        }
+        if (avisoDiario) AvisoDiarioDialogo(store.avisoDiario, onElegir = { h ->
+            store.avisoDiario = h
+            DiarioAviso.programa(ctx)
+            if (h >= 0 && android.os.Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                perm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            say(if (h >= 0) "Te lo recordaré a las $h:00 si ese día no has escrito" else "Sin recordatorio")
+            avisoDiario = false
+        }) { avisoDiario = false }
         val mf = memoFor
         if (mf != null) {
             MemoDialog(

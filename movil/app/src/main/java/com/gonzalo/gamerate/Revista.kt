@@ -288,7 +288,10 @@ fun RevistaGameRead(
         else Text("Aún no has escrito nada.", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp)
     }
     if (kind.isGame) defs["horas"] = MagDef("Horas") { MagHours(g.minutes, g.ttbMain, g.ttbExtra, g.ttbFull, ttbMsg) }
+    // Lo que has escrito de esto en tu diario (solo si hay algo)
+    if (!Mode.viewP && DiarioHub.de(kind.id, g.id).isNotEmpty()) defs["diario"] = MagDef("En tu diario", "Escribir" to { DiarioHub.escribirSobre?.invoke(kind, g.id) }) { DiarioDeFicha(kind, g.id) }
     defs["enlaces"] = MagDef("Enlaces") {
+        if (!Mode.viewP) MagLink("Escribir en el diario") { DiarioHub.escribirSobre?.invoke(kind, g.id) }
         if (kind.isGame) FichaPlayButtons(g.id, g.name, Modifier.padding(bottom = 6.dp))
         if (kind.hasSoundtrack) MagLink("Banda sonora", "YouTube Music") { openSoundtrack(ctx, g.name) }
         SagaLink(g.id, kind)
@@ -301,10 +304,10 @@ fun RevistaGameRead(
     }
     defs["datos"] = MagDef("Datos") { GameFacts(g, kind) }
     val defaults = when {
-        kind.isGame -> magRows(listOf("guias", "nota"), listOf("opinion"), listOf("horas", "enlaces"), listOf("datos"))
-        kind.isMovie || kind.isTv -> magRows(listOf("critica", "nota"), listOf("opinion"), listOf("datos", "enlaces"), listOf("donde"))
-        kind.isBook -> magRows(listOf("datos", "nota"), listOf("lectura"), listOf("subrayados"), listOf("opinion"), listOf("enlaces"))
-        else -> magRows(listOf("datos", "nota"), listOf("opinion"), listOf("enlaces"))
+        kind.isGame -> magRows(listOf("guias", "nota"), listOf("opinion"), listOf("diario"), listOf("horas", "enlaces"), listOf("datos"))
+        kind.isMovie || kind.isTv -> magRows(listOf("critica", "nota"), listOf("opinion"), listOf("diario"), listOf("datos", "enlaces"), listOf("donde"))
+        kind.isBook -> magRows(listOf("datos", "nota"), listOf("lectura"), listOf("subrayados"), listOf("opinion"), listOf("diario"), listOf("enlaces"))
+        else -> magRows(listOf("datos", "nota"), listOf("opinion"), listOf("diario"), listOf("enlaces"))
     }
     MagPage("v:${kind.id}:${g.id}", "tpl:v:${kind.id}", kind.title, defaults, defs, kind, g.id, g.name, designing)
     if (designing) MagFooter("Listo") { designing = false } else MagFooter { designing = true }

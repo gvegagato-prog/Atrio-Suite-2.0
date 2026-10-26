@@ -47,7 +47,7 @@ function saveLocal() {
 
 // ---------------------------------------------------------------- Mezcla (igual que Store.mergeRemote)
 
-const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas', 'nube', 'lectura', 'maquetas'];
+const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas', 'nube', 'lectura', 'maquetas', 'diario'];
 const listNames = (kinds) => BASE_LISTS.concat(...(kinds || []).map((k) => [`items_${k.id}`, `iplays_${k.id}`]));
 const upd = (o) => Number(o && o.updated) || 0;
 
@@ -474,7 +474,16 @@ function edit(op) {
       const memos = [...(p.memos || [])].filter((m) => m && m.t !== op.memo.t);
       memos.push(op.remove ? { t: op.memo.t, del: 1, u: Date.now() } : { ...op.memo, u: Date.now() });
       put(d, pk(kind), { ...p, memos: memos.sort((a, b) => a.t - b.t).slice(-500) });
-    } else throw new Fail('Operación desconocida.');
+    } else if (op.op === 'diarioPut') {
+      // Una entrada del diario (la misma lista que el móvil: { id, dia, x, sobre?, foto?, comp?, updated })
+      const n = op.item || {};
+      if (!Number(n.id) || !Number.isFinite(Number(n.dia))) throw new Fail('Esa entrada del diario no está bien.');
+      const prev = (d.diario || []).find((o) => Number(o.id) === Number(n.id)) || {};
+      const item = { ...prev, id: Number(n.id), dia: Number(n.dia), x: String(n.x || '') };
+      for (const k of ['sobre', 'foto', 'comp']) if (k in n) item[k] = n[k];
+      put(d, 'diario', item);
+    } else if (op.op === 'diarioDel') drop(d, 'diario', op.id);
+    else throw new Fail('Operación desconocida.');
     local = d;
     saveLocal();
     onChange();
