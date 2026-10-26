@@ -141,6 +141,27 @@ object BookFiles {
         return out
     }
 
+    /**
+     * Tras unos minutos leyendo hoy, el libro pasa solo a «Leyendo» si estaba en lista o abandonado (una sola vez al día,
+     * para que si lo devuelves a mano a la lista no vuelva a moverse hasta mañana). Lo ya valorado no se toca.
+     * [st] es el estado del lector del libro (se le apunta el día). Devuelve true si lo ha movido.
+     */
+    fun pasaALeyendo(ctx: Context, id: Long, st: JSONObject, hoy: java.time.LocalDate = java.time.LocalDate.now()): Boolean {
+        if (st.optString("autoLeyendo") == hoy.toString()) return false
+        val ms = st.optJSONObject("stats")?.optJSONObject("days")?.optLong(hoy.toString()) ?: 0L
+        if (ms < 3 * 60_000L) return false
+        st.put("autoLeyendo", hoy.toString())
+        val store = Store(ctx)
+        val todos = store.loadPlays(BOOKS.id)
+        val p = todos.find { it.id == id } ?: return false
+        if (p.status == 1) return false
+        store.savePlays(todos.map {
+            if (it.id == id) it.copy(status = 1, start = if (it.start == 0L) hoy.toEpochDay() else it.start, end = 0L, updated = System.currentTimeMillis()) else it
+        }, BOOKS.id)
+        SyncBus.changed()
+        return true
+    }
+
     fun detach(ctx: Context, id: Long) {
         val uri = get(ctx, id)
         if (uri != null) try { ctx.contentResolver.releasePersistableUriPermission(Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (e: Exception) { }
@@ -561,6 +582,7 @@ class ReaderActivity : ComponentActivity() {
         fun saveStats(json: String) = edit {
             // Mezclado con lo guardado: si mientras leías llegó el tiempo de otro dispositivo, no se pierde
             it.put("stats", ReadStats.merge(it.optJSONObject("stats"), JSONObject(json), Store(this@ReaderActivity).deviceId, Store(this@ReaderActivity).deviceId))
+            BookFiles.pasaALeyendo(this@ReaderActivity, id, it)
         }
 
         /** Lee una frase en voz alta; al acabar contesta en window.atrioSpoken(id, error). */
