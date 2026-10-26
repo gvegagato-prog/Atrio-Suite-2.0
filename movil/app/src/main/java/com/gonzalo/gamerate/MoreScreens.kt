@@ -251,6 +251,7 @@ fun EditScreen(
             else if (kind.isGame) MinutesEditor(g.minutes) { g = g.copy(minutes = it) }
             Spacer(Modifier.height(16.dp))
             DatesRow(g.start, g.end, { g = g.copy(start = it) }, { g = g.copy(end = it) })
+            if (kind.isGame) BotonListaNegra(g.name)
             Spacer(Modifier.height(16.dp))
             ScoresFor(g.scores(), kind.labels) { i, v -> g = g.setScore(i, v) }
             Spacer(Modifier.height(20.dp))

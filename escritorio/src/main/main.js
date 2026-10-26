@@ -132,13 +132,14 @@ function sgdbOf(g) {
   return ov.sgdbId || art.knownId(g.key) || null;
 }
 // ¿Hay algún juego abierto ahora? (entonces Atrio no se pone delante)
-function gameRunning() { return !!(tracker && tracker.state().active.length); }
+function gameRunning() { return !!(tracker && tracker.state().active.some((a) => !bloqueadas.has(a.k))); }
 // Juegos lanzados desde el móvil para jugar en streaming
 const streamedKeys = new Set();
 
 function playState() {
   if (!tracker) return { sessions: [], active: [] };
-  const st = tracker.state();
+  const st0 = tracker.state();
+  const st = bloqueadas.size ? { ...st0, sessions: st0.sessions.filter((x) => !bloqueadas.has(x[0])), active: (st0.active || []).filter((a) => !bloqueadas.has(a.k)) } : st0;
   const uid = ronron.uid();
   const mine = st.sessions.filter((x) => !uid || !x[3] || x[3] === uid).map((x) => [x[0], x[1], x[2]]);
   const others = ronron.hoursOthers();
@@ -178,7 +179,7 @@ function playState() {
 // Lo que este equipo sube a la cuenta: sus partidas con nombre e id de SteamGridDB de cada juego
 function hoursPayload(uid) {
   const st = tracker.state();
-  const s = st.sessions.filter((x) => x[3] === uid).map((x) => [x[0], x[1], x[2]]);
+  const s = st.sessions.filter((x) => x[3] === uid && !bloqueadas.has(x[0])).map((x) => [x[0], x[1], x[2]]);
   const games = {};
   for (const x of s) {
     if (games[x[0]]) continue;
@@ -287,9 +288,33 @@ async function scanAll() {
   }
   info.merged = dupes;
   library = new Map(merged.map((g) => [g.key, g]));
+  aplicaNegra();
   scanInfo = info;
   lastScan = Date.now();
   return all;
+}
+
+// La lista negra (de tu cuenta): esos juegos no están en la biblioteca, ni se rastrean, ni salen en ningún sitio.
+// Sus partidas ya guardadas tampoco se cuentan (bloqueadas).
+let bloqueadas = new Set();
+function aplicaNegra() {
+  const v = ronron.vetados();
+  bloqueadas = new Set();
+  if (!v.size) return false;
+  let cambio = false;
+  for (const [k, g] of [...library]) {
+    if (v.has(ronron.normNombre(g.name)) || v.has(ronron.normNombre(named(g).name))) { bloqueadas.add(k); for (const a of g.aliasKeys || []) bloqueadas.add(a); library.delete(k); cambio = true; }
+  }
+  return cambio;
+}
+
+// Tras un cambio de la cuenta: si la lista negra ha cambiado, se vuelve a leer la biblioteca (para quitar, o devolver, juegos)
+let negraVista = '';
+function rescanLigero() {
+  const clave = [...ronron.vetados()].sort().join('|');
+  if (clave === negraVista) return;
+  negraVista = clave;
+  rescan().then(() => send('library', state())).catch(() => {});
 }
 
 async function rescan() {
@@ -359,7 +384,7 @@ function named(g) {
 // El juego que se está jugando ahora (el último que ha empezado), con arte que el móvil puede cargar
 function currentGame() {
   if (!tracker) return null;
-  const act = [...(tracker.state().active || [])].sort((a, b) => b.s - a.s)[0];
+  const act = [...(tracker.state().active || [])].filter((a) => !bloqueadas.has(a.k)).sort((a, b) => b.s - a.s)[0];
   if (!act) return null;
   const g = library.get(act.k);
   if (!g) return null;
@@ -789,7 +814,7 @@ async function ronronWatch() {
   if (!tracker || config.get().behavior.ronronAuto === false || !ronron.status().signed) return;
   const now = Date.now();
   const day = new Date().toDateString();
-  const min = Number(process.env.ATRIO_RONRON_AUTO_MIN || 2) * 60 * 1000;
+  const min = Number(process.env.ATRIO_RONRON_AUTO_MIN || 5) * 60 * 1000;
   for (const a of tracker.state().active || []) {
     if (now - a.s < min || ronronSeen.get(a.k) === day) continue;
     const g = library.get(a.k);
@@ -1019,7 +1044,11 @@ app.whenReady().then(async () => {
   art.setFetch((...a) => net.fetch(...a));
   meta.setFetch((...a) => net.fetch(...a));
   ronron.setFetch((...a) => net.fetch(...a));
-  ronron.start(() => { send('ronron', { status: ronron.status(), data: ronron.data() }); nube.fotos().catch(() => {}); });
+  ronron.start(() => {
+    send('ronron', { status: ronron.status(), data: ronron.data() }); nube.fotos().catch(() => {});
+    // Si llega un juego nuevo a la lista negra (desde el móvil), sale de la biblioteca al momento
+    rescanLigero();
+  });
   nube.start({
     config: () => config.get(), data: () => ronron.data(), edit: (op) => ronron.edit(op), log, fotosDir: FOTOS,
     onFotos: () => send('fotos', fotoNames()),

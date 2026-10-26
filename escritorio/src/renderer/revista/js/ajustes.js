@@ -163,6 +163,15 @@
     requestAnimationFrame(() => { const b = document.querySelector(`.ajustes .pestana[data-sec="${seccion}"]`); if (b) b.focus({ preventScroll: true }); });
   };
 
+  // La lista negra de juegos (la de tu cuenta, igual que en el móvil): no salen en ningún sitio ni se rastrean
+  RV.listaNegra = (nombre) => RV.confirmar('¿A la lista negra?',
+    `«${nombre}» dejará de salir en ningún sitio (biblioteca, portada, diario, calendario), en todos tus dispositivos, y su ficha de la cuenta se borrará. Puedes quitarlo después en Ajustes → Ocultos.`,
+    'Ocultar y borrar', async () => {
+      if (await RV.editar({ op: 'negraPut', item: { id: RV.idPropio(nombre), n: nombre } }, `${nombre}: a la lista negra`)) {
+        try { RV.api.rescan && await RV.api.rescan(); } catch { /* */ }
+        RV.refrescar();
+      }
+    });
   function laRevista() {
     const rev = { tema: 'auto', acento: 'rojo', ...(D.config().revista || {}) };
     return [

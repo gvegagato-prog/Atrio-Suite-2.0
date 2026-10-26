@@ -984,6 +984,12 @@ class Store(ctx: Context) {
         ed.putString("reacts", reacts.toString())
         ed.commit()
         applyKeys(r.optJSONObject("keys"), onlyEmpty = true)
+        Negra.poner(loadNegra())
+        // Lo que se ha vetado en otro dispositivo: su ficha de aquí también se va
+        Negra.nombres.takeIf { it.isNotEmpty() }?.let { v ->
+            if (load(0).any { normName(it.name) in v }) save(load(0).filterNot { normName(it.name) in v }, 0)
+            if (loadPlays(0).any { normName(it.name) in v }) savePlays(loadPlays(0).filterNot { normName(it.name) in v }, 0)
+        }
         applyLecturas()
         applyMaquetas()
         r.optJSONObject("ajustes")?.let { applyAjustes(it) }
@@ -1060,7 +1066,27 @@ class Store(ctx: Context) {
         Widgets.pedir(app)
     }
 
-    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura", "maquetas", "diario")
+    private val dataNames = listOf("games", "plays", "books", "bplays", "sagas", "nube", "lectura", "maquetas", "diario", "negra")
+
+    // ---- La lista negra de juegos: no salen en ningún sitio (viaja con la cuenta) ----
+    fun loadNegra(): List<Vetado> = try { vetadosFromJson(JSONArray(p.getString("negra", "[]") ?: "[]")) } catch (e: Exception) { emptyList() }
+
+    private fun saveNegra(l: List<Vetado>) {
+        val a = JSONArray(); l.forEach { a.put(vetadoToJson(it)) }
+        val ed = p.edit(); writeList("negra", a, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
+        Negra.poner(l)
+    }
+
+    /** Un juego a la lista negra: su ficha (en curso o valorada) se borra, y no vuelve a salir. */
+    fun addNegra(nombre: String) {
+        val n = normName(nombre)
+        if (n.isEmpty()) return
+        saveNegra(loadNegra().filter { normName(it.nombre) != n } + Vetado(Negra.idDe(nombre), nombre.trim(), System.currentTimeMillis()))
+        save(load(0).filterNot { normName(it.name) == n }, 0)
+        savePlays(loadPlays(0).filterNot { normName(it.name) == n }, 0)
+    }
+
+    fun removeNegra(v: Vetado) = saveNegra(loadNegra().filter { it.id != v.id })
 
     // ---- El diario: lo que escribes cada día (viaja con la cuenta como las fichas) ----
     fun loadDiario(): List<Nota> = try { notasFromJson(JSONArray(p.getString("diario", "[]") ?: "[]")) } catch (e: Exception) { emptyList() }
@@ -1367,7 +1393,9 @@ object ReadStats {
             if (cur == null) { out.put(id, JSONObject(x.toString())); continue }
             val days = JSONObject(cur.optJSONObject("days")?.toString() ?: "{}")
             x.optJSONObject("days")?.let { d -> for (k in d.keys()) days.put(k, maxOf(days.optLong(k, 0L), d.optLong(k, 0L))) }
-            out.put(id, JSONObject().put("total", maxOf(cur.optLong("total", 0L), x.optLong("total", 0L))).put("days", days))
+            val best = JSONObject(cur.optJSONObject("best")?.toString() ?: "{}")
+            x.optJSONObject("best")?.let { d -> for (k in d.keys()) best.put(k, maxOf(best.optLong(k, 0L), d.optLong(k, 0L))) }
+            out.put(id, JSONObject().put("total", maxOf(cur.optLong("total", 0L), x.optLong("total", 0L))).put("days", days).apply { if (best.length() > 0) put("best", best) })
         }
         return derived(out)
     }
@@ -1376,12 +1404,30 @@ object ReadStats {
     fun derived(dev: JSONObject): JSONObject {
         var total = 0L
         val days = JSONObject()
+        val best = JSONObject()
         for (id in dev.keys()) {
             val b = dev.getJSONObject(id)
             total += b.optLong("total", 0L)
             b.optJSONObject("days")?.let { d -> for (k in d.keys()) days.put(k, days.optLong(k, 0L) + d.optLong(k, 0L)) }
+            // La racha más larga de un día: la mejor de entre los dispositivos (no se suman: no leíste a la vez)
+            b.optJSONObject("best")?.let { d -> for (k in d.keys()) best.put(k, maxOf(best.optLong(k, 0L), d.optLong(k, 0L))) }
         }
-        return JSONObject().put("dev", dev).put("total", total).put("days", days)
+        return JSONObject().put("dev", dev).put("total", total).put("days", days).apply { if (best.length() > 0) put("best", best) }
+    }
+
+    /** Lo mínimo seguido para que un día cuente como leído o jugado: 5 minutos. */
+    const val SEGUIDO_MS = 5 * 60_000L
+
+    /**
+     * ¿Cuenta ese día como leído? Hace falta una racha de [SEGUIDO_MS] seguidos. Los días anteriores a esta versión no
+     * guardaron su racha: ahí vale con haber leído ese tiempo en total.
+     */
+    fun cuenta(st: JSONObject?, dia: String): Boolean {
+        st ?: return false
+        val total = st.optJSONObject("days")?.optLong(dia, 0L) ?: 0L
+        if (total <= 0L) return false
+        val best = st.optJSONObject("best")
+        return if (best != null && best.has(dia)) best.optLong(dia, 0L) >= SEGUIDO_MS else total >= SEGUIDO_MS
     }
 
     fun total(st: JSONObject?): Long = st?.optLong("total", 0L) ?: 0L

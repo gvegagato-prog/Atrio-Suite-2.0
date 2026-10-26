@@ -272,7 +272,7 @@ object Suite {
             LiveDev(
                 d, o.optString("app"), o.optString("dn").ifBlank { o.optString("name", "?") }, o.optString("os"),
                 o.optBoolean("on") && now - o.optLong("at") < ONLINE_MS, o.optLong("at"),
-                g?.let { LiveGame(it.optString("key"), it.optString("name"), it.optLong("sg"), it.optLong("s"), it.optString("cover"), it.optString("hero"), it.optString("logo")) },
+                g?.takeUnless { Negra.vetado(it.optString("name")) }?.let { LiveGame(it.optString("key"), it.optString("name"), it.optLong("sg"), it.optLong("s"), it.optString("cover"), it.optString("hero"), it.optString("logo")) },
                 o.optBoolean("shot", true), o.optInt("today", 0),
                 o.optJSONObject("st")?.let { StreamHost.from(it) }
             )
@@ -280,7 +280,7 @@ object Suite {
         val lib = t?.optJSONObject("lib") ?: JSONObject()
         libs = lib.keys().asSequence().associateWith { d ->
             val arr = lib.optJSONObject(d)?.optJSONArray("games") ?: JSONArray()
-            (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.map {
+            (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.filterNot { Negra.vetado(it.optString("n")) }.map {
                 PcGame(it.optString("k"), it.optString("n"), it.optString("c"), it.optLong("sg"), it.optInt("f") == 1, it.optLong("lp"), it.optString("s"), it.optInt("m"),
                     (it.optJSONArray("w") ?: JSONArray()).let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { l -> l.optString("n") to l.optString("u") } }.filter { p -> p.second.startsWith("http") } })
             }

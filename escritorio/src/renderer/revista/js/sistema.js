@@ -206,8 +206,22 @@
         h('button.enlace', {
           type: 'button',
           onclick: async () => { try { const ng = await api.override(g.key, { hidden: false }); if (ng) D.setJuegoPc(ng); RV.aviso(`${g.name} vuelve a la biblioteca`); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); } RV.refrescar(); },
-        }, 'Mostrar'))) : nota('No tienes juegos ocultos. Para ocultar uno: en el modo Juegos, Y (opciones) → Ocultar.'))];
+        }, 'Mostrar'))) : nota('No tienes juegos ocultos. Para ocultar uno: en el modo Juegos, Y (opciones) → Ocultar.')),
+      listaNegra()];
   };
+
+  // La lista negra (de tu cuenta, como en el móvil): esos juegos no salen en ningún sitio y Atrio no los sigue
+  function listaNegra() {
+    const l = (Array.isArray(D.datos().negra) ? D.datos().negra : []).filter((o) => o && o.n).sort((a, b) => RV.normName(a.n).localeCompare(RV.normName(b.n)));
+    const nuevo = RV.entrada('', { placeholder: 'Nombre del juego (p. ej. Wallpaper Engine)' });
+    return bloque('Lista negra', 'No salen en ningún sitio (biblioteca, portada, diario, calendario) y Atrio no los sigue, ni sus horas. Vale para todos tus dispositivos.',
+      l.length ? l.map((o) => fila(o.n, 'En la lista negra', h('button.enlace', {
+        type: 'button',
+        onclick: async () => { if (await RV.editar({ op: 'negraDel', id: Number(o.id) }, `${o.n}: ya puede volver a salir`)) { try { await api.rescan(); } catch { /* */ } } },
+      }, 'Quitar'))) : nota('Aún no hay ninguno.'),
+      h('div', { style: { display: 'flex', gap: '12px', marginTop: '14px', alignItems: 'center' } }, nuevo,
+        h('button.boton-tinta', { type: 'button', onclick: () => { const n = nuevo.value.trim(); if (n) RV.listaNegra(n); } }, 'Añadir')));
+  }
 
   // ---------------------------------------------------------------- Mando
   const ETIQUETAS = { up: 'Arriba', down: 'Abajo', left: 'Izquierda', right: 'Derecha', a: 'A', b: 'B', x: 'X', y: 'Y', prev: 'LB', next: 'RB', start: 'Menú', select: 'Vista' };

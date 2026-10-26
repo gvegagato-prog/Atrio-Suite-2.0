@@ -18,18 +18,21 @@ import java.time.LocalDate
 class AutoLeyendoTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
     private val hoy = LocalDate.of(2026, 10, 27)
-    private fun estado(ms: Long) = JSONObject().put("stats", JSONObject().put("days", JSONObject().put(hoy.toString(), ms)))
+    /** [ms] leídos hoy en total y [seguido] la racha más larga (null: no se guardó, como en días de versiones antiguas). */
+    private fun estado(ms: Long, seguido: Long? = null) = JSONObject().put("stats", JSONObject().put("days", JSONObject().put(hoy.toString(), ms))
+        .apply { if (seguido != null) put("best", JSONObject().put(hoy.toString(), seguido)) })
 
     @Test fun mueveSoloTrasVariosMinutos() {
         val s = Store(ctx)
         s.savePlays(listOf(Play(1, "Dune", "", "", 0, emptyList()), Play(2, "Ulises", "", "", 2, emptyList(), start = 100, end = 200)), BOOKS.id)
-        assertFalse("2 min: aún no", BookFiles.pasaALeyendo(ctx, 1, estado(2 * 60_000L), hoy))
+        assertFalse("4 min: aún no", BookFiles.pasaALeyendo(ctx, 1, estado(4 * 60_000L, 4 * 60_000L), hoy))
+        assertFalse("40 min en ratitos de 2: tampoco (no son 5 seguidos)", BookFiles.pasaALeyendo(ctx, 1, estado(40 * 60_000L, 2 * 60_000L), hoy))
         assertEquals(0, s.loadPlays(BOOKS.id).first { it.id == 1L }.status)
-        assertTrue(BookFiles.pasaALeyendo(ctx, 1, estado(3 * 60_000L), hoy))
+        assertTrue("5 seguidos", BookFiles.pasaALeyendo(ctx, 1, estado(5 * 60_000L, 5 * 60_000L), hoy))
         val d = s.loadPlays(BOOKS.id).first { it.id == 1L }
         assertEquals(1, d.status); assertEquals(hoy.toEpochDay(), d.start)
         // Un abandonado que retomas: conserva cuándo empezó y vuelve a estar en curso
-        assertTrue(BookFiles.pasaALeyendo(ctx, 2, estado(10 * 60_000L), hoy))
+        assertTrue(BookFiles.pasaALeyendo(ctx, 2, estado(10 * 60_000L, 10 * 60_000L), hoy))
         val u = s.loadPlays(BOOKS.id).first { it.id == 2L }
         assertEquals(1, u.status); assertEquals(100L, u.start); assertEquals(0L, u.end)
     }

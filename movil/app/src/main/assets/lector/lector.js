@@ -378,8 +378,13 @@ const saveSpeed = debounce(() => saveSettings(), 8000)
 const PARADO = 5 * 60000
 const ahora = () => (window.__reloj ? window.__reloj() : Date.now())
 let activo = ahora(), enPausa = false
+// Y la racha más larga del día (lo leído «seguido»): una pausa de más de 3 minutos sin mover la página, o salir del
+// lector, la corta. Es lo que decide si un día cuenta como leído (mínimo 5 minutos seguidos).
+const HUECO = 3 * 60000
+let racha = 0
 function sumar(now) {
     if (enPausa) return
+    const hueco = now - activo > HUECO
     const add = Math.max(0, Math.min(now - activo, PARADO))
     activo = now
     if (add < 1000) return
@@ -387,6 +392,10 @@ function sumar(now) {
     mio.total += add
     const d = today()
     mio.days[d] = (mio.days[d] || 0) + add
+    // (tras un hueco, ese rato dudoso cuenta como leído pero no como racha: la racha vuelve a empezar de cero)
+    racha = hueco ? 0 : racha + add
+    const mejor = (mio.best ||= {})
+    if (racha > (mejor[d] || 0)) mejor[d] = racha
     recontar()
     saveStats()
     metaHoy()
@@ -414,8 +423,8 @@ function despierta() {
     if (on) despiertaT = setTimeout(() => { despiertaOn = false; try { A.keepScreenOn(false) } catch (e) { } }, DESPIERTA)
 }
 window.atrioPausa = on => {
-    if (on) { sumar(ahora()); enPausa = true; try { A.saveStats(JSON.stringify(stats)) } catch (e) { } }
-    else if (enPausa) { enPausa = false; activo = ahora() }
+    if (on) { sumar(ahora()); enPausa = true; racha = 0; try { A.saveStats(JSON.stringify(stats)) } catch (e) { } }
+    else if (enPausa) { enPausa = false; activo = ahora(); racha = 0 }
 }
 document.addEventListener('visibilitychange', () => window.atrioPausa(document.hidden))
 window.addEventListener('pagehide', () => window.atrioPausa(true))

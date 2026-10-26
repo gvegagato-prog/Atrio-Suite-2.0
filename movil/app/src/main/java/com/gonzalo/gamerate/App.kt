@@ -690,6 +690,7 @@ fun App(
     var avisoDiario by remember { mutableStateOf(false) }
     DiarioHub.escribirSobre = { k, id -> escribiendo = Triple(today(), null, listOf(refDe(k.id, id))) }
     DiarioHub.editar = { n -> escribiendo = Triple(n.dia, n, emptyList()) }
+    Negra.alAnadir = { n -> store.addNegra(n); reloadAll(); screen = Screen.Home; say("«$n» a la lista negra: ya no saldrá en ningún sitio") }
     var guideSheet by remember { mutableStateOf<PcGame?>(null) }
     // Las guías se abren dentro de la app, encima de lo que estés viendo
     SideEffect { Guides.opener = { g -> guideSheet = null; WebActivity.open(ctx, g) } }
@@ -1141,7 +1142,7 @@ fun App(
                                     if (conJuegos) HorasPc.porDia(ctx, store.partnerUid) else emptyMap(), soloDe = solo
                                 ) else FuentesDiario(
                                     fichas, notas,
-                                    if (conLibros) BookFiles.leidoPorDia(ctx) else emptyMap(),
+                                    if (conLibros) BookFiles.leidoPorDia(ctx, soloSeguidos = true) else emptyMap(),
                                     if (conJuegos && store.paired) HorasPc.porDia(ctx, store.accUid) else emptyMap(),
                                     if (conLibros) (books.map { it.id } + bplays.map { it.id }).distinct().associateWith { bookNotes(ctx, it) }.filterValues { it.isNotEmpty() } else emptyMap(),
                                     if (conJuegos) shots else emptyList(), solo
@@ -1334,6 +1335,8 @@ fun App(
                     onSuite = { screen = Screen.Suite },
                     onMassScores = { screen = Screen.MassScore(Screen.Profile) },
                     onDuelos = { screen = Screen.Duelos(Screen.Profile) },
+                    onNegraAnadir = { n -> store.addNegra(n); reloadAll(); say("«$n» a la lista negra: ya no saldrá en ningún sitio") },
+                    onNegraQuitar = { v -> store.removeNegra(v); say("«${v.nombre}» ya puede volver a salir") },
                     onPedirAvisos = {
                         if (android.os.Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
                             perm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -1773,7 +1776,7 @@ fun App(
             }
             // Primero lo de ese día (lo que terminaste, empezaste, apuntaste o leíste) y lo que llevas entre manos
             val propuestas = remember(dia, todas) {
-                val leidoEse = BookFiles.leidoPorDia(ctx)[dia].orEmpty().filterValues { it >= 60_000L }.keys
+                val leidoEse = BookFiles.leidoPorDia(ctx, soloSeguidos = true)[dia].orEmpty().filterValues { it >= 60_000L }.keys
                 val ese = myKinds.flatMap { k ->
                     playsOf(k).filter { pl -> pl.start == dia || pl.end == dia || pl.liveMemos.any { diaDe(it.t) == dia } || pl.entries.any { diaDe(it.time) == dia } || (k.isBook && pl.id in leidoEse) }.map { refDe(k.id, it.id) } +
                         gamesOf(k).filter { g -> g.end == dia || g.start == dia || (k.isBook && g.id in leidoEse) }.map { refDe(k.id, it.id) }

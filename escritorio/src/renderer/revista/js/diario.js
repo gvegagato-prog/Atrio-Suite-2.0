@@ -23,12 +23,14 @@
   // Las notas (lo escrito) de la cuenta
   RV.diario.notas = () => (Array.isArray(D.datos().diario) ? D.datos().diario.filter((n) => n && Number(n.id) && Number.isFinite(Number(n.dia))) : []);
 
-  // Lo jugado en este PC (y en tus otros PC, que Atrio ya junta): día → clave del juego → ms (partiendo a medianoche)
+  // Lo jugado en este PC (y en tus otros PC, que Atrio ya junta): día → clave del juego → ms (partiendo a medianoche).
+  // Solo las partidas de 5 minutos o más
   RV.diario.jugado = (sessions) => {
     const out = new Map();
     for (const [k, s, e] of sessions || []) {
       let a = Number(s); const b = Number(e);
-      if (!k || !(b > a)) continue;
+      // (menos de 5 minutos seguidos no cuenta como jugado ese día)
+      if (!k || !(b - a >= 5 * 60000)) continue;
       while (a < b) {
         const d = new Date(a);
         const fin = Math.min(b, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime());
@@ -46,11 +48,15 @@
   RV.diario.leido = (lectura) => {
     const out = new Map();
     for (const o of lectura || []) {
-      const days = o && o.s && o.s.stats && o.s.stats.days;
+      const stats = o && o.s && o.s.stats;
+      const days = stats && stats.days;
       if (!days) continue;
       for (const [iso, ms] of Object.entries(days)) {
         const t = Date.parse(`${iso}T00:00:00Z`);
         if (!(num(ms) > 0) || !Number.isFinite(t)) continue;
+        // Cuenta el día si leíste 5 minutos seguidos (los días de antes, que no guardaron la racha, con 5 en total)
+        const seguidos = stats.best && iso in stats.best ? num(stats.best[iso]) : num(ms);
+        if (seguidos < 5 * 60000) continue;
         const dia = Math.floor(t / RV.DIA);
         if (!out.has(dia)) out.set(dia, new Map());
         out.get(dia).set(Number(o.id), num(ms));

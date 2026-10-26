@@ -127,29 +127,31 @@ object BookFiles {
     }
 
     /** Lo leído con el lector, por día: día (desde 1970) → libro → ms (lo de todos tus dispositivos). */
-    fun leidoPorDia(ctx: Context): Map<Long, Map<Long, Long>> {
+    fun leidoPorDia(ctx: Context, soloSeguidos: Boolean = false): Map<Long, Map<Long, Long>> {
         val out = HashMap<Long, HashMap<Long, Long>>()
         for ((k, v) in prefs(ctx).all) {
             val id = k.toLongOrNull() ?: continue
-            val days = runCatching { JSONObject(v as String).optJSONObject("stats")?.optJSONObject("days") }.getOrNull() ?: continue
+            val stats = runCatching { JSONObject(v as String).optJSONObject("stats") }.getOrNull() ?: continue
+            val days = stats.optJSONObject("days") ?: continue
             for (d in days.keys()) {
                 val ep = runCatching { java.time.LocalDate.parse(d).toEpochDay() }.getOrNull() ?: continue
                 val ms = days.optLong(d, 0L)
-                if (ms > 0L) out.getOrPut(ep) { HashMap() }[id] = ms
+                // (con [soloSeguidos]: solo los días en que leíste al menos 5 minutos seguidos)
+                if (ms > 0L && (!soloSeguidos || ReadStats.cuenta(stats, d))) out.getOrPut(ep) { HashMap() }[id] = ms
             }
         }
         return out
     }
 
     /**
-     * Tras unos minutos leyendo hoy, el libro pasa solo a «Leyendo» si estaba en lista o abandonado (una sola vez al día,
+     * Tras 5 minutos leyendo seguidos hoy, el libro pasa solo a «Leyendo» si estaba en lista o abandonado (una sola vez al día,
      * para que si lo devuelves a mano a la lista no vuelva a moverse hasta mañana). Lo ya valorado no se toca.
      * [st] es el estado del lector del libro (se le apunta el día). Devuelve true si lo ha movido.
      */
     fun pasaALeyendo(ctx: Context, id: Long, st: JSONObject, hoy: java.time.LocalDate = java.time.LocalDate.now()): Boolean {
         if (st.optString("autoLeyendo") == hoy.toString()) return false
-        val ms = st.optJSONObject("stats")?.optJSONObject("days")?.optLong(hoy.toString()) ?: 0L
-        if (ms < 3 * 60_000L) return false
+        // Hace falta una racha de 5 minutos seguidos hoy (no sumar ratitos sueltos)
+        if (!ReadStats.cuenta(st.optJSONObject("stats"), hoy.toString())) return false
         st.put("autoLeyendo", hoy.toString())
         val store = Store(ctx)
         val todos = store.loadPlays(BOOKS.id)

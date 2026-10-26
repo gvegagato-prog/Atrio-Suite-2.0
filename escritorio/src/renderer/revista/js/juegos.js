@@ -80,6 +80,7 @@
     op('Guías y webs', () => RV.guia(g.key, null));
     op('Imágenes: portada, fondo, logo…', () => RV.arteJuego(g.key));
     op('Cambiar el nombre', () => RV.renombrarJuego(g.key));
+    if (D.conCuenta()) op('Lista negra: que no salga en ningún sitio', () => RV.listaNegra(g.name), '');
     op('Ocultar de la biblioteca', () => marcar(g, { hidden: true }, `${g.name} oculto (lo puedes recuperar en Ajustes → Juegos ocultos)`));
     const d = RV.dialogo({ ante: 'Opciones', titulo: g.name, cuerpo: ul });
   }

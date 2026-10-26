@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
         Mode.themeMode = store.themeMode
         Skin.load(this)
         store.forgetGemini()
+        Negra.poner(store.loadNegra())
         Limpieza.antiguas(this)
         // Solo para la prueba automática en el emulador: Firebase de mentira en el ordenador que lo ejecuta (10.0.2.2).
         intent?.getStringExtra("fbtest")?.takeIf { it.startsWith("http://10.0.2.2:") }?.let {

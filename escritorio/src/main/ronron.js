@@ -47,7 +47,7 @@ function saveLocal() {
 
 // ---------------------------------------------------------------- Mezcla (igual que Store.mergeRemote)
 
-const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas', 'nube', 'lectura', 'maquetas', 'diario'];
+const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas', 'nube', 'lectura', 'maquetas', 'diario', 'negra'];
 const listNames = (kinds) => BASE_LISTS.concat(...(kinds || []).map((k) => [`items_${k.id}`, `iplays_${k.id}`]));
 const upd = (o) => Number(o && o.updated) || 0;
 
@@ -90,17 +90,20 @@ function mergeStats(x, y) {
   for (const src of [devOf(x), devOf(y)]) for (const [id, b] of Object.entries(src)) {
     if (hasReal && id === 'legacy') continue;
     const cur = dev[id];
-    if (!cur) { dev[id] = { total: Number(b.total) || 0, days: { ...(b.days || {}) } }; continue; }
+    if (!cur) { dev[id] = { total: Number(b.total) || 0, days: { ...(b.days || {}) }, ...(b.best ? { best: { ...b.best } } : {}) }; continue; }
     const days = { ...cur.days };
     for (const [k, v] of Object.entries(b.days || {})) days[k] = Math.max(Number(days[k]) || 0, Number(v) || 0);
-    dev[id] = { total: Math.max(cur.total, Number(b.total) || 0), days };
+    const best = { ...(cur.best || {}) };
+    for (const [k, v] of Object.entries(b.best || {})) best[k] = Math.max(Number(best[k]) || 0, Number(v) || 0);
+    dev[id] = { total: Math.max(cur.total, Number(b.total) || 0), days, ...(Object.keys(best).length ? { best } : {}) };
   }
-  let total = 0; const days = {};
+  let total = 0; const days = {}; const best = {};
   for (const b of Object.values(dev)) {
     total += b.total;
     for (const [k, v] of Object.entries(b.days)) days[k] = (days[k] || 0) + (Number(v) || 0);
+    for (const [k, v] of Object.entries(b.best || {})) best[k] = Math.max(best[k] || 0, Number(v) || 0);
   }
-  return { dev, total, days };
+  return { dev, total, days, ...(Object.keys(best).length ? { best } : {}) };
 }
 
 function uniteLectura(a, b) {
@@ -388,6 +391,8 @@ function sync(full) {
 
 // ---------------------------------------------------------------- Edición desde Atrio
 
+// Nombre simplificado para comparar títulos (como normName del móvil)
+const normNombre = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{Nd}]+/gu, '');
 const today = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
 const gk = (kind) => (kind === 0 ? 'games' : kind === 1 ? 'books' : `items_${kind}`);
 const pk = (kind) => (kind === 0 ? 'plays' : kind === 1 ? 'bplays' : `iplays_${kind}`);
@@ -482,7 +487,17 @@ function edit(op) {
       const item = { ...prev, id: Number(n.id), dia: Number(n.dia), x: String(n.x || '') };
       for (const k of ['sobre', 'foto', 'comp']) if (k in n) item[k] = n[k];
       put(d, 'diario', item);
-    } else if (op.op === 'diarioDel') drop(d, 'diario', op.id);
+    } else if (op.op === 'negraPut') {
+      // Un juego a la lista negra (la misma lista que el móvil: { id, n, updated }): su ficha se borra
+      const n = op.item || {};
+      const nom = String(n.n || '').trim();
+      if (!Number(n.id) || !nom) throw new Fail('Ese juego no está bien.');
+      put(d, 'negra', { id: Number(n.id), n: nom });
+      const k = normNombre(nom);
+      for (const o of [...(d.games || [])]) if (normNombre(o.name) === k) drop(d, 'games', o.id);
+      for (const o of [...(d.plays || [])]) if (normNombre(o.name) === k) drop(d, 'plays', o.id);
+    } else if (op.op === 'negraDel') drop(d, 'negra', op.id);
+    else if (op.op === 'diarioDel') drop(d, 'diario', op.id);
     else throw new Fail('Operación desconocida.');
     local = d;
     saveLocal();
@@ -622,8 +637,11 @@ function hoursOthers() {
   return out;
 }
 
+// Los nombres vetados (lista negra de la cuenta), simplificados
+function vetados() { return new Set(((L() || {}).negra || []).map((o) => normNombre(o && o.n)).filter(Boolean)); }
+
 function user() { return S().user || ''; }
 function setOnChange(cb) { onChange = cb || (() => {}); }
 
-module.exports = { setFetch, status, signIn, signOut, sync, edit, data, start, merge, normUser, autoPlay, knows, DEFAULT_DB,
+module.exports = { vetados, normNombre, setFetch, status, signIn, signOut, sync, edit, data, start, merge, normUser, autoPlay, knows, DEFAULT_DB,
   uid, deviceId, hoursPush, hoursPull, hoursOthers, authUrl, db, user, setOnChange };

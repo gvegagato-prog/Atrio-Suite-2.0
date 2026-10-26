@@ -204,6 +204,16 @@ const log = [];
       const dv = await page.evaluate(() => window.__atrio.saved.stats?.dev || {});
       // (antes del reloj simulado, el lector ya había contado unos segundos de verdad: t0 incluye los 10 min de la otra)
       ok(dv.otra?.total === 600000 && dv.tablet?.total === t0 - 600000 + 480000 && t1 === dv.otra.total + dv.tablet.total, `${name}: el tiempo de otro dispositivo se conserva y se suma (otra ${(dv.otra?.total || 0) / 60000} + esta ${((dv.tablet?.total || 0) / 60000).toFixed(1)} = ${(t1 / 60000).toFixed(1)} min)`);
+      // La racha del día (lo leído «seguido»): los ratos con huecos de más de 3 min o con pausa no la alargan
+      const hoyK = await page.evaluate(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
+      const mejorDe = () => page.evaluate((k) => window.__atrio.saved.stats?.dev?.tablet?.best?.[k] || 0, hoyK);
+      await page.evaluate(() => { window.atrioPausa(true); window.atrioPausa(false); });
+      ok((await mejorDe()) === 2 * 60000, `${name}: la racha del día es la de 2 min (los 20 min parados y la pausa no la alargan: ${(await mejorDe()) / 60000} min)`);
+      await page.evaluate(() => { window.__t = Date.now(); window.__reloj = () => window.__t; window.atrioPausa(true); window.atrioPausa(false); });
+      for (let i = 0; i < 3; i++) await paso(2 * 60000, i % 2 ? -1 : 1);   // 6 min seguidos, de 2 en 2
+      await page.evaluate(() => window.atrioPausa(true));
+      ok((await mejorDe()) === 6 * 60000, `${name}: 6 min seguidos pasando página: la racha es de 6 min (${(await mejorDe()) / 60000})`);
+      await page.evaluate(() => { window.atrioPausa(false); delete window.__reloj; });
     }
     // Arriba, la hora a la izquierda y la batería a la derecha, sin mover el texto
     {

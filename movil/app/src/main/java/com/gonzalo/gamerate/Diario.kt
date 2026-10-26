@@ -110,7 +110,14 @@ class FuentesDiario(
 )
 
 /** Los días con algo, del más nuevo al más viejo. */
-fun diasDelDiario(f: FuentesDiario, zona: ZoneId = ZoneId.systemDefault()): List<Dia> {
+fun diasDelDiario(f0: FuentesDiario, zona: ZoneId = ZoneId.systemDefault()): List<Dia> {
+    // Los juegos de la lista negra no salen (ni su ficha, ni sus horas del PC, ni sus capturas)
+    val f = if (Negra.nombres.isEmpty()) f0 else FuentesDiario(
+        f0.fichas.map { (k, gs, ps) -> if (k.isGame) Triple(k, gs.filterNot { Negra.vetado(it.name) }, ps.filterNot { Negra.vetado(it.name) }) else Triple(k, gs, ps) },
+        f0.notas, f0.leido,
+        f0.jugado.mapValues { (_, m) -> m.filterKeys { !Negra.vetado(it.nombre) } },
+        f0.citas, f0.capturas.filterNot { Negra.vetado(it.game) }, f0.soloDe
+    )
     val porDia = HashMap<Long, LinkedHashMap<String, Toque>>()
     // Cada ficha, por categoría e id (la de «en curso» si la hay: es la que tiene apuntes)
     val fichas = HashMap<String, Toque>()
@@ -274,7 +281,7 @@ object HorasPc {
         return deSesiones(pcs, zona)
     }
 
-    /** Las sesiones de cada PC ({ games: {clave: {n, sg}}, s: [[clave, inicio, fin]], forgot: {clave: ms} }), por día. */
+    /** Las sesiones de cada PC (solo las de 5 minutos o más) ({ games: {clave: {n, sg}}, s: [[clave, inicio, fin]], forgot: {clave: ms} }), por día. */
     fun deSesiones(pcs: List<JSONObject>, zona: ZoneId = ZoneId.systemDefault()): Map<Long, Map<JuegoPc, Long>> {
         val out = HashMap<Long, HashMap<JuegoPc, Long>>()
         for (pc in pcs) {
@@ -284,7 +291,8 @@ object HorasPc {
             for (i in 0 until s.length()) {
                 val x = s.optJSONArray(i) ?: continue
                 val key = x.optString(0); val a = x.optLong(1); val b = x.optLong(2)
-                if (key.isBlank() || b <= a || forgot.optLong(key, 0L) >= b) continue
+                // (menos de 5 minutos seguidos no cuenta como jugado ese día)
+                if (key.isBlank() || b - a < ReadStats.SEGUIDO_MS || forgot.optLong(key, 0L) >= b) continue
                 val g = games.optJSONObject(key)
                 val j = JuegoPc(g?.optLong("sg", 0L) ?: 0L, g?.optString("n").orEmpty().ifBlank { key.substringAfter(':') })
                 // Una partida que pasa de medianoche cuenta en los dos días
@@ -308,11 +316,12 @@ fun leidoDeLectura(a: JSONArray?): Map<Long, Map<Long, Long>> {
     val out = HashMap<Long, HashMap<Long, Long>>()
     for (i in 0 until (a?.length() ?: 0)) {
         val o = a!!.optJSONObject(i) ?: continue
-        val days = o.optJSONObject("s")?.optJSONObject("stats")?.optJSONObject("days") ?: continue
+        val stats = o.optJSONObject("s")?.optJSONObject("stats") ?: continue
+        val days = stats.optJSONObject("days") ?: continue
         for (d in days.keys()) {
             val ep = runCatching { LocalDate.parse(d).toEpochDay() }.getOrNull() ?: continue
             val ms = days.optLong(d, 0L)
-            if (ms > 0L) out.getOrPut(ep) { HashMap() }[o.optLong("id")] = ms
+            if (ms > 0L && ReadStats.cuenta(stats, d)) out.getOrPut(ep) { HashMap() }[o.optLong("id")] = ms
         }
     }
     return out

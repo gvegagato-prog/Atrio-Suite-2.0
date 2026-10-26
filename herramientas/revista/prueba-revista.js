@@ -230,6 +230,14 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
       if (tema === 'claro') await shot(`09-ajustes-${sec}`);
       ok(!(await errorPagina()) && (await page.$$('.ajuste')).length > 0, `${tema}: Ajustes → ${sec}`);
     }
+    // Lista negra: en Ajustes → Ocultos se añade un juego (se pide confirmación) y se manda a la cuenta
+    await ir({ v: 'ajustes', sec: 'ocultos' }); await page.waitForTimeout(250);
+    ok(/Lista negra/.test(await texto()), `${tema}: Ajustes → Ocultos tiene la lista negra`);
+    await page.fill('.ajustes-cuerpo input[placeholder^="Nombre del juego"]', 'Wallpaper Engine');
+    await page.click('.ajustes-cuerpo button:has-text("Añadir")'); await page.waitForTimeout(300);
+    await page.click('#capa button:has-text("Ocultar y borrar")'); await page.waitForTimeout(300);
+    const edNeg = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
+    ok(edNeg && edNeg.op === 'negraPut' && edNeg.item.n === 'Wallpaper Engine' && edNeg.item.id > 0, `${tema}: a la lista negra desde Ajustes (${JSON.stringify(edNeg && edNeg.op)})`);
     await ir({ v: 'ajustes', sec: 'propios' });
     await page.click('button:has-text("+ Añadir un juego")'); await page.waitForTimeout(300);
     await page.click('.dialogo .ruta button'); await page.waitForTimeout(200);

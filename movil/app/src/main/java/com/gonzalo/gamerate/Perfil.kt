@@ -37,6 +37,8 @@ fun ProfileScreen(
     onDuelos: () -> Unit = {},
     /** Pedir permiso para los avisos (Android 13+). */
     onPedirAvisos: () -> Unit = {},
+    onNegraAnadir: (String) -> Unit = {},
+    onNegraQuitar: (Vetado) -> Unit = {},
     goalGames: Int, goalBooks: Int, onGoal: (Int, Int) -> Unit,
     couple: @Composable () -> Unit,
     onBack: () -> Unit
@@ -162,6 +164,11 @@ fun ProfileScreen(
         }
         Spacer(Modifier.height(12.dp))
 
+        // Lista negra de juegos: no salen en ningún sitio
+        var negra by remember { mutableStateOf(false) }
+        ProfileRow(Icons.Rounded.Edit, "Lista negra de juegos", if (Negra.lista.isEmpty()) "Juegos que nunca deben salir (p. ej. Wallpaper Engine)" else "${Negra.lista.size} oculto${if (Negra.lista.size == 1) "" else "s"} en todos tus dispositivos", Modifier.rise(5)) { negra = true }
+        Spacer(Modifier.height(12.dp))
+        if (negra) NegraDialogo(onAnadir = { n -> onNegraAnadir(n) }, onQuitar = { v -> onNegraQuitar(v) }, onCerrar = { negra = false })
         // Repasar notas (sobre todo tras importar): por duelos o una a una
         var repasar by remember { mutableStateOf(false) }
         ProfileRow(Icons.Rounded.Edit, "Repasar notas", "Duelos de libros o cambiar varias notas seguidas (p. ej. tras importar)", Modifier.rise(5)) { repasar = true }

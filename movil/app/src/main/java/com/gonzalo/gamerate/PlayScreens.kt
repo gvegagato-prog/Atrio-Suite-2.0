@@ -249,6 +249,7 @@ fun PlayDetailScreen(
             PlatformPicker(kind, p.platform) { upd(p.copy(platform = it)) }
             Spacer(Modifier.height(16.dp))
             DatesRow(p.start, p.end, { upd(p.copy(start = it)) }, { upd(p.copy(end = it)) })
+            if (kind.isGame) BotonListaNegra(p.name)
             }
             Spacer(Modifier.height(16.dp))
 
