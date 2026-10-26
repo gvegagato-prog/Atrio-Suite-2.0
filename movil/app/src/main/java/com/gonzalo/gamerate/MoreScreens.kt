@@ -231,6 +231,12 @@ fun EditScreen(
                 Text("Toca dos veces la portada para ver la ficha de $partnerName.", color = UiSoft, fontSize = 14.sp, textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(16.dp))
+            // El nombre también se puede corregir (la ficha sigue siendo la misma: notas, apuntes y fotos se quedan)
+            OutlinedTextField(g.name, { g = g.copy(name = it) },
+                label = { Text("Nombre") }, singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(g.creator, { g = g.copy(creator = it) },
                 label = { Text(kind.creatorWord) }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
@@ -260,7 +266,8 @@ fun EditScreen(
             }
             Spacer(Modifier.height(18.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button({ onSave(g) }, shape = pillShape(), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
+                // (sin nombre no se queda: vuelve el que tenía)
+                Button({ onSave(g.copy(name = g.name.trim().ifBlank { g0.name })) }, shape = pillShape(), contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp)) {
                     Text("Guardar", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 }
                 if (!isNew) TextButton(onDelete) { Text("Eliminar", color = UiSoft) }

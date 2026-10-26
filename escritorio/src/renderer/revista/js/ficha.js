@@ -440,6 +440,8 @@
   F.datos = (kind, item0, t) => {
     const item = fresca(kind, t, item0);
     const lista = `plataformas-${kind.id}`;
+    // El nombre también se corrige aquí (la ficha sigue siendo la misma); vacío, se queda el que tenía
+    const nombre = RV.entrada(item.name || '', { placeholder: 'Nombre', spellcheck: 'true' });
     const creador = RV.entrada(item.creator || '', { placeholder: kind.creatorWord });
     const plataforma = RV.entrada(item.platform || '', { placeholder: kind.platforms.slice(0, 3).join(', '), list: lista });
     const dl = h('datalist', { id: lista }, kind.platforms.map((p) => h('option', { value: p })));
@@ -451,7 +453,7 @@
     const hoyBtn = (inp) => h('button.enlace', { type: 'button', onclick: () => { inp.value = RV.isoDia(RV.hoy()); } }, 'Hoy');
     const guardar = async (d) => {
       const cur = fresca(kind, t, item);
-      const next = { ...cur, creator: creador.value.trim(), platform: plataforma.value.trim(), start: RV.deIso(empezado.value) };
+      const next = { ...cur, name: nombre.value.trim() || cur.name, creator: creador.value.trim(), platform: plataforma.value.trim(), start: RV.deIso(empezado.value) };
       if (terminado) next.end = RV.deIso(terminado.value);
       if (horasIn) { const hv = parseFloat(String(horasIn.value).replace(',', '.')); next.minutes = Number.isFinite(hv) && hv > 0 ? Math.round(hv * 60) : 0; }
       if (paginas) next.pages = Math.max(0, parseInt(paginas.value, 10) || 0);
@@ -462,6 +464,7 @@
     RV.dialogo({
       ante: 'Editar datos', titulo: item.name,
       cuerpo: [
+        RV.campo('Nombre', nombre),
         h('div.dos-campos', RV.campo(kind.creatorWord, creador), RV.campo(kind.platformWord, h('div', plataforma, dl))),
         h('div.dos-campos',
           RV.campo('Empezado', h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } }, empezado, hoyBtn(empezado))),

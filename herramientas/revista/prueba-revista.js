@@ -169,6 +169,13 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(!(await errorPagina()) && (await texto()).includes('Deadlock'), `${tema}: ficha en curso`);
     await ir({ v: 'ficha', k: 1, t: 'p', id: 402 }); await shot('05b-ficha-libro');
     ok(!(await errorPagina()), `${tema}: ficha de libro`);
+    // Corregir el nombre en «Editar» de los datos
+    await page.click('#pagina button:has-text("Editar"):near(:text("Datos"))').catch(() => page.click('#pagina button:has-text("Editar datos")'));
+    await page.waitForTimeout(300);
+    await page.fill('#capa input[placeholder="Nombre"]', 'El nombre del viento (corregido)');
+    await page.click('#capa button:has-text("Guardar")'); await page.waitForTimeout(300);
+    const edN = await page.evaluate(() => (window.__edits || []).slice(-1)[0] || null);
+    ok(edN && edN.op === 'savePlay' && edN.item.name === 'El nombre del viento (corregido)' && edN.item.id === 402, `${tema}: cambiar el nombre de una ficha (${JSON.stringify(edN && edN.item && edN.item.name)})`);
     // Sagas: la pestaña de Libros y la página de la saga, con sus libros (el leído, con su nota)
     await ir({ v: 'seccion', k: 1, tab: 4 }); await shot('05c-sagas');
     t = await texto();

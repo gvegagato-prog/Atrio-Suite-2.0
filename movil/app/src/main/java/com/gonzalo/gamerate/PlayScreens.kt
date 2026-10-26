@@ -230,6 +230,14 @@ fun PlayDetailScreen(
             }
             if (editing) {
             Spacer(Modifier.height(16.dp))
+            // El nombre también se puede corregir (la ficha sigue siendo la misma: apuntes, lectura y fotos se quedan).
+            // Se guarda al escribir; si lo dejas vacío, se queda el último que tenía
+            var nombre by remember(p.id) { mutableStateOf(p.name) }
+            OutlinedTextField(nombre, { nombre = it; if (it.isNotBlank()) upd(p.copy(name = it.trim())) },
+                label = { Text("Nombre") }, singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
+                shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(p.creator, { upd(p.copy(creator = it)) },
                 label = { Text(kind.creatorWord) }, singleLine = true,
                 shape = shp(14.dp), modifier = Modifier.fillMaxWidth())
