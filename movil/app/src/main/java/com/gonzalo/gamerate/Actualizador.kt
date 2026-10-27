@@ -126,6 +126,12 @@ object Actualizador {
         anota(ctx, "lista la ${ult.third.joinToString(".")}" + if (silenciosa) " (se instala al salir de la app)" else " (te pregunto para instalarla)")
     }
 
+    /** La instalación no salió bien (la silenciosa, sobre todo): se anota y se pasa a preguntar con el aviso de siempre. */
+    fun fallo(ctx: Context, msg: String) {
+        anota(ctx, "la instalación no se completó: $msg")
+        nueva?.let { nueva = Nueva(it.nombre, it.versionCode, it.archivo, false) }
+    }
+
     /** Al salir de la app: si se puede instalar sin preguntar, se instala ahora (no interrumpe lo que hacías). */
     fun alSalir(ctx: Context) { nueva?.takeIf { it.silenciosa }?.let { instala(ctx, it) } }
 
@@ -147,7 +153,13 @@ object Actualizador {
 /** El resultado de la instalación: si Android pide confirmar, se abre su pantalla (o un aviso, si la app no está delante). */
 class ActualizadorReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
-        if (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1) != PackageInstaller.STATUS_PENDING_USER_ACTION) return
+        val estado = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
+        if (estado == PackageInstaller.STATUS_SUCCESS) return
+        if (estado != PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            // Falló (o se canceló): se anota y la próxima vez se pregunta en pantalla en lugar de intentarlo en silencio
+            Actualizador.fallo(ctx, intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "código $estado")
+            return
+        }
         @Suppress("DEPRECATION") val conf = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
         conf.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (Actualizador.primerPlano) { runCatching { ctx.startActivity(conf) }; return }
