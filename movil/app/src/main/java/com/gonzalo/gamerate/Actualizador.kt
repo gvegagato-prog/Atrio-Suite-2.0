@@ -35,6 +35,16 @@ object Actualizador {
     var faltaPermiso by mutableStateOf(false)
     /** La app está delante (si no, un aviso en lugar de abrir pantallas). */
     @Volatile var primerPlano = false
+    /** Qué pasó en la última comprobación (se enseña en Perfil, para saber por qué no se actualiza si no lo hace). */
+    var estado by mutableStateOf("")
+        private set
+    private fun anota(ctx: Context, t: String) {
+        val v = java.time.LocalTime.now().let { "%02d:%02d".format(it.hour, it.minute) } + " · " + t
+        estado = v
+        prefs(ctx).edit().putString("estado", v).apply()
+    }
+    fun estadoGuardado(ctx: Context): String = prefs(ctx).getString("estado", "").orEmpty().also { if (estado.isBlank()) estado = it }
+
     /** Ya hay una comprobación o una descarga en marcha. */
     private val ocupado = java.util.concurrent.atomic.AtomicBoolean(false)
 
@@ -75,7 +85,8 @@ object Actualizador {
         if (nuevo.packageName != ctx.packageName || nuevo.longVersionCode <= actual.longVersionCode) return null
         val a = actual.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
         val n = nuevo.signingInfo?.apkContentsSigners?.map { it.toCharsString() }?.toSet().orEmpty()
-        return if (a.isNotEmpty() && a == n) nuevo.longVersionCode else null
+        // Si Android no deja leer la firma del archivo, se da por buena: al instalar, rechaza una firma distinta
+        return if (n.isEmpty() || (a.isNotEmpty() && a == n)) nuevo.longVersionCode else null
     }
 
     private fun puedeSilenciosa(ctx: Context): Boolean {
@@ -84,17 +95,21 @@ object Actualizador {
     }
 
     /** Se llama nada más abrir la app y luego cada minuto mientras está abierta (siempre en segundo plano). */
-    fun comprueba(ctx: Context) {
-        if (!activo(ctx) || !KDrive.on(ctx) || !hayInternet(ctx) || !ocupado.compareAndSet(false, true)) return
-        try { compruebaYa(ctx) } finally { ocupado.set(false) }
+    fun comprueba(ctx: Context, manual: Boolean = false) {
+        if (!activo(ctx)) { if (manual) anota(ctx, "apagada (interruptor de arriba)"); return }
+        if (!KDrive.on(ctx)) { anota(ctx, "kDrive sin conectar en Atrio"); return }
+        if (!hayInternet(ctx)) { anota(ctx, "sin internet"); return }
+        if (!ocupado.compareAndSet(false, true)) return
+        try { compruebaYa(ctx) } catch (e: Throwable) { anota(ctx, "error: ${e.message ?: e.javaClass.simpleName}") } finally { ocupado.set(false) }
     }
 
     private fun compruebaYa(ctx: Context) {
-        val ult = ultima(KDrive.versiones(ctx)) ?: return
+        val lista = KDrive.versiones(ctx)
+        val ult = ultima(lista) ?: run { anota(ctx, if (lista.isEmpty()) "no encuentro la carpeta «versiones» (o está vacía) en tu kDrive" else "en «versiones» no hay ningún Atrio-<versión>.apk"); return }
         val actual = instalada(ctx).versionName?.split('.')?.mapNotNull { it.toIntOrNull() } ?: return
         val dir = File(ctx.cacheDir, "actualizaciones").apply { mkdirs() }
         dir.listFiles()?.filter { it.name != ult.first }?.forEach { it.delete() }
-        if (!mayor(ult.third, actual)) { dir.listFiles()?.forEach { it.delete() }; return }
+        if (!mayor(ult.third, actual)) { dir.listFiles()?.forEach { it.delete() }; anota(ctx, "al día (la última de tu kDrive es la ${ult.third.joinToString(".")})"); return }
         if (nueva?.nombre == ult.first) return      // ya está descargada y lista
         val f = File(dir, ult.first)
         var code = if (f.exists()) valida(ctx, f) else null
@@ -102,11 +117,13 @@ object Actualizador {
             f.delete()
             KDrive.download(ctx, ult.second, f)
             code = valida(ctx, f)
-            if (code == null) { f.delete(); return }
+            if (code == null) { f.delete(); anota(ctx, "bajada la ${ult.first}, pero Android no la da por válida (otra firma o archivo roto)"); return }
         }
         if (nueva?.nombre == ult.first) return
         if (!ctx.packageManager.canRequestPackageInstalls()) faltaPermiso = true
-        nueva = Nueva(ult.first, code, f, puedeSilenciosa(ctx))
+        val silenciosa = puedeSilenciosa(ctx)
+        nueva = Nueva(ult.first, code, f, silenciosa)
+        anota(ctx, "lista la ${ult.third.joinToString(".")}" + if (silenciosa) " (se instala al salir de la app)" else " (te pregunto para instalarla)")
     }
 
     /** Al salir de la app: si se puede instalar sin preguntar, se instala ahora (no interrumpe lo que hacías). */

@@ -1,5 +1,7 @@
 package com.gonzalo.gamerate
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -176,6 +178,15 @@ fun ProfileScreen(
                     }
                     androidx.compose.material3.Switch(auto, { auto = it; Actualizador.ponActivo(actx, it) })
                 }
+                // Qué pasó la última vez, y comprobar ya (para saber por qué no se actualiza, si no lo hace)
+                val alcance = androidx.compose.runtime.rememberCoroutineScope()
+                var mirando by remember { mutableStateOf(false) }
+                val vers = remember { runCatching { actx.packageManager.getPackageInfo(actx.packageName, 0).versionName }.getOrDefault("?") }
+                Text("Versión instalada: $vers" + Actualizador.estadoGuardado(actx).let { if (it.isBlank()) "" else " · última comprobación: $it" }.let { if (Actualizador.estado.isNotBlank()) " · última comprobación: ${Actualizador.estado}" else it },
+                    color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
+                androidx.compose.material3.TextButton({
+                    if (!mirando) { mirando = true; alcance.launch { withContext(kotlinx.coroutines.Dispatchers.IO) { Actualizador.comprueba(actx, manual = true) }; mirando = false } }
+                }, enabled = !mirando) { Text(if (mirando) "Comprobando…" else "Comprobar ahora") }
                 Spacer(Modifier.height(8.dp))
             }
         }
