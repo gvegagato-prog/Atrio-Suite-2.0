@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontStyle
@@ -192,12 +193,19 @@ private fun RevistaHome(m: ShellModel) {
                     }
                 }
             }
-            // Se componen todas las páginas a la vez: el marco mide lo de la más alta y no cambia de tamaño al pasar de una a otra
+            // Se componen todas las páginas a la vez: el marco mide lo de la más alta y no cambia de tamaño al pasar de una a otra.
+            // Para que ninguna deje hueco abajo, se apunta lo que mide el texto de cada una y, en las que tienen menos (un
+            // titular más corto), la imagen crece eso mismo: todas quedan llenas, con el texto siempre pegado abajo
+            val textoAlto = remember(ongoing.map { it.play.id }) { mutableStateMapOf<Long, Int>() }
+            val maxTexto = textoAlto.values.maxOrNull() ?: 0
+            val densidad = androidx.compose.ui.platform.LocalDensity.current
             HorizontalPager(pager, Modifier.fillMaxWidth().testTag("portada"), pageSpacing = 18.dp, verticalAlignment = Alignment.Top,
                 beyondViewportPageCount = (n - 1).coerceIn(0, 6),
                 key = { p -> if (n > 1) p else ongoing.getOrNull(p)?.play?.id ?: p }) { page ->
                 val o = ongoing[page % n]
                 val e = ShellEntry(o.kind, o.play, null)
+                /** Lo que le falta al texto de esta portada para medir lo del más alto (lo que crece su imagen). */
+                fun hueco(id: Long) = with(densidad) { (maxTexto - (textoAlto[id] ?: maxTexto)).coerceAtLeast(0).toDp() }
                 val art = e.hero.ifBlank { e.cover }
                 val imagen: @Composable (Modifier) -> Unit = { mod ->
                     // Sin fondo propio, la portada (vertical) no se recorta: va entera sobre sí misma, desenfocada
@@ -250,9 +258,10 @@ private fun RevistaHome(m: ShellModel) {
                     }
                     // Popular, música: el titular en un bloque del color de la edición, bajo la foto
                     ed.portada == Portada.BLOQUE -> Column(Modifier.fillMaxWidth()) {
-                        imagen(Modifier.fillMaxWidth().aspectRatio(if (ancha) 2.4f else if (ancho >= 700) 1.7f else 1.3f))
+                        val ratio = if (ancha) 2.4f else if (ancho >= 700) 1.7f else 1.3f
+                        BoxWithConstraints(Modifier.fillMaxWidth()) { imagen(Modifier.fillMaxWidth().height(maxWidth / ratio + hueco(e.id))) }
                         val sobreColor = sobre(Red2, Paper2, Ink2)
-                        Column(Modifier.fillMaxWidth().background(Red2).padding(horizontal = 16.dp, vertical = 14.dp)) {
+                        Column(Modifier.fillMaxWidth().onSizeChanged { textoAlto[e.id] = it.height }.background(Red2).padding(horizontal = 16.dp, vertical = 14.dp)) {
                             FitTitle(e.name, fs0, lh0, color = sobreColor, letterSpacing = (-1).sp, modifier = Modifier.fillMaxWidth().press { m.open(e) })
                             Text(meta, color = sobreColor.copy(alpha = 0.85f), fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
                             if (!m.readOnly) Text("${m.primaryLabel(o).first.uppercase()}\u00A0→", color = sobreColor, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp,
@@ -260,14 +269,20 @@ private fun RevistaHome(m: ShellModel) {
                         }
                         cambiar()
                     }
-                    ancha -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        imagen(Modifier.weight(1.35f).aspectRatio(1.45f))
-                        Spacer(Modifier.width(28.dp))
-                        Column(Modifier.weight(1f), content = textos)
+                    // En horizontal (foto a un lado, texto al otro): todas igual de altas y las dos columnas centradas
+                    ancha -> BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val altoFoto = (maxWidth - 28.dp) * (1.35f / 2.35f) / 1.45f
+                        val alto = maxOf(altoFoto, with(densidad) { maxTexto.toDp() })
+                        Row(Modifier.fillMaxWidth().height(alto), verticalAlignment = Alignment.CenterVertically) {
+                            imagen(Modifier.weight(1.35f).aspectRatio(1.45f))
+                            Spacer(Modifier.width(28.dp))
+                            Column(Modifier.weight(1f).onSizeChanged { textoAlto[e.id] = it.height }, content = textos)
+                        }
                     }
                     else -> Column(Modifier.fillMaxWidth()) {
-                        imagen(Modifier.fillMaxWidth().aspectRatio(if (ancho >= 700) 1.6f else 1.35f))
-                        textos()
+                        val ratio = if (ancho >= 700) 1.6f else 1.35f
+                        BoxWithConstraints(Modifier.fillMaxWidth()) { imagen(Modifier.fillMaxWidth().height(maxWidth / ratio + hueco(e.id))) }
+                        Column(Modifier.fillMaxWidth().onSizeChanged { textoAlto[e.id] = it.height }, content = textos)
                     }
                 }
             }
