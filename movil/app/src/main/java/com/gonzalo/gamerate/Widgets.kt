@@ -510,7 +510,8 @@ object Widgets {
         val zonas = mutableListOf(Zona(0f, 0f, w, h, tocar(d, e), (if (archivo) "Seguir leyendo " else "Abrir ") + e.name))
         if (libros.size > 1) zonas += Zona(w - 72f, 0f, 72f, 42f, op(ctx, WTipo.LEYENDO, id, "sig"), "Otro libro")
         return Pagina(zonas) {
-            val pad = 14f
+            // (en los de una fila de alto, el margen algo menor deja más sitio al título)
+            val pad = if (h < 90f) 12f else 14f
             when {
                 compacto -> {
                     // La portada a sangre y el título encima
@@ -547,7 +548,7 @@ object Widgets {
                     barra(pad, h - pad - 3f, w - 2 * pad, av ?: 0f)
                 }
                 else -> {
-                    // Ancho: portada a la izquierda, titular grande a la derecha
+                    // Ancho: portada a la izquierda; a la derecha, la sección arriba, el pie abajo y el titular entre los dos
                     fondo()
                     val ch = h - 2 * pad
                     val cw = min(ch * 0.66f, w * 0.36f)
@@ -556,16 +557,29 @@ object Widgets {
                     val rw = w - x0 - pad
                     seccion("Leyendo", x0, pad + 1f, rw)
                     paginas(i, libros.size, w - pad, pad + 1f)
-                    val pie = 30f
-                    val autor = if (e.creator.isNotBlank() && h >= 130f) 17f else 0f
-                    val y0 = pad + 20f
-                    val l = titular(e.name, rw, h - y0 - pad - pie - autor, (h * 0.19f).coerceIn(30f, 46f), 13f, 3)
-                    pon(l, x0, y0)
-                    if (autor > 0f) pon(capa(e.creator, tp(fCursiva, 12.5f, gris), rw, 1), x0, y0 + l.height + 4f)
                     val pct = av?.let { "${(it * 100).roundToInt()} %" }.orEmpty()
-                    ante(accion, x0, h - pad - 17f, rw, acento)
-                    if (pct.isNotEmpty()) ante(pct, x0, h - pad - 17f, rw, gris, 9f, Layout.Alignment.ALIGN_OPPOSITE)
-                    barra(x0, h - pad - 3f, rw, av ?: 0f)
+                    val altoAnte = capa("L", tp(fNegrita, 9f, tinta, 0.16f), 40f, 1).height.toFloat()
+                    // De una fila de alto: «Leer →», la barra y el % en una sola línea, para dejarle sitio al titular
+                    val bajo = h < 110f
+                    val pieY = if (bajo) h - pad - altoAnte else h - pad - 17f
+                    ante(accion, x0, pieY, rw, acento)
+                    if (pct.isNotEmpty()) ante(pct, x0, pieY, rw, gris, 9f, Layout.Alignment.ALIGN_OPPOSITE)
+                    if (bajo) {
+                        val bx0 = x0 + anchoAnte(accion) + 10f
+                        val bx1 = w - pad - if (pct.isNotEmpty()) anchoAnte(pct) + 10f else 0f
+                        if (bx1 - bx0 >= 24f) barra(bx0, pieY + altoAnte / 2 - 1.5f, bx1 - bx0, av ?: 0f)
+                    } else barra(x0, h - pad - 3f, rw, av ?: 0f)
+                    // El titular (y el autor, si cabe) centrado entre la sección y el pie, con aire por arriba y por abajo
+                    val arriba = pad + 1f + altoAnte
+                    val aire = if (bajo) 7f else 10f
+                    val hueco = pieY - arriba - 2 * aire
+                    val autor = if (e.creator.isNotBlank() && h >= 130f) capa(e.creator, tp(fCursiva, 12.5f, gris), rw, 1) else null
+                    val altoAutor = autor?.let { it.height + 4f } ?: 0f
+                    val l = titular(e.name, rw, hueco - altoAutor, (h * 0.19f).coerceIn(30f, 46f), if (bajo) 12f else 13f, if (bajo) 1 else 3)
+                    // (si ni con la letra más pequeña cabe con todo su aire, queda en el centro: el mismo hueco arriba y abajo)
+                    val y = arriba + (pieY - arriba - l.height - altoAutor) / 2
+                    pon(l, x0, y)
+                    autor?.let { pon(it, x0, y + l.height + 4f) }
                 }
             }
         }

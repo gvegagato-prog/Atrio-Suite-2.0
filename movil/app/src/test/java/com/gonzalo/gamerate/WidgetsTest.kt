@@ -107,7 +107,7 @@ class WidgetsTest {
     fun todos() = runBlocking {
         seed()
         val tamanos = mapOf(
-            WTipo.LEYENDO to listOf(480f to 220f, 330f to 165f, 165f to 165f, 165f to 330f),
+            WTipo.LEYENDO to listOf(480f to 220f, 330f to 165f, 165f to 165f, 165f to 330f, 366f to 83f, 330f to 100f, 250f to 80f, 330f to 125f),
             WTipo.ESTANTE to listOf(480f to 220f, 330f to 165f, 330f to 120f),
             WTipo.CALENDARIO to listOf(480f to 460f, 330f to 340f, 330f to 250f),
             WTipo.PORTADA to listOf(480f to 340f, 330f to 250f, 165f to 165f),
