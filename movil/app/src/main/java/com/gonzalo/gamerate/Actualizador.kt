@@ -20,7 +20,7 @@ import java.io.File
 /**
  * Actualizarse sola desde tu kDrive. Cada versión se sube a «Mi carpeta/versiones» (Atrio-<versión>.apk). Al abrir la app,
  * unos segundos después de verse la pantalla y en segundo plano (el arranque no cambia), se mira si hay internet y si la
- * última de la carpeta es más nueva que la instalada; si lo es, se baja a la caché (solo con wifi) y se comprueba que
+ * última de la carpeta es más nueva que la instalada; si lo es, se baja a la caché (con wifi o con datos móviles) y se comprueba que
  * es Atrio y que está firmada con la misma clave. Se instala:
  *  - sin preguntar y al salir de la app, si Android lo permite (Android 12 o más, y solo si fue la propia Atrio quien
  *    instaló la versión actual: por eso la primera actualización necesita tu confirmación);
@@ -55,10 +55,11 @@ object Actualizador {
     fun ultima(archivos: List<Pair<String, Long>>): Triple<String, Long, List<Int>>? =
         archivos.mapNotNull { (n, id) -> versionDe(n)?.let { Triple(n, id, it) } }.fold(null as Triple<String, Long, List<Int>>?) { m, x -> if (m == null || mayor(x.third, m.third)) x else m }
 
-    private fun hayWifi(ctx: Context): Boolean {
+    /** Hay internet de verdad (wifi o datos móviles). */
+    private fun hayInternet(ctx: Context): Boolean {
         val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return false
         val c = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
-        return c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && c.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        return c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && c.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     @Suppress("DEPRECATION")
@@ -85,7 +86,7 @@ object Actualizador {
     fun comprueba(ctx: Context) {
         if (hecho) return
         hecho = true
-        if (!activo(ctx) || !KDrive.on(ctx) || !hayWifi(ctx)) return
+        if (!activo(ctx) || !KDrive.on(ctx) || !hayInternet(ctx)) return
         val ult = ultima(KDrive.versiones(ctx)) ?: return
         val actual = instalada(ctx).versionName?.split('.')?.mapNotNull { it.toIntOrNull() } ?: return
         val dir = File(ctx.cacheDir, "actualizaciones").apply { mkdirs() }
