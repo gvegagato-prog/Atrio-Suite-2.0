@@ -134,9 +134,16 @@ class FakeKDrive(private val drive: String = "777", private val token: String = 
                         while (true) { val l = line(); if (l.isEmpty()) break; h[l.substringBefore(':').trim().lowercase()] = l.substringAfter(':').trim() }
                         val len = h["content-length"]?.toInt() ?: 0
                         val body = ByteArray(len); var r = 0; while (r < len) { val n = inp.read(body, r, len - r); if (n < 0) break; r += n }
-                        val res = handle(req[0], req[1], h["authorization"], body)
+                        var res = handle(req[0], req[1], h["authorization"], body)
+                        // Como kDrive: las descargas entienden «Range: bytes=a-b» (respuesta 206 con su Content-Range)
+                        var extra = ""
+                        val rg = h["range"]
+                        if (rg != null && res.code == 200 && req[1].contains("/download")) Regex("""bytes=(\d+)-(\d*)""").find(rg)?.let { m ->
+                            val a = m.groupValues[1].toInt(); val b = (m.groupValues[2].toIntOrNull() ?: (res.body.size - 1)).coerceAtMost(res.body.size - 1)
+                            extra = "Content-Range: bytes $a-$b/${res.body.size}\r\n"; res = Res(206, res.body.copyOfRange(a, b + 1))
+                        }
                         val out = s.getOutputStream()
-                        out.write("HTTP/1.1 ${res.code} X\r\nContent-Length: ${res.body.size}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n".toByteArray())
+                        out.write("HTTP/1.1 ${res.code} X\r\nContent-Length: ${res.body.size}\r\n${extra}Content-Type: application/json\r\nConnection: close\r\n\r\n".toByteArray())
                         out.write(res.body); out.flush()
                     }
                 }.start()

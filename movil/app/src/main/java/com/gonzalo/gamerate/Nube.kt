@@ -307,12 +307,85 @@ object KDrive {
 
     /** Los archivos de «Mi carpeta/versiones» (nombre, id): ahí se sube cada versión de la app para que se actualice sola. */
     fun versiones(ctx: Context): List<Pair<String, Long>> {
+        // El id de la carpeta se recuerda: así cada comprobación es una sola consulta (y si ya no vale, se busca de nuevo)
+        prefs(ctx).getLong("versDir", 0L).takeIf { it > 0 }?.let { id ->
+            runCatching { return children(ctx, id).filter { !it.dir }.map { it.name to it.id } }
+            prefs(ctx).edit().remove("versDir").apply()
+        }
         val dir = children(ctx, home(ctx)).firstOrNull { it.dir && it.name == "versiones" } ?: return emptyList()
+        prefs(ctx).edit().putLong("versDir", dir.id).apply()
         return children(ctx, dir.id).filter { !it.dir }.map { it.name to it.id }
     }
 
-    /** Baja un archivo a [dest] (primero a un temporal: un corte no deja un archivo a medias). */
+    /**
+     * Baja un archivo a [dest] (primero a un temporal: un corte no deja un archivo a medias). Los grandes se bajan en
+     * cuatro trozos a la vez (kDrive acepta rangos) y es mucho más rápido; si no, de una vez.
+     */
     fun download(ctx: Context, file: Long, dest: File) {
+        if (runCatching { descargaEnTrozos(ctx, file, dest) }.getOrDefault(false)) return
+        descargaSimple(ctx, file, dest)
+    }
+
+    private const val TROZOS = 4
+    private const val MINIMO_EN_TROZOS = 4L * 1024 * 1024
+
+    /** Devuelve false si no vale la pena (pequeño) o el servidor no entiende rangos: entonces se baja de una vez. */
+    private fun descargaEnTrozos(ctx: Context, file: Long, dest: File): Boolean {
+        val url = "$api/2/drive/${drive(ctx)}/files/$file/download"
+        fun abre(desde: Long, hasta: Long): HttpURLConnection {
+            val c = URL(url).openConnection() as HttpURLConnection
+            c.connectTimeout = 20000; c.readTimeout = 300000
+            c.setRequestProperty("Authorization", "Bearer ${token(ctx)}")
+            c.setRequestProperty("Range", "bytes=$desde-$hasta")
+            return c
+        }
+        // Primero un pedacito: dice cuánto pesa y si entiende rangos
+        val sonda = abre(0, 0)
+        if (sonda.responseCode != 206) { sonda.disconnect(); return false }
+        val total = sonda.getHeaderField("Content-Range")?.substringAfter('/')?.toLongOrNull() ?: run { sonda.disconnect(); return false }
+        sonda.inputStream.use { it.readBytes() }
+        if (total < MINIMO_EN_TROZOS) return false
+        dest.parentFile?.mkdirs()
+        val tmp = File(dest.path + ".part")
+        java.io.RandomAccessFile(tmp, "rw").use { it.setLength(total) }
+        val trozo = (total + TROZOS - 1) / TROZOS
+        val fallo = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
+        val hilos = (0 until TROZOS).map { i ->
+            Thread {
+                try {
+                    val a = i * trozo
+                    val b = minOf(total - 1, a + trozo - 1)
+                    if (a > b) return@Thread
+                    var intentos = 0
+                    while (true) {
+                        try {
+                            val c = abre(a, b)
+                            if (c.responseCode != 206) throw Fail("kDrive: error ${c.responseCode}")
+                            c.inputStream.use { inp ->
+                                java.io.RandomAccessFile(tmp, "rw").use { f ->
+                                    f.seek(a)
+                                    val buf = ByteArray(64 * 1024); var pos = a
+                                    while (true) { val n = inp.read(buf); if (n < 0) break; f.write(buf, 0, n); pos += n }
+                                    if (pos != b + 1) throw IOException("trozo incompleto")
+                                }
+                            }
+                            break
+                        } catch (e: IOException) {
+                            if (e is Fail || ++intentos >= 3) throw e
+                            Thread.sleep(1000L * intentos)
+                        }
+                    }
+                } catch (e: Throwable) { fallo.compareAndSet(null, e) }
+            }.also { it.start() }
+        }
+        hilos.forEach { it.join() }
+        fallo.get()?.let { tmp.delete(); throw it }
+        if (tmp.length() != total) { tmp.delete(); throw Fail("kDrive: la descarga ha quedado incompleta") }
+        if (!tmp.renameTo(dest)) { tmp.copyTo(dest, true); tmp.delete() }
+        return true
+    }
+
+    private fun descargaSimple(ctx: Context, file: Long, dest: File) {
         val c = URL("$api/2/drive/${drive(ctx)}/files/$file/download").openConnection() as HttpURLConnection
         c.connectTimeout = 20000; c.readTimeout = 300000
         c.setRequestProperty("Authorization", "Bearer ${token(ctx)}")

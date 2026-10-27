@@ -35,7 +35,8 @@ object Actualizador {
     var faltaPermiso by mutableStateOf(false)
     /** La app está delante (si no, un aviso en lugar de abrir pantallas). */
     @Volatile var primerPlano = false
-    private var hecho = false
+    /** Ya hay una comprobación o una descarga en marcha. */
+    private val ocupado = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("actualizador", Context.MODE_PRIVATE)
     fun activo(ctx: Context) = prefs(ctx).getBoolean("on", true)
@@ -82,16 +83,19 @@ object Actualizador {
         return runCatching { ctx.packageManager.getInstallSourceInfo(ctx.packageName).installingPackageName == ctx.packageName }.getOrDefault(false)
     }
 
-    /** Se llama al abrir la app (en segundo plano). Una sola vez por arranque. */
+    /** Se llama nada más abrir la app y luego cada minuto mientras está abierta (siempre en segundo plano). */
     fun comprueba(ctx: Context) {
-        if (hecho) return
-        hecho = true
-        if (!activo(ctx) || !KDrive.on(ctx) || !hayInternet(ctx)) return
+        if (!activo(ctx) || !KDrive.on(ctx) || !hayInternet(ctx) || !ocupado.compareAndSet(false, true)) return
+        try { compruebaYa(ctx) } finally { ocupado.set(false) }
+    }
+
+    private fun compruebaYa(ctx: Context) {
         val ult = ultima(KDrive.versiones(ctx)) ?: return
         val actual = instalada(ctx).versionName?.split('.')?.mapNotNull { it.toIntOrNull() } ?: return
         val dir = File(ctx.cacheDir, "actualizaciones").apply { mkdirs() }
         dir.listFiles()?.filter { it.name != ult.first }?.forEach { it.delete() }
         if (!mayor(ult.third, actual)) { dir.listFiles()?.forEach { it.delete() }; return }
+        if (nueva?.nombre == ult.first) return      // ya está descargada y lista
         val f = File(dir, ult.first)
         var code = if (f.exists()) valida(ctx, f) else null
         if (code == null) {
@@ -100,6 +104,7 @@ object Actualizador {
             code = valida(ctx, f)
             if (code == null) { f.delete(); return }
         }
+        if (nueva?.nombre == ult.first) return
         if (!ctx.packageManager.canRequestPackageInstalls()) faltaPermiso = true
         nueva = Nueva(ult.first, code, f, puedeSilenciosa(ctx))
     }

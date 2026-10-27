@@ -53,4 +53,17 @@ class ActualizadorTest {
         KDrive.download(ctx, u.second, dest)
         assertEquals(b.readBytes().toList(), dest.readBytes().toList())
     }
+
+    /** Un archivo grande se baja en trozos a la vez y sale idéntico (y uno pequeño, de una vez). */
+    @Test fun descargaEnTrozos() {
+        KDrive.save(ctx, "tok", "777")
+        val grande = File(ctx.cacheDir, "Atrio-9.0.apk").apply { writeBytes(ByteArray(9 * 1024 * 1024 + 123) { (it * 31 % 251).toByte() }) }
+        KDrive.upload(ctx, "versiones", grande.name, grande.length()) { grande.inputStream() }
+        val id = KDrive.versiones(ctx).first { it.first == grande.name }.second
+        val dest = File(ctx.cacheDir, "g.apk")
+        KDrive.download(ctx, id, dest)
+        assertEquals(grande.length(), dest.length())
+        assertTrue("idéntico byte a byte", grande.readBytes().contentEquals(dest.readBytes()))
+        assertFalse("no queda el temporal", File(dest.path + ".part").exists())
+    }
 }

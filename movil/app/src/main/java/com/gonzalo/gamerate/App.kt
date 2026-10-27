@@ -131,10 +131,13 @@ fun App(
         runCatching { DiarioAviso.programa(ctx) }
         AtajoLectura.pon(ctx)
     }
-    // Actualizarse sola desde el kDrive: unos segundos después de verse la pantalla y en segundo plano, para no tocar el arranque
+    // Actualizarse sola desde el kDrive, en segundo plano (no toca el arranque)
+    // (nada más abrir, sin esperar, y luego cada minuto mientras la app está delante; todo fuera del hilo de la pantalla)
     LaunchedEffect(Unit) {
-        delay(4000)
-        withContext(Dispatchers.IO) { runCatching { Actualizador.comprueba(ctx) } }
+        while (true) {
+            if (Actualizador.primerPlano) withContext(Dispatchers.IO) { runCatching { Actualizador.comprueba(ctx) } }
+            delay(60_000)
+        }
     }
 
     // Viendo la app de tu pareja (solo lectura).
@@ -1816,7 +1819,7 @@ fun App(
             avisoDiario = false
         }) { avisoDiario = false }
         // Una versión nueva descargada que no puede instalarse sola: se pregunta (Android pedirá su confirmación)
-        var luego by remember { mutableStateOf(false) }
+        var luego by remember(Actualizador.nueva?.nombre) { mutableStateOf(false) }
         Actualizador.nueva?.takeIf { !it.silenciosa && !luego }?.let { n ->
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = { luego = true },
