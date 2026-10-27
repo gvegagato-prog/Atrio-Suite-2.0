@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
@@ -127,7 +128,7 @@ private fun RevistaHome(m: ShellModel) {
     val intro = remember { !RevistaIntro.done }
     LaunchedEffect(Unit) { RevistaIntro.done = true }
     fun Modifier.llega(n: Int) = appear(n * 110, intro)
-    Column(Modifier.fillMaxSize().background(Paper2).verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().padding(horizontal = 22.dp)) {
+    Column(Modifier.fillMaxSize().background(Paper2).verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding().padding(horizontal = 28.dp)) {
         var buscando by remember { mutableStateOf(false) }
         if (buscando) BuscadorGeneral(m) { buscando = false }
         Row(Modifier.fillMaxWidth().padding(top = 10.dp).llega(0), verticalAlignment = Alignment.CenterVertically) {
@@ -177,9 +178,9 @@ private fun RevistaHome(m: ShellModel) {
         }
         val actual = if (n > 0) pager.currentPage % n else 0
         val scope = rememberCoroutineScope()
-        if (n > 0) Spacer(Modifier.height(22.dp))
+        if (n > 0) Spacer(Modifier.height(30.dp))
         // La portada va enmarcada: un cuadrado del color del texto alrededor de todo
-        if (n > 0) Column(Modifier.llega(3).fillMaxWidth().border(1.5.dp, Ink2).padding(14.dp)) {
+        if (n > 0) Column(Modifier.llega(3).fillMaxWidth().border(1.5.dp, Ink2).padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RevSection("En portada")
                 Spacer(Modifier.weight(1f))
@@ -191,7 +192,9 @@ private fun RevistaHome(m: ShellModel) {
                     }
                 }
             }
-            HorizontalPager(pager, Modifier.fillMaxWidth(), pageSpacing = 18.dp, verticalAlignment = Alignment.Top,
+            // Se componen todas las páginas a la vez: el marco mide lo de la más alta y no cambia de tamaño al pasar de una a otra
+            HorizontalPager(pager, Modifier.fillMaxWidth().testTag("portada"), pageSpacing = 18.dp, verticalAlignment = Alignment.Top,
+                beyondViewportPageCount = (n - 1).coerceIn(0, 6),
                 key = { p -> if (n > 1) p else ongoing.getOrNull(p)?.play?.id ?: p }) { page ->
                 val o = ongoing[page % n]
                 val e = ShellEntry(o.kind, o.play, null)
@@ -272,11 +275,11 @@ private fun RevistaHome(m: ShellModel) {
 
         // Ahora mismo: todo lo que llevas entre manos, en lista numerada (fija: no cambia con la portada)
         if (ongoing.size > 1) Column(Modifier.llega(4)) {
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(38.dp))
             RevSection("Ahora mismo")
             ongoing.take(8).forEachIndexed { i, o ->
                 val e = ShellEntry(o.kind, o.play, null)
-                Row(Modifier.fillMaxWidth().press(haptic = false) { m.open(e) }.padding(vertical = 10.dp), verticalAlignment = if (Skin.listCovers) Alignment.CenterVertically else Alignment.Top) {
+                Row(Modifier.fillMaxWidth().press(haptic = false) { m.open(e) }.padding(vertical = 14.dp), verticalAlignment = if (Skin.listCovers) Alignment.CenterVertically else Alignment.Top) {
                     Text("%02d".format(i + 1), color = Red2, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 30.sp, modifier = Modifier.width(56.dp))
                     if (Skin.listCovers) { ListCover(e.cover, e.name, 52.dp, 74.dp); Spacer(Modifier.width(14.dp)) }
                     Column(Modifier.weight(1f)) {
@@ -295,7 +298,7 @@ private fun RevistaHome(m: ShellModel) {
 
         // Las notas más altas: números gigantes
         if (best.isNotEmpty()) Column(Modifier.llega(5)) {
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(38.dp))
             RevSection("Las notas más altas")
             // La columna de los números, tan ancha como la nota más ancha (un 100 no cabía y se partía en «10» y «0»)
             val numStyle = androidx.compose.ui.text.TextStyle(fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 58.sp, lineHeight = 58.sp)
@@ -466,7 +469,7 @@ private fun RevistaProximos(m: ShellModel) {
     }
     if (proximos.isEmpty()) return
     Column {
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(38.dp))
         RevSection("Próximos episodios")
         proximos.take(6).forEach { (e, p) ->
             Row(Modifier.fillMaxWidth().press(haptic = false) { m.open(e) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {

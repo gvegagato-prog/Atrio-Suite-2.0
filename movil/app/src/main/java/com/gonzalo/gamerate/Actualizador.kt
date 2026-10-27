@@ -135,7 +135,34 @@ object Actualizador {
     /** Al salir de la app: si se puede instalar sin preguntar, se instala ahora (no interrumpe lo que hacías). */
     fun alSalir(ctx: Context) { nueva?.takeIf { it.silenciosa }?.let { instala(ctx, it) } }
 
+    /** Si instalas con la app delante, al terminar se vuelve a abrir (Android cierra la app al actualizarla). */
+    private fun marcaReabrir(ctx: Context, si: Boolean) {
+        ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).edit().putLong("act_reabrir", if (si) System.currentTimeMillis() else 0L).apply()
+    }
+
+    /** Lo llama el receptor de «app actualizada»: reabre Atrio si la actualización se hizo con ella delante. */
+    fun reabre(ctx: Context) {
+        val sp = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE)
+        val t = sp.getLong("act_reabrir", 0L)
+        sp.edit().putLong("act_reabrir", 0L).apply()
+        if (t == 0L || System.currentTimeMillis() - t > 15 * 60_000L) return
+        val abrir = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ?: return
+        // Con el permiso «Mostrar sobre otras apps», Android deja abrirla directamente; sin él (o si el móvil lo bloquea), queda el aviso
+        if (puedeReabrirSola(ctx)) runCatching { ctx.startActivity(abrir) }
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel("reabrir", "Atrio actualizada", NotificationManager.IMPORTANCE_HIGH))
+        val pi = PendingIntent.getActivity(ctx, 2006, abrir, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        nm.notify(AVISO_REABRIR, Notification.Builder(ctx, "reabrir").setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("Atrio se ha actualizado").setContentText("Toca para abrirla").setContentIntent(pi).setAutoCancel(true).build())
+    }
+
+    const val AVISO_REABRIR = 2006
+    fun puedeReabrirSola(ctx: Context) = android.provider.Settings.canDrawOverlays(ctx)
+    /** Ya abierta: el aviso de «toca para abrirla» sobra. */
+    fun quitaAviso(ctx: Context) { runCatching { ctx.getSystemService(NotificationManager::class.java).cancel(AVISO_REABRIR) } }
+
     fun instala(ctx: Context, n: Nueva) {
+        marcaReabrir(ctx, primerPlano)
         val pi = ctx.packageManager.packageInstaller
         val p = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(ctx.packageName)
@@ -168,5 +195,12 @@ class ActualizadorReceiver : BroadcastReceiver() {
         val pi = PendingIntent.getActivity(ctx, 2005, conf, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         nm.notify(2005, Notification.Builder(ctx, "actualizar").setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle("Atrio tiene una versión nueva").setContentText("Toca para actualizar").setContentIntent(pi).setAutoCancel(true).build())
+    }
+}
+
+/** Android cierra la app al actualizarla; este receptor la vuelve a abrir (si la actualización se hizo con ella delante). */
+class ActualizadorReabrir : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) Actualizador.reabre(ctx)
     }
 }

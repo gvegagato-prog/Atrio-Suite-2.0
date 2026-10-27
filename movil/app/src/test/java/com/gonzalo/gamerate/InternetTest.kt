@@ -37,7 +37,8 @@ class InternetTest {
         assertEquals(listOf("https://i.pinimg.com/originals/ab/cd/ef/abcdef.jpg", "https://i.pinimg.com/736x/ab/cd/ef/abcdef.jpg", pin), Internet.candidatas(pin))
         assertEquals(listOf("https://i.pinimg.com/originals/a.jpg", "https://i.pinimg.com/736x/a.jpg"), Internet.candidatas("https://i.pinimg.com/474x/a.jpg").dropLast(1))
         val art = "https://cdna.artstation.com/p/assets/images/images/001/small_square/x.jpg?1"
-        assertEquals("https://cdna.artstation.com/p/assets/images/images/001/large/x.jpg?1", Internet.candidatas(art)[0])
+        assertEquals("https://cdna.artstation.com/p/assets/images/images/001/8k/x.jpg?1", Internet.candidatas(art)[0])
+        assertEquals("https://cdna.artstation.com/p/assets/images/images/001/large/x.jpg?1", Internet.candidatas(art)[2])
         assertEquals(art, Internet.candidatas(art).last())
         assertEquals(listOf("https://a.com/x.jpg"), Internet.candidatas("https://a.com/x.jpg"))
     }

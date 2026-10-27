@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import org.junit.Assert.assertTrue
@@ -161,11 +162,15 @@ open class Capturas6Test {
         }
         shoot("r1_portada")
         // En portada se desliza con el dedo: de Deadlock a la siguiente (y vuelta)
-        fun veces(t: String) = rule.onAllNodesWithText(t).fetchSemanticsNodes().size
-        val antes = veces("Elden Ring Nightreign")
+        // Con todas las páginas compuestas a la vez, se mira cuál está dentro del marco (no cuántas hay)
+        fun enMarco(t: String): Boolean {
+            val marco = rule.onNodeWithTag("portada").fetchSemanticsNode().boundsInRoot
+            return rule.onAllNodesWithText(t).fetchSemanticsNodes().any { it.boundsInRoot.center.x in marco.left..marco.right && it.boundsInRoot.center.y in marco.top..marco.bottom }
+        }
+        assertTrue("al principio no se ve la siguiente", !enMarco("Elden Ring Nightreign"))
         rule.onRoot().performTouchInput { swipeLeft(startX = width * 0.8f, endX = width * 0.1f, durationMillis = 250) }
         rule.waitForIdle()
-        assertTrue("al deslizar, la portada pasa a la siguiente (${veces("Elden Ring Nightreign")} veces, antes $antes)", veces("Elden Ring Nightreign") > antes)
+        assertTrue("al deslizar, la portada pasa a la siguiente", enMarco("Elden Ring Nightreign"))
         shoot("r1b_portada_deslizada")
         rule.onRoot().performTouchInput { swipeRight(startX = width * 0.1f, endX = width * 0.9f, durationMillis = 250) }
         rule.waitForIdle()

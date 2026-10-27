@@ -209,6 +209,7 @@ fun App(
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
             Actualizador.primerPlano = ev == androidx.lifecycle.Lifecycle.Event.ON_START || ev == androidx.lifecycle.Lifecycle.Event.ON_RESUME
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) runCatching { Actualizador.alSalir(ctx) }
+            if (ev == androidx.lifecycle.Lifecycle.Event.ON_START) Actualizador.quitaAviso(ctx)
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP && (store.paired || store.driveUri.isNotBlank())) CloudSave.enqueue(ctx)
             // Y lo nuevo (libros adjuntos, fotos, capturas) a tu nube; de paso se baja lo que falte aquí
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP || ev == androidx.lifecycle.Lifecycle.Event.ON_START) NubeSync.enqueue(ctx)

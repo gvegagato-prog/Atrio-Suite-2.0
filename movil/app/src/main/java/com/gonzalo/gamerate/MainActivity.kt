@@ -196,6 +196,8 @@ class MainActivity : ComponentActivity() {
                     androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(dens.density, dens.fontScale * Skin.textScale)
                 ) {
                     MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
+                      // Letra más aireada en toda la app: algo más de interlineado (relativo al tamaño de cada texto)
+                      androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = androidx.compose.ui.unit.TextUnit(1.45f, androidx.compose.ui.unit.TextUnitType.Em))) {
                         App(store, openId, openPartner, openGo, shareUrl, shareTitle, { shareUrl = "" }) { openId = 0L; openPartner = false; openGo = "" }
                         // Fondo propio de la forma (líneas de TV, rejilla, grano, trama): no se puede tocar
                         FormOverlay()
@@ -204,6 +206,7 @@ class MainActivity : ComponentActivity() {
                             StyleScreen(Mode.themeMode, { t -> store.themeMode = t; withReveal { Mode.themeMode = t } }, { l -> Mode.look = l; store.look = l }) { Skin.open = false }
                         }
                         if (Skin.open) FormOverlay()
+                      }
                     }
                 }
                 val img = overlay

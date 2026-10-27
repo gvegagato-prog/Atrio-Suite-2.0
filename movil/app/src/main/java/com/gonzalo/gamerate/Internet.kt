@@ -84,8 +84,12 @@ object Internet {
             if (m != null) { out += url.replace("/${m.groupValues[2]}/", "/originals/"); if (m.groupValues[2] != "736x") out += url.replace("/${m.groupValues[2]}/", "/736x/") }
         }
         if (url.contains("artstation.com/")) {
-            val r = Regex("/(micro_square|smaller_square|small_square|small|medium)/")
-            if (r.containsMatchIn(url)) out += r.replace(url, "/large/")
+            val r = Regex("/(micro_square|smaller_square|small_square|small|medium|large|4k|8k)/")
+            if (r.containsMatchIn(url)) {
+                // ArtStation guarda cada imagen en varios tamaños; el mayor (8k, 4k) no siempre existe: se baja del primero que haya
+                if (url.contains("/images/images/")) { out += r.replace(url, "/8k/"); out += r.replace(url, "/4k/") }
+                out += r.replace(url, "/large/")
+            }
         }
         out += url
         return out.distinct()
@@ -132,6 +136,32 @@ object Internet {
     private const val MAX = 40L * 1024 * 1024
 
     /**
+     * ArtStation: al abrir un proyecto (/artwork/<hash>) se pide su ficha (/projects/<hash>.json, desde la propia página, con sus
+     * cookies) y, si la página no ha puesto ninguna imagen grande a la vista, se muestran aquí las imágenes del proyecto.
+     */
+    const val JS_ARTSTATION = """(function(){try{
+var m=/\/artwork\/([A-Za-z0-9]+)/.exec(location.pathname);if(!m)return;var h=m[1];
+if(window.__atrioAS&&window.__atrioAS.h===h)return;
+var st=window.__atrioAS={h:h,urls:null};
+var prev=document.getElementById('atrio-as');if(prev)prev.remove();
+fetch('/projects/'+h+'.json',{credentials:'include',headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(j){
+ st.urls=(j.assets||[]).filter(function(a){return a.has_image&&a.image_url;}).map(function(a){return a.image_url;});
+}).catch(function(e){st.err=String(e);});
+var n=0;var t=setInterval(function(){n++;if(window.__atrioAS!==st||n>12){clearInterval(t);return;}
+ if(!st.urls||!st.urls.length)return;
+ var grande=[].slice.call(document.images).some(function(i){var r=i.getBoundingClientRect();return i.naturalWidth>=400&&r.width>=200&&r.height>=120&&r.bottom>0&&r.top<innerHeight;});
+ if(grande){clearInterval(t);return;}
+ if(n<4)return;
+ clearInterval(t);
+ var d=document.createElement('div');d.id='atrio-as';
+ d.style.cssText='position:fixed;left:0;right:0;top:60px;bottom:0;overflow:auto;background:#111;z-index:2147483647;padding:8px;-webkit-overflow-scrolling:touch';
+ var x=document.createElement('div');x.textContent='Imágenes del proyecto (vista de Atrio) — toca aquí para cerrar';x.style.cssText='color:#ccc;font:14px sans-serif;padding:6px 4px 10px';x.onclick=function(){d.remove();};d.appendChild(x);
+ st.urls.forEach(function(u){var im=document.createElement('img');im.src=u;im.style.cssText='display:block;width:100%;height:auto;margin:0 0 8px';d.appendChild(im);});
+ document.body.appendChild(d);
+},1000);
+}catch(e){}})()"""
+
+    /**
      * Qué imagen se está viendo en la página: la más grande de las visibles, mejor si es la de verdad (http) y no la
      * miniatura de Google. Devuelve {"u": dirección, "w": ancho, "low": true si es solo la miniatura}.
      */
@@ -145,6 +175,10 @@ all.forEach(function(i){var s=i.currentSrc||i.src||'';if(!s)return;var r=i.getBo
  var full=m?decodeURIComponent(m[1]):null;
  var o={u:full||s,a:a,w:i.naturalWidth||0,low:!full&&tbn(s)};
  if(o.low){if(!bestLow||a>bestLow.a)bestLow=o;}else{if(!best||a>best.a)best=o;}});
+var as=window.__atrioAS;if(as&&as.urls&&as.urls.length){var el=document.getElementById('atrio-as');
+ var ims=el?[].slice.call(el.querySelectorAll('img')).filter(vis):[];
+ if(el&&ims.length){ims.sort(function(a,b){return b.getBoundingClientRect().height-a.getBoundingClientRect().height;});return JSON.stringify({u:ims[0].src,w:ims[0].naturalWidth||0,low:false});}
+ if(!best)return JSON.stringify({u:as.urls[0],w:0,low:false});}
 var r=best||bestLow;return JSON.stringify(r?{u:r.u,w:r.w,low:!!r.low}:{});}catch(e){return JSON.stringify({err:String(e)});}})()"""
 }
 
@@ -231,6 +265,9 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                         CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                         webChromeClient = WebChromeClient()
                         webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(v: WebView, url: String?) { if (url?.contains("artstation.com/artwork/") == true) v.evaluateJavascript(Internet.JS_ARTSTATION, null) }
+                            // ArtStation cambia de proyecto sin recargar la página: se avisa al cambiar la dirección
+                            override fun doUpdateVisitedHistory(v: WebView, url: String?, isReload: Boolean) { if (url?.contains("artstation.com/artwork/") == true) v.evaluateJavascript(Internet.JS_ARTSTATION, null) }
                             override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest): Boolean {
                                 val u = r.url.toString()
                                 return !(u.startsWith("http://") || u.startsWith("https://"))
