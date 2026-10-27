@@ -342,7 +342,7 @@ class ReaderActivity : ComponentActivity() {
         // Antes de abrir, lo último de tu cuenta (como mucho 2,5 s): así empiezas donde lo dejaste en cualquier dispositivo
         val app = applicationContext
         if (Store(app).paired) Thread {
-            Sincro.init(app)
+            Sincro.init(app); Actualizador.init(app)
             runCatching { kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(2500) { Couple.syncOwn(Store(app)) } } }
             runOnUiThread { if (!isDestroyed) web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html") }
         }.start() else web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html")

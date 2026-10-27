@@ -37,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -105,7 +106,7 @@ object Internet {
     fun esMiniatura(u: String) = u.startsWith("data:") || u.contains("encrypted-tbn") || u.contains("gstatic.com/")
 
     /** Los bytes de una imagen (dirección http/https o data:) y su tipo. */
-    fun descargar(url: String, ua: String): Pair<ByteArray, String?> {
+    fun descargar(url: String, ua: String, desde: String? = null): Pair<ByteArray, String?> {
         if (url.startsWith("data:")) {
             val head = url.substringBefore(',')
             val mime = head.removePrefix("data:").substringBefore(';').ifBlank { null }
@@ -115,12 +116,14 @@ object Internet {
         }
         var last: Exception? = null
         // Algunas webs no dejan sacar sus imágenes sin venir de una página: se prueba también así
-        for (u in candidatas(url)) for (referer in listOf<String?>(null, "https://www.google.com/")) {
+        val cookies = runCatching { CookieManager.getInstance().getCookie(url) }.getOrNull()
+        for (u in candidatas(url)) for (referer in listOf(null, desde, "https://www.google.com/").distinct()) {
             try {
                 val c = URL(u).openConnection() as HttpURLConnection
                 c.setRequestProperty("User-Agent", ua)
                 c.setRequestProperty("Accept", "image/*,*/*;q=0.8")
                 if (referer != null) c.setRequestProperty("Referer", referer)
+                if (!cookies.isNullOrBlank()) c.setRequestProperty("Cookie", cookies)
                 c.connectTimeout = 15000; c.readTimeout = 25000
                 if (c.responseCode !in 200..299) error("la web respondió ${c.responseCode}")
                 val len = c.contentLengthLong
@@ -162,6 +165,96 @@ var n=0;var t=setInterval(function(){n++;if(window.__atrioAS!==st||n>12){clearIn
 }catch(e){}})()"""
 
     /**
+     * ArtStation y Pinterest, a nuestra manera. Sus webs dentro de la app fallan (en ArtStation los proyectos salen en
+     * blanco y la página se descoloca; Pinterest tapa los resultados pidiendo que inicies sesión), así que, una vez cargada
+     * su página (con su comprobación anti-robots ya pasada), se le piden los resultados a su propia API desde la misma
+     * página y se pinta encima una rejilla limpia; al tocar uno se abren sus imágenes grandes. Si la API no responde,
+     * se queda su web tal cual. Uso: [rejillaUi].
+     *  - ArtStation: /api/v2/csrf_protection/token.json y /api/v2/search/projects.json (como gallery-dl); /projects/<hash>.json.
+     *  - Pinterest: /resource/BaseSearchResource/get/ (la que usa su web, sin sesión), por páginas con «bookmarks».
+     */
+    private const val JS_REJILLA = """(function(){if(window.atrioRej)return;
+var F=null,raiz=null,estado,rejilla,mas,detalle,consulta='',cargando=false,bien=false,sigue=null,total=0;
+function el(t,css,txt){var e=document.createElement(t);if(css)e.style.cssText=css;if(txt!=null)e.textContent=txt;return e;}
+function monta(){if(raiz&&document.body.contains(raiz))return;
+ raiz=el('div','position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483646;background:PAPEL;color:TINTA;overflow:auto;-webkit-overflow-scrolling:touch;font:15px/1.45 system-ui,sans-serif;padding:12px 12px 48px;box-sizing:border-box');
+ raiz.id='atrio-rej';
+ estado=el('div','padding:4px 2px 12px;color:GRIS;font-size:13px');
+ rejilla=el('div','display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px');
+ mas=el('button','display:none;margin:18px auto 0;padding:12px 24px;border:1.5px solid TINTA;background:transparent;color:TINTA;font:800 12px system-ui,sans-serif;letter-spacing:1.4px','MÁS RESULTADOS');
+ mas.onclick=function(){carga(false);};
+ detalle=el('div','display:none');
+ raiz.appendChild(estado);raiz.appendChild(rejilla);raiz.appendChild(mas);raiz.appendChild(detalle);
+ document.body.appendChild(raiz);document.documentElement.style.overflow='hidden';}
+function quita(){if(raiz){raiz.remove();raiz=null;document.documentElement.style.overflow='';}}
+function resumen(){estado.textContent=(total?total+' en ':'Resultados de ')+F.nombre+' · toca uno para verlo grande';}
+function carga(primera){if(cargando)return;cargando=true;if(raiz)estado.textContent=primera?'Buscando…':'Cargando más…';
+ F.busca(consulta,primera?null:sigue).then(function(r){
+  monta();if(primera){rejilla.innerHTML='';cierra();raiz.scrollTop=0;}
+  sigue=r.sigue;total=r.total||0;
+  r.items.forEach(function(it){if(!it.mini)return;var c=el('div','cursor:pointer;min-width:0');
+   var im=el('img','display:block;width:100%;aspect-ratio:1/1;object-fit:cover;background:rgba(0,0,0,.06)');im.src=it.mini;im.alt=it.titulo||'';im.loading='lazy';
+   var t=el('div','font-size:12px;line-height:1.3;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis',it.titulo||'');
+   c.appendChild(im);c.appendChild(t);c.onclick=function(){abre(it);};rejilla.appendChild(c);});
+  bien=true;window.atrioRej.ok=true;
+  if(rejilla.children.length)resumen();else estado.textContent=F.nombre+' no tiene nada para «'+consulta+'».';
+  mas.style.display=sigue&&r.items.length?'block':'none';})
+ .catch(function(e){window.atrioRej.err=String(e);if(!bien)quita();else if(raiz)estado.textContent='No se ha podido cargar ('+e.message+')';})
+ .then(function(){cargando=false;});}
+function abre(it){rejilla.style.display='none';mas.style.display='none';detalle.style.display='block';detalle.innerHTML='';raiz.scrollTop=0;
+ var v=el('div','padding:2px 2px 12px;font:800 12px system-ui,sans-serif;letter-spacing:1.4px;cursor:pointer','← RESULTADOS');v.onclick=cierra;detalle.appendChild(v);
+ if(it.titulo)detalle.appendChild(el('div','font-weight:700;font-size:19px;line-height:1.25;margin:0 2px 12px',it.titulo));
+ estado.textContent='Abriendo…';
+ F.abre(it).then(function(us){
+  estado.textContent=us.length?'Deja a la vista la que quieras y pulsa «Usar esta imagen» (o mantenla pulsada)':'Esto no tiene imágenes (es un vídeo o un modelo 3D).';
+  us.forEach(function(u){var im=el('img','display:block;width:100%;height:auto;margin:0 0 12px;background:rgba(0,0,0,.06)');im.src=u;detalle.appendChild(im);});})
+ .catch(function(e){estado.textContent='No se ha podido abrir ('+e.message+')';});}
+function cierra(){if(!detalle)return;detalle.style.display='none';detalle.innerHTML='';rejilla.style.display='grid';mas.style.display=sigue&&rejilla.children.length?'block':'none';if(bien&&rejilla.children.length)resumen();}
+function ok(r){if(!r.ok)throw new Error('error '+r.status);return r.json();}
+var FUENTES={
+ artstation:{nombre:'ArtStation',token:null,
+  tok:function(){var f=this;if(f.token)return Promise.resolve(f.token);
+   return fetch('/api/v2/csrf_protection/token.json',{method:'POST',credentials:'include',headers:{'Accept':'*/*','Content-Type':'application/json'},body:'{}'})
+   .then(ok).then(function(j){f.token=j.public_csrf_token;if(!f.token)throw new Error('sin token');return f.token;});},
+  busca:function(q,pag){var n=pag||1;return this.tok().then(function(t){return fetch('/api/v2/search/projects.json',{method:'POST',credentials:'include',
+   headers:{'Accept':'application/json, text/plain, */*','Content-Type':'application/json','PUBLIC-CSRF-TOKEN':t},
+   body:JSON.stringify({query:q,page:n,per_page:50,sorting:'relevance',pro_first:'1',filters:[],additional_fields:[]})});}).then(ok)
+   .then(function(j){var d=j.data||[];var tot=j.total_count||d.length;
+    return {total:tot,sigue:(n*50<tot&&d.length)?n+1:null,items:d.filter(function(p){return p.hash_id;}).map(function(p){var c=p.cover||{};var who=(p.user&&(p.user.full_name||p.user.username))||'';
+     return {id:p.hash_id,mini:p.smaller_square_cover_url||c.small_square_url||c.thumb_url||c.medium_image_url||p.cover_url||'',titulo:(p.title||'')+(who?' · '+who:'')};})};});},
+  abre:function(it){return fetch('/projects/'+it.id+'.json',{credentials:'include',headers:{'Accept':'application/json'}}).then(ok)
+   .then(function(j){return (j.assets||[]).filter(function(a){return a.has_image&&a.image_url;}).map(function(a){return a.image_url;});});}},
+ pinterest:{nombre:'Pinterest',
+  busca:function(q,bm){var src='/search/pins/?q='+encodeURIComponent(q);
+   var data=JSON.stringify({options:{query:q,scope:'pins',page_size:50,bookmarks:bm?[bm]:[]},context:{}});
+   return fetch('/resource/BaseSearchResource/get/?source_url='+encodeURIComponent(src)+'&data='+encodeURIComponent(data),{credentials:'include',
+    headers:{'Accept':'application/json, text/javascript, */*; q=0.01','X-Requested-With':'XMLHttpRequest','X-Pinterest-AppState':'active','X-Pinterest-Source-Url':src,'X-Pinterest-PWS-Handler':'www/search/[scope].js'}})
+   .then(ok).then(function(j){var rr=j.resource_response||{};var d=rr.data||{};var l=Array.isArray(d)?d:(d.results||[]);var b=rr.bookmark;
+    return {total:0,sigue:(b&&b!=='-end-'&&l.length)?b:null,items:l.filter(function(x){return x&&x.images;}).map(function(x){var im=x.images;var g=im['474x']||im['236x']||im['736x']||im.orig||{};
+     return {id:x.id,mini:g.url||'',grande:((im.orig||im['736x']||g)||{}).url||g.url,titulo:x.grid_title||x.title||x.seo_alt_text||''};})};});},
+  abre:function(it){return Promise.resolve(it.grande?[it.grande]:[]);}}
+};
+window.atrioRej={busca:function(f,q){var n=FUENTES[f];if(!n)return;if(F!==n){F=n;bien=false;}consulta=String(q||'');sigue=null;if(consulta)carga(true);},
+ abierto:function(){return !!(detalle&&detalle.style.display==='block');},cierra:cierra,activo:function(){return !!(raiz&&document.body.contains(raiz));}};
+})()"""
+
+    /** La rejilla propia de [fuente] («artstation» o «pinterest») con los colores de la app, buscando [q]. */
+    fun rejillaUi(fuente: String, q: String, papel: String, tinta: String, gris: String): String =
+        JS_REJILLA.replace("PAPEL", papel).replace("TINTA", tinta).replace("GRIS", gris) +
+            ";window.atrioRej&&atrioRej.busca(" + JSONObject.quote(fuente) + "," + JSONObject.quote(q) + ")"
+
+    /** Si esa página es la búsqueda de una web con rejilla propia: cuál («artstation», «pinterest») y qué se busca. */
+    fun rejillaDe(url: String?): Pair<String, String>? {
+        val u = runCatching { android.net.Uri.parse(url ?: return null) }.getOrNull() ?: return null
+        val h = u.host.orEmpty()
+        return when {
+            (h == "artstation.com" || h.endsWith(".artstation.com")) && u.path.orEmpty().startsWith("/search") -> "artstation" to u.getQueryParameter("query").orEmpty()
+            h.contains("pinterest.") && u.path.orEmpty().startsWith("/search/pins") -> "pinterest" to u.getQueryParameter("q").orEmpty()
+            else -> null
+        }
+    }
+
+    /**
      * Qué imagen se está viendo en la página: la más grande de las visibles, mejor si es la de verdad (http) y no la
      * miniatura de Google. Devuelve {"u": dirección, "w": ancho, "low": true si es solo la miniatura}.
      */
@@ -169,7 +262,8 @@ var n=0;var t=setInterval(function(){n++;if(window.__atrioAS!==st||n>12){clearIn
 var vis=function(e){var r=e.getBoundingClientRect();return r.width>=90&&r.height>=90&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;};
 var tbn=function(s){return /encrypted-tbn|gstatic\.com\/|^data:/.test(s);};
 var best=null,bestLow=null;
-var all=[].slice.call(document.images).filter(vis);
+var capa=document.getElementById('atrio-rej');
+var all=[].slice.call(capa?capa.querySelectorAll('img'):document.images).filter(vis);
 all.forEach(function(i){var s=i.currentSrc||i.src||'';if(!s)return;var r=i.getBoundingClientRect();var a=r.width*r.height;
  var a2=i.closest&&i.closest('a');var h=a2?a2.href:'';var m=/[?&]imgurl=([^&]+)/.exec(h);
  var full=m?decodeURIComponent(m[1]):null;
@@ -193,7 +287,18 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
     var web by remember { mutableStateOf<WebView?>(null) }
     var msg by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    fun buscar() { msg = ""; web?.loadUrl(Internet.searchUrl(query, fuente)) }
+    // Los colores de la app, para la rejilla propia de ArtStation
+    val papel = String.format("#%06X", 0xFFFFFF and Paper.toArgb())
+    val tinta = String.format("#%06X", 0xFFFFFF and Charcoal.toArgb())
+    val gris = String.format("#%06X", 0xFFFFFF and Muted.toArgb())
+    fun buscar() {
+        msg = ""
+        val w = web ?: return
+        // Con la rejilla propia ya puesta (ArtStation, Pinterest), se busca ahí mismo: sin recargar ni volver a pasar por su comprobación
+        if (Internet.rejillaDe(w.url)?.first == fuente.id)
+            w.evaluateJavascript("window.atrioRej&&atrioRej.activo()?(atrioRej.busca(${JSONObject.quote(fuente.id)},${JSONObject.quote(query)}),true):false") { r -> if (r != "true") w.loadUrl(Internet.searchUrl(query, fuente)) }
+        else w.loadUrl(Internet.searchUrl(query, fuente))
+    }
 
     fun usar(raw: String) {
         if (busy) return
@@ -201,7 +306,9 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
         scope.launch {
             try {
                 val ua = web?.settings?.userAgentString ?: "Mozilla/5.0"
-                val (bytes, mime) = withContext(Dispatchers.IO) { Internet.descargar(raw, ua) }
+                // Como la pide la página: desde ella (Referer) y con sus cookies (algunas webs no dan la imagen si no)
+                val desde = web?.url?.takeIf { it.startsWith("http") }
+                val (bytes, mime) = withContext(Dispatchers.IO) { Internet.descargar(raw, ua, desde) }
                 val foto = Photos.importBytes(ctx, bytes, mime)
                 busy = false
                 onPick(foto)
@@ -235,7 +342,14 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnBackPress = false)) {
         // Atrás: primero por las páginas que has abierto dentro; luego se cierra
-        BackHandler { val w = web; if (w != null && w.canGoBack()) w.goBack() else onDismiss() }
+        BackHandler {
+            val w = web
+            if (w == null) onDismiss()
+            // En la rejilla propia, Atrás cierra primero lo que hayas abierto
+            else w.evaluateJavascript("window.atrioRej&&atrioRej.abierto()?(atrioRej.cierra(),true):false") { r ->
+                if (r != "true") { if (w.canGoBack()) w.goBack() else onDismiss() }
+            }
+        }
         Column(Modifier.fillMaxSize().background(Paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
             // De dónde: tres webs de imágenes
             Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(start = 12.dp, end = 12.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -265,7 +379,11 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                         CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                         webChromeClient = WebChromeClient()
                         webViewClient = object : WebViewClient() {
-                            override fun onPageFinished(v: WebView, url: String?) { if (url?.contains("artstation.com/artwork/") == true) v.evaluateJavascript(Internet.JS_ARTSTATION, null) }
+                            override fun onPageFinished(v: WebView, url: String?) {
+                                if (url?.contains("artstation.com/artwork/") == true) v.evaluateJavascript(Internet.JS_ARTSTATION, null)
+                                // La búsqueda de ArtStation o Pinterest: la rejilla propia encima (si su API responde; si no, su web)
+                                Internet.rejillaDe(url)?.let { (f, q) -> v.evaluateJavascript(Internet.rejillaUi(f, q.ifBlank { query }, papel, tinta, gris), null) }
+                            }
                             // ArtStation cambia de proyecto sin recargar la página: se avisa al cambiar la dirección
                             override fun doUpdateVisitedHistory(v: WebView, url: String?, isReload: Boolean) { if (url?.contains("artstation.com/artwork/") == true) v.evaluateJavascript(Internet.JS_ARTSTATION, null) }
                             override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest): Boolean {

@@ -889,7 +889,7 @@ private fun LocalArt(game: Game, hasHero: Boolean, hero: Boolean, onTarget: (Boo
         val nube = NubeHub.pickFromCloud
         if (nube != null && onArrived != null) {
             Spacer(Modifier.height(8.dp))
-            OutlinedButton({ nube { url -> onArrived(url) } }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton({ nube(game.name) { url -> onArrived(url) } }, shape = pillShape(), modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Rounded.CloudDownload, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
                 Text("De tu nube")
             }

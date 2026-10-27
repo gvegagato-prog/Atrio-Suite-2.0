@@ -131,13 +131,12 @@ fun App(
         runCatching { DiarioAviso.programa(ctx) }
         AtajoLectura.pon(ctx)
     }
-    // Actualizarse sola desde el kDrive, en segundo plano (no toca el arranque)
-    // (nada más abrir, sin esperar, y luego cada minuto mientras la app está delante; todo fuera del hilo de la pantalla)
+    // Actualizarse sola desde el kDrive: lo lleva Actualizador (empieza en MainActivity). Tras actualizarse, se dice una vez
     LaunchedEffect(Unit) {
-        while (true) {
-            if (Actualizador.primerPlano) withContext(Dispatchers.IO) { runCatching { Actualizador.comprueba(ctx) } }
-            delay(60_000)
-        }
+        val v = runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull().orEmpty()
+        val sp = ctx.getSharedPreferences("actualizador", android.content.Context.MODE_PRIVATE)
+        val antes = sp.getString("vista", "").orEmpty()
+        if (v.isNotEmpty() && v != antes) { sp.edit().putString("vista", v).apply(); if (antes.isNotEmpty()) snack.showSnackbar("Atrio se ha actualizado a la $v", withDismissAction = true) }
     }
 
     // Viendo la app de tu pareja (solo lectura).
@@ -216,9 +215,6 @@ fun App(
     val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(life) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
-            Actualizador.primerPlano = ev == androidx.lifecycle.Lifecycle.Event.ON_START || ev == androidx.lifecycle.Lifecycle.Event.ON_RESUME
-            if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) runCatching { Actualizador.alSalir(ctx) }
-            if (ev == androidx.lifecycle.Lifecycle.Event.ON_START) Actualizador.quitaAviso(ctx)
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP && (store.paired || store.driveUri.isNotBlank())) CloudSave.enqueue(ctx)
             // Y lo nuevo (libros adjuntos, fotos, capturas) a tu nube; de paso se baja lo que falte aquí
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP || ev == androidx.lifecycle.Lifecycle.Event.ON_START) NubeSync.enqueue(ctx)
@@ -768,8 +764,8 @@ fun App(
     // La pestaña «Archivo» de las imágenes de las casillas de la revista
     SideEffect { MagImages.pick = { files, cb -> pickImage(files, cb) } }
     // De tu nube: el explorador de tu kDrive (con la nube conectada)
-    var nubePick by remember { mutableStateOf<((String) -> Unit)?>(null) }
-    SideEffect { NubeHub.pickFromCloud = if (KDrive.on(ctx) && !pv) ({ cb -> nubePick = cb }) else null }
+    var nubePick by remember { mutableStateOf<Pair<String, (String) -> Unit>?>(null) }
+    SideEffect { NubeHub.pickFromCloud = if (KDrive.on(ctx) && !pv) ({ n, cb -> nubePick = n to cb }) else null }
     // De internet: Google Imágenes dentro de la app
     var webPick by remember { mutableStateOf<Pair<String, (String) -> Unit>?>(null) }
     SideEffect { Internet.pick = if (!pv) ({ q, cb -> webPick = q to cb }) else null }
@@ -1704,8 +1700,8 @@ fun App(
         webPick?.let { (q, cb) ->
             InternetPicker(q, onPick = { url -> webPick = null; cb(url); NubeSync.enqueue(ctx) }, onDismiss = { webPick = null })
         }
-        nubePick?.let { cb ->
-            NubePicker(onPick = { url -> nubePick = null; cb(url); NubeSync.enqueue(ctx) }, onDismiss = { nubePick = null })
+        nubePick?.let { (n, cb) ->
+            NubePicker(n, onPick = { url -> nubePick = null; cb(url); NubeSync.enqueue(ctx) }, onDismiss = { nubePick = null })
         }
         sagaAdd?.let { (id, kid) ->
             val ak = myKinds.find { it.id == kid } ?: GAMES

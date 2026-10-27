@@ -366,7 +366,7 @@ fun SagaScreen(
                     }
                     SagaCoverButton("⌕", "BUSCAR") { searching = true }
                     Internet.pick?.let { web -> SagaCoverButton("🌐", "INTERNET") { web(saga.name) { onSave(saga.copy(cover = it)) } } }
-                    NubeHub.pickFromCloud?.let { nube -> SagaCoverButton("☁", "TU NUBE") { nube { onSave(saga.copy(cover = it)) } } }
+                    NubeHub.pickFromCloud?.let { nube -> SagaCoverButton("☁", "TU NUBE") { nube(saga.name) { onSave(saga.copy(cover = it)) } } }
                     SagaCoverButton("+", "GALERÍA") {
                         pick.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }

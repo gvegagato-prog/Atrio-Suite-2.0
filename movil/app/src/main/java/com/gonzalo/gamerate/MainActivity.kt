@@ -109,6 +109,8 @@ class MainActivity : ComponentActivity() {
         val store = Store(this)
         // Tu cuenta al momento: lo que cambie aquí sube enseguida y lo de tus otros dispositivos llega solo
         Sincro.init(this)
+        // Y actualizarse sola desde tu kDrive (mira mientras se ve la app y, cerrada, cada pocas horas)
+        Actualizador.init(this)
         Mode.themeMode = store.themeMode
         Skin.load(this)
         store.forgetGemini()

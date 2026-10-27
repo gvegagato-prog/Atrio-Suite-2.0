@@ -174,7 +174,7 @@ fun ProfileScreen(
                 Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Actualizarse sola", fontWeight = FontWeight.Medium)
-                        Text("Al abrir, con wifi o datos, busca una versión nueva en «versiones» de tu kDrive", color = Muted, fontSize = 12.sp)
+                        Text("Busca versiones nuevas en «versiones» de tu kDrive (con wifi o datos: al abrir, cada minuto mientras la usas y, cerrada, cada pocas horas) y se instala sola cuando no la estás usando", color = Muted, fontSize = 12.sp)
                     }
                     androidx.compose.material3.Switch(auto, { auto = it; Actualizador.ponActivo(actx, it) })
                 }

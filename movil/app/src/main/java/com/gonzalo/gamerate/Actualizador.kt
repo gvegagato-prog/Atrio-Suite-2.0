@@ -16,15 +16,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.io.File
+import kotlinx.coroutines.launch
 
 /**
- * Actualizarse sola desde tu kDrive. Cada versión se sube a «Mi carpeta/versiones» (Atrio-<versión>.apk). Al abrir la app,
- * unos segundos después de verse la pantalla y en segundo plano (el arranque no cambia), se mira si hay internet y si la
- * última de la carpeta es más nueva que la instalada; si lo es, se baja a la caché (con wifi o con datos móviles) y se comprueba que
- * es Atrio y que está firmada con la misma clave. Se instala:
- *  - sin preguntar y al salir de la app, si Android lo permite (Android 12 o más, y solo si fue la propia Atrio quien
- *    instaló la versión actual: por eso la primera actualización necesita tu confirmación);
- *  - si no, con un aviso para actualizar ahora (Android pide su confirmación).
+ * Actualizarse sola desde tu kDrive. Cada versión se sube a «Mi carpeta/versiones» (Atrio-<versión>.apk). Se mira si hay
+ * una más nueva al abrir la app, cada minuto mientras se ve (cualquier pantalla suya, también el lector) y, con la app
+ * cerrada, cada pocas horas en segundo plano. Si la hay, se baja (con wifi o con datos móviles) y se comprueba que es
+ * Atrio y que está firmada con la misma clave. Se instala:
+ *  - sin preguntar, cuando no la estás usando (al salir de la app, o en segundo plano): Android lo permite a una app que
+ *    se actualiza a sí misma (Android 12 o más, con el permiso de instalar apps y apuntando a una versión reciente);
+ *  - si Android no lo deja, con un aviso para actualizar ahora (Android pide su confirmación), y al terminar se vuelve a
+ *    abrir sola (o te avisa para abrirla).
  */
 object Actualizador {
     class Nueva(val nombre: String, val versionCode: Long, val archivo: File, val silenciosa: Boolean)
@@ -89,9 +91,61 @@ object Actualizador {
         return if (n.isEmpty() || (a.isNotEmpty() && a == n)) nuevo.longVersionCode else null
     }
 
-    private fun puedeSilenciosa(ctx: Context): Boolean {
-        if (Build.VERSION.SDK_INT < 31 || !ctx.packageManager.canRequestPackageInstalls()) return false
-        return runCatching { ctx.packageManager.getInstallSourceInfo(ctx.packageName).installingPackageName == ctx.packageName }.getOrDefault(false)
+    /**
+     * ¿Puede instalarse sin preguntar? (developer.android.com, SessionParams.setRequireUserAction): una app que se actualiza
+     * a sí misma, con el permiso de instalar apps, en Android 12 o más y apuntando como mínimo a la versión que pide cada
+     * Android (29 en el 12, 30 en el 13, 31 en el 14, 33 en el 15, 34 en el 16, 35 en el 17). No hace falta haber sido
+     * quien la instaló la primera vez. Si aun así Android pidiera confirmar, se pregunta (ActualizadorReceiver).
+     */
+    internal fun puedeSilenciosa(ctx: Context, sdk: Int = Build.VERSION.SDK_INT, target: Int = ctx.applicationInfo.targetSdkVersion): Boolean {
+        if (sdk < 31 || !ctx.packageManager.canRequestPackageInstalls()) return false
+        val minimo = when { sdk >= 37 -> 35; sdk >= 36 -> 34; sdk >= 35 -> 33; sdk >= 34 -> 31; sdk >= 33 -> 30; else -> 29 }
+        return target >= minimo
+    }
+
+    // ---- Cuándo se mira ----
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private var bucle: kotlinx.coroutines.Job? = null
+    @Volatile private var iniciado = false
+
+    /**
+     * Desde el arranque de la app: mientras se vea alguna pantalla suya (también el lector) se mira cada minuto; al dejar
+     * de verse ninguna, se instala lo que esté listo; y con la app cerrada, cada pocas horas (ActualizadorWorker).
+     */
+    fun init(ctx: Context) {
+        if (iniciado) return
+        iniciado = true
+        val app = ctx.applicationContext
+        runCatching { programa(app) }
+        val pon = Runnable {
+            runCatching {
+                androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.addObserver(androidx.lifecycle.LifecycleEventObserver { _, ev ->
+                    when (ev) {
+                        androidx.lifecycle.Lifecycle.Event.ON_START -> {
+                            primerPlano = true
+                            quitaAviso(app)
+                            bucle?.cancel()
+                            bucle = scope.launch { while (true) { runCatching { comprueba(app) }; kotlinx.coroutines.delay(60_000) } }
+                        }
+                        androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
+                            primerPlano = false
+                            bucle?.cancel(); bucle = null
+                            runCatching { alSalir(app) }
+                        }
+                        else -> {}
+                    }
+                })
+            }
+        }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) pon.run() else android.os.Handler(android.os.Looper.getMainLooper()).post(pon)
+    }
+
+    /** Con la app cerrada: cada 4 horas (con red) se mira y, si hay una nueva, se baja y se instala sola. */
+    fun programa(ctx: Context) {
+        val req = androidx.work.PeriodicWorkRequestBuilder<ActualizadorWorker>(4, java.util.concurrent.TimeUnit.HOURS)
+            .setConstraints(androidx.work.Constraints.Builder().setRequiredNetworkType(androidx.work.NetworkType.CONNECTED).build())
+            .build()
+        androidx.work.WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("actualizar", androidx.work.ExistingPeriodicWorkPolicy.KEEP, req)
     }
 
     /** Se llama nada más abrir la app y luego cada minuto mientras está abierta (siempre en segundo plano). */
@@ -132,8 +186,8 @@ object Actualizador {
         nueva?.let { nueva = Nueva(it.nombre, it.versionCode, it.archivo, false) }
     }
 
-    /** Al salir de la app: si se puede instalar sin preguntar, se instala ahora (no interrumpe lo que hacías). */
-    fun alSalir(ctx: Context) { nueva?.takeIf { it.silenciosa }?.let { instala(ctx, it) } }
+    /** Al salir de la app (y en segundo plano): si se puede instalar sin preguntar, se instala ahora (no interrumpe nada). */
+    fun alSalir(ctx: Context) { if (!primerPlano) nueva?.takeIf { it.silenciosa }?.let { instala(ctx, it) } }
 
     /** Si instalas con la app delante, al terminar se vuelve a abrir (Android cierra la app al actualizarla). */
     private fun marcaReabrir(ctx: Context, si: Boolean) {
@@ -202,5 +256,17 @@ class ActualizadorReceiver : BroadcastReceiver() {
 class ActualizadorReabrir : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) Actualizador.reabre(ctx)
+    }
+}
+
+/** Con la app cerrada: mira si hay una versión nueva en tu kDrive y, si puede, la instala sola (sin pantallas ni avisos). */
+class ActualizadorWorker(ctx: Context, p: androidx.work.WorkerParameters) : androidx.work.CoroutineWorker(ctx, p) {
+    override suspend fun doWork(): Result {
+        val c = applicationContext
+        if (!Actualizador.activo(c) || !KDrive.on(c)) return Result.success()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { Actualizador.comprueba(c) } }
+        // (si justo la estás usando, espera a que salgas)
+        runCatching { Actualizador.alSalir(c) }
+        return Result.success()
     }
 }

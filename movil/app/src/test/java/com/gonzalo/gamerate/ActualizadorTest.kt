@@ -36,6 +36,24 @@ class ActualizadorTest {
         assertNull(Actualizador.ultima(emptyList()))
     }
 
+    /** Sin preguntar: la app se actualiza a sí misma; vale aunque la primera vez la instalara otra app (un explorador de archivos). */
+    @Test fun sinPreguntarSegunAndroid() {
+        val pm = org.robolectric.Shadows.shadowOf(ctx.packageManager)
+        pm.setCanRequestPackageInstalls(true)
+        assertTrue("Android 12, apuntando a 34", Actualizador.puedeSilenciosa(ctx, sdk = 31, target = 34))
+        assertTrue("Android 15", Actualizador.puedeSilenciosa(ctx, sdk = 35, target = 34))
+        assertTrue("Android 16 pide 34", Actualizador.puedeSilenciosa(ctx, sdk = 36, target = 34))
+        assertFalse("Android 17 pide 35", Actualizador.puedeSilenciosa(ctx, sdk = 37, target = 34))
+        assertFalse("Android 11 no sabe", Actualizador.puedeSilenciosa(ctx, sdk = 30, target = 34))
+        assertFalse("Android 15 con una app antigua (32)", Actualizador.puedeSilenciosa(ctx, sdk = 35, target = 32))
+        pm.setCanRequestPackageInstalls(false)
+        assertFalse("sin el permiso de instalar apps, no", Actualizador.puedeSilenciosa(ctx, sdk = 35, target = 34))
+        // Con la app a la vista no se instala nada «al salir»
+        Actualizador.primerPlano = true
+        Actualizador.alSalir(ctx)
+        Actualizador.primerPlano = false
+    }
+
     @Test fun leeLaCarpetaDeKDrive() {
         KDrive.save(ctx, "tok", "777")
         assertTrue("sin carpeta «versiones»: nada", KDrive.versiones(ctx).isEmpty())

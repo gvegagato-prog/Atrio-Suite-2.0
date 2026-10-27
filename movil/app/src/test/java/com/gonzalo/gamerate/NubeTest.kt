@@ -75,6 +75,18 @@ class FakeKDrive(private val drive: String = "777", private val token: String = 
                 return ok(JSONArray().apply { files.values.filter { it.parent == d && !it.trashed }.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("type", if (it.dir) "dir" else "file").put("visibility", it.visibility)
                     .put("extension_type", if (it.dir) "" else if (Regex("(?i)\\.(png|jpe?g)$").containsMatchIn(it.name)) "image" else "unknown")) } })
             }
+            // Búsqueda por nombre en todo el kDrive (como /3/drive/<id>/files/search?query=…&types[]=image&with=path)
+            if (method == "GET" && p == "/files/search") {
+                val qq = q["query"].orEmpty().lowercase()
+                val tipo = q["types[]"]
+                return ok(JSONArray().apply {
+                    files.values.filter { it.id > 3 && !it.trashed && it.name.lowercase().contains(qq) }.filter { f ->
+                        when (tipo) { "dir" -> f.dir; "image" -> !f.dir && Regex("(?i)\\.(png|jpe?g)$").containsMatchIn(f.name); else -> true }
+                    }.forEach { f -> put(JSONObject().put("id", f.id).put("name", f.name).put("type", if (f.dir) "dir" else "file").put("parent_id", f.parent)
+                        .put("extension_type", if (f.dir) "" else if (Regex("(?i)\\.(png|jpe?g)$").containsMatchIn(f.name)) "image" else "unknown")
+                        .put("path", "/Private/" + pathOf(f))) }
+                })
+            }
             if (method == "GET") id("""^/files/(\d+)$""")?.toLong()?.let { f ->
                 val x = files[f] ?: return err(404, "not_found")
                 return ok(JSONObject().put("id", x.id).put("name", x.name).put("parent_id", x.parent).put("type", if (x.dir) "dir" else "file").put("status", if (x.trashed) "trashed" else "ok"))

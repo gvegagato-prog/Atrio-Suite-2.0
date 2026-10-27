@@ -2,6 +2,7 @@ package com.gonzalo.gamerate
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -30,6 +31,20 @@ class InternetTest {
         assertEquals("https://www.artstation.com/search?sort_by=relevance&query=red+rising", Internet.searchUrl("red rising", Internet.fuente("artstation")))
         assertEquals("https://www.pinterest.com/search/pins/?q=red+rising", Internet.searchUrl("red rising", Internet.fuente("pinterest")))
         assertEquals("google", Internet.fuente("otra").id)
+    }
+
+    @Test fun rejillaPropia() {
+        // Las búsquedas de ArtStation y Pinterest llevan la rejilla propia (con lo que se busca); lo demás, no
+        assertEquals("artstation" to "red rising", Internet.rejillaDe(Internet.searchUrl("red rising", Internet.fuente("artstation"))))
+        assertEquals("pinterest" to "red rising", Internet.rejillaDe(Internet.searchUrl("red rising", Internet.fuente("pinterest"))))
+        assertEquals("pinterest" to "x", Internet.rejillaDe("https://es.pinterest.com/search/pins/?q=x&rs=typed"))
+        assertNull(Internet.rejillaDe("https://www.artstation.com/artwork/abc"))
+        assertNull(Internet.rejillaDe(Internet.searchUrl("red rising")))
+        assertNull(Internet.rejillaDe("https://evil.com/search?query=artstation.com"))
+        assertNull(Internet.rejillaDe(null))
+        // El código va entero, con los colores puestos y la búsqueda al final
+        val js = Internet.rejillaUi("pinterest", "a\"b", "#FFFFFF", "#000000", "#777777")
+        assertTrue(js.contains("background:#FFFFFF") && !js.contains("PAPEL") && js.endsWith("atrioRej.busca(\"pinterest\",\"a\\\"b\")"))
     }
 
     @Test fun mejoresDirecciones() {
