@@ -13,6 +13,7 @@ const out = process.argv[2] || require('os').tmpdir();
 const get = (n) => new RegExp('const val ' + n + ' = """([\\s\\S]*?)"""').exec(src)[1];
 const UI = get('JS_REJILLA').replace(/PAPEL/g, '#F3EEE4').replace(/TINTA/g, '#15120F').replace(/GRIS/g, '#7C746A');
 const EL = get('JS_ELEGIDA');
+const ESTADO = get('JS_ESTADO_REJILLA');
 const busca = (f, q) => UI + `;window.atrioRej&&atrioRej.busca(${JSON.stringify(f)},${JSON.stringify(q)})`;
 let modo = 'bien';
 const pedidas = [];
@@ -61,9 +62,20 @@ const n = (p, sel) => p.evaluate((s) => document.querySelectorAll(s).length, sel
   p.on('pageerror', (e) => errores.push(e.message));
   console.log('ArtStation (simulado)');
   await p.goto('http://localhost:8766/search?sort_by=relevance&query=dragon');
+  ok(await p.evaluate(ESTADO) === '', 'antes de la rejilla, la app la sigue tapando («»)');
   await p.evaluate(busca('artstation', 'dragon'));
   await p.waitForFunction(() => document.querySelectorAll('#atrio-rej img').length === 50, null, { timeout: 5000 }).catch(() => {});
   ok(await n(p, '#atrio-rej img') === 50, 'rejilla propia con los 50 primeros resultados');
+  ok(await p.evaluate(ESTADO) === 'ok', 'con la rejilla puesta, se destapa («ok»)');
+  // Se inyecta dos veces (al empezar a verse la página y al acabar de cargar): la segunda no vuelve a buscar
+  const antes = pedidas.filter((x) => x.startsWith('POST /api/v2/search/projects.json')).length;
+  await p.evaluate(busca('artstation', 'dragon'));
+  await p.waitForTimeout(400);
+  ok(pedidas.filter((x) => x.startsWith('POST /api/v2/search/projects.json')).length === antes && await n(p, '#atrio-rej img') === 50, 'inyectarla otra vez no repite la búsqueda');
+  // Si su web (que se monta sola) quita la rejilla, la segunda vez la vuelve a poner, sin buscar otra vez
+  await p.evaluate(() => document.getElementById('atrio-rej').remove());
+  await p.evaluate(busca('artstation', 'dragon'));
+  ok(pedidas.filter((x) => x.startsWith('POST /api/v2/search/projects.json')).length === antes && await n(p, '#atrio-rej img') === 50 && await p.evaluate(ESTADO) === 'ok', 'si su web la quita, vuelve a ponerla tal cual');
   ok(await p.evaluate(() => /60 en ArtStation/.test(document.querySelector('#atrio-rej').textContent)), 'dice cuántos hay');
   ok(pedidas.some((x) => x.startsWith('POST /api/v2/csrf_protection/token.json')) && pedidas.some((x) => x.startsWith('POST /api/v2/search/projects.json')), 'pide el token y busca con él');
   const r0 = JSON.parse(await p.evaluate(EL));
@@ -106,9 +118,14 @@ const n = (p, sel) => p.evaluate((s) => document.querySelectorAll(s).length, sel
     await p.evaluate(busca(f, 'dragon'));
     await p.waitForTimeout(800);
     ok(await p.evaluate(() => !document.getElementById('atrio-rej') && /web de la fuente/.test(document.body.textContent)), `${f}: se queda su web, sin capa encima`);
+    ok(await p.evaluate(ESTADO) === 'err', `${f}: y la app la destapa en seguida («err»)`);
     const r2 = JSON.parse(await p.evaluate(EL));
     ok(/grande1/.test(r2.u), `${f}: y se puede elegir de su web como antes`);
   }
+  // La comprobación de Cloudflare («Just a moment…»): la app la acaba enseñando por si pide que toques algo
+  await p.goto('http://localhost:8766/reto');
+  await p.setContent('<html><head><title>Just a moment...</title></head><body><div id="challenge-stage"></div></body></html>');
+  ok(await p.evaluate(ESTADO) === 'reto', 'la comprobación anti-robots se reconoce («reto»)');
   ok(errores.length === 0, `sin errores en la página ${errores.join(' | ')}`);
 
   // ---- Pinterest de verdad (si hay red)

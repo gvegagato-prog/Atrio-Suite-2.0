@@ -36,6 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -234,9 +237,17 @@ var FUENTES={
      return {id:x.id,mini:g.url||'',grande:((im.orig||im['736x']||g)||{}).url||g.url,titulo:x.grid_title||x.title||x.seo_alt_text||''};})};});},
   abre:function(it){return Promise.resolve(it.grande?[it.grande]:[]);}}
 };
-window.atrioRej={busca:function(f,q){var n=FUENTES[f];if(!n)return;if(F!==n){F=n;bien=false;}consulta=String(q||'');sigue=null;if(consulta)carga(true);},
+window.atrioRej={busca:function(f,q){var n=FUENTES[f];if(!n)return;var c=String(q||'');if(F===n&&consulta===c&&(bien||cargando)){if(bien&&raiz&&!document.body.contains(raiz)){document.body.appendChild(raiz);document.documentElement.style.overflow='hidden';}return;}if(F!==n){F=n;bien=false;}consulta=c;sigue=null;if(consulta)carga(true);},
  abierto:function(){return !!(detalle&&detalle.style.display==='block');},cierra:cierra,activo:function(){return !!(raiz&&document.body.contains(raiz));}};
 })()"""
+
+    /**
+     * Cómo va la rejilla propia: «ok» (ya está), «err» (su API no responde: se queda su web), «reto» (la comprobación
+     * anti-robots de Cloudflare: si pide que toques algo, hay que enseñarla) o «» (aún cargando).
+     */
+    const val JS_ESTADO_REJILLA = """(function(){try{var r=window.atrioRej;if(r&&r.activo())return 'ok';
+var reto=!!(window._cf_chl_opt||document.querySelector('#challenge-form,.cf-turnstile,#cf-challenge-running,#challenge-stage'))||/just a moment|un momento/i.test(document.title||'');
+if(reto)return 'reto';if(r&&r.err)return 'err';return '';}catch(e){return 'err';}})()"""
 
     /** La rejilla propia de [fuente] («artstation» o «pinterest») con los colores de la app, buscando [q]. */
     fun rejillaUi(fuente: String, q: String, papel: String, tinta: String, gris: String): String =
@@ -291,13 +302,39 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
     val papel = String.format("#%06X", 0xFFFFFF and Paper.toArgb())
     val tinta = String.format("#%06X", 0xFFFFFF and Charcoal.toArgb())
     val gris = String.format("#%06X", 0xFFFFFF and Muted.toArgb())
+    // ArtStation y Pinterest: su web se tapa con un fondo liso hasta que está la rejilla propia (sin la web a medio cargar
+    // que luego desaparece). Si su API no responde, o Cloudflare pide que toques algo, se destapa
+    fun conRejilla(u: String?) = Internet.rejillaDe(u)?.second?.isNotBlank() == true
+    var tapada by remember { mutableStateOf(conRejilla(Internet.searchUrl(initialQuery, fuente))) }
+    var tapadaDesde by remember { mutableStateOf(System.currentTimeMillis()) }
+    // (hasta que entra la página nueva, lo que se pregunte lo contesta la de antes, que puede tener ya su rejilla)
+    var entro by remember { mutableStateOf(false) }
+    var pedida by remember { mutableStateOf<String?>(null) }
+    fun carga(w: WebView, u: String) {
+        tapada = conRejilla(u); tapadaDesde = System.currentTimeMillis(); entro = false; pedida = Internet.rejillaDe(u)?.first
+        w.loadUrl(u)
+    }
+    fun haEntrado(url: String?) { if (Internet.rejillaDe(url)?.first == pedida) entro = true }
+    LaunchedEffect(tapada) {
+        while (tapada) {
+            kotlinx.coroutines.delay(250)
+            val t = System.currentTimeMillis() - tapadaDesde
+            if (t > 15_000) { tapada = false; break }
+            val w = web ?: continue
+            if (!entro) continue
+            w.evaluateJavascript(Internet.JS_ESTADO_REJILLA) { r ->
+                val st = runCatching { JSONTokener(r).nextValue() as? String }.getOrNull().orEmpty()
+                if (st == "ok" || st == "err" || (st == "reto" && t > 6_000)) tapada = false
+            }
+        }
+    }
     fun buscar() {
         msg = ""
         val w = web ?: return
         // Con la rejilla propia ya puesta (ArtStation, Pinterest), se busca ahí mismo: sin recargar ni volver a pasar por su comprobación
         if (Internet.rejillaDe(w.url)?.first == fuente.id)
-            w.evaluateJavascript("window.atrioRej&&atrioRej.activo()?(atrioRej.busca(${JSONObject.quote(fuente.id)},${JSONObject.quote(query)}),true):false") { r -> if (r != "true") w.loadUrl(Internet.searchUrl(query, fuente)) }
-        else w.loadUrl(Internet.searchUrl(query, fuente))
+            w.evaluateJavascript("window.atrioRej&&atrioRej.activo()?(atrioRej.busca(${JSONObject.quote(fuente.id)},${JSONObject.quote(query)}),true):false") { r -> if (r != "true") carga(w, Internet.searchUrl(query, fuente)) }
+        else carga(w, Internet.searchUrl(query, fuente))
     }
 
     fun usar(raw: String) {
@@ -354,7 +391,7 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
             // De dónde: tres webs de imágenes
             Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(start = 12.dp, end = 12.dp, top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Internet.fuentes.forEach { f ->
-                    SoftChip(f.nombre, f.id == fuente.id) { fuente = f; prefs.edit().putString("fuente", f.id).apply(); web?.loadUrl(Internet.searchUrl(query, f)); msg = "" }
+                    SoftChip(f.nombre, f.id == fuente.id) { fuente = f; prefs.edit().putString("fuente", f.id).apply(); web?.let { carga(it, Internet.searchUrl(query, f)) }; msg = "" }
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -367,6 +404,7 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                 )
                 IconButton({ buscar() }) { Icon(Icons.Rounded.Search, "Buscar") }
             }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
             AndroidView(
                 factory = { c ->
                     WebView(c).apply {
@@ -379,7 +417,15 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                         CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                         webChromeClient = WebChromeClient()
                         webViewClient = object : WebViewClient() {
+                            // En cuanto la página empieza a verse (no hace falta esperar a sus imágenes): la rejilla, antes
+                            override fun onPageCommitVisible(v: WebView, url: String?) {
+                                haEntrado(url)
+                                Internet.rejillaDe(url)?.let { (f, q) -> v.evaluateJavascript(Internet.rejillaUi(f, q.ifBlank { query }, papel, tinta, gris), null) }
+                            }
                             override fun onPageFinished(v: WebView, url: String?) {
+                                // (si te ha llevado a otra página, sin rejilla, se enseña ya)
+                                haEntrado(url)
+                                if (!conRejilla(url)) tapada = false
                                 if (url?.contains("artstation.com/artwork/") == true) v.evaluateJavascript(Internet.JS_ARTSTATION, null)
                                 // La búsqueda de ArtStation o Pinterest: la rejilla propia encima (si su API responde; si no, su web)
                                 Internet.rejillaDe(url)?.let { (f, q) -> v.evaluateJavascript(Internet.rejillaUi(f, q.ifBlank { query }, papel, tinta, gris), null) }
@@ -402,16 +448,24 @@ fun InternetPicker(initialQuery: String, onPick: (String) -> Unit, onDismiss: ()
                             }
                             if (!u.isNullOrBlank() && (u.startsWith("http") || u.startsWith("data:"))) { usarOMiniatura(u, Internet.esMiniatura(u) && Internet.deImgres(extra) == null); true } else false
                         }
-                        loadUrl(Internet.searchUrl(initialQuery, fuente))
+                        carga(this, Internet.searchUrl(initialQuery, fuente))
                         web = this
                     }
                 },
-                modifier = Modifier.weight(1f).fillMaxWidth(),
+                modifier = Modifier.fillMaxSize(),
                 onRelease = { it.stopLoading(); it.destroy(); web = null }
             )
+            if (tapada) Box(
+                // (fondo liso que no deja tocar la web de debajo)
+                Modifier.matchParentSize().background(Paper).pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Buscando en ${fuente.nombre}…", color = Muted, fontFamily = Display, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 18.sp)
+            }
+            }
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(msg.ifBlank { "Toca una imagen para verla grande y pulsa «Usar esta imagen». También vale mantener pulsada una imagen." + if (fuente.id == "google") "" else " Se intenta bajar en su tamaño original." }, color = Muted, fontSize = 12.sp)
-                Button({ usarLaAbierta() }, enabled = !busy, shape = pillShape(), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Bajando…" else "Usar esta imagen") }
+                Button({ usarLaAbierta() }, enabled = !busy && !tapada, shape = pillShape(), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Bajando…" else "Usar esta imagen") }
             }
         }
     }
