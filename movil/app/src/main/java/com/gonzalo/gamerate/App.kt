@@ -963,10 +963,10 @@ private fun AppContenido(
     val bgMod = if (Skin.revista) Modifier.background(Paper) else Modifier.pattern(look.pattern, bgColor, look.intensity)
     // (En el Diario, y entre Películas y Series, cambiar de categoría no rehace la pantalla entera: eso la hacía
     // parpadear con un fundido de toda la página; lo que cambia se funde dentro)
-    val sectionKey = when { dest == 4 -> "diario"; kind.isMovie || kind.isTv -> "cine"; else -> "$section" }
+    val sectionKey = when { dest == 4 -> "diario"; dest == 5 -> "escribir"; kind.isMovie || kind.isTv -> "cine"; else -> "$section" }
     val shown: Any = if (screen is Screen.Home) "top:$dest:$sectionKey:$pv" else screen
     val topLevel = screen is Screen.Home
-    val dockOn = topLevel && Skin.shell == 0
+    val dockOn = topLevel && Skin.shell == 0 && !EscribirHub.enEditor
     // Al volver de una ficha abierta desde Feed, Revista o Escritorio, se vuelve a esa pantalla (no a la biblioteca)
     LaunchedEffect(screen is Screen.Home) {
         if (screen is Screen.Home && Skin.shell != 0 && !shellLib && dest == 0) section = -1
@@ -1079,6 +1079,8 @@ private fun AppContenido(
                 }
 
                 when {
+                    // Escribir: tus obras, el editor y todo lo de escribir (siempre tuyo, no se mezcla con lo de tu pareja)
+                    dest == 5 -> EscribirScreen()
                     dest == 4 -> {
                         // El Diario: lo de cada día (todo o una categoría); con tu pareja, también lo suyo
                         val dk = if (pv) p!!.kindById(diaryKind) else myKinds.find { it.id == diaryKind } ?: GAMES
@@ -1201,6 +1203,7 @@ private fun AppContenido(
                                 primaryLabel = { o -> primaryLabel(o) },
                                 library = { k -> if (k.isMovie || k.isTv) cineTv = k.isTv; section = k.id; segment = 0; shellLib = true },
                                 diary = { go(4) },
+                                write = if (pv) null else ({ go(5) }),
                                 discover = if (pv) null else ({ d ->
                                     when (d) {
                                         0 -> { section = 0; screen = Screen.Quiz(0) }
@@ -1632,7 +1635,7 @@ private fun AppContenido(
                 listOf(
                     DockItem(Icons.Rounded.Home, "Inicio"), DockItem(Icons.Rounded.SportsEsports, "Juegos"),
                     DockItem(Icons.Rounded.AutoStories, "Libros"), DockItem(Icons.Rounded.Movie, "Cine"),
-                    DockItem(Icons.Rounded.CalendarMonth, "Diario")
+                    DockItem(Icons.Rounded.CalendarMonth, "Diario"), DockItem(Icons.Rounded.Edit, "Escribir")
                 ),
                 if (dest == 0 && section >= 0) 0 else dest
             ) { go(it) }

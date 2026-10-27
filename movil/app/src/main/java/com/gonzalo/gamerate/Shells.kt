@@ -85,6 +85,8 @@ class ShellModel(
     val primaryLabel: (Ongoing) -> Pair<String, ImageVector>,
     val library: (Kind) -> Unit,
     val diary: () -> Unit,
+    /** Escribir (obras, capítulos, fichas…). */
+    val write: (() -> Unit)? = null,
     val discover: ((Int) -> Unit)?,
     val profile: (() -> Unit)?,
     val add: ((Kind) -> Unit)?,
@@ -346,7 +348,7 @@ private fun RevistaHome(m: ShellModel) {
 @Composable
 private fun RevistaMenu(m: ShellModel) {
     val items = m.kinds.map { k -> kindShort(k) to { m.library(k) } } +
-        listOf("Diario" to m.diary, "Estadísticas" to { m.stats(GAMES) }) +
+        listOfNotNull("Diario" to m.diary, m.write?.let { "Escribir" to it }, "Estadísticas" to { m.stats(GAMES) }) +
         listOfNotNull(m.pc?.let { "PC" to it })
     Column(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Rule(1.dp)

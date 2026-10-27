@@ -89,6 +89,8 @@ class CloudWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
         if (store.paired && store.pendiente) {
             try { Couple.push(store) } catch (e: Exception) { retry = true }
         }
+        // Lo que escribes (Escribir): sube lo pendiente y baja lo nuevo
+        if (store.paired && !Escritos.sincroniza(applicationContext)) retry = true
         if (store.driveUri.isNotBlank()) DriveBackup.save(applicationContext, store)
         return if (retry && runAttemptCount < 5) Result.retry() else Result.success()
     }

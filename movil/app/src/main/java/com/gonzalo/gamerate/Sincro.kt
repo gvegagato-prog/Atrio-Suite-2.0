@@ -164,6 +164,7 @@ object Sincro {
         escucha(c)
         bajaPronto()
         if (Store(c).pendiente) pronto(c, 0)
+        if (Store(c).paired) Escritos.pronto(c, 0)
     }
 
     internal fun alSalir() {
@@ -171,6 +172,8 @@ object Sincro {
         para()
         val c = app ?: return
         if (Store(c).pendiente) pronto(c, 0)
+        // Lo escrito que no haya subido: ahora, y si no hay red, cuando la haya
+        if (Store(c).paired && Escritos.get(c).pendientes().isNotEmpty()) { Escritos.pronto(c, 0); CloudSave.enqueue(c) }
     }
 
     /** Tras entrar o salir de la cuenta, o cambiar de pareja: se vuelve a escuchar lo que toca. */
@@ -178,6 +181,7 @@ object Sincro {
         init(ctx)
         para()
         if (visible) app?.let { escucha(it); bajaPronto() }
+        app?.let { if (Store(it).paired) Escritos.pronto(it, 0) }
     }
 
     private fun url(st: Store, path: String, force: Boolean): String? =
@@ -197,6 +201,8 @@ object Sincro {
         escuchas += FbStream("cuenta", { f -> url(st, "/users/$uid/stamps", f) }, { _, path ->
             if (path.trim('/') != yo) bajaPronto()
         })
+        // Lo que escribes (Escribir): cada documento que sube otro dispositivo cambia su hora en el índice
+        escuchas += FbStream("escritos", { f -> url(st, "/users/$uid/escritosIdx", f) }, { _, _ -> Escritos.bajaPronto(c) })
         // Lo jugado en tus PC (el diario y el calendario)
         escuchas += FbStream("horas", { f -> url(st, "/users/$uid/horasAt", f) }, { _, _ ->
             scope.launch { runCatching { HorasPc.bajar(c, st, uid, ya = true) } }
