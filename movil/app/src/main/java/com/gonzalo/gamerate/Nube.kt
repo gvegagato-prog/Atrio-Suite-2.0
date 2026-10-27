@@ -305,6 +305,12 @@ object KDrive {
         (d as? JSONObject)?.optString("url").orEmpty().ifBlank { (d as? String).orEmpty() }
     }.getOrDefault("")
 
+    /** Los archivos de «Mi carpeta/versiones» (nombre, id): ahí se sube cada versión de la app para que se actualice sola. */
+    fun versiones(ctx: Context): List<Pair<String, Long>> {
+        val dir = children(ctx, home(ctx)).firstOrNull { it.dir && it.name == "versiones" } ?: return emptyList()
+        return children(ctx, dir.id).filter { !it.dir }.map { it.name to it.id }
+    }
+
     /** Baja un archivo a [dest] (primero a un temporal: un corte no deja un archivo a medias). */
     fun download(ctx: Context, file: Long, dest: File) {
         val c = URL("$api/2/drive/${drive(ctx)}/files/$file/download").openConnection() as HttpURLConnection

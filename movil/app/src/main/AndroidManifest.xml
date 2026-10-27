@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- El lector cambia el brillo del móvil al deslizar por el borde (permiso especial: lo das tú en los ajustes) -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <!-- Actualizarse sola desde la carpeta «versiones» de tu kDrive (la primera vez, con tu permiso; después, sin preguntar donde Android lo permite) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Subidas largas a tu nube (un libro de cientos de MB): WorkManager las hace en primer plano, con su aviso -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -234,6 +237,7 @@
             android:theme="@android:style/Theme.Material.NoActionBar"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode|density" />
         <!-- Widgets de la pantalla de inicio (Widgets.kt) -->
+        <receiver android:name=".ActualizadorReceiver" android:exported="false" />
         <receiver android:name=".WLeyendo" android:label="@string/w_leyendo" android:exported="false">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/w_leyendo" />

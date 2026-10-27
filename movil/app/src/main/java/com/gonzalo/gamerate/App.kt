@@ -131,6 +131,11 @@ fun App(
         runCatching { DiarioAviso.programa(ctx) }
         AtajoLectura.pon(ctx)
     }
+    // Actualizarse sola desde el kDrive: unos segundos después de verse la pantalla y en segundo plano, para no tocar el arranque
+    LaunchedEffect(Unit) {
+        delay(4000)
+        withContext(Dispatchers.IO) { runCatching { Actualizador.comprueba(ctx) } }
+    }
 
     // Viendo la app de tu pareja (solo lectura).
     val pv = Mode.viewP && partner != null
@@ -199,6 +204,8 @@ fun App(
     val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(life) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
+            Actualizador.primerPlano = ev == androidx.lifecycle.Lifecycle.Event.ON_START || ev == androidx.lifecycle.Lifecycle.Event.ON_RESUME
+            if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) runCatching { Actualizador.alSalir(ctx) }
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP && (store.paired || store.driveUri.isNotBlank())) CloudSave.enqueue(ctx)
             // Y lo nuevo (libros adjuntos, fotos, capturas) a tu nube; de paso se baja lo que falte aquí
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP || ev == androidx.lifecycle.Lifecycle.Event.ON_START) NubeSync.enqueue(ctx)
@@ -1808,6 +1815,22 @@ fun App(
             say(if (h >= 0) "Te lo recordaré a las $h:00 si ese día no has escrito" else "Sin recordatorio")
             avisoDiario = false
         }) { avisoDiario = false }
+        // Una versión nueva descargada que no puede instalarse sola: se pregunta (Android pedirá su confirmación)
+        var luego by remember { mutableStateOf(false) }
+        Actualizador.nueva?.takeIf { !it.silenciosa && !luego }?.let { n ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { luego = true },
+                title = { Text("Atrio ${n.nombre.removePrefix("Atrio-").removeSuffix(".apk")}", fontFamily = Display) },
+                text = { Text(if (Actualizador.faltaPermiso) "Hay una versión nueva en tu kDrive. Para instalarla, Android tiene que dejar a Atrio instalar apps: te llevo a ese ajuste." else "Hay una versión nueva en tu kDrive, ya descargada. Android te pedirá confirmar la instalación.") },
+                confirmButton = { androidx.compose.material3.TextButton({
+                    luego = true
+                    if (Actualizador.faltaPermiso) { Actualizador.faltaPermiso = false; ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${ctx.packageName}"))) }
+                    else runCatching { Actualizador.instala(ctx, n) }.onFailure { say("No se pudo instalar: ${it.message}") }
+                }) { Text(if (Actualizador.faltaPermiso) "Permitir" else "Actualizar ahora") } },
+                dismissButton = { androidx.compose.material3.TextButton({ luego = true }) { Text("Luego") } },
+                containerColor = Paper, shape = shp(if (Skin.revista) 4.dp else 24.dp)
+            )
+        }
         val mf = memoFor
         if (mf != null) {
             MemoDialog(

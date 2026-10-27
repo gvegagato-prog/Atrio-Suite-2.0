@@ -164,6 +164,21 @@ fun ProfileScreen(
         }
         Spacer(Modifier.height(12.dp))
 
+        // Actualizarse sola desde la carpeta «versiones» de tu kDrive
+        run {
+            val actx = androidx.compose.ui.platform.LocalContext.current
+            if (KDrive.on(actx)) {
+                var auto by remember { mutableStateOf(Actualizador.activo(actx)) }
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Actualizarse sola", fontWeight = FontWeight.Medium)
+                        Text("Al abrir, con wifi, busca una versión nueva en «versiones» de tu kDrive", color = Muted, fontSize = 12.sp)
+                    }
+                    androidx.compose.material3.Switch(auto, { auto = it; Actualizador.ponActivo(actx, it) })
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
         // Lista negra de juegos: no salen en ningún sitio
         var negra by remember { mutableStateOf(false) }
         ProfileRow(Icons.Rounded.Edit, "Lista negra de juegos", if (Negra.lista.isEmpty()) "Juegos que nunca deben salir (p. ej. Wallpaper Engine)" else "${Negra.lista.size} oculto${if (Negra.lista.size == 1) "" else "s"} en todos tus dispositivos", Modifier.rise(5)) { negra = true }
