@@ -14,6 +14,7 @@ const DEFAULTS = {
   revista: {
     tema: 'auto',
     acento: 'rojo',
+    fondo: '',            // un fondo de color (granate, bosque, marino, petroleo, berenjena, chocolate, pizarra, mostaza) o '' (papel)
   },
   theme: {
     layout: 'horizonte',   // horizonte | consola | rejilla | lista | carrusel | estante

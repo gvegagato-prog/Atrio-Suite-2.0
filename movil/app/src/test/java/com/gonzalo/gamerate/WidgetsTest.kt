@@ -155,6 +155,26 @@ class WidgetsTest {
         Unit
     }
 
+    /** Con un fondo de color (granate…), los widgets lo llevan: su papel, de día y de noche, y su acento. */
+    @Test
+    fun fondosDeColor() = runBlocking {
+        seed()
+        val p = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE)
+        for (f in FONDOS) {
+            p.edit().putString("skin_fondo", f.id).putString("skin_accent_id", "edicion").commit()
+            for (noche in listOf(false, true)) {
+                val b = Widgets.componer(ctx, WTipo.LEYENDO, 1, 330f, 165f).bitmap(ctx, 330f, 165f, noche, 2f)
+                if (noche) guardar("fondo_${f.id}_leyendo", b)
+                assertEquals("${f.id}: su papel (noche=$noche)", f.tones.cPaper.toArgb(), b.getPixel(b.width / 2, 3))
+            }
+            assertEquals("${f.id}: su acento", f.tones.general.toInt(), Widgets.acento(ctx, true))
+        }
+        // Un acento elegido por ti manda sobre el del fondo
+        p.edit().putString("skin_fondo", "granate").putString("skin_accent_id", "turquesa").commit()
+        assertTrue(Widgets.acento(ctx, true) != FONDOS.first { it.id == "granate" }.tones.general.toInt())
+        p.edit().remove("skin_fondo").putString("skin_accent_id", "edicion").commit()
+    }
+
     @Test
     fun vacios() = runBlocking {
         // Sin nada guardado: cada widget dice qué hacer, sin romperse

@@ -125,17 +125,31 @@ window.RV = window.RV || {};
     ['tinta', 'Tinta', '#15120F', '#F1EBE0'],
   ];
   RV.TEMAS = [['claro', 'Claro'], ['oscuro', 'Oscuro'], ['auto', 'Automático']];
+  // Fondos de color (los mismos que el móvil): id, nombre, papel, tinta y si es oscuro. Con uno elegido manda sobre el tema.
+  RV.FONDOS = [
+    ['granate', 'Granate', '#5A1424', '#F8EDE8', true],
+    ['bosque', 'Verde bosque', '#12382B', '#EDF3E8', true],
+    ['marino', 'Azul marino', '#10264A', '#E9EEF7', true],
+    ['petroleo', 'Petróleo', '#0F3D44', '#E7F2F1', true],
+    ['berenjena', 'Berenjena', '#3C1A4A', '#F6EAF4', true],
+    ['chocolate', 'Chocolate', '#3A2218', '#F4E8DB', true],
+    ['pizarra', 'Pizarra', '#232D38', '#E8EDF2', true],
+    ['mostaza', 'Mostaza', '#D9A53A', '#2A1E08', false],
+  ];
   RV.aplicarTema = (rev) => {
     const tema = RV.TEMAS.some(([id]) => id === (rev && rev.tema)) ? rev.tema : 'auto';
     const acento = RV.ACENTOS.some(([id]) => id === (rev && rev.acento)) ? rev.acento : 'rojo';
-    document.documentElement.dataset.tema = tema;
-    document.documentElement.dataset.acento = acento;
+    const fondo = RV.FONDOS.find(([id]) => id === (rev && rev.fondo));
+    const raiz = document.documentElement;
+    // Con un fondo de color: su modo claro u oscuro manda, y el acento «rojo» pasa a ser el del propio fondo
+    if (fondo) { raiz.dataset.fondo = fondo[0]; raiz.dataset.tema = fondo[4] ? 'oscuro' : 'claro'; raiz.dataset.acento = acento === 'rojo' ? 'fondo' : acento; }
+    else { delete raiz.dataset.fondo; raiz.dataset.tema = tema; raiz.dataset.acento = acento; }
     // Sin animaciones si lo pides (Ajustes → Comportamiento) o si el sistema pide menos movimiento
     let menos = false;
     try { menos = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { /* */ }
     if (document.body) document.body.classList.toggle('quieto', !!(rev && rev.quieto) || menos);
     // Copia local solo para el arranque (tema-inicial.js); la de verdad está en la configuración de Atrio
-    try { localStorage.setItem('revista:tema', JSON.stringify({ tema, acento })); } catch { /* */ }
+    try { localStorage.setItem('revista:tema', JSON.stringify({ tema, acento, fondo: fondo ? fondo[0] : '' })); } catch { /* */ }
   };
   RV.oscuro = () => {
     const t = document.documentElement.dataset.tema;

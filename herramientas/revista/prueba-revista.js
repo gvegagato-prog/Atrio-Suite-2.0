@@ -230,6 +230,16 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
       if (tema === 'claro') await shot(`09-ajustes-${sec}`);
       ok(!(await errorPagina()) && (await page.$$('.ajuste')).length > 0, `${tema}: Ajustes → ${sec}`);
     }
+    // Fondo de color (granate…): en La revista; manda sobre el tema y llega a toda la página
+    await ir({ v: 'ajustes', sec: 'revista' }); await page.waitForTimeout(250);
+    await page.click('.ajustes-cuerpo button[aria-label="Fondo Granate"]'); await page.waitForTimeout(300);
+    const gr = await page.evaluate(() => ({ papel: getComputedStyle(document.body).backgroundColor, fondo: document.documentElement.dataset.fondo, tema: document.documentElement.dataset.tema, acento: getComputedStyle(document.documentElement).getPropertyValue('--acento').trim(), cfg: (window.__cfg || null) }));
+    await shot('09-fondo-granate');
+    ok(gr.fondo === 'granate' && gr.tema === 'oscuro' && /rgb\(90, 20, 36\)/.test(gr.papel) && gr.acento.toUpperCase() === '#F0C26A', `${tema}: fondo granate en toda la revista (${gr.papel}, acento ${gr.acento})`);
+    await page.click('.ajustes-cuerpo button[aria-label="Fondo Mostaza"]'); await page.waitForTimeout(300);
+    ok(await page.evaluate(() => document.documentElement.dataset.tema === 'claro' && getComputedStyle(document.body).backgroundColor === 'rgb(217, 165, 58)'), `${tema}: mostaza (claro) y el tema lo manda el fondo`);
+    await page.click('.ajustes-cuerpo button[aria-label="Fondo Papel"]'); await page.waitForTimeout(300);
+    ok(await page.evaluate(() => !document.documentElement.dataset.fondo), `${tema}: «Papel» vuelve al tema`);
     // Lista negra: en Ajustes → Ocultos se añade un juego (se pide confirmación) y se manda a la cuenta
     await ir({ v: 'ajustes', sec: 'ocultos' }); await page.waitForTimeout(250);
     ok(/Lista negra/.test(await texto()), `${tema}: Ajustes → Ocultos tiene la lista negra`);

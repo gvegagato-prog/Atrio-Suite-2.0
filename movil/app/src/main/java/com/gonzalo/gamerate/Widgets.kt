@@ -139,7 +139,8 @@ class Hoja(val ctx: Context, val w: Float, val h: Float, val noche: Boolean, s: 
 
     // El papel de la revista: el de la edición elegida (Ediciones.kt)
     val edicion = Ediciones.guardada(ctx)
-    private val tonos = if (noche) edicion.paleta.dark else edicion.paleta.light
+    // Con un fondo de color elegido en Apariencia, los widgets lo llevan también (igual de día que de noche)
+    private val tonos = Widgets.fondo(ctx)?.tones ?: if (noche) edicion.paleta.dark else edicion.paleta.light
     val papel = tonos.cPaper.toArgb()
     val crudo = tonos.cCrudo.toArgb()
     val tinta = tonos.cInk.toArgb()
@@ -306,8 +307,16 @@ object Widgets {
         fuentes.getOrPut(id) { runCatching { ctx.resources.getFont(id) }.getOrDefault(Typeface.SERIF) }
 
     /** El acento elegido en Estilo (en oscuro, su versión clara). */
+    /** El fondo de color elegido (o null: el papel de la edición). */
+    fun fondo(ctx: Context): Fondo? {
+        val id = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).getString("skin_fondo", "")
+        return FONDOS.firstOrNull { it.id == id }
+    }
+
     fun acento(ctx: Context, noche: Boolean): Int {
         val id = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).getString("skin_accent_id", "edicion")
+        // Con un fondo de color, el acento por defecto (edición o rojo) es el suyo; el que elijas tú manda
+        fondo(ctx)?.takeIf { id == "edicion" || id == "rojo" }?.let { return it.tones.general.toInt() }
         val (l, d) = acentoDe(Ediciones.guardada(ctx), id)
         return (if (noche) d else l).toInt()
     }

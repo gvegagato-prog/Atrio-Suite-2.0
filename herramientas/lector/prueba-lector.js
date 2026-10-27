@@ -588,6 +588,30 @@ const log = [];
     await page.screenshot({ path: path.join(out, name + '-4-tira.png') });
     await ctx.close();
   }
+  // Con un fondo de color en la app (granate…), el lector ofrece un tema igual y lo lleva por defecto
+  {
+    book = epub;
+    const ctx = await browser.newContext({ viewport: TAM, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => log.push('pageerror ' + e.message));
+    await page.addInitScript(() => {
+      const fondo = { id: 'granate', name: 'Granate', dark: true, bg: '#5A1424', surface: '#6C1C30', fg: '#F8EDE8', muted: '#D3AAB2', line: '#8F3D52', accent: '#F0C26A' };
+      window.__temas = [];
+      window.Atrio = new Proxy({ state: () => JSON.stringify({ title: 'Con fondo', file: 'quijote.epub', location: null, settings: {}, annotations: [], bookmarks: [], stats: {}, fondo }),
+        setTheme: (t) => window.__temas.push(t) }, { get: (t, k) => t[k] || (() => {}) });
+    });
+    await page.goto(`http://localhost:${port}/assets/lector/index.html`);
+    await page.waitForSelector('#carga.fuera', { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2500);
+    const r = await page.evaluate(() => ({ tema: document.body.dataset.theme, bg: getComputedStyle(document.body).getPropertyValue('--bg').trim(), fg: getComputedStyle(document.body).getPropertyValue('--fg').trim(), accent: document.documentElement.style.getPropertyValue('--accent'), temas: window.__temas }));
+    ok(r.tema === 'app' && r.bg === '#5A1424' && r.fg === '#F8EDE8' && r.accent === '#F0C26A' && r.temas.includes('app'), `fondo: el lector lleva el tema de la app por defecto (${JSON.stringify(r)})`);
+    await page.screenshot({ path: path.join(out, 'fondo-granate-lector.png') });
+    await page.evaluate(() => document.querySelector('#b-ajustes')?.click()); await page.waitForTimeout(500);
+    const botones = await page.evaluate(() => [...document.querySelectorAll('[data-theme-btn]')].map((b) => b.dataset.themeBtn + ':' + b.title));
+    ok(botones[0] === 'app:Granate' && botones.length === 6, `fondo: «Granate» es el primer tema de la lista (${botones.join(', ')})`);
+    await page.click('[data-theme-btn="noche"]'); await page.waitForTimeout(400);
+    ok(await page.evaluate(() => document.body.dataset.theme === 'noche' && getComputedStyle(document.body).getPropertyValue('--bg').trim() === '#121317'), 'fondo: elegir Noche quita los colores del tema de la app');
+    await ctx.close();
+  }
   // Una posición guardada que no encaja con este archivo (llega de otro dispositivo con otra edición): abre igual,
   // por el mismo porcentaje, en lugar de quedarse en «mostrar la primera página»
   {

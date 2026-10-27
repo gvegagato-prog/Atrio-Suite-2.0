@@ -31,6 +31,7 @@ foliate-view { display: block; width: 100%; height: 100%; }
 /* PDF: los temas oscuros invierten la página (las imágenes vuelven a su color) */
 body.pdf[data-theme="noche"] foliate-view, body.pdf[data-theme="gris"] foliate-view { filter: invert(.88) hue-rotate(180deg); }
 /* Negro (OLED): la página blanca pasa a negro puro (píxeles apagados) y la letra, a un gris que no deslumbra */
+body.pdf.app-oscuro[data-theme="app"] foliate-view { filter: invert(.88) hue-rotate(180deg); }
 body.pdf[data-theme="negro"] foliate-view { filter: invert(1) hue-rotate(180deg) brightness(.78); }
 body.pdf[data-theme="sepia"] foliate-view { filter: sepia(.45) brightness(.97); }
 /* PDF: alrededor de la página, el color del papel (el filtro de los temas también lo cambia, así no hay bandas) */

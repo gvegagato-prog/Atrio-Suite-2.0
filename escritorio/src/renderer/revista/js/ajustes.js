@@ -13,7 +13,7 @@
     h('div', contenido));
 
   async function guardarRevista(cambio) {
-    const actual = { tema: 'auto', acento: 'rojo', ...(D.config().revista || {}) };
+    const actual = { tema: 'auto', acento: 'rojo', fondo: '', ...(D.config().revista || {}) };
     const nuevo = { ...actual, ...cambio };
     RV.aplicarTema(nuevo);
     try { D.setPc(await RV.api.patchConfig({ revista: nuevo })); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
@@ -179,6 +179,10 @@
         h('div.opciones', RV.TEMAS.map(([id, n]) => h('button.opcion', {
           type: 'button', 'aria-pressed': String(rev.tema === id), onclick: () => guardarRevista({ tema: id }),
         }, n)))),
+      bloque('Fondo', 'Colores hondos y sobrios para toda la revista, los mismos que en el móvil. «Papel» vuelve al tema de arriba.',
+        h('div.muestras', [['', 'Papel', RV.oscuro() ? '#141210' : '#F3EEE4', RV.oscuro() ? '#F1EBE0' : '#15120F'], ...RV.FONDOS.map(([id, n, papel, tinta]) => [id, n, papel, tinta])].map(([id, n, papel, tinta]) => h('button.muestra', {
+          type: 'button', 'aria-pressed': String((rev.fondo || '') === id), onclick: () => guardarRevista({ fondo: id }), 'aria-label': `Fondo ${n}`,
+        }, h('span.color', { style: { background: papel, color: tinta, border: '1px solid var(--linea)', display: 'grid', placeItems: 'center', fontFamily: 'var(--serif)', fontWeight: '700' } }, 'Aa'), h('span.nombre', n))))),
       bloque('Acento', 'El color de imprenta: antetítulos, capitulares, enlaces y lo que está elegido.',
         h('div.muestras', RV.ACENTOS.map(([id, n, claro, oscuro]) => h('button.muestra', {
           type: 'button', 'aria-pressed': String(rev.acento === id), onclick: () => guardarRevista({ acento: id }), 'aria-label': `Acento ${n}`,

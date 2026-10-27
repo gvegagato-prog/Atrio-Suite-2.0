@@ -1,5 +1,6 @@
 package com.gonzalo.gamerate
 
+import androidx.compose.ui.graphics.toArgb
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ClipData
@@ -413,7 +414,12 @@ class ReaderActivity : ComponentActivity() {
     }
 
     /** El fondo de cada tema del lector (el mismo que en lector.css). */
-    private fun themeBg(t: String) = when (t) { "sepia" -> "#F1E6CF"; "gris" -> "#2B2D31"; "noche" -> "#121317"; "negro" -> "#000000"; else -> "#FBF8F1" }
+    private fun themeBg(t: String) = when (t) {
+        "sepia" -> "#F1E6CF"; "gris" -> "#2B2D31"; "noche" -> "#121317"; "negro" -> "#000000"
+        // El tema de la app (granate…): el fondo de color que hayas elegido
+        "app" -> Widgets.fondo(this)?.let { String.format("#%06X", it.tones.paper and 0xFFFFFF) } ?: "#FBF8F1"
+        else -> "#FBF8F1"
+    }
 
 
     /** «Bajar volumen» pasa página (no leyendo PDF/cómics hacia abajo: ahí baja el volumen). */
@@ -547,6 +553,7 @@ class ReaderActivity : ComponentActivity() {
                 .put("stats", o.optJSONObject("stats") ?: JSONObject())
                 .put("device", Store(this@ReaderActivity).deviceId)
                 .put("accent", accentJson())
+                .put("fondo", fondoJson() ?: JSONObject.NULL)
                 .put("meta", Store(this@ReaderActivity).metaLectura)
                 .put("autor", Store(this@ReaderActivity).let { s -> (s.loadPlays(BOOKS.id).find { it.id == id }?.creator ?: s.load(BOOKS.id).find { it.id == id }?.creator).orEmpty() })
                 .put("settings", ajustesDe(o))
@@ -644,7 +651,7 @@ class ReaderActivity : ComponentActivity() {
             val bg = AColor.parseColor(themeBg(t))
             web.setBackgroundColor(bg)
             window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(bg))
-            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = t == "papel" || t == "sepia"
+            WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = t == "papel" || t == "sepia" || (t == "app" && Widgets.fondo(this@ReaderActivity)?.oscuro == false)
         }
 
         @JavascriptInterface
@@ -723,6 +730,15 @@ class ReaderActivity : ComponentActivity() {
     }
 
     /** El acento elegido en Apariencia (claro y oscuro), para que el lector vaya a juego con la app. */
+    /** El fondo de color de la app (granate…), para ofrecer en el lector un tema igual; null si no hay. */
+    private fun fondoJson(): JSONObject? {
+        val f = Widgets.fondo(this) ?: return null
+        fun hex(c: Long) = String.format("#%06X", (c and 0xFFFFFF))
+        val t = f.tones
+        return JSONObject().put("id", f.id).put("name", f.name).put("dark", f.oscuro)
+            .put("bg", hex(t.paper)).put("surface", hex(t.crudo)).put("fg", hex(t.ink)).put("muted", hex(t.cMuted.toArgb().toLong())).put("line", hex(t.cLine.toArgb().toLong())).put("accent", hex(t.general))
+    }
+
     private fun accentJson(): JSONObject {
         val idA = getSharedPreferences("gamerate", MODE_PRIVATE).getString("skin_accent_id", "edicion")
         val (al, ad) = acentoDe(Ediciones.guardada(this), idA)

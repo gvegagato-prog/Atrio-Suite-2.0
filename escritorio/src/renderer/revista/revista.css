@@ -65,6 +65,19 @@
 /* «Tinta»: el acento es el propio color del texto */
 :root[data-acento="tinta"] { --acento-claro: #15120F; --acento-oscuro: #F1EBE0; }
 
+/* ---------------------------------------------------------------- Fondos de color (los mismos que el móvil: Skin.kt, FONDOS) */
+/* Con un fondo, base.js pone también data-tema (oscuro o claro) y, si el acento es «rojo», data-acento="fondo" (el propio del fondo) */
+:root[data-fondo="granate"][data-tema] { --papel: #5A1424; --crudo: #6C1C30; --tinta: #F8EDE8; --gris: #D3AAB2; --linea: #8F3D52; --arena: #7A2639; --acento-fondo: #F0C26A; color-scheme: dark; }
+:root[data-fondo="bosque"][data-tema] { --papel: #12382B; --crudo: #1B4837; --tinta: #EDF3E8; --gris: #A9C7B3; --linea: #37705A; --arena: #25573F; --acento-fondo: #E2C86C; color-scheme: dark; }
+:root[data-fondo="marino"][data-tema] { --papel: #10264A; --crudo: #193560; --tinta: #E9EEF7; --gris: #A3B4D2; --linea: #38598C; --arena: #234474; --acento-fondo: #E6BA5E; color-scheme: dark; }
+:root[data-fondo="petroleo"][data-tema] { --papel: #0F3D44; --crudo: #174F58; --tinta: #E7F2F1; --gris: #9CC6C6; --linea: #317B86; --arena: #1F6370; --acento-fondo: #F2C46D; color-scheme: dark; }
+:root[data-fondo="berenjena"][data-tema] { --papel: #3C1A4A; --crudo: #4D235F; --tinta: #F6EAF4; --gris: #C7A8CE; --linea: #74428B; --arena: #5E2E75; --acento-fondo: #F2A9C2; color-scheme: dark; }
+:root[data-fondo="chocolate"][data-tema] { --papel: #3A2218; --crudo: #4A2E22; --tinta: #F4E8DB; --gris: #C2A78E; --linea: #704B3A; --arena: #5A3A2B; --acento-fondo: #E9A860; color-scheme: dark; }
+:root[data-fondo="pizarra"][data-tema] { --papel: #232D38; --crudo: #2D3A48; --tinta: #E8EDF2; --gris: #A2B0BF; --linea: #4F6176; --arena: #3B4B5D; --acento-fondo: #E9B867; color-scheme: dark; }
+:root[data-fondo="mostaza"][data-tema] { --papel: #D9A53A; --crudo: #E6B954; --tinta: #2A1E08; --gris: #47340B; --linea: #B98521; --arena: #CB962A; --acento-fondo: #6E1424; color-scheme: light; }
+:root[data-fondo][data-acento="fondo"] { --acento-claro: var(--acento-fondo); --acento-oscuro: var(--acento-fondo); }
+:root[data-fondo][data-tema] { --acento: var(--acento-oscuro); }
+
 /* ---------------------------------------------------------------- Base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0; }
 html { background: var(--papel); }

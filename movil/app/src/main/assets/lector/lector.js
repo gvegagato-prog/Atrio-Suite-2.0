@@ -23,6 +23,10 @@ const S = Object.assign({
     // adelante, para leer con una mano), los botones de volumen para pasar página y la letra algo más gruesa (Literata)
     tapZones: 'normal', volPages: true, weight: 0,
 }, st.settings || {})
+// Con un fondo de color en la app y sin haber elegido nunca un tema, el lector lleva el de la app
+if (st.fondo && !(st.settings && st.settings.theme)) S.theme = 'app'
+// (si ese fondo ya no está, el tema «app» vuelve a Papel)
+if (S.theme === 'app' && !st.fondo) S.theme = 'papel'
 // Lo que llevas leído de este libro: tiempo total y por día (ms)
 const stats = Object.assign({ total: 0, days: {} }, st.stats || {})
 // El tiempo leído va por dispositivo (stats.dev): aquí solo se suma en el de este dispositivo, y «total» y «days» son
@@ -50,11 +54,20 @@ function separaModo() {
 }
 /** Las letras de la app con grosor variable (se pueden poner un poco más gruesas). */
 const VARIABLES = ['literata', 'garamond']
-const THEMES = [['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
+// El fondo de color de la app (Apariencia → Fondo: granate, verde bosque…): el lector ofrece un tema igual, con su nombre
+const FONDO = st.fondo || null
+const THEMES = [...(FONDO ? [['app', FONDO.name]] : []), ['papel', 'Papel'], ['sepia', 'Sepia'], ['gris', 'Gris'], ['noche', 'Noche'], ['negro', 'Negro']]
 const FONTS = [['original', 'Original'], ['literata', 'Literata'], ['garamond', 'Garamond'], ['atrio', 'Fraunces'], ['serif', 'Serif'], ['sans', 'Sans'], ['facil', 'Fácil lectura'], ['mono', 'Mono']]
 // El acento de la app (el que elegiste en Apariencia), en su versión clara y oscura
 const ACCENT = st.accent || { light: '#C8372D', dark: '#E0533F' }
-const DARK_THEMES = ['gris', 'noche', 'negro']
+const DARK_THEMES = ['gris', 'noche', 'negro', ...(FONDO && FONDO.dark ? ['app'] : [])]
+// Los colores del tema «de la app»: se ponen en la página (los demás temas los pone lector.css)
+function colorTemaApp(on) {
+    const b = document.body.style
+    const v = on && FONDO ? { '--bg': FONDO.bg, '--fg': FONDO.fg, '--muted': FONDO.muted, '--surface': FONDO.surface, '--line': FONDO.line } : {}
+    for (const k of ['--bg', '--fg', '--muted', '--surface', '--line']) v[k] ? b.setProperty(k, v[k]) : b.removeProperty(k)
+    document.body.classList.toggle('app-oscuro', !!(on && FONDO && FONDO.dark))
+}
 const isNight = () => { const h = new Date().getHours(); return h >= 21 || h < 7 }
 /** El tema que toca ahora: el tuyo, o Noche si lo pediste y es de noche (salvo que ya uses uno oscuro). */
 const theme = () => (S.nightAuto && isNight() && !DARK_THEMES.includes(S.theme)) ? 'noche' : S.theme
@@ -117,6 +130,7 @@ async function open() {
 
 async function abrir() {
     $('#t-libro').textContent = st.title || ''
+    colorTemaApp(theme() === 'app')
     document.body.dataset.theme = theme()
     try {
         paso = 'leer el archivo'
@@ -288,11 +302,13 @@ html.atrio-reflow p.nota { font-size: .8em; text-indent: 0; opacity: .85; margin
 function applySettings() {
     sinDensidad()
     lastTheme = theme()
+    colorTemaApp(lastTheme === 'app')
+    document.documentElement.style.setProperty('--t-app', FONDO ? FONDO.bg : '#FBF8F1')
     document.body.dataset.theme = lastTheme
     // La página del lector, con el mismo esquema de color que el libro: si no coinciden, Chromium pinta el libro
     // (va en un iframe) sobre un fondo opaco del modo oscuro (#121212), y con Negro se veía una caja gris
     document.documentElement.style.colorScheme = DARK_THEMES.includes(lastTheme) ? 'dark' : 'light'
-    document.documentElement.style.setProperty('--accent', DARK_THEMES.includes(lastTheme) ? ACCENT.dark : ACCENT.light)
+    document.documentElement.style.setProperty('--accent', lastTheme === 'app' && FONDO ? FONDO.accent : DARK_THEMES.includes(lastTheme) ? ACCENT.dark : ACCENT.light)
     document.body.classList.toggle('sin-estado', !S.status)
     A.setTheme(lastTheme)
     if (!view?.renderer) return
@@ -1242,8 +1258,8 @@ function openSettings() {
         el.querySelector('#warm').onchange = saveSettings
         el.querySelectorAll('[data-theme-btn]').forEach(b => {
             const t = b.dataset.themeBtn
-            b.style.background = { papel: '#FBF8F1', sepia: '#F1E6CF', gris: '#2B2D31', noche: '#121317', negro: '#000' }[t]
-            b.style.color = { papel: '#1F1D1A', sepia: '#43341F', gris: '#E3E1DC', noche: '#D9D6CF', negro: '#BEBBB4' }[t]
+            b.style.background = { app: FONDO && FONDO.bg, papel: '#FBF8F1', sepia: '#F1E6CF', gris: '#2B2D31', noche: '#121317', negro: '#000' }[t]
+            b.style.color = { app: FONDO && FONDO.fg, papel: '#1F1D1A', sepia: '#43341F', gris: '#E3E1DC', noche: '#D9D6CF', negro: '#BEBBB4' }[t]
             b.onclick = () => { S.theme = t; applySettings(); saveSettings(); openSettings() }
         })
         el.querySelectorAll('.chip[data-k]').forEach(b => b.onclick = () => {
