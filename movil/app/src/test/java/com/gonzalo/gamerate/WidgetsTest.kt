@@ -157,7 +157,7 @@ class WidgetsTest {
 
     /** Con un fondo de color (granate…), los widgets lo llevan: su papel, de día y de noche, y su acento. */
     @Test
-    fun fondosDeColor() = runBlocking {
+    fun fondosDeColor() = runBlocking<Unit> {
         seed()
         val p = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE)
         for (f in FONDOS) {
