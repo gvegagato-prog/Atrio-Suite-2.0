@@ -163,7 +163,7 @@ open class Capturas6Test {
         // En portada se desliza con el dedo: de Deadlock a la siguiente (y vuelta)
         fun veces(t: String) = rule.onAllNodesWithText(t).fetchSemanticsNodes().size
         val antes = veces("Elden Ring Nightreign")
-        rule.onRoot().performTouchInput { swipeLeft(startX = width * 0.9f, endX = width * 0.1f, durationMillis = 250) }
+        rule.onRoot().performTouchInput { swipeLeft(startX = width * 0.8f, endX = width * 0.1f, durationMillis = 250) }
         rule.waitForIdle()
         assertTrue("al deslizar, la portada pasa a la siguiente (${veces("Elden Ring Nightreign")} veces, antes $antes)", veces("Elden Ring Nightreign") > antes)
         shoot("r1b_portada_deslizada")

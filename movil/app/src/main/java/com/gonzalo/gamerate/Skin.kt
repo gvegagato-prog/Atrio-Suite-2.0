@@ -342,6 +342,9 @@ fun acentoDe(e: Edicion, id: String?): Pair<Long, Long> =
 class Fondo(val id: String, val name: String, val oscuro: Boolean, val tones: Tones)
 
 val FONDOS: List<Fondo> = listOf(
+    // Papel de verdad: blanco roto, algo beige, con tinta parda casi negra y rojo de sello
+    Fondo("papelreal", "Papel de verdad", false, t(0xF8F2DF, 0xFCF8EA, 0x2B2418, 0x8C2A22, 0x2B2418, 0x5A4E33, 0x8A7B58, 0x8C2A22, 0x9A6B12,
+        sand = 0xEFE6CC, line = 0xDDD0AE, edge = 0xBFAE84, muted = 0x5E5337)),
     // Granate: vino hondo, con tinta crema y oro viejo
     Fondo("granate", "Granate", true, t(0x5A1424, 0x6C1C30, 0xF8EDE8, 0xF0C26A, 0xF8EDE8, 0xDDBFC3, 0xB88A92, 0xF0C26A, 0xE9B94F,
         sand = 0x7A2639, line = 0x8F3D52, edge = 0xA85A6E, muted = 0xD3AAB2)),
@@ -357,7 +360,7 @@ val FONDOS: List<Fondo> = listOf(
         sand = 0x5A3A2B, line = 0x704B3A, edge = 0x8B6650, muted = 0xC2A78E)),
     Fondo("pizarra", "Pizarra", true, t(0x232D38, 0x2D3A48, 0xE8EDF2, 0xE9B867, 0xE8EDF2, 0xBAC5D1, 0x8A9AAB, 0xE9B867, 0xE2B05A,
         sand = 0x3B4B5D, line = 0x4F6176, edge = 0x6A7F96, muted = 0xA2B0BF)),
-    // El único claro: mostaza hondo, con tinta casi negra
+    // Claro también: mostaza hondo, con tinta casi negra
     Fondo("mostaza", "Mostaza", false, t(0xD9A53A, 0xE6B954, 0x2A1E08, 0x6E1424, 0x2A1E08, 0x5A4412, 0x8A6A1E, 0x6E1424, 0x6E1424,
         sand = 0xCB962A, line = 0xB98521, edge = 0x8F6713, muted = 0x47340B)),
 )

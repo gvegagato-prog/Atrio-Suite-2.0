@@ -67,6 +67,7 @@
 
 /* ---------------------------------------------------------------- Fondos de color (los mismos que el móvil: Skin.kt, FONDOS) */
 /* Con un fondo, base.js pone también data-tema (oscuro o claro) y, si el acento es «rojo», data-acento="fondo" (el propio del fondo) */
+:root[data-fondo="papelreal"][data-tema] { --papel: #F8F2DF; --crudo: #FCF8EA; --tinta: #2B2418; --gris: #5E5337; --linea: #DDD0AE; --arena: #EFE6CC; --acento-fondo: #8C2A22; color-scheme: light; }
 :root[data-fondo="granate"][data-tema] { --papel: #5A1424; --crudo: #6C1C30; --tinta: #F8EDE8; --gris: #D3AAB2; --linea: #8F3D52; --arena: #7A2639; --acento-fondo: #F0C26A; color-scheme: dark; }
 :root[data-fondo="bosque"][data-tema] { --papel: #12382B; --crudo: #1B4837; --tinta: #EDF3E8; --gris: #A9C7B3; --linea: #37705A; --arena: #25573F; --acento-fondo: #E2C86C; color-scheme: dark; }
 :root[data-fondo="marino"][data-tema] { --papel: #10264A; --crudo: #193560; --tinta: #E9EEF7; --gris: #A3B4D2; --linea: #38598C; --arena: #234474; --acento-fondo: #E6BA5E; color-scheme: dark; }

@@ -177,8 +177,9 @@ private fun RevistaHome(m: ShellModel) {
         }
         val actual = if (n > 0) pager.currentPage % n else 0
         val scope = rememberCoroutineScope()
-        if (n > 0) Column(Modifier.llega(3)) {
-            Spacer(Modifier.height(22.dp))
+        if (n > 0) Spacer(Modifier.height(22.dp))
+        // La portada va enmarcada: un cuadrado del color del texto alrededor de todo
+        if (n > 0) Column(Modifier.llega(3).fillMaxWidth().border(1.5.dp, Ink2).padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RevSection("En portada")
                 Spacer(Modifier.weight(1f))

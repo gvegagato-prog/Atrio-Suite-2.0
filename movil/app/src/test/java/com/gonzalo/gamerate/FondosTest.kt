@@ -92,7 +92,7 @@ class FondosTest {
         shoot("granate_1_inicio")
         rule.onAllNodesWithText("Diario")[0].performClick(); shoot("granate_2_diario")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        for (f in listOf("mostaza", "bosque", "berenjena")) { fondo.value = f; shoot("${f}_1_inicio") }
+        for (f in listOf("papelreal", "mostaza", "bosque", "berenjena")) { fondo.value = f; shoot("${f}_1_inicio") }
         Skin.fondoId = ""; Skin.save(ctx)
     }
 }

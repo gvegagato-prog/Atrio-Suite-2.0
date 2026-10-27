@@ -127,6 +127,7 @@ window.RV = window.RV || {};
   RV.TEMAS = [['claro', 'Claro'], ['oscuro', 'Oscuro'], ['auto', 'Automático']];
   // Fondos de color (los mismos que el móvil): id, nombre, papel, tinta y si es oscuro. Con uno elegido manda sobre el tema.
   RV.FONDOS = [
+    ['papelreal', 'Papel de verdad', '#F8F2DF', '#2B2418', false],
     ['granate', 'Granate', '#5A1424', '#F8EDE8', true],
     ['bosque', 'Verde bosque', '#12382B', '#EDF3E8', true],
     ['marino', 'Azul marino', '#10264A', '#E9EEF7', true],

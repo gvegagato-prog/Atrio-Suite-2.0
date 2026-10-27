@@ -236,6 +236,8 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     const gr = await page.evaluate(() => ({ papel: getComputedStyle(document.body).backgroundColor, fondo: document.documentElement.dataset.fondo, tema: document.documentElement.dataset.tema, acento: getComputedStyle(document.documentElement).getPropertyValue('--acento').trim(), cfg: (window.__cfg || null) }));
     await shot('09-fondo-granate');
     ok(gr.fondo === 'granate' && gr.tema === 'oscuro' && /rgb\(90, 20, 36\)/.test(gr.papel) && gr.acento.toUpperCase() === '#F0C26A', `${tema}: fondo granate en toda la revista (${gr.papel}, acento ${gr.acento})`);
+    await page.click('.ajustes-cuerpo button[aria-label="Fondo Papel de verdad"]'); await page.waitForTimeout(300);
+    ok(await page.evaluate(() => document.documentElement.dataset.tema === 'claro' && getComputedStyle(document.body).backgroundColor === 'rgb(248, 242, 223)'), `${tema}: papel de verdad (beige claro)`);
     await page.click('.ajustes-cuerpo button[aria-label="Fondo Mostaza"]'); await page.waitForTimeout(300);
     ok(await page.evaluate(() => document.documentElement.dataset.tema === 'claro' && getComputedStyle(document.body).backgroundColor === 'rgb(217, 165, 58)'), `${tema}: mostaza (claro) y el tema lo manda el fondo`);
     await page.click('.ajustes-cuerpo button[aria-label="Fondo Papel"]'); await page.waitForTimeout(300);
