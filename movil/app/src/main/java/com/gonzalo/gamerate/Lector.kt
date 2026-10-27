@@ -161,6 +161,8 @@ object BookFiles {
         store.savePlays(todos.map {
             if (it.id == id) it.copy(status = 1, start = if (it.start == 0L) hoy.toEpochDay() else it.start, end = 0L, updated = System.currentTimeMillis()) else it
         }, BOOKS.id)
+        // (la app vuelve a leer sus listas; hasta entonces, lo que guarde se aplica sobre esto)
+        Store.otraGeneracion()
         SyncBus.changed()
         return true
     }
@@ -340,6 +342,7 @@ class ReaderActivity : ComponentActivity() {
         // Antes de abrir, lo último de tu cuenta (como mucho 2,5 s): así empiezas donde lo dejaste en cualquier dispositivo
         val app = applicationContext
         if (Store(app).paired) Thread {
+            Sincro.init(app)
             runCatching { kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeoutOrNull(2500) { Couple.syncOwn(Store(app)) } } }
             runOnUiThread { if (!isDestroyed) web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html") }
         }.start() else web.loadUrl("https://appassets.androidplatform.net/assets/lector/index.html")
@@ -480,12 +483,8 @@ class ReaderActivity : ComponentActivity() {
         BookFiles.put(this, id, o)
         subirEnSeguida()
     }
-    private val subir = Runnable {
-        val app = applicationContext
-        Thread { kotlinx.coroutines.runBlocking { Couple.pushIfPending(Store(app)) } }.start()
-    }
-    /** Por dónde vas sube a tu cuenta unos segundos después de pasar página: tu otro dispositivo la ve casi al momento. */
-    private fun subirEnSeguida() { handler.removeCallbacks(subir); handler.postDelayed(subir, 4000) }
+    /** Por dónde vas sube a tu cuenta unos segundos después de llegar más lejos: tu otro dispositivo la ve casi al momento. */
+    private fun subirEnSeguida() = Sincro.pronto(applicationContext, 4000)
 
     // Al dejar de leer (cerrar el libro, apagar la pantalla, cambiar de app), lo leído sube a tu cuenta: en la tablet
     // sigues por la misma página sin tener que tocar nada más
@@ -515,8 +514,8 @@ class ReaderActivity : ComponentActivity() {
         AtajoLectura.pon(applicationContext)
         if (batteryOn) { batteryOn = false; runCatching { unregisterReceiver(battery) } }
         confirmarMasLejos()
-        val app = applicationContext
-        Thread { kotlinx.coroutines.runBlocking { Couple.pushIfPending(Store(app)) } }.start()
+        // Al dejar de leer, lo leído sube ya: en la tablet sigues por la misma página sin tocar nada
+        Sincro.pronto(applicationContext, 0)
     }
 
     override fun onDestroy() {

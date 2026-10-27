@@ -151,20 +151,28 @@ fun App(
     val myGames = if (pv) partner!!.games(kind) else gamesOf(kind)
     val myPlays = if (pv) partner!!.plays(kind) else playsOf(kind)
 
-    fun setGames(k: Kind, l: List<Game>) {
+    // Si acaba de llegar algo de otro dispositivo y las listas de aquí aún no se han vuelto a leer, un cambio se aplica
+    // sobre lo guardado (solo lo que has tocado tú): así no se pierde lo que acaba de llegar
+    var leidoEn by remember { mutableStateOf(Store.generacion) }
+    fun <T> alDia(antes: List<T>, l: List<T>, guardado: () -> List<T>, id: (T) -> Long): List<T> =
+        if (Store.generacion == leidoEn) l else rebase(antes, l, guardado(), id)
+
+    fun setGames(k: Kind, l0: List<Game>) {
         if (k.custom && kinds.none { it.id == k.id }) return // categoría ya borrada
+        val l = alDia(gamesOf(k), l0, { store.load(k.id) }) { it.id }
         when (k.id) { 0 -> games = l; 1 -> books = l; else -> extra = extra + (k.id to l) }
         store.save(l, k.id)
     }
 
-    fun setPlays(k: Kind, l: List<Play>) {
+    fun setPlays(k: Kind, l0: List<Play>) {
         if (k.custom && kinds.none { it.id == k.id }) return // categoría ya borrada
+        val l = alDia(playsOf(k), l0, { store.loadPlays(k.id) }) { it.id }
         when (k.id) { 0 -> plays = l; 1 -> bplays = l; else -> extraPlays = extraPlays + (k.id to l) }
         store.savePlays(l, k.id)
     }
 
-    fun setNotas(l: List<Nota>) { notas = l; store.saveDiario(l) }
-    fun setSagas(l: List<Saga>) { sagas = l; SagaHub.list = l; store.saveSagas(l) }
+    fun setNotas(l0: List<Nota>) { val l = alDia(notas, l0, { store.loadDiario() }) { it.id }; notas = l; store.saveDiario(l) }
+    fun setSagas(l0: List<Saga>) { val l = alDia(sagas, l0, { store.loadSagas() }) { it.id }; sagas = l; SagaHub.list = l; store.saveSagas(l) }
     fun saveSaga(s: Saga) = setSagas(sagas.map { if (it.id == s.id) s.copy(updated = now()) else it })
     fun newSaga(name: String, ids: List<Long>, kind: Int): Saga {
         val s = Saga(now(), name, ids, kind = kind, updated = now())
@@ -188,6 +196,7 @@ fun App(
     }
 
     fun reloadAll() {
+        leidoEn = Store.generacion
         // Si al juntar tus dispositivos quedaron categorías repetidas (o falta Películas), se arregla aquí
         store.ensureMediaKinds()
         games = store.load(0)
@@ -222,7 +231,7 @@ fun App(
     DisposableEffect(life) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_START) Suite.start(ctx, store)
-            if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) { Suite.stop(); Account.Listening.stop() }
+            if (ev == androidx.lifecycle.Lifecycle.Event.ON_STOP) Suite.stop()
         }
         life.lifecycle.addObserver(obs)
         onDispose { life.lifecycle.removeObserver(obs) }
@@ -240,96 +249,22 @@ fun App(
     }
     // Ajustes de otro dispositivo tuyo (apariencia, portadas en las listas…): se aplican sin reiniciar
     LaunchedEffect(AjustesHub.version) { if (AjustesHub.version > 0) { Skin.load(ctx); Mode.themeMode = store.themeMode } }
-    // Mientras la app está abierta, cada 30 s se mira (con una consulta mínima) si tu otro dispositivo ha subido algo.
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(30_000)
-            if (store.paired && life.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
-                try { Couple.syncOwn(store) } catch (e: Exception) { /* sin conexión: la próxima vez */ }
-                // Lo leído o lo subido a tu nube (sin tocar fichas) también se sube
-                Couple.pushIfPending(store)
-            }
-        }
+    // ---- Tu cuenta, al momento (Sincro): cada cambio sube enseguida y lo de tus otros dispositivos y tu pareja llega solo ----
+    LaunchedEffect(Unit) { Sincro.init(ctx) }
+    // Lo de tu pareja que acaba de llegar
+    LaunchedEffect(PartnerHub.version) {
+        if (PartnerHub.version > 0) Couple.cached(store)?.let { p -> if (p.updated != partner?.updated) partner = p; Couple.markSeen(store, p) }
     }
-    // Y al instante: mientras la app está a la vista, una escucha en directo de tu cuenta. En cuanto otro dispositivo
-    // tuyo sube algo, se baja y se mezcla aquí (lo de cada 30 s queda de respaldo por si la escucha se corta).
-    LaunchedEffect(store.paired) {
-        if (!store.paired) return@LaunchedEffect
-        life.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            var force = false
-            try {
-                while (true) {
-                    val why = withContext(Dispatchers.IO) {
-                        runCatching { Account.listen(store, force) { scope.launch { try { Couple.syncOwn(store) } catch (e: Exception) { } } } }.getOrElse { "sin red" }
-                    }
-                    force = why == "auth_revoked"
-                    delay(if (force) 500 else 5000)
-                }
-            } finally { Account.Listening.stop() }
-        }
-    }
-    // Al volver a la app, también.
-    DisposableEffect(life) {
-        val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
-            if (ev == androidx.lifecycle.Lifecycle.Event.ON_START && store.paired) {
-                scope.launch { try { Couple.syncOwn(store) } catch (e: Exception) { }; Couple.pushIfPending(store) }
-            }
-        }
-        life.lifecycle.addObserver(obs)
-        onDispose { life.lifecycle.removeObserver(obs) }
+    // Si no se puede subir, se avisa una vez (se reintenta solo, y al salir de la app queda pendiente para cuando haya red)
+    LaunchedEffect(Sincro.error) {
+        if (Sincro.error.isBlank()) cloudWarned = false
+        else if (!cloudWarned) { cloudWarned = true; say("No se ha podido guardar en la nube: ${Sincro.error}. Se reintenta solo.") }
     }
 
-    // ---- Modo pareja: subir lo tuyo y bajar lo suyo ----
-    LaunchedEffect(games, plays, books, bplays, extra, extraPlays, kinds, syncTick) {
-        if (store.paired) {
-            delay(1500)
-            try {
-                Couple.push(store)
-                cloudWarned = false
-                // Una foto tuya nueva (portada, fondo…): a tu nube enseguida, para que tus otros dispositivos la vean ya
-                if (withContext(Dispatchers.IO) { runCatching { NubeSync.fotosPorSubir(ctx) }.getOrDefault(false) }) NubeSync.enqueue(ctx)
-                val p = Couple.pull(store)
-                if (p != null) {
-                    partner = p
-                    Couple.markSeen(store, p)
-                }
-            } catch (e: Exception) {
-                // Se reintenta en el próximo cambio y al salir de la app; se avisa una vez para que no pase desapercibido.
-                if (!cloudWarned && store.cloudErr.isNotBlank()) {
-                    cloudWarned = true
-                    say("No se ha podido guardar en la nube: ${store.cloudErr}")
-                }
-            }
-        }
-    }
     // En categorías propias solo se compara si tu pareja tiene la misma con los mismos criterios.
     val side: PartnerSide? = if (pv) null else partner?.let { p ->
         if (kind.custom && p.match(kind)?.labels?.drop(1) != kind.labels.drop(1)) null else p.side(kind)
     }
-
-    // Cada vez que tocas algo (como mucho una vez cada 4 s) baja lo último de tu pareja.
-    var lastPull by remember { mutableStateOf(0L) }
-    var pulling by remember { mutableStateOf(false) }
-    fun refreshPartner() {
-        if (!store.paired || pulling) return
-        val t = now()
-        if (t - lastPull < 4000L) return
-        lastPull = t
-        pulling = true
-        scope.launch {
-            try {
-                val p = Couple.pull(store)
-                if (p != null) {
-                    if (p.updated != partner?.updated) partner = p
-                    Couple.markSeen(store, p)
-                }
-            } catch (e: Exception) {
-                // sin conexión: se reintenta en el próximo toque
-            }
-            pulling = false
-        }
-    }
-    LaunchedEffect(screen, tab, section) { refreshPartner() }
 
     // El interruptor del calendario y las estadísticas de tu pareja solo vale en esas dos pestañas.
     LaunchedEffect(tab, section, screen) {
@@ -1027,7 +962,6 @@ fun App(
             while (true) {
                 val ev = awaitPointerEvent(PointerEventPass.Initial)
                 if (ev.type == PointerEventType.Press) ev.changes.firstOrNull()?.let { Mode.touch = it.position }
-                if (ev.type == PointerEventType.Release) refreshPartner()
             }
         }
     }

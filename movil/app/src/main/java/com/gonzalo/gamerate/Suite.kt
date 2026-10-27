@@ -35,7 +35,6 @@ import java.util.Base64
  *   /users/<uid>/suite/lib/<disp>        la biblioteca de cada PC
  *   /users/<uid>/suite/cmd/<disp>/<id>   órdenes para un PC ({ op, a, t, by }); el PC responde en «res»
  *   /users/<uid>/suite/shots/<id>        capturas (los trozos en /users/<uid>/shotdata/<id>/<n>)
- *   /users/<uid>/stamps                  se escucha para mezclar al momento lo que cambie el PC
  *
  * Se escucha con la API REST de Firebase en streaming (EventSource): cada cambio llega al instante.
  */
@@ -184,7 +183,6 @@ object Suite {
 
     private var scope: CoroutineScope? = null
     private var suiteStream: FbStream? = null
-    private var stampsStream: FbStream? = null
     private var uid = ""
     private var tree: JSONObject? = null
     private val waits = HashMap<String, CompletableDeferred<JSONObject>>()
@@ -221,13 +219,8 @@ object Suite {
         uid = store.accUid
         val sc = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope = sc
+        // (lo que cambie en tus otros dispositivos lo escucha Sincro)
         suiteStream = FbStream("suite", { f -> authUrl("/users/$uid/suite", f) }, { t, _ -> onSuite(t) }, { s -> state = s }).also { it.start(sc) }
-        var first = true
-        stampsStream = FbStream("stamps", { f -> authUrl("/users/$uid/stamps", f) }, { _, path ->
-            if (first) { first = false; return@FbStream }
-            if (path.contains(store.accDevice)) return@FbStream // mi propia subida
-            sc.launch { try { Couple.syncOwn(store) } catch (e: Exception) { } }
-        }).also { it.start(sc) }
         // Presencia: este móvil está conectado (el PC lo enseña) y latido para el cronómetro
         sc.launch {
             while (isActive) {
@@ -244,7 +237,6 @@ object Suite {
             CoroutineScope(Dispatchers.IO).launch { presence(false) }
         }
         suiteStream?.stop(); suiteStream = null
-        stampsStream?.stop(); stampsStream = null
         sc?.coroutineContext?.get(Job)?.cancel()
         scope = null
         tree = null

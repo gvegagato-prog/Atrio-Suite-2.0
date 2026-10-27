@@ -71,7 +71,10 @@ object Account {
 
     private fun http(method: String, url: String, body: String?, form: Boolean = false): Res {
         val c = URL(url).openConnection() as HttpURLConnection
-        c.requestMethod = method
+        try { c.requestMethod = method } catch (e: java.net.ProtocolException) {
+            // (el Java de las pruebas en el ordenador no conoce PATCH: Firebase acepta un POST que diga cuál es)
+            c.requestMethod = "POST"; c.setRequestProperty("X-HTTP-Method-Override", method)
+        }
         c.connectTimeout = 15000
         c.readTimeout = 20000
         if (body != null) {
@@ -140,6 +143,7 @@ object Account {
         if (c == null) throw Fail("No se ha podido reservar el usuario.")
         // La clave web se deja en la base de datos (solo la primera vez) para que tus otros dispositivos la encuentren solos.
         try { db(store, "PUT", "/config/webKey", JSONObject.quote(store.webKey)) } catch (e: Exception) { /* ya estaba */ }
+        Sincro.reinicia(store.contexto)
         store.accUid
     }
 
@@ -165,6 +169,7 @@ object Account {
                 store.partnerSeen = ""
             }
         } catch (e: Exception) { }
+        Sincro.reinicia(store.contexto)
         store.accUid
     }
 
@@ -179,6 +184,7 @@ object Account {
         store.partnerRaw = ""
         store.partnerId = ""
         store.partnerSeen = ""
+        Sincro.reinicia(store.contexto)
     }
 
     /** Pase de acceso vigente (se renueva solo; dura una hora). */
@@ -230,43 +236,6 @@ object Account {
     }
 
     private fun me(store: Store) = "/users/" + store.accUid
-
-    /**
-     * Escucha en directo (la API REST de Firebase en streaming: Server-Sent Events) las horas de subida de tus
-     * dispositivos: en cuanto otro sube algo, llama a [onChange]. Vuelve cuando se corta (sin red, el pase caducó…);
-     * quien la llama la vuelve a abrir. [force] renueva antes el pase.
-     */
-    fun listen(store: Store, force: Boolean, onChange: () -> Unit): String {
-        val c = java.net.URL(store.dbUrl + me(store) + "/stamps.json?auth=" + token(store, force)).openConnection() as HttpURLConnection
-        c.setRequestProperty("Accept", "text/event-stream")
-        c.instanceFollowRedirects = true   // Firebase manda a otro servidor con un 307
-        c.connectTimeout = 15000
-        c.readTimeout = 120_000            // llega un «keep-alive» de vez en cuando; si no, la conexión está muerta
-        Listening.conn = c
-        try {
-            if (c.responseCode == 401) return "auth_revoked"
-            if (c.responseCode !in 200..299) return "error ${c.responseCode}"
-            return c.inputStream.bufferedReader().use { sseEvents(it, onChange) }
-        } finally { Listening.conn = null; runCatching { c.disconnect() } }
-    }
-
-    /** Lee los eventos (event: … / data: …): un «put» o «patch» es que algo cambió. Devuelve por qué terminó. */
-    fun sseEvents(r: java.io.BufferedReader, onChange: () -> Unit): String {
-        var ev = ""
-        while (true) {
-            val line = r.readLine() ?: return "fin"
-            when {
-                line.startsWith("event:") -> ev = line.substringAfter(':').trim()
-                line.startsWith("data:") -> when (ev) {
-                    "put", "patch" -> onChange()
-                    "cancel", "auth_revoked" -> return ev
-                }
-            }
-        }
-    }
-
-    /** La conexión abierta (para cerrarla al salir de la app). */
-    object Listening { @Volatile var conn: HttpURLConnection? = null; fun stop() { runCatching { conn?.disconnect() } } }
 
     /** Horas de subida de cada dispositivo de una cuenta (null si no tienes permiso para verla). */
     fun stamps(store: Store, uid: String): Map<String, Long>? {
@@ -348,6 +317,7 @@ object Account {
         }
         store.partnerUid = uid
         store.partnerUser = u
+        Sincro.reinicia(store.contexto)
         uid
     }
 
@@ -358,5 +328,6 @@ object Account {
         store.partnerRaw = ""
         store.partnerId = ""
         store.partnerSeen = ""
+        Sincro.reinicia(store.contexto)
     }
 }

@@ -86,7 +86,7 @@ class CloudWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
     override suspend fun doWork(): Result {
         val store = Store(applicationContext)
         var retry = false
-        if (store.paired) {
+        if (store.paired && store.pendiente) {
             try { Couple.push(store) } catch (e: Exception) { retry = true }
         }
         if (store.driveUri.isNotBlank()) DriveBackup.save(applicationContext, store)

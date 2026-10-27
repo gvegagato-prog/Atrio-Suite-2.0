@@ -107,6 +107,8 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) read(intent)
         maxRefresh()
         val store = Store(this)
+        // Tu cuenta al momento: lo que cambie aquí sube enseguida y lo de tus otros dispositivos llega solo
+        Sincro.init(this)
         Mode.themeMode = store.themeMode
         Skin.load(this)
         store.forgetGemini()

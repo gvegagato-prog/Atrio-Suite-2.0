@@ -345,6 +345,26 @@ fun uniteLists(win: JSONObject, lose: JSONObject): JSONObject {
     return win
 }
 
+/**
+ * Un cambio hecho sobre una lista que ya no es la guardada (mientras tanto llegó algo de otro dispositivo): de [nueva] solo
+ * cuenta lo que se cambió respecto a [antes] (lo añadido, lo modificado y lo quitado); lo demás se toma de lo guardado
+ * [ahora]. El orden es el de [nueva]; lo que llegó de fuera va al final.
+ */
+fun <T> rebase(antes: List<T>, nueva: List<T>, ahora: List<T>, id: (T) -> Long): List<T> {
+    val a = antes.associateBy(id)
+    val g = ahora.associateBy(id)
+    val out = ArrayList<T>()
+    val puestos = HashSet<Long>()
+    for (x in nueva) {
+        val k = id(x)
+        // Tocado aquí (nuevo o cambiado): lo tuyo. Sin tocar: lo guardado (si otro dispositivo lo borró, fuera)
+        val v = if (a[k] != x) x else g[k] ?: continue
+        if (puestos.add(k)) out += v
+    }
+    for (x in ahora) { val k = id(x); if (k !in puestos && k !in a) { puestos.add(k); out += x } }
+    return out
+}
+
 fun gamesFromJson(a: JSONArray): List<Game> = (0 until a.length()).map { gameFromJson(a.getJSONObject(it)) }
 fun playsFromJson(a: JSONArray): List<Play> = (0 until a.length()).map { playFromJson(a.getJSONObject(it)) }
 
@@ -374,6 +394,37 @@ data class Look(
 )
 
 class Store(ctx: Context) {
+    companion object {
+        /** Guardar y mezclar lo de otro dispositivo, nunca a la vez (si no, una mezcla podría pisar algo recién guardado). */
+        val cerrojo = Any()
+        /** Sube cada vez que llega algo de otro dispositivo (la app sabe así si sus listas en memoria siguen al día). */
+        @Volatile var generacion = 0L
+            private set
+        internal fun otraGeneracion() { generacion++ }
+
+        /** Texto canónico de un valor JSON (claves en orden, sin la versión de sincronización) para comparar fichas. */
+        internal fun canon(v: Any?): String = when (v) {
+            null, JSONObject.NULL -> "null"
+            is JSONObject -> v.keys().asSequence().filter { it != "sv" }.sorted().joinToString(",", "{", "}") { "$it:${canon(v.opt(it))}" }
+            is JSONArray -> (0 until v.length()).joinToString(",", "[", "]") { canon(v.opt(it)) }
+            is Double, is Float -> (v as Number).toDouble().let { d -> if (d == Math.floor(d) && !d.isInfinite() && Math.abs(d) < 1e15) d.toLong().toString() else d.toString() }
+            is Number -> v.toLong().toString()
+            is Boolean -> v.toString()
+            else -> JSONObject.quote(v.toString())
+        }
+
+        /** Lo que solo se guarda si no está vacío (en el diario y en los apuntes rápidos): quitarlo también es un cambio. */
+        private val OPCIONALES = setOf("sobre", "foto", "comp", "memos")
+        private fun vacio(v: Any?) = v == null || v == JSONObject.NULL || v == "" || v == false || (v is JSONArray && v.length() == 0)
+
+        /** ¿[nuevo] dice lo mismo que [antes]? (lo que [antes] tenga de más, de otra versión de la app, no cuenta) */
+        internal fun mismaFicha(antes: JSONObject, nuevo: JSONObject): Boolean {
+            for (k in nuevo.keys()) if (k != "sv" && canon(nuevo.opt(k)) != canon(antes.opt(k))) return false
+            for (k in OPCIONALES) if (!nuevo.has(k) && antes.has(k) && !vacio(antes.opt(k))) return false
+            return true
+        }
+    }
+
     private val app = ctx.applicationContext
     /** El de la app (para lo que se guarda fuera de estas preferencias). */
     val contexto: Context get() = app
@@ -635,6 +686,7 @@ class Store(ctx: Context) {
         val a = JSONArray()
         v.forEach { a.put(cardToJson(it)) }
         p.edit().putString("likes_$kind", a.toString()).apply()
+        marca()
     }
 
     /** Cartas descartadas (solo las claves). */
@@ -658,7 +710,7 @@ class Store(ctx: Context) {
     var avisoDiario: Int
         get() = p.getInt("aviso_diario", -1)
         set(v) { p.edit().putInt("aviso_diario", v).apply() }
-    fun setGoal(kind: Int, year: Int, v: Int) { p.edit().putInt("goal_${kind}_$year", v.coerceIn(0, 999)).apply() }
+    fun setGoal(kind: Int, year: Int, v: Int) { p.edit().putInt("goal_${kind}_$year", v.coerceIn(0, 999)).apply(); marca() }
 
     // ---- Modo pareja ----
     private fun normUrl(v: String): String {
@@ -677,7 +729,7 @@ class Store(ctx: Context) {
 
     var myName: String
         get() = p.getString("myname", "") ?: ""
-        set(v) { p.edit().putString("myname", v.trim()).apply() }
+        set(v) { p.edit().putString("myname", v.trim()).apply(); marca() }
 
     var partnerRaw: String
         get() = p.getString("partner", "") ?: ""
@@ -706,6 +758,7 @@ class Store(ctx: Context) {
         val o = runCatching { JSONObject(p.getString("quizzes", "{}") ?: "{}") }.getOrElse { JSONObject() }
         o.put("$domain", quizRunToJson(QuizRun(System.currentTimeMillis(), items.take(60))))
         p.edit().putString("quizzes", o.toString()).apply()
+        marca()
     }
 
     /** Hay sesión iniciada en tu cuenta de Ronrón: tus datos se guardan en la nube y se mezclan entre dispositivos. */
@@ -813,6 +866,7 @@ class Store(ctx: Context) {
             val a = JSONArray()
             v.forEach { a.put(recToJson(it)) }
             p.edit().putString("recs", a.toString()).apply()
+            marca()
         }
 
     /** Recomendaciones de tu pareja que ya has añadido o descartado. */
@@ -830,6 +884,7 @@ class Store(ctx: Context) {
             val o = JSONObject()
             v.forEach { (k, e) -> o.put(k, e) }
             p.edit().putString("reacts", o.toString()).apply()
+            marca()
         }
 
     /** Lo que se comparte con la pareja: tus datos, recomendaciones y reacciones, sin la API key. */
@@ -871,6 +926,7 @@ class Store(ctx: Context) {
             val lim = System.currentTimeMillis() - 180L * 86_400_000L
             v.keys().asSequence().toList().forEach { if (v.optLong(it, 0L) < lim) v.remove(it) }
             p.edit().putString("tombs", v.toString()).apply()
+            marca()
         }
 
     /** Última subida de tu cuenta que ya tienes mezclada aquí (hora del servidor). */
@@ -878,7 +934,12 @@ class Store(ctx: Context) {
         get() = p.getLong("ownseen", 0L)
         set(v) { p.edit().putLong("ownseen", v).apply() }
 
-    private fun itemUpdated(o: JSONObject): Long = o.optLong("updated", 0L)
+    /**
+     * Lo reciente que es una versión de una ficha: su última edición o, si es más nueva, la última vez que cambió en algún
+     * dispositivo («sv», la pone [writeList]): así un cambio que no toca la hora de edición (una portada que se buscó sola,
+     * las horas del PC…) también gana al mezclar y llega a todos tus dispositivos.
+     */
+    private fun itemUpdated(o: JSONObject): Long = maxOf(o.optLong("updated", 0L), o.optLong("sv", 0L))
 
     /** Lo más lejos que has llegado en un libro (en cualquier dispositivo): lo que viaja y a lo que se ponen todos. */
     private val LEJOS = listOf("bestCfi", "bestFrac", "bestLabel")
@@ -902,17 +963,24 @@ class Store(ctx: Context) {
      * Guarda una lista apuntando lo que desaparece (borrado) y, si vuelve algo que estaba borrado
      * (deshacer), le pone la hora de ahora para que gane a ese borrado en los otros dispositivos.
      */
-    private fun writeList(name: String, arr: JSONArray, ed: android.content.SharedPreferences.Editor) {
+    private fun writeList(name: String, arr: JSONArray, ed: android.content.SharedPreferences.Editor, espera: Long = Sincro.ESPERA) = synchronized(cerrojo) {
         val old = try { JSONArray(p.getString(name, "[]") ?: "[]") } catch (e: Exception) { JSONArray() }
-        val oldIds = (0 until old.length()).mapNotNull { old.optJSONObject(it)?.optLong("id") }.toSet()
+        val oldById = HashMap<Long, JSONObject>()
+        for (i in 0 until old.length()) old.optJSONObject(i)?.let { oldById[it.optLong("id")] = it }
         val t = tombs
         var tChanged = false
+        var cambio = false
         val now = System.currentTimeMillis()
         val newIds = HashSet<Long>()
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
             val id = o.optLong("id")
             newIds.add(id)
+            val antes = oldById[id]
+            // La versión de sincronización: la de antes si no ha cambiado nada; si ha cambiado, la de ahora
+            if (antes == null) cambio = true
+            else if (mismaFicha(antes, o)) { if (!o.has("sv") && antes.has("sv")) o.put("sv", antes.optLong("sv")) }
+            else { o.put("sv", maxOf(now, antes.optLong("sv", 0L) + 1)); cambio = true }
             val k = "$name:$id"
             if (t.has(k)) {
                 if (t.optLong(k) >= itemUpdated(o)) o.put("updated", now)
@@ -920,16 +988,28 @@ class Store(ctx: Context) {
                 tChanged = true
             }
         }
-        for (id in oldIds) if (id !in newIds) { t.put("$name:$id", now); tChanged = true }
+        for (id in oldById.keys) if (id !in newIds) { t.put("$name:$id", now); tChanged = true }
         if (tChanged) ed.putString("tombs", t.toString())
         ed.putString(name, arr.toString())
+        if (cambio || tChanged) { ed.putLong("dirtyAt", now); Sincro.pronto(app, espera) }
+    }
+
+    /** Ha cambiado algo de lo que viaja con tu cuenta y no es una lista (categorías, reacciones, objetivos…): a subirlo. */
+    private fun marca() {
+        p.edit().putLong("dirtyAt", System.currentTimeMillis()).apply()
+        Sincro.pronto(app)
     }
 
     /**
      * Mezcla aquí lo subido desde otro dispositivo de tu misma cuenta: de cada ficha se queda la versión
      * más reciente; lo borrado en cualquiera de los dos se borra. Devuelve true si ha cambiado algo.
      */
-    fun mergeRemote(data: String): Boolean {
+    fun mergeRemote(data: String): Boolean = synchronized(cerrojo) { mergeRemoteYa(data).also { if (it) otraGeneracion() } }.also {
+        // Lo que llega de otro dispositivo también se ve en los widgets al momento
+        if (it) Widgets.pedir(app)
+    }
+
+    private fun mergeRemoteYa(data: String): Boolean {
         val r = JSONObject(data)
         val before = syncData()
         // Borrados de los dos lados.
@@ -1017,6 +1097,7 @@ class Store(ctx: Context) {
         set(v) {
             p.edit().putString("kinds", JSONArray().apply { v.forEach { put(kindToJson(it)) } }.toString())
                 .putLong("kindsat", System.currentTimeMillis()).apply()
+            marca()
         }
 
     /** Cuándo cambiaron tus categorías por última vez (para la cuenta compartida entre dispositivos). */
@@ -1049,9 +1130,11 @@ class Store(ctx: Context) {
     fun save(list: List<Game>, kind: Int = 0) {
         val a = JSONArray()
         list.forEach { a.put(gameToJson(it)) }
-        val ed = p.edit()
-        writeList(gk(kind), a, ed)
-        ed.apply()
+        synchronized(cerrojo) {
+            val ed = p.edit()
+            writeList(gk(kind), a, ed)
+            ed.apply()
+        }
         Widgets.pedir(app)
     }
 
@@ -1060,9 +1143,11 @@ class Store(ctx: Context) {
     fun savePlays(list: List<Play>, kind: Int = 0) {
         val a = JSONArray()
         list.forEach { a.put(playToJson(it)) }
-        val ed = p.edit()
-        writeList(pk(kind), a, ed)
-        ed.apply()
+        synchronized(cerrojo) {
+            val ed = p.edit()
+            writeList(pk(kind), a, ed)
+            ed.apply()
+        }
         Widgets.pedir(app)
     }
 
@@ -1073,7 +1158,7 @@ class Store(ctx: Context) {
 
     private fun saveNegra(l: List<Vetado>) {
         val a = JSONArray(); l.forEach { a.put(vetadoToJson(it)) }
-        val ed = p.edit(); writeList("negra", a, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
+        synchronized(cerrojo) { val ed = p.edit(); writeList("negra", a, ed); ed.commit() }
         Negra.poner(l)
     }
 
@@ -1093,7 +1178,7 @@ class Store(ctx: Context) {
 
     fun saveDiario(list: List<Nota>) {
         val a = JSONArray(); list.forEach { a.put(notaToJson(it)) }
-        val ed = p.edit(); writeList("diario", a, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
+        synchronized(cerrojo) { val ed = p.edit(); writeList("diario", a, ed); ed.commit() }
         DiarioHub.notas = list
     }
 
@@ -1105,7 +1190,7 @@ class Store(ctx: Context) {
 
     private fun saveNube(l: List<NubeFile>) {
         val a = JSONArray(); l.forEach { a.put(nubeToJson(it)) }
-        val ed = p.edit(); writeList("nube", a, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
+        synchronized(cerrojo) { val ed = p.edit(); writeList("nube", a, ed); ed.commit() }
     }
 
     fun addNube(add: List<NubeFile>) {
@@ -1133,7 +1218,7 @@ class Store(ctx: Context) {
         val a = maquetasLista(); val out = JSONArray()
         for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") != id) out.put(it) }
         out.put(JSONObject().put("id", id).put("k", key).put("j", json).put("updated", now))
-        val ed = p.edit(); writeList("maquetas", out, ed); ed.putLong("dirtyAt", now); ed.commit()
+        synchronized(cerrojo) { val ed = p.edit(); writeList("maquetas", out, ed); ed.commit() }
         maquetaPrefs().edit().putLong("@at:$key", now).apply()
     }
 
@@ -1143,7 +1228,7 @@ class Store(ctx: Context) {
         if (ids.isEmpty()) return
         val a = maquetasLista(); val out = JSONArray()
         for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") !in ids) out.put(it) }
-        val ed = p.edit(); writeList("maquetas", out, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.commit()
+        synchronized(cerrojo) { val ed = p.edit(); writeList("maquetas", out, ed); ed.commit() }
         val mp = maquetaPrefs().edit(); keys.forEach { mp.remove("@at:$it") }; mp.apply()
     }
 
@@ -1193,7 +1278,8 @@ class Store(ctx: Context) {
         val out = JSONArray()
         for (i in 0 until a.length()) a.optJSONObject(i)?.let { if (it.optLong("id") != id) out.put(it) }
         out.put(JSONObject().put("id", id).put("s", s).put("updated", System.currentTimeMillis()))
-        val ed = p.edit(); writeList("lectura", out, ed); ed.putLong("dirtyAt", System.currentTimeMillis()); ed.apply()
+        // (por dónde vas cambia en cada página: se sube como mucho cada medio minuto mientras lees, y al cerrar el libro)
+        synchronized(cerrojo) { val ed = p.edit(); writeList("lectura", out, ed, espera = 30_000L); ed.apply() }
     }
 
     /** Lleva al lector de este dispositivo lo leído en otro, si es más reciente. */
@@ -1228,9 +1314,11 @@ class Store(ctx: Context) {
     fun saveSagas(list: List<Saga>) {
         val a = JSONArray()
         list.forEach { a.put(sagaToJson(it)) }
-        val ed = p.edit()
-        writeList("sagas", a, ed)
-        ed.apply()
+        synchronized(cerrojo) {
+            val ed = p.edit()
+            writeList("sagas", a, ed)
+            ed.apply()
+        }
     }
 
     /** Todos los datos en un JSON (incluye la clave de SteamGridDB). */
@@ -1361,6 +1449,7 @@ internal val AJUSTES_SKIN = setOf("skin_fondo", "meta_lectura", "skin_escala", "
 fun ajustesCambiados(ctx: Context) {
     val now = System.currentTimeMillis()
     ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).edit().putLong("ajustesAt", now).putLong("dirtyAt", now).apply()
+    Sincro.pronto(ctx)
 }
 
 /** Llegaron ajustes de otro dispositivo: la app los vuelve a leer. */

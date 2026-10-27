@@ -119,6 +119,8 @@ const server = http.createServer((req, res) => {
   req.on('end', () => {
     const raw = Buffer.concat(chunks).toString('utf8');
     const u = new URL(req.url, `http://${req.headers.host}`);
+    // Como Firebase: un POST puede decir qué método es (X-HTTP-Method-Override o ?x-http-method-override=)
+    const method = String(req.headers['x-http-method-override'] || u.searchParams.get('x-http-method-override') || req.method).toUpperCase();
     const path = decodeURIComponent(u.pathname);
     try {
       // -------- Authentication
@@ -176,7 +178,7 @@ const server = http.createServer((req, res) => {
         uid = tk.uid;
       }
       const silent = u.searchParams.get('print') === 'silent';
-      if (req.method === 'GET' && /text\/event-stream/.test(req.headers.accept || '')) {
+      if (method === 'GET' && /text\/event-stream/.test(req.headers.accept || '')) {
         if (!canRead(dbPath, uid)) return send(res, 401, { error: 'Permission denied' });
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
         const l = { path: dbPath, res, uid, token: a };
@@ -185,7 +187,7 @@ const server = http.createServer((req, res) => {
         res.on('close', () => listeners.delete(l));
         return;
       }
-      if (req.method === 'GET') {
+      if (method === 'GET') {
         if (!canRead(dbPath, uid)) return send(res, 401, { error: 'Permission denied' });
         let v = getAt(dbPath);
         if (u.searchParams.get('shallow') === 'true' && v && typeof v === 'object') {
@@ -194,12 +196,12 @@ const server = http.createServer((req, res) => {
         return send(res, 200, v);
       }
       const body = raw ? sv(JSON.parse(raw)) : null;
-      if (req.method === 'PUT') {
+      if (method === 'PUT') {
         if (!canWrite(dbPath, uid, body)) return send(res, 401, { error: 'Permission denied' });
         setAt(dbPath, body); save(); notify(dbPath);
         return silent ? (res.writeHead(204), res.end()) : send(res, 200, body);
       }
-      if (req.method === 'PATCH') {
+      if (method === 'PATCH') {
         for (const k of Object.keys(body || {})) {
           if (!canWrite(`${dbPath}/${k}`, uid, body[k])) return send(res, 401, { error: 'Permission denied' });
         }
@@ -207,12 +209,12 @@ const server = http.createServer((req, res) => {
         save();
         return silent ? (res.writeHead(204), res.end()) : send(res, 200, body);
       }
-      if (req.method === 'DELETE') {
+      if (method === 'DELETE') {
         if (!canWrite(dbPath, uid, null)) return send(res, 401, { error: 'Permission denied' });
         setAt(dbPath, null); save(); notify(dbPath);
         return send(res, 200, null);
       }
-      if (req.method === 'POST') {
+      if (method === 'POST') {
         const id = pushId();
         if (!canWrite(`${dbPath}/${id}`, uid, body)) return send(res, 401, { error: 'Permission denied' });
         setAt(`${dbPath}/${id}`, body); save(); notify(`${dbPath}/${id}`);

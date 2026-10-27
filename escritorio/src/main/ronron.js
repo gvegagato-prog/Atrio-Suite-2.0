@@ -49,7 +49,8 @@ function saveLocal() {
 
 const BASE_LISTS = ['games', 'plays', 'books', 'bplays', 'sagas', 'nube', 'lectura', 'maquetas', 'diario', 'negra'];
 const listNames = (kinds) => BASE_LISTS.concat(...(kinds || []).map((k) => [`items_${k.id}`, `iplays_${k.id}`]));
-const upd = (o) => Number(o && o.updated) || 0;
+// Lo reciente que es una versión: su edición o, si es más nueva, la última vez que cambió en un dispositivo («sv», la pone el móvil)
+const upd = (o) => Math.max(Number(o && o.updated) || 0, Number(o && o.sv) || 0);
 
 function pruneTombs(t) {
   const lim = Date.now() - TOMB_AGE;

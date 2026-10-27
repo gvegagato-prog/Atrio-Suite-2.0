@@ -619,7 +619,8 @@ object NubeSync {
         ).joinToString(" · ").ifBlank { "Todo al día" }
         status = msg
         KDrive.lastMsg = msg
-        if (up > 0) runCatching { if (store.paired) Couple.push(store) }
+        // Lo subido queda apuntado en tu cuenta (para que tus otros dispositivos lo encuentren): sube ya
+        if (up > 0) Couple.pushIfPending(store)
         msg
     }
 

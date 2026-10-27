@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -173,10 +174,12 @@ object Couple {
      * ha puesto el servidor). Antes se mezcla lo que hayan cambiado tus otros dispositivos (otro móvil, Atrio…).
      * El resultado (o el error) queda apuntado para enseñarlo en Ajustes.
      */
-    suspend fun push(store: Store) = withContext(Dispatchers.IO) {
+    suspend fun push(store: Store) = Sincro.candado.withLock { pushYa(store) }
+
+    private suspend fun pushYa(store: Store) = withContext(Dispatchers.IO) {
         if (!store.paired) return@withContext
         try {
-            syncOwn(store)
+            syncOwnYa(store)
             val t0 = System.currentTimeMillis()
             val data = store.syncData()
             val ts = Account.upload(store, data)
@@ -192,14 +195,16 @@ object Couple {
         Unit
     }
 
-    /** Sube si hay algo sin subir que no es una ficha (lo leído en el lector, lo que se subió a tu nube). */
+    /** Sube si hay algo sin subir. */
     suspend fun pushIfPending(store: Store) { if (store.paired && store.pendiente) runCatching { push(store) } }
 
     /**
      * Si otro dispositivo de tu cuenta ha subido algo después de lo último que tienes, lo baja y lo mezcla
      * (de cada ficha se queda la versión más reciente; lo borrado se borra). Devuelve true si han cambiado tus datos.
      */
-    suspend fun syncOwn(store: Store): Boolean = withContext(Dispatchers.IO) {
+    suspend fun syncOwn(store: Store): Boolean = Sincro.candado.withLock { syncOwnYa(store) }
+
+    private suspend fun syncOwnYa(store: Store): Boolean = withContext(Dispatchers.IO) {
         if (!store.paired) return@withContext false
         val changed = Account.mergeOwn(store)
         // Lo jugado en tus PC (Atrio lo sube aparte): para el diario

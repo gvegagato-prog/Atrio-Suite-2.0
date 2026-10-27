@@ -81,6 +81,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+    // Saber si se ve alguna pantalla de la app (para escuchar tu cuenta en directo también desde el lector)
+    implementation("androidx.lifecycle:lifecycle-process:2.8.3")
     // Lector: traducir palabras sin conexión (el idioma se baja una vez) y saber en qué idioma está el texto
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.mlkit:language-id:17.0.6")

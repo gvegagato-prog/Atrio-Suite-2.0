@@ -1,25 +1,21 @@
 package com.gonzalo.gamerate
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.assertEquals
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import java.net.ServerSocket
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
- * La escucha en directo de tu cuenta (Firebase REST en streaming): con un servidor que hace como Firebase
- * (primero un 307 a otro sitio, luego «put», «keep-alive», «patch» y al final «auth_revoked»).
+ * La escucha en directo de tu cuenta (Firebase REST en streaming, la de [Sincro]): con un servidor que hace como Firebase
+ * (primero un 307 a otro sitio, luego «put», «keep-alive», «patch» y al final «auth_revoked», tras el que se vuelve a conectar).
  */
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
 class EnDirectoTest {
-    private val ctx: Context get() = ApplicationProvider.getApplicationContext()
-
-    @Test fun escuchaYAvisa() {
+    @Test fun escuchaSigueEl307YSeReconecta() {
         val sock = ServerSocket(0)
         val port = sock.localPort
         val pedidos = mutableListOf<String>()
@@ -41,15 +37,18 @@ class EnDirectoTest {
                 out.flush(); c.shutdownOutput(); Thread.sleep(50); c.close()
             }
         }.apply { isDaemon = true }.start()
-        val s = Store(ctx)
-        s.dbUrl = "http://127.0.0.1:$port"
-        s.accUid = "u1"
-        s.accToken = "t"; s.accExp = System.currentTimeMillis() + 3_600_000
-        var avisos = 0
-        val why = Account.listen(s, false) { avisos++ }
-        sock.close()
-        assertEquals("auth_revoked", why)
-        assertEquals("un aviso por cada «put» o «patch» (no por el keep-alive)", 2, avisos)
-        assertTrue("pide el stream con su cabecera y sigue el 307: $pedidos", pedidos.size >= 2 && pedidos.all { it.contains("text/event-stream") } && pedidos.last().contains("/otro/"))
+        val avisos = mutableListOf<String>()
+        val dos = CountDownLatch(3)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val f = FbStream("prueba", { "http://127.0.0.1:$port/users/u1/stamps.json?auth=t" }, { t, path ->
+            synchronized(avisos) { avisos += "$path=${t?.keys()?.asSequence()?.sorted()?.joinToString()}" }
+            dos.countDown()
+        })
+        f.start(scope)
+        // put + patch de la primera conexión y, tras «auth_revoked», el put de la segunda
+        assertTrue("llegan los cambios y se reconecta: $avisos", dos.await(10, TimeUnit.SECONDS))
+        f.stop(); scope.cancel(); sock.close()
+        assertTrue("el patch se junta con lo que había: $avisos", avisos[1] == "/=movil, tablet")
+        assertTrue("pide el stream con su cabecera y sigue el 307: $pedidos", pedidos.size >= 2 && pedidos.all { it.contains("text/event-stream") } && pedidos.any { it.contains("/otro/") })
     }
 }
