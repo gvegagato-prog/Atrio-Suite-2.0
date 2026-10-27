@@ -39,6 +39,9 @@ data class Tones(
     val darkBg: Boolean get() = Color(paper).let { 0.299f * it.red + 0.587f * it.green + 0.114f * it.blue } < 0.5f
 }
 
+/** El color de acento de unos tonos. */
+fun Tones.cGeneral(): Color = Color(general)
+
 /** Una paleta: nombre, de dónde viene (para agruparlas) y sus dos versiones. */
 data class Palette(val id: String, val name: String, val group: String, val light: Tones, val dark: Tones)
 
@@ -330,6 +333,35 @@ val ACCENT_COLORS = listOf(
 fun acentoDe(e: Edicion, id: String?): Pair<Long, Long> =
     ACCENT_COLORS.firstOrNull { it.id == id }?.let { it.light to it.dark } ?: ((e.paleta.light.general or 0xFF000000) to (e.paleta.dark.general or 0xFF000000))
 
+/**
+ * Fondos de color para toda la app (Apariencia → Fondo): colores hondos y sobrios, con fuerza, en lugar de solo papel claro u
+ * oscuro. Cada uno trae sus tonos completos (fondo, tarjetas, líneas, tinta y un acento propio que va con él) y fija el
+ * modo claro u oscuro. El acento que elijas en «Acento» manda sobre el suyo (salvo el rojo de siempre, que sobre un fondo
+ * rojizo no se vería).
+ */
+class Fondo(val id: String, val name: String, val oscuro: Boolean, val tones: Tones)
+
+val FONDOS: List<Fondo> = listOf(
+    // Granate: vino hondo, con tinta crema y oro viejo
+    Fondo("granate", "Granate", true, t(0x5A1424, 0x6C1C30, 0xF8EDE8, 0xF0C26A, 0xF8EDE8, 0xDDBFC3, 0xB88A92, 0xF0C26A, 0xE9B94F,
+        sand = 0x7A2639, line = 0x8F3D52, edge = 0xA85A6E, muted = 0xD3AAB2)),
+    Fondo("bosque", "Verde bosque", true, t(0x12382B, 0x1B4837, 0xEDF3E8, 0xE2C86C, 0xEDF3E8, 0xBFD2BE, 0x8FB09A, 0xE2C86C, 0xDDBF58,
+        sand = 0x25573F, line = 0x37705A, edge = 0x4F8A73, muted = 0xA9C7B3)),
+    Fondo("marino", "Azul marino", true, t(0x10264A, 0x193560, 0xE9EEF7, 0xE6BA5E, 0xE9EEF7, 0xBCC9E0, 0x8DA2C6, 0xE6BA5E, 0xE0B050,
+        sand = 0x234474, line = 0x38598C, edge = 0x5273A6, muted = 0xA3B4D2)),
+    Fondo("petroleo", "Petróleo", true, t(0x0F3D44, 0x174F58, 0xE7F2F1, 0xF2C46D, 0xE7F2F1, 0xB5D3D2, 0x86B3B3, 0xF2C46D, 0xEDBB5E,
+        sand = 0x1F6370, line = 0x317B86, edge = 0x4C98A2, muted = 0x9CC6C6)),
+    Fondo("berenjena", "Berenjena", true, t(0x3C1A4A, 0x4D235F, 0xF6EAF4, 0xF2A9C2, 0xF6EAF4, 0xD6B8D8, 0xA98AB4, 0xF2A9C2, 0xEDB66C,
+        sand = 0x5E2E75, line = 0x74428B, edge = 0x8E5DA5, muted = 0xC7A8CE)),
+    Fondo("chocolate", "Chocolate", true, t(0x3A2218, 0x4A2E22, 0xF4E8DB, 0xE9A860, 0xF4E8DB, 0xD3BBA3, 0xA88B72, 0xE9A860, 0xE2A04E,
+        sand = 0x5A3A2B, line = 0x704B3A, edge = 0x8B6650, muted = 0xC2A78E)),
+    Fondo("pizarra", "Pizarra", true, t(0x232D38, 0x2D3A48, 0xE8EDF2, 0xE9B867, 0xE8EDF2, 0xBAC5D1, 0x8A9AAB, 0xE9B867, 0xE2B05A,
+        sand = 0x3B4B5D, line = 0x4F6176, edge = 0x6A7F96, muted = 0xA2B0BF)),
+    // El único claro: mostaza hondo, con tinta casi negra
+    Fondo("mostaza", "Mostaza", false, t(0xD9A53A, 0xE6B954, 0x2A1E08, 0x6E1424, 0x2A1E08, 0x5A4412, 0x8A6A1E, 0x6E1424, 0x6E1424,
+        sand = 0xCB962A, line = 0xB98521, edge = 0x8F6713, muted = 0x47340B)),
+)
+
 /** Tamaños del texto. */
 val TEXT_SCALES = listOf(0.9f to "Pequeño", 1f to "Normal", 1.12f to "Grande", 1.25f to "Enorme")
 
@@ -350,6 +382,10 @@ object Skin {
     var accent by mutableStateOf(0L)
     /** Acento de la revista (uno de [ACCENT_COLORS], o «edicion»: el de la edición). */
     var accentId by mutableStateOf("edicion")
+    /** Fondo de color elegido (uno de [FONDOS]; "" = papel claro u oscuro, según el tema). */
+    var fondoId by mutableStateOf("")
+    /** El fondo que se ve ahora: el elegido, salvo en lo de tu pareja (que va con el tema contrario, sin fondo de color). */
+    val fondoActual: Fondo? get() = if (revista && !Mode.partnerShown) FONDOS.firstOrNull { it.id == fondoId } else null
     /** Edición de la revista (Ediciones.kt): su papel, sus letras, su cabecera… */
     var edicion by mutableStateOf("atrio")
 
@@ -384,11 +420,13 @@ object Skin {
 
     /** Tonos que se ven ahora (según el modo claro u oscuro). */
     val tones: Tones get() = override ?: base.let { b ->
-        if (revista) ACCENT_COLORS.firstOrNull { it.id == accentId }?.let { a -> b.copy(general = if (Mode.dark) a.dark else a.light) } ?: b
+        // Con un fondo de color, el acento por defecto («edición» o el rojo de siempre) es el suyo; los demás, los tuyos
+        if (revista && fondoActual != null && (accentId == "edicion" || accentId == "rojo")) b
+        else if (revista) ACCENT_COLORS.firstOrNull { it.id == accentId }?.let { a -> b.copy(general = if (Mode.dark) a.dark else a.light) } ?: b
         else if (accent != 0L) b.copy(general = accent) else b
     }
     /** Tonos de la paleta elegida, sin camaleón. */
-    val base: Tones get() = if (Mode.dark) palette.dark else palette.light
+    val base: Tones get() = fondoActual?.tones ?: if (Mode.dark) palette.dark else palette.light
 
     private val provider = GoogleFont.Provider(
         providerAuthority = "com.google.android.gms.fonts",
@@ -447,6 +485,7 @@ object Skin {
         chameleon = p.getBoolean("skin_chameleon", true)
         motion = p.getInt("skin_motion", 0)
         accent = p.getLong("skin_accent", 0L)
+        fondoId = p.getString("skin_fondo", "")?.takeIf { id -> FONDOS.any { it.id == id } } ?: ""
         accentId = p.getString("skin_accent_id", "edicion")?.takeIf { id -> id == "edicion" || ACCENT_COLORS.any { it.id == id } } ?: "edicion"
         edicion = Ediciones.porId(p.getString("skin_edicion", "atrio")).id
         covers = p.getInt("skin_covers", 0)
@@ -476,7 +515,7 @@ object Skin {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
             .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
-            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putString("skin_edicion", edicion).putInt("skin_covers", covers).putBoolean("skin_listcovers", listCovers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
+            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putString("skin_fondo", fondoId).putString("skin_edicion", edicion).putInt("skin_covers", covers).putBoolean("skin_listcovers", listCovers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
         ajustesCambiados(ctx)
         Widgets.pedir(ctx)
     }

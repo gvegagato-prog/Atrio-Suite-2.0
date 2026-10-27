@@ -1355,7 +1355,7 @@ class Store(ctx: Context) {
 }
 
 /** Las preferencias de apariencia que viajan con tu cuenta (las de esta pantalla, como el tamaño de letra, no). */
-internal val AJUSTES_SKIN = setOf("meta_lectura", "skin_escala", "theme31", "skin_accent", "skin_accent_id", "skin_edicion", "skin_listcovers", "skin_motion", "skin_shell", "skin_covers", "skin_docklabels")
+internal val AJUSTES_SKIN = setOf("skin_fondo", "meta_lectura", "skin_escala", "theme31", "skin_accent", "skin_accent_id", "skin_edicion", "skin_listcovers", "skin_motion", "skin_shell", "skin_covers", "skin_docklabels")
 
 /** Cambió un ajuste que viaja con tu cuenta: se apunta la hora y queda pendiente de subir. */
 fun ajustesCambiados(ctx: Context) {

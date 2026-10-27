@@ -107,6 +107,35 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
         }
         Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
 
+        // Fondo de color para toda la app
+        SectionTitle("Fondo")
+        Text("Colores hondos y sobrios para toda la app, en lugar de papel claro u oscuro. «Papel» vuelve al tema de arriba.", color = Muted, fontSize = 13.sp)
+        Spacer(Modifier.height(12.dp))
+        listOf(null as Fondo?) .plus(FONDOS).chunked(4).forEach { row ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { f ->
+                    val on = Skin.fondoId == (f?.id ?: "")
+                    Column(
+                        Modifier.weight(1f).clickable { if (!on) withReveal { Skin.fondoId = f?.id ?: ""; Skin.save(ctx) } },
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val papel = f?.tones?.cPaper ?: Color(if (Mode.themeMode == 1) 0xFFF3EEE4 else 0xFF141210)
+                        Box(
+                            Modifier.fillMaxWidth().aspectRatio(1f).background(papel).border(if (on) 3.dp else 1.dp, if (on) ColGeneral else Line),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Aa", color = f?.tones?.cInk ?: Charcoal, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                            if (on) Text("✓", color = f?.tones?.cInk ?: Charcoal, fontWeight = FontWeight.Black, fontSize = 13.sp, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
+                        }
+                        Text((f?.name ?: "Papel").uppercase(), color = if (on) Charcoal else Muted, fontSize = 9.sp, fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1)
+                    }
+                }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+
         // Tamaño del texto de toda la app
         SectionTitle("Tamaño del texto")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Bottom) {
