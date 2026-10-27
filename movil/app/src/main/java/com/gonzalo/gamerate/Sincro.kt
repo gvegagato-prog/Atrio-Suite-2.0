@@ -202,7 +202,8 @@ object Sincro {
             scope.launch { runCatching { HorasPc.bajar(c, st, uid, ya = true) } }
         })
         // Tu pareja: lo que valora, lee o escribe aparece al momento (si te deja verlo)
-        if (pareja.isNotBlank()) escuchas += FbStream("pareja", { f -> url(st, "/users/$pareja/stamps", f) }, { _, _ -> parejaPronto() })
+        // (si aún no te deja verlo, Firebase dice «sin permiso»: no es cosa de tu sesión, así que no se renueva por eso)
+        if (pareja.isNotBlank()) escuchas += FbStream("pareja", { _ -> url(st, "/users/$pareja/stamps", false) }, { _, _ -> parejaPronto() })
         escuchas.forEach { it.start(scope) }
     }
 

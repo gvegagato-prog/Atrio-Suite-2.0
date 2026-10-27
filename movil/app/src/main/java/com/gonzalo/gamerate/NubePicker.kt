@@ -83,7 +83,7 @@ fun NubePicker(nombre: String, onPick: (String) -> Unit, onDismiss: () -> Unit) 
         Vista(carpetas, grupos)
     }
 
-    fun abre(id: Long, n: String, nuevaRuta: List<Pair<Long, String>>) {
+    fun abre(id: Long, nuevaRuta: List<Pair<Long, String>>) {
         vista = null; msg = ""; resultados = null
         scope.launch {
             try { vista = lee(id); ruta = nuevaRuta } catch (e: Exception) { msg = e.message ?: "No se pudo abrir"; vista = Vista(emptyList(), emptyList()) }
@@ -127,7 +127,7 @@ fun NubePicker(nombre: String, onPick: (String) -> Unit, onDismiss: () -> Unit) 
         BackHandler {
             when {
                 resultados != null -> { resultados = null; msg = "" }
-                ruta.size > 1 -> { val r = ruta.dropLast(1); abre(r.last().first, r.last().second, r) }
+                ruta.size > 1 -> { val r = ruta.dropLast(1); abre(r.last().first, r) }
                 else -> onDismiss()
             }
         }
@@ -149,9 +149,9 @@ fun NubePicker(nombre: String, onPick: (String) -> Unit, onDismiss: () -> Unit) 
                 if (r != null) Text("VER CARPETA", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
                     modifier = Modifier.clickable { resultados = null; msg = "" }.padding(8.dp))
                 else if (ruta.size > 1) Text("← SUBIR", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
-                    modifier = Modifier.clickable { val x = ruta.dropLast(1); abre(x.last().first, x.last().second, x) }.padding(8.dp))
+                    modifier = Modifier.clickable { val x = ruta.dropLast(1); abre(x.last().first, x) }.padding(8.dp))
                 else Text("↑ MI CARPETA", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp,
-                    modifier = Modifier.clickable { scope.launch { runCatching { withContext(Dispatchers.IO) { KDrive.home(ctx) } }.getOrNull()?.let { h -> abre(h, "Mi carpeta", listOf(h to "Mi carpeta")) } } }.padding(8.dp))
+                    modifier = Modifier.clickable { scope.launch { runCatching { withContext(Dispatchers.IO) { KDrive.home(ctx) } }.getOrNull()?.let { h -> abre(h, listOf(h to "Mi carpeta")) } } }.padding(8.dp))
             }
             if (msg.isNotEmpty()) Text(msg, color = Muted, fontSize = 13.sp, fontStyle = if (bajando) FontStyle.Italic else FontStyle.Normal, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
             val r = resultados
@@ -165,7 +165,7 @@ fun NubePicker(nombre: String, onPick: (String) -> Unit, onDismiss: () -> Unit) 
                     if (r != null) items(r, key = { "r${it.id}" }) { e -> Miniatura(e, e.path.substringAfter("Mi carpeta/").ifBlank { e.path }, bajando) { usa(e) } }
                     else if (v != null) {
                         items(v.carpetas, key = { "d${it.id}" }, span = { GridItemSpan(maxLineSpan) }) { d ->
-                            Text("▸  ${d.name}", fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth().clickable { abre(d.id, d.name, ruta + (d.id to d.name)) }.padding(vertical = 10.dp, horizontal = 6.dp))
+                            Text("▸  ${d.name}", fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth().clickable { abre(d.id, ruta + (d.id to d.name)) }.padding(vertical = 10.dp, horizontal = 6.dp))
                         }
                         for ((titulo, imgs) in v.grupos) {
                             if (titulo.isNotEmpty()) item(key = "t$titulo", span = { GridItemSpan(maxLineSpan) }) {

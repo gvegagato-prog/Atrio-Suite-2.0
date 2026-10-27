@@ -41,9 +41,9 @@ class NombreTest {
         var guardado: Game? = null
         rule.setContent {
             MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
-                Surface(Modifier.fillMaxSize(), color = Paper) {
+                Surface(Modifier.fillMaxSize(), color = Paper) { TextoAireado {
                     EditScreen(Game(77, "c8oiling", "", 85, creator = "I Eat Tomatoes"), false, BOOKS, null, null, {}, { guardado = it }, {}, { _, _ -> }, { _, _ -> }, null, editing = true) {}
-                }
+                } }
             }
         }
         rule.onNode(hasText("c8oiling") and hasSetTextAction()).performTextReplacement("Coiling Dragon")
@@ -59,9 +59,9 @@ class NombreTest {
         var guardado: Game? = null
         rule.setContent {
             MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
-                Surface(Modifier.fillMaxSize(), color = Paper) {
+                Surface(Modifier.fillMaxSize(), color = Paper) { TextoAireado {
                     EditScreen(Game(77, "c8oiling", "", 85), false, BOOKS, null, null, {}, { guardado = it }, {}, { _, _ -> }, { _, _ -> }, null, editing = true) {}
-                }
+                } }
             }
         }
         rule.onNode(hasText("c8oiling") and hasSetTextAction()).performTextReplacement("   ")
@@ -75,11 +75,11 @@ class NombreTest {
         val cambios = ArrayList<Play>()
         rule.setContent {
             MaterialTheme(colorScheme = appColors(), typography = AppTypography) {
-                Surface(Modifier.fillMaxSize(), color = Paper) {
+                Surface(Modifier.fillMaxSize(), color = Paper) { TextoAireado {
                     PlayDetailScreen(BOOKS, null, Play(78, "c8oiling", "", "", 1, emptyList(), start = today()), startEditing = true,
                         myReact = null, onReact = {}, onChange = { cambios += it }, onNote = { _, _ -> }, onArt = { _, _ -> }, onFinish = {},
                         onRecommend = null, onDelete = {}) {}
-                }
+                } }
             }
         }
         val campo = rule.onNode(hasText("c8oiling") and hasSetTextAction())

@@ -81,7 +81,6 @@ fun DuelosScreen(books: List<Game>, onSave: (List<Game>) -> Unit, onBack: () -> 
     var duelos by remember { mutableStateOf(estado.duelos) }
     var saltados by remember { mutableStateOf(estado.saltados) }
     var pool by remember { mutableStateOf(estado.pool) }
-    var avisoFin by remember { mutableStateOf("") }
     var hecho by remember { mutableStateOf(0) }   // lo aplicado, para el mensaje
 
     val porId = remember(books) { books.associateBy { it.id } }

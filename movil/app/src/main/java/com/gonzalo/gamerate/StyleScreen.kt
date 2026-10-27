@@ -127,8 +127,10 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
                             Text("Aa", color = f?.tones?.cInk ?: Charcoal, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                             if (on) Text("✓", color = f?.tones?.cInk ?: Charcoal, fontWeight = FontWeight.Black, fontSize = 13.sp, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
                         }
+                        // (dos líneas si hace falta: «Papel de verdad» no cabía y salía cortado)
                         Text((f?.name ?: "Papel").uppercase(), color = if (on) Charcoal else Muted, fontSize = 9.sp, fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1)
+                            letterSpacing = 1.sp, lineHeight = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(top = 6.dp), maxLines = 2)
                     }
                 }
                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }

@@ -106,6 +106,8 @@ object Actualizador {
     // ---- Cuándo se mira ----
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     private var bucle: kotlinx.coroutines.Job? = null
+    /** Lo que se espera tras dejar de verse la app antes de instalar (por si vuelves enseguida). */
+    private const val DESPUES_DE_SALIR = 45_000L
     @Volatile private var iniciado = false
 
     /**
@@ -123,6 +125,7 @@ object Actualizador {
                     when (ev) {
                         androidx.lifecycle.Lifecycle.Event.ON_START -> {
                             primerPlano = true
+                            runCatching { androidx.work.WorkManager.getInstance(app).cancelUniqueWork("actualizar-al-salir") }
                             quitaAviso(app)
                             bucle?.cancel()
                             bucle = scope.launch { while (true) { runCatching { comprueba(app) }; kotlinx.coroutines.delay(60_000) } }
@@ -130,7 +133,10 @@ object Actualizador {
                         androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
                             primerPlano = false
                             bucle?.cancel(); bucle = null
-                            runCatching { alSalir(app) }
+                            // Se espera un poco: si solo has ido a la galería o al selector de archivos (otra app encima),
+                            // al volver se cancela; instalar ahí cerraría Atrio a mitad de elegir una foto. (Con WorkManager y
+                            // no con una espera aquí: Android congela las apps que no se ven, y su tarea llega igual.)
+                            if (nueva?.silenciosa == true) programaAlSalir(app)
                         }
                         else -> {}
                     }
@@ -138,6 +144,15 @@ object Actualizador {
             }
         }
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) pon.run() else android.os.Handler(android.os.Looper.getMainLooper()).post(pon)
+    }
+
+    /** La instalación sin preguntar, un poco después de dejar de verse la app (se cancela si vuelves antes). */
+    private fun programaAlSalir(ctx: Context) = runCatching {
+        val req = androidx.work.OneTimeWorkRequestBuilder<ActualizadorWorker>()
+            .setInitialDelay(DESPUES_DE_SALIR, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .setConstraints(androidx.work.Constraints.Builder().setRequiredNetworkType(androidx.work.NetworkType.CONNECTED).build())
+            .build()
+        androidx.work.WorkManager.getInstance(ctx).enqueueUniqueWork("actualizar-al-salir", androidx.work.ExistingWorkPolicy.REPLACE, req)
     }
 
     /** Con la app cerrada: cada 4 horas (con red) se mira y, si hay una nueva, se baja y se instala sola. */
@@ -177,6 +192,8 @@ object Actualizador {
         if (!ctx.packageManager.canRequestPackageInstalls()) faltaPermiso = true
         val silenciosa = puedeSilenciosa(ctx)
         nueva = Nueva(ult.first, code, f, silenciosa)
+        // Si mientras se bajaba dejaste la app, se instala en cuanto pase un momento
+        if (silenciosa && !primerPlano && iniciado) programaAlSalir(ctx)
         anota(ctx, "lista la ${ult.third.joinToString(".")}" + if (silenciosa) " (se instala al salir de la app)" else " (te pregunto para instalarla)")
     }
 
@@ -264,7 +281,8 @@ class ActualizadorWorker(ctx: Context, p: androidx.work.WorkerParameters) : andr
     override suspend fun doWork(): Result {
         val c = applicationContext
         if (!Actualizador.activo(c) || !KDrive.on(c)) return Result.success()
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { Actualizador.comprueba(c) } }
+        // (si ya está bajada y lista, no hace falta volver a mirar)
+        if (Actualizador.nueva == null) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { Actualizador.comprueba(c) } }
         // (si justo la estás usando, espera a que salgas)
         runCatching { Actualizador.alSalir(c) }
         return Result.success()

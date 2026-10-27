@@ -72,10 +72,29 @@ import java.time.LocalDate
 private fun now() = System.currentTimeMillis()
 
 @OptIn(ExperimentalFoundationApi::class)
+/**
+ * Toda la app. Los textos van algo más aireados: interlineado de 1,45 veces su tamaño (relativo, así vale para cualquier
+ * letra). Se pone en el estilo por defecto de los textos y no en el tema, porque Material mezcla los estilos del tema al
+ * animar (las etiquetas de los campos) y no puede mezclar un interlineado relativo con uno fijo.
+ */
 @Composable
 fun App(
     store: Store, openId: Long, openPartner: Boolean, openGo: String,
     shareUrl: String = "", shareTitle: String = "", onShareHandled: () -> Unit = {}, onOpenHandled: () -> Unit
+) = TextoAireado { AppContenido(store, openId, openPartner, openGo, shareUrl, shareTitle, onShareHandled, onOpenHandled) }
+
+/** El estilo por defecto de los textos, con el interlineado aireado. */
+@Composable
+fun TextoAireado(content: @Composable () -> Unit) =
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(
+            lineHeight = androidx.compose.ui.unit.TextUnit(1.45f, androidx.compose.ui.unit.TextUnitType.Em)),
+        content = content)
+
+@Composable
+private fun AppContenido(
+    store: Store, openId: Long, openPartner: Boolean, openGo: String,
+    shareUrl: String, shareTitle: String, onShareHandled: () -> Unit, onOpenHandled: () -> Unit
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1299,17 +1318,7 @@ fun App(
                 )
 
                 Screen.Settings -> SettingsScreen(
-                    key = key, look = Mode.look,
-                    onLook = { l -> Mode.look = l; store.look = l },
-                    themeMode = Mode.themeMode,
-                    onTheme = { t -> store.themeMode = t; withReveal { Mode.themeMode = t } },
-                    goalGames = goalG, goalBooks = goalB,
-                    onGoal = { k, v ->
-                        val nv = v.coerceIn(0, 999)
-                        store.setGoal(k, year, nv)
-                        if (k == 1) goalB = nv else goalG = nv
-                        syncTick++
-                    },
+                    key = key,
                     onSaveKey = { store.key = it; key = store.key; say("Clave guardada") },
                     rawgKey = store.rawgKey, igdbId = store.igdbId, igdbSecret = store.igdbSecret,
                     onSaveServices = { r, id, sec -> store.rawgKey = r; store.igdbId = id; store.igdbSecret = sec; say("Claves guardadas") },
@@ -1338,12 +1347,6 @@ fun App(
                         undoImport = false
                         say("Importación deshecha")
                     }) else null,
-                    couple = {
-                        CoupleSettings(store, { partner = it }) {
-                            reloadAll()
-                            undoImport = store.hasUndoImport
-                        }
-                    },
                     importMsg = importMsg,
                     onMassScores = { screen = Screen.MassScore(Screen.Settings) },
                     onDuelos = { screen = Screen.Duelos(Screen.Settings) },
@@ -1689,9 +1692,7 @@ fun App(
 
         val gs = guideSheet
         if (gs != null) {
-            PcGameSheet(gs, Suite.target() != null, onPlay = {
-                scope.launch { val (_, m) = Suite.send("launch", org.json.JSONObject().put("key", gs.key)); say(m) }
-            }, onDismiss = { guideSheet = null }, say = { say(it) })
+            PcGameSheet(gs, Suite.target() != null, onDismiss = { guideSheet = null }, say = { say(it) })
         }
         if (shareUrl.isNotEmpty()) {
             if (!store.paired) { LaunchedEffect(shareUrl) { say("Para guardar webs en tus juegos del PC, entra antes en tu cuenta"); onShareHandled() } }

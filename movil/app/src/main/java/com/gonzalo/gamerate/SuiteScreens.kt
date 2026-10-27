@@ -620,10 +620,7 @@ fun SuiteScreen(
     }
     val sh = sheet
     if (sh != null) {
-        PcGameSheet(sh, pc != null, onPlay = {
-            busyKey = sh.key
-            act("launch", JSONObject().put("key", sh.key)) { _, m -> say(m); busyKey = null }
-        }, onDismiss = { sheet = null }, say = say)
+        PcGameSheet(sh, pc != null, onDismiss = { sheet = null }, say = say)
     }
     val c = confirm
     if (c != null) {
@@ -678,7 +675,7 @@ fun openUrl(ctx: Context, url: String) {
  * y adjuntarle una web nueva.
  */
 @Composable
-fun PcGameSheet(g: PcGame, pcOnline: Boolean, onPlay: () -> Unit, onDismiss: () -> Unit, say: (String) -> Unit) {
+fun PcGameSheet(g: PcGame, pcOnline: Boolean, onDismiss: () -> Unit, say: (String) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var adding by remember { mutableStateOf(false) }

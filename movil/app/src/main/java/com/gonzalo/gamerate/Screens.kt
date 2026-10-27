@@ -328,15 +328,13 @@ private fun SettingsSection(title: String, delay: Int, content: @Composable Colu
 
 @Composable
 fun SettingsScreen(
-    key: String, look: Look, onLook: (Look) -> Unit, themeMode: Int, onTheme: (Int) -> Unit,
-    goalGames: Int, goalBooks: Int, onGoal: (Int, Int) -> Unit,
+    key: String,
     onSaveKey: (String) -> Unit, onExport: () -> Unit, onImport: () -> Unit, onUndoImport: (() -> Unit)?,
     rawgKey: String, igdbId: String, igdbSecret: String, onSaveServices: (String, String, String) -> Unit,
     tmdbKey: String = "", onSaveTmdb: (String) -> Unit = {},
     studioMsg: String, onFillStudios: () -> Unit,
     driveName: String?, driveInfo: String, onDriveLink: () -> Unit, onDriveRestore: () -> Unit,
     onDriveNow: () -> Unit, onDriveUnlink: () -> Unit,
-    couple: @Composable () -> Unit,
     importMsg: String = "", onGoodreads: () -> Unit = {}, onBookmory: () -> Unit = {}, onMassScores: () -> Unit = {}, onDuelos: () -> Unit = {},
     steamKey: String = "", steamUser: String = "", onSteam: (String, String) -> Unit = { _, _ -> },
     /** Tu nube (kDrive): libros, fotos y capturas en todos tus dispositivos. */
@@ -351,7 +349,6 @@ fun SettingsScreen(
     var rk by remember { mutableStateOf(rawgKey) }
     var tk by remember { mutableStateOf(tmdbKey) }
     var confirm by remember { mutableStateOf(false) }
-    val year = LocalDate.now().year
     Column(Modifier.fillMaxSize().imePadding().wrapContentWidth().widthIn(max = 760.dp).statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
         if (Skin.revista) TopBar("Perfil", onBack, "Ajustes")
         else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
