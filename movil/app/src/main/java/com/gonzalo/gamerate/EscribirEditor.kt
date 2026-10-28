@@ -110,9 +110,9 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
     var titulo by remember(eid) { mutableStateOf(escena.s("titulo")) }
 
     DisposableEffect(eid) {
-        EscribirHub.enEditor = true
+        EscribirHub.editores++
         onDispose {
-            EscribirHub.enEditor = false
+            EscribirHub.editores = (EscribirHub.editores - 1).coerceAtLeast(0)
             e.escribe(eid, ultimo)
             e.instantanea(eid, ultimo)
             Escritos.pronto(ctx)

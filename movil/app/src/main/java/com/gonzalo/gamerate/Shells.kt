@@ -310,6 +310,9 @@ private fun RevistaHome(m: ShellModel) {
             }
         }
 
+        // Escribiendo: tu novela, lo de hoy y seguir con la última escena
+        if (!m.readOnly && m.write != null) RevistaEscribiendo(m.write)
+
         // Próximos episodios de las series que ves o tienes en lista (los de las dos próximas semanas)
         Box(Modifier.llega(4)) { RevistaProximos(m) }
 
@@ -341,6 +344,30 @@ private fun RevistaHome(m: ShellModel) {
         Spacer(Modifier.height(40.dp))
         Text(Ediciones.actual.pie, color = Grey2, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 13.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** «Escribiendo» en la portada: la obra en la que estás, lo escrito hoy y seguir con la última escena. */
+@Composable
+private fun RevistaEscribiendo(irAEscribir: () -> Unit) {
+    val ctx = LocalContext.current
+    val e = remember { Escritos.get(ctx) }
+    val ver = e.version
+    val s = remember(ver) { e.ultimaEscena() } ?: return
+    val obra = e.get(s.pid) ?: return
+    val hoy = remember(ver) { e.escritas(Escritos.hoy()) }
+    val racha = remember(ver) { e.racha() }
+    val total = remember(ver, obra.id) { e.palabrasObra(obra.id) }
+    val meta = obra.i("meta")
+    Column(Modifier.fillMaxWidth()) {
+        Spacer(Modifier.height(38.dp))
+        RevSection("Escribiendo")
+        FitTitle(obra.s("titulo").ifBlank { "Sin título" }, 30.sp, 33.sp, color = Ink2, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().press(haptic = false, onClick = irAEscribir))
+        Text(listOfNotNull(obra.s("genero").ifBlank { null }, cifraE(total) + (if (meta > 0) " de ${cifraE(meta)} palabras" else " palabras"), if (hoy > 0) "hoy ${cifraE(hoy)}" else null, if (racha > 1) "$racha días seguidos" else null).joinToString(" · "),
+            color = Grey2, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        if (meta > 0) Box(Modifier.padding(top = 8.dp)) { Bar((total.toFloat() / meta).coerceIn(0f, 1f), Red2, height = 3.dp) }
+        Text("Seguir con «${s.s("titulo").ifBlank { "Sin título" }}»\u00A0→", color = Red2, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+            modifier = Modifier.padding(top = 10.dp).press { EscribirHub.abrir = s.id to System.currentTimeMillis(); irAEscribir() })
     }
 }
 

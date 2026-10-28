@@ -76,6 +76,10 @@ fun EscribirScreen() {
     // Una obra borrada desde dentro: se vuelve a la biblioteca
     LaunchedEffect(EscribirHub.obraBorrada) { if (EscribirHub.obraBorrada.isNotEmpty() && EscribirHub.obraBorrada == obraId) { obraId = null; escenaId = null } }
     if (obraId != null && e.get(obraId!!) == null) { obraId = null; escenaId = null }
+    // Desde la portada: «Seguir con esta escena»
+    // (la pantalla puede componerse dos veces durante la transición: cada una la aplica; caduca a los pocos segundos)
+    val pide = EscribirHub.abrir
+    LaunchedEffect(pide) { if (pide != null && System.currentTimeMillis() - pide.second < 4000) e.get(pide.first)?.let { obraId = it.pid; escenaId = it.id } }
     BackHandler(enabled = obraId != null && escenaId == null) { obraId = null }
     VigilaSprint(e, ctx)
     when {
@@ -123,6 +127,8 @@ private fun BibliotecaEscribir(e: Escritos, ver: Int, abrirObra: (String) -> Uni
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(24.dp))) {
             item("hoy") { ResumenHoy(e, palabrasHoy, diaria, racha, total, ver) }
+            val ultima = e.ultimaEscena()
+            if (ultima != null) item("seguir") { SigueEscribiendo(e, ultima) { abrirEscena(ultima.id) } }
             if (aviso.isNotEmpty()) item("aviso") { Text(aviso, color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)) }
             item("sync") { EstadoNube(e, ver) }
             if (activas.isEmpty()) item("vacio") {
@@ -149,6 +155,19 @@ private fun BibliotecaEscribir(e: Escritos, ver: Int, abrirObra: (String) -> Uni
     }
     if (nueva) ObraDialogo(e, null, onCerrar = { nueva = false }, onCreada = { abrirObra(it.id) })
     if (papelera) PapeleraEscribir(e, onCerrar = { papelera = false })
+}
+
+/** La última escena que tocaste, para seguir donde lo dejaste. */
+@Composable
+fun SigueEscribiendo(e: Escritos, s: Doc, abrir: () -> Unit) {
+    val obra = e.get(s.pid)
+    val linea = s.s("texto").lineSequence().map { it.trim() }.lastOrNull { it.isNotBlank() && !it.startsWith("#") && it != "***" }.orEmpty()
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp).press(haptic = false, onClick = abrir).clip(shp(16.dp)).background(Crudo).border(1.dp, Line, shp(16.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("SIGUE ESCRIBIENDO", color = ColGeneral, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+        Text(s.s("titulo").ifBlank { "Sin título" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 25.sp, color = Charcoal, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (linea.isNotEmpty()) Text("…" + linea.takeLast(140), fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 15.sp, lineHeight = 21.sp, color = Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(listOfNotNull(obra?.s("titulo")?.ifBlank { null }, "${cifraE(s.i("palabras"))} palabras", "editada ${haceE(s.u)}").joinToString(" · ") + "  ·  Abrir →", color = Muted, fontSize = 12.sp)
+    }
 }
 
 @Composable
@@ -265,12 +284,16 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
 private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit) {
     val pid = obra.id
     var esquema by rememberSaveable { mutableStateOf(false) }
+    var etiqueta by rememberSaveable(pid) { mutableStateOf("") }
     var capDlg by remember { mutableStateOf<Doc?>(null) }
     var capNuevo by remember { mutableStateOf(false) }
     val caps = remember(ver, pid) { e.capitulos(pid) }
     val palabras = remember(ver, pid) { e.palabrasObra(pid) }
     val meta = obra.i("meta")
     val estados = remember(ver, pid) { e.escenasDe(pid).groupingBy { it.i("estado") }.eachCount() }
+    val etiquetas = remember(ver, pid) { e.escenasDe(pid).flatMap { it.lista("etq") }.map { it.trim() }.filter { it.isNotEmpty() }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key } }
+    if (etiqueta.isNotEmpty() && etiqueta !in etiquetas) etiqueta = ""
+    fun pasa(s: Doc) = etiqueta.isEmpty() || s.lista("etq").any { it.trim() == etiqueta }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(40.dp))) {
         item("resumen") {
             Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -281,16 +304,22 @@ private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit
                     Spacer(Modifier.weight(1f))
                     SoftChip(if (esquema) "Ver el texto" else "Ver resúmenes", esquema) { esquema = !esquema }
                 }
+                // Filtrar por etiqueta (#flashback, #Aldara…): solo las escenas que la llevan
+                if (etiquetas.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SoftChip("Todas", etiqueta.isEmpty()) { etiqueta = "" }
+                    etiquetas.forEach { t -> SoftChip("#$t", etiqueta == t) { etiqueta = if (etiqueta == t) "" else t } }
+                }
             }
         }
         var parte = ""
         caps.forEachIndexed { ci, c ->
+            val esc = e.escenas(c.id).filter { pasa(it) }
+            if (etiqueta.isNotEmpty() && esc.isEmpty()) return@forEachIndexed
             val p = c.s("parte")
             if (p.isNotBlank() && p != parte) { parte = p; item("p$ci${c.id}") { Text(p.uppercase(), color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.padding(top = 22.dp, bottom = 2.dp)) } }
             item("c${c.id}") { CabeceraCapitulo(e, c, ci, caps, onEditar = { capDlg = c }) }
-            val esc = e.escenas(c.id)
             items(esc, key = { it.id }) { s -> FilaEscena(e, s, caps, esquema, onAbrir = { abrir(s.id) }) }
-            item("n${c.id}") { Text("+ ESCENA", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+            if (etiqueta.isEmpty()) item("n${c.id}") { Text("+ ESCENA", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                 modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 4.dp).press(haptic = false) { val n = e.nuevo(Escritos.T_ESCENA, pid) { put("cid", c.id); put("titulo", "Escena ${esc.size + 1}") }; abrir(n.id) }.padding(8.dp)) }
         }
         item("nuevoCap") { BotonEscribir("Nuevo capítulo", suave = true, modifier = Modifier.padding(top = 18.dp)) { capNuevo = true } }

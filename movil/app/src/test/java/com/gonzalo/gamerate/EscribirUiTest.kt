@@ -214,4 +214,37 @@ open class EscribirUiTest {
         assertTrue(rule.onAllNodesWithText("—**Hola** —dijo— «vivienda»…").fetchSemanticsNodes().isNotEmpty())
         rule.waitUntil(3000) { e.get(s.id)?.s("texto") == "—**Hola** —dijo— «vivienda»…" }
     }
+
+    /** La portada de la revista: «Escribiendo» con la obra y «Seguir con…», que abre la última escena; y el filtro por etiquetas. */
+    @Test fun portadaYEtiquetas() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val e = Escritos.get(ctx)
+        val o = siembra(e)
+        val escenas = e.escenasDe(o.id)
+        e.edita(escenas[0].id) { put("etq", org.json.JSONArray().put("flashback")) }
+        e.edita(escenas[2].id) { put("etq", org.json.JSONArray().put("flashback").put("Cuervo")) }
+        e.escribe(escenas[1].id, escenas[1].s("texto") + "\n\nY la colcha le contó un secreto.")
+        val store = Store(ctx)
+        store.myName = "Gonzalo"
+        Skin.load(ctx); Skin.applyShell(2, ctx)
+        Mode.dark = false; Mode.themeMode = 1
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(store, 0L, false, "") {} } } }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Seguir con «La primera puerta»", substring = true)[0].performScrollTo()
+        shoot("e26_portada_escribiendo")
+        rule.onAllNodesWithText("Seguir con «La primera puerta»", substring = true)[0].performClick()
+        rule.waitForIdle()
+        shoot("e26b_tras_seguir")
+        assertTrue("abre el editor de esa escena", EscribirHub.enEditor && rule.onAllNodesWithText("Y la colcha le contó un secreto.", substring = true).fetchSemanticsNodes().isNotEmpty())
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        // En la obra: filtrar por etiqueta
+        rule.onAllNodesWithText("#flashback")[0].performClick(); rule.waitForIdle()
+        assertTrue("solo las escenas con esa etiqueta", rule.onAllNodesWithText("Al pie de la torre").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("La primera puerta").fetchSemanticsNodes().isEmpty())
+        shoot("e27_filtro_etiqueta")
+        rule.onAllNodesWithText("Todas")[0].performClick(); rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("La primera puerta").fetchSemanticsNodes().isNotEmpty())
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        assertTrue("la biblioteca: «Sigue escribiendo»", rule.onAllNodesWithText("SIGUE ESCRIBIENDO").fetchSemanticsNodes().isNotEmpty())
+        shoot("e28_sigue_escribiendo")
+    }
 }

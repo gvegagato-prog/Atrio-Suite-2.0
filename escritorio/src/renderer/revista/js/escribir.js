@@ -29,6 +29,8 @@
   E.fichas = (pid) => E.tipo('f', pid);
   E.notas = (pid) => E.tipo('n', pid);
   E.hitos = (pid) => E.tipo('h', pid);
+  // La última escena que se tocó (aquí o en otro dispositivo), de una obra sin archivar: para «seguir escribiendo»
+  E.ultimaEscena = () => vivos().filter((o) => o.t === 'e' && E.get(o.cid) && E.get(o.pid) && !E.get(o.pid).arch).sort((a, b) => num(b.u) - num(a.u))[0] || null;
   E.borradores = (eid) => vivos().filter((o) => o.t === 'b' && o.eid === eid).sort((a, b) => a.u - b.u);
   const PAL = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
   E.palabras = (t) => (String(t || '').match(PAL) || []).length;
@@ -427,6 +429,30 @@
         h('span.pie', `${cifra(pal)}${meta ? ` de ${cifra(meta)} palabras · ${Math.min(999, Math.floor((pal * 100) / meta))} %` : ' palabras'} · ${RV.plural(es.length, 'escena', 'escenas')} · editada ${hace(ultima)}`)));
   };
 
+  // La última escena que tocaste, para seguir donde lo dejaste
+  const ultimaLinea = (s) => String(s.texto || '').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && l !== '***').pop() || '';
+  function sigue(s) {
+    const obra = E.get(s.pid) || {};
+    const l = ultimaLinea(s);
+    return h('button.e-sigue', { type: 'button', onclick: () => RV.ir({ v: 'editor', id: s.id }) },
+      h('span.versal.acento', 'Sigue escribiendo'), h('span.e-sigue-titulo', s.titulo || 'Sin título'),
+      l ? h('span.e-sigue-linea', `…${l.length > 160 ? l.slice(-160) : l}`) : null,
+      h('span.e-sigue-pie', `${obra.titulo || 'Sin título'} · ${cifra(num(s.palabras))} palabras · editada ${hace(num(s.u))} · Abrir →`));
+  }
+  // «Escribiendo» en la portada de la revista: la obra, lo de hoy y seguir con la última escena
+  E.bloquePortada = () => {
+    if (!E.cargado()) return null;
+    const s = E.ultimaEscena();
+    if (!s) return null;
+    const obra = E.get(s.pid) || {};
+    const total = E.palabrasObra(obra.id); const meta = num(obra.meta); const hoy = E.escritas(RV.hoy()); const racha = E.racha();
+    return h('section.p-escribiendo', RV.seccion('Escribiendo', { texto: 'Escribir →', fn: () => RV.ir({ v: 'escribir' }) }),
+      h('button.e-p-obra', { type: 'button', onclick: () => RV.ir({ v: 'obra', id: obra.id, tab: 0 }) }, h('span.titular', obra.titulo || 'Sin título')),
+      h('p.versal', [obra.genero, `${cifra(total)}${meta ? ` de ${cifra(meta)}` : ''} palabras`, hoy ? `hoy ${cifra(hoy)}` : null, racha > 1 ? `${racha} días seguidos` : null].filter(Boolean).join(' · ')),
+      meta ? barra(total / meta, colorDe(obra.color)) : null,
+      h('button.enlace.acento', { type: 'button', onclick: () => RV.ir({ v: 'editor', id: s.id }) }, `Seguir con «${s.titulo || 'Sin título'}» →`));
+  };
+
   let archivoAbierto = false;
   RV.vistas.escribir = () => {
     const root = h('div.hoja.escribir');
@@ -439,6 +465,8 @@
       h('div.filete')));
     if (!E.cargado()) { root.append(RV.vacio('Cargando…')); return root; }
     root.append(resumenHoy());
+    const ult = E.ultimaEscena();
+    if (ult) root.append(sigue(ult));
     const st = estadoNube();
     if (st) root.append(h('p.e-nube' + (estado.error && estado.pendientes ? '.mal' : ''), st));
     if (!activas.length) {
@@ -476,6 +504,7 @@
   };
 
   let esquema = false;
+  let etiqueta = { pid: '', t: '' };
   function manuscrito(obra) {
     const pid = obra.id; const caps = E.capitulos(pid); const pal = E.palabrasObra(pid); const meta = num(obra.meta);
     const ests = [0, 0, 0]; for (const e of E.escenasDe(pid)) ests[Math.min(2, num(e.estado))]++;
@@ -484,12 +513,20 @@
       meta ? barra(pal / meta, colorDe(obra.color)) : null,
       h('div.e-estados', ESTADOS.map((n, i) => h('span', h('i', { style: { background: COL_ESTADO[i] } }), `${ests[i]} ${n.toLowerCase()}`)),
         h('button.e-chip', { type: 'button', 'aria-pressed': esquema ? 'true' : 'false', title: 'Enseña el resumen de cada escena (el del panel de la escena) en vez del principio del texto', onclick: () => { esquema = !esquema; RV.refrescar(); } }, esquema ? 'Ver el texto' : 'Ver resúmenes'))));
+    // Filtrar por etiqueta (#flashback, #Aldara…): solo las escenas que la llevan
+    const cuenta = new Map();
+    for (const e of E.escenasDe(pid)) for (const t of e.etq || []) { const x = String(t).trim(); if (x) cuenta.set(x, (cuenta.get(x) || 0) + 1); }
+    const etqs = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0]);
+    if (etiqueta.pid !== pid || !etqs.includes(etiqueta.t)) etiqueta = { pid, t: '' };
+    const pasa = (s) => !etiqueta.t || (s.etq || []).some((x) => String(x).trim() === etiqueta.t);
+    if (etqs.length) raiz.append(h('div.e-chips.e-filtro', [['', 'Todas'], ...etqs.map((t) => [t, `#${t}`])].map(([t, n]) => h('button.e-chip', { type: 'button', 'aria-pressed': etiqueta.t === t ? 'true' : 'false', onclick: () => { etiqueta = { pid, t: etiqueta.t === t ? '' : t }; RV.refrescar(); } }, n))));
     let parte = '';
     let arrastrando = null;
     const suelta = async (fn) => { try { await fn(); } catch (e) { E.err(e); } };
     caps.forEach((c, ci) => {
+      const esc = E.escenas(c.id).filter(pasa);
+      if (etiqueta.t && !esc.length) return;
       if (c.parte && c.parte !== parte) { parte = c.parte; raiz.append(h('div.e-parte', c.parte)); }
-      const esc = E.escenas(c.id);
       const cab = h('div.e-cap', { draggable: 'true', ondragstart: (ev) => { arrastrando = { cap: c.id }; ev.dataTransfer.effectAllowed = 'move'; },
         ondragover: (ev) => { if (arrastrando) { ev.preventDefault(); cab.classList.add('sobre'); } }, ondragleave: () => cab.classList.remove('sobre'),
         ondrop: (ev) => { ev.preventDefault(); cab.classList.remove('sobre'); const a = arrastrando; arrastrando = null; if (!a) return;
@@ -515,7 +552,7 @@
         h('button.enlace.apagado', { type: 'button', title: 'Más', onclick: () => menuEscena(s, caps) }, '⋯'));
         raiz.append(fila);
       });
-      raiz.append(h('button.enlace.acento.e-mas', { type: 'button', onclick: async () => { try { const n = await op('nuevo', 'e', pid, { cid: c.id, titulo: `Escena ${esc.length + 1}` }); RV.ir({ v: 'editor', id: n.id }); } catch (e) { E.err(e); } } }, '+ Escena'));
+      if (!etiqueta.t) raiz.append(h('button.enlace.acento.e-mas', { type: 'button', onclick: async () => { try { const n = await op('nuevo', 'e', pid, { cid: c.id, titulo: `Escena ${esc.length + 1}` }); RV.ir({ v: 'editor', id: n.id }); } catch (e) { E.err(e); } } }, '+ Escena'));
     });
     raiz.append(h('div.fila-botones', h('button.boton-borde', { type: 'button', onclick: () => E.dlgCapitulo(pid, null) }, 'Nuevo capítulo')));
     return raiz;
@@ -675,10 +712,14 @@
   // ---------------------------------------------------------------- Datos en directo
   // (los escritos pueden llegar antes de que cargue app.js, que es quien sabe en qué página estamos)
   const vista = () => (typeof RV.ruta === 'function' ? RV.ruta().v : '');
+  // (la portada solo se repinta si cambia lo que enseña de Escribir)
+  let firmaPortada = '';
+  const firma = () => { const s = E.ultimaEscena(); return s ? `${s.id}|${s.titulo}|${s.palabras}|${E.escritas(RV.hoy())}|${E.obras().length}` : ''; };
   const cambia = RV.debounce(() => {
     const r = vista();
     if (r === 'editor') { if (RV.escribirEditorCambio) RV.escribirEditorCambio(); return; }
     if (r === 'escribir' || r === 'obra') RV.refrescar();
+    if (!r || r === 'portada') { const f = firma(); if (f !== firmaPortada) { firmaPortada = f; RV.refrescar(); } }
   }, 60);
   api.on('escritos', (x) => { E.set(x.docs, x.estado); cambia(); });
   api.escritosTodo().then((x) => { E.set(x.docs, x.estado); if (['escribir', 'obra', 'editor'].includes(vista())) RV.refrescar(); }).catch(() => { cargado = true; });

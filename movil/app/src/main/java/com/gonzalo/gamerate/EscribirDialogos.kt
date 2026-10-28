@@ -169,8 +169,12 @@ fun ObraDialogo(e: Escritos, obra: Doc?, onCerrar: () -> Unit, onCreada: (Doc) -
 /** Para avisar a la pantalla de que la obra que tenía abierta se ha borrado. */
 object EscribirHub {
     var obraBorrada by mutableStateOf("")
+    /** Cuántos editores hay abiertos (durante una transición puede haber dos un momento). */
+    var editores by mutableIntStateOf(0)
     /** El editor está abierto (la app esconde el dock). */
-    var enEditor by mutableStateOf(false)
+    val enEditor: Boolean get() = editores > 0
+    /** Una escena que abrir al entrar en Escribir (desde la portada), y cuándo se pidió. */
+    var abrir by mutableStateOf<Pair<String, Long>?>(null)
     /** Avisar abajo con «Deshacer» (lo pone la app). */
     var deshacer: ((String, () -> Unit) -> Unit)? = null
 }

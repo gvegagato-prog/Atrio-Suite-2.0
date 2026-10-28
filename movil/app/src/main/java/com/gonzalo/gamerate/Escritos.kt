@@ -222,6 +222,8 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
     fun fichas(pid: String): List<Doc> = deTipo(T_FICHA, pid)
     fun notas(pid: String): List<Doc> = deTipo(T_NOTA, pid)
     fun hitos(pid: String): List<Doc> = deTipo(T_HITO, pid)
+    /** La última escena que se tocó (aquí o en otro dispositivo), de una obra que no esté archivada: para «seguir escribiendo». */
+    fun ultimaEscena(): Doc? = docs.values.filter { it.t == T_ESCENA && !it.borrado && get(it.pid)?.b("arch") == false && get(it.s("cid")) != null }.maxByOrNull { it.u }
     fun borradores(eid: String): List<Doc> = docs.values.filter { it.t == T_BORRADOR && !it.borrado && it.s("eid") == eid }.sortedBy { it.u }
 
     // ------------------------------------------------------------------ Cambios

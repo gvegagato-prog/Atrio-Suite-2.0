@@ -1269,6 +1269,17 @@ body[data-entrada="mando"] .arte-opcion:focus { outline: 3px solid var(--acento)
 .e-barras .meta { position: absolute; left: 0; right: 0; height: 1px; background: var(--acento); opacity: .6; }
 .e-nube { font-size: 13px; color: var(--gris); margin: 6px 0 0; }
 .e-nube.mal { color: var(--acento); }
+/* Escribir: seguir escribiendo, filtro y bloque de la portada */
+.e-sigue { display: grid; gap: 4px; width: 100%; text-align: left; margin: 18px 0 6px; padding: 18px 20px; background: var(--crudo, transparent); border: 1px solid var(--linea); cursor: pointer; color: inherit; font: inherit; }
+.e-sigue:hover, .e-sigue:focus-visible { border-color: var(--tinta); }
+.e-sigue-titulo { font-family: var(--serif); font-weight: 700; font-size: 26px; line-height: 1.1; }
+.e-sigue-linea { font-family: var(--serif); font-style: italic; color: var(--gris); font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-sigue-pie { color: var(--gris); font-size: 13px; }
+.e-filtro { margin: 4px 0 6px; }
+.p-escribiendo { margin: 34px 0 6px; display: grid; gap: 6px; justify-items: start; }
+.p-escribiendo .barra, .p-escribiendo .e-barra { width: 100%; }
+.e-p-obra { background: none; border: 0; padding: 0; text-align: left; color: inherit; cursor: pointer; }
+.e-p-obra .titular { font-size: clamp(30px, 3.2vw, 46px); line-height: 1.02; }
 /* Escribir: sprints */
 .ed-sprint { font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--acento); font-variant-numeric: tabular-nums; }
 .e-sprints { border-collapse: collapse; font-size: 14px; }

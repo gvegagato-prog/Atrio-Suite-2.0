@@ -128,6 +128,8 @@
 
     if (!D.conCuenta()) {
       root.append(h('div.p-fila1', invitacion(), ultimosPc()));
+      const escr0 = RV.E && RV.E.bloquePortada ? RV.E.bloquePortada() : null;
+      if (escr0) root.append(escr0);
       root.append(sumario(false));
       return root;
     }
@@ -160,6 +162,9 @@
       fila1.append(box);
     } else fila1.append(ultimosPc());
     root.append(fila1);
+    // Escribiendo: la novela en la que estás (si tienes alguna)
+    const escr = RV.E && RV.E.bloquePortada ? RV.E.bloquePortada() : null;
+    if (escr) root.append(escr);
 
     // Segunda fila: notas más altas · lo último terminado · sumario
     const todos = D.todo();
@@ -203,6 +208,7 @@
     if (D.conCuenta()) {
       for (const k of D.tipos()) ul.append(fila(k.title, String(D.valorados(k).length + D.fichas(k).length), () => RV.ir({ v: 'seccion', k: k.id })));
       ul.append(fila('Diario', 'cal.', () => RV.ir({ v: 'diario' })));
+      ul.append(fila('Escribir', RV.E && RV.E.obras ? String(RV.E.obras().length) : '→', () => RV.ir({ v: 'escribir' })));
       ul.append(fila('Cifras', '→', () => RV.ir({ v: 'cifras' })));
       if (RV.vistas.especial) ul.append(fila(`Tu ${new Date().getFullYear()}, número especial`, '★', () => RV.ir({ v: 'especial' })));
       ul.append(fila('Descubrir un juego', '→', () => RV.ir({ v: 'descubrir', dom: 0 })));

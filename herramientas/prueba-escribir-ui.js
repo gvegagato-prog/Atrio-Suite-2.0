@@ -212,6 +212,28 @@ function siembra() {
   await p.locator('.ed-cab button').first().click(); await sleep(400);
   ok((await p.evaluate(() => window.RV.ruta().v)) === 'obra', 'volver a la obra');
 
+  console.log('Seguir escribiendo, portada y etiquetas');
+  const [ea, eb] = escr.escenasDe(o.id);
+  escr.edita(ea.id, { etq: ['flashback'] }); escr.edita(eb.id, { etq: ['flashback', 'Cuervo'] });
+  escr.escribe(eb.id, `${escr.get(eb.id).texto}\n\nY la colcha le contó un secreto.`);
+  await sleep(300);
+  await p.evaluate(() => window.RV.ir({ v: 'escribir' })); await sleep(500);
+  ok(/sigue escribiendo/i.test(await p.locator('.e-sigue').innerText()) && /La primera puerta/.test(await p.locator('.e-sigue').innerText()), 'la biblioteca: «Sigue escribiendo» con la última escena');
+  await p.screenshot({ path: path.join(OUT, 'pc-e17-sigue.png') });
+  await p.evaluate(() => window.RV.ir({ v: 'portada' })); await sleep(600);
+  ok(await p.locator('.p-escribiendo').count() === 1 && /La torre del cuervo/.test(await p.locator('.p-escribiendo').innerText()), 'la portada: «Escribiendo» con la obra');
+  await p.locator('.p-escribiendo').scrollIntoViewIfNeeded();
+  await p.screenshot({ path: path.join(OUT, 'pc-e18-portada.png') });
+  await p.locator('.p-escribiendo button', { hasText: 'Seguir con' }).click(); await sleep(600);
+  ok((await p.evaluate(() => window.RV.ruta())).id === eb.id, '«Seguir con…» abre esa escena en el editor');
+  await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 0 }), o.id); await sleep(500);
+  const todas = await p.locator('.e-escena').count();
+  await p.locator('.e-filtro .e-chip', { hasText: '#Cuervo' }).click(); await sleep(400);
+  ok(await p.locator('.e-escena').count() === 1 && todas === 4, `filtrar por etiqueta deja solo esas escenas (${await p.locator('.e-escena').count()} de ${todas})`);
+  await p.screenshot({ path: path.join(OUT, 'pc-e19-filtro.png') });
+  await p.locator('.e-filtro .e-chip', { hasText: 'Todas' }).click(); await sleep(300);
+  ok(await p.locator('.e-escena').count() === todas, 'y «Todas» las vuelve a enseñar');
+
   console.log('Colores de la obra');
   await p.evaluate((id) => window.RV.E.dlgObra(window.RV.E.get(id)), o.id); await sleep(400);
   await p.locator('.dialogo .e-color').nth(4).click(); await sleep(100);
