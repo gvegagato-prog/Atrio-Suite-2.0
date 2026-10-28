@@ -287,6 +287,17 @@ open class Capturas6Test {
         rule.onNodeWithContentDescription("Marco de la imagen").performTouchInput { this.swipe(center, androidx.compose.ui.geometry.Offset(center.x, center.y + 400f)) }; shoot("r9n_grid_encuadre1")
         rule.onAllNodesWithText("GUARDAR")[0].performClick()
         rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r9o_grid_resultado")
+        // Casilla de una versión anterior (sin forma guardada) con la foto desplazada muy abajo: no puede quedar un hueco arriba
+        rule.runOnUiThread {
+            MagLayouts.save(ctx, "v:0:102", listOf(
+                MagRowSpec(listOf(MagCell("nota"), MagCell("imagen", image = grid(), shape = "llenar", zoom = 1f, ox = 0.3f, oy = 1.0f)), 0.5f),
+                MagRowSpec(listOf(MagCell("texto", "Mi veredicto", "El mejor roguelike que he jugado.")))
+            ))
+        }
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r9p_antigua_lectura")
+        rule.onAllNodesWithText("EDITAR")[0].performClick(); shoot("r9q_antigua_edicion")
+        rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.onAllNodesWithText("Jugando")[0].performClick()
         rule.onAllNodesWithText("Deadlock")[0].performClick(); shoot("r5_ficha_jugando")

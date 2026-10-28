@@ -523,23 +523,55 @@ fun magPlace(c: MagCell, boxW: Float, boxH: Float): Triple<Float, Float, Float> 
     return Triple(z, (c.ox * boxW).coerceIn(-sx, sx), (c.oy * boxH).coerceIn(-sy, sy))
 }
 
-/** Una imagen encuadrada: recortada a la casilla, con su zoom y su posición. */
+/**
+ * Una imagen encuadrada: recortada a la casilla, con su zoom y su posición.
+ * La foto se dibuja ENTERA (a su tamaño de «llenar») y la casilla la recorta después de moverla. Si se recortase antes
+ * (ContentScale.Crop dentro de la casilla), al desplazarla se vería un hueco donde estaba lo ya recortado: era el
+ * hueco de arriba al pegar la foto al borde superior. Así se dibuja igual que en el editor.
+ */
 @Composable
 fun FramedImage(c: MagCell, modifier: Modifier) {
-    AsyncImage(
-        model = c.image, contentDescription = null,
-        modifier = modifier.graphicsLayer {
-            val (z, tx, ty) = magPlace(c, size.width, size.height)
-            scaleX = z; scaleY = z
-            translationX = tx; translationY = ty
-        },
-        contentScale = if (c.fit) ContentScale.Fit else ContentScale.Crop,
-        colorFilter = Ediciones.filtro,
-        onSuccess = { st: coil.compose.AsyncImagePainter.State.Success ->
-            val sz = st.painter.intrinsicSize
-            if (sz.width > 0f && sz.height > 0f && sz.width.isFinite()) MagImages.ratios[c.image] = sz.width / sz.height
+    val r = MagImages.ratios[c.image]
+    val onSuccess = { st: coil.compose.AsyncImagePainter.State.Success ->
+        val sz = st.painter.intrinsicSize
+        if (sz.width > 0f && sz.height > 0f && sz.width.isFinite()) MagImages.ratios[c.image] = sz.width / sz.height
+    }
+    if (c.fit || r == null) {
+        // Logos «enteros», o la primera vez, mientras no se sabe la forma de la foto
+        AsyncImage(
+            model = c.image, contentDescription = null,
+            modifier = modifier.graphicsLayer {
+                val (z, tx, ty) = magPlace(c, size.width, size.height)
+                scaleX = z; scaleY = z
+                translationX = tx; translationY = ty
+            },
+            contentScale = if (c.fit) ContentScale.Fit else ContentScale.Crop,
+            colorFilter = Ediciones.filtro, onSuccess = onSuccess
+        )
+        return
+    }
+    // (se mide con onSizeChanged y no con BoxWithConstraints: las filas piden medidas intrínsecas y BoxWithConstraints no las admite)
+    var caja by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val den = androidx.compose.ui.platform.LocalDensity.current
+    Box(modifier.onSizeChanged { caja = it }, contentAlignment = Alignment.Center) {
+        if (caja.width > 0 && caja.height > 0) {
+            val bw = caja.width.toFloat()
+            val bh = caja.height.toFloat()
+            val tall = r > bw / bh
+            val dw = if (tall) bh * r else bw
+            val dh = if (tall) bh else bw / r
+            AsyncImage(
+                model = c.image, contentDescription = null,
+                modifier = Modifier.requiredSize(with(den) { dw.toDp() }, with(den) { dh.toDp() }).graphicsLayer {
+                    val (z, tx, ty) = magPlace(c, bw, bh)
+                    scaleX = z; scaleY = z
+                    translationX = tx; translationY = ty
+                },
+                contentScale = ContentScale.FillBounds,
+                colorFilter = Ediciones.filtro, onSuccess = onSuccess
+            )
         }
-    )
+    }
 }
 
 /**
