@@ -43,6 +43,8 @@ jobs:
           PW: ${{ github.workspace }}/escritorio/node_modules/playwright-core
         run: |
           (cd escritorio && npm i --no-save playwright-core@1.56.1)
+          # poppler (pdftotext, pdffonts) para mirar los PDF por dentro; si no se instala, la prueba lo dice y sigue
+          HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install poppler >/dev/null 2>&1 || echo "sin poppler"
           node herramientas/prueba-escribir-atrio.js "$RUNNER_TEMP/atrio-prueba"
       - name: Zip y DMG (con el acceso a Aplicaciones para arrastrar)
         run: |

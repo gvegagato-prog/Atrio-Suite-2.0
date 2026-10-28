@@ -50,8 +50,8 @@ function log(...parts) {
 }
 try { fs.mkdirSync(path.dirname(LOG_PATH), { recursive: true }); fs.writeFileSync(LOG_PATH, ''); } catch { /* */ }
 log('sandbox', app.commandLine.hasSwitch('no-sandbox') ? 'desactivado' : 'activo');
-log('Atrio', app.getVersion(), 'Electron', process.versions.electron, 'Chrome', process.versions.chrome,
-  'sesión', process.env.XDG_SESSION_TYPE || '?', 'wayland', process.env.WAYLAND_DISPLAY || '-', 'args', process.argv.slice(1).join(' '));
+log('Atrio', app.getVersion(), 'Electron', process.versions.electron, 'Chrome', process.versions.chrome, 'en', process.platform, process.arch, require('os').release(),
+  ...(process.platform === 'linux' ? ['sesión', process.env.XDG_SESSION_TYPE || '?', 'wayland', process.env.WAYLAND_DISPLAY || '-'] : []), 'args', process.argv.slice(1).join(' '));
 
 const install = require('./install');
 const steamShortcut = require('./steamshortcut');

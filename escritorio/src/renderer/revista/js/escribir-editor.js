@@ -192,7 +192,9 @@
     };
 
     // ---- Concentración
-    function ponFoco(v) { foco = v; document.body.classList.toggle('ed-foco', v); pagina.focus({ preventScroll: true }); }
+    function ponFoco(v) { foco = v; document.body.classList.toggle('ed-foco', v); ajustaAlto(); pagina.focus({ preventScroll: true }); }
+    // El editor llena la ventana justo hasta abajo: mide dónde empieza (la cabecera cambia de alto según el modo y el ancho)
+    function ajustaAlto() { if (nodo.isConnected) nodo.style.setProperty('--alto-cab', `${Math.max(0, Math.round(nodo.getBoundingClientRect().top + window.scrollY))}px`); }
 
     // ---- Buscar y reemplazar
     const qIn = RV.entrada('', { type: 'search', placeholder: 'Buscar', 'aria-label': 'Buscar' });
@@ -294,13 +296,15 @@
       h('div.ed-cuerpo', scroll, panel), cuentas, salirFoco);
     reconstruyeFichas(); pinta(); pie(); aplicaPrefs();
     if (ruta.buscar) { requestAnimationFrame(() => { buscaFila.hidden = false; qIn.value = ruta.buscar; actualiza(); salta(1); }); }
-    requestAnimationFrame(() => { if (!ruta.buscar) { pagina.focus({ preventScroll: true }); ponSel(texto.length); } });
+    requestAnimationFrame(() => { ajustaAlto(); if (!ruta.buscar) { pagina.focus({ preventScroll: true }); ponSel(texto.length); } });
+    window.addEventListener('resize', ajustaAlto);
 
     const inst = {
       id, nodo,
       cerrar() {
         clearTimeout(timerGuarda); clearTimeout(timerPinta); clearInterval(timerSnap); clearInterval(timerSprint);
         document.removeEventListener('selectionchange', selCambia);
+        window.removeEventListener('resize', ajustaAlto);
         if (texto !== guardado) { api.escritos('escribe', id, texto).catch(() => {}); guardado = texto; }
         api.escritos('instantanea', id, texto, {}).catch(() => {});
         document.body.classList.remove('ed-foco');

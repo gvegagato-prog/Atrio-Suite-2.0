@@ -21,6 +21,21 @@ const STATE = path.join(OUT, 'fb.json');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fallos = 0;
 const ok = (c, m) => { console.log((c ? '  ✔ ' : '  ✘ ') + m); if (!c) fallos++; };
+// Barras de desplazamiento que sobran (en Windows y en un Mac con ratón se ven siempre): el mismo detector que prueba-escribir-ui.js
+const barrasSueltas = (p) => p.evaluate(() => {
+  const out = [];
+  const nombre = (n) => n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : '');
+  for (const n of document.querySelectorAll('body *')) {
+    const s = getComputedStyle(n);
+    if (s.display === 'none') continue;
+    const dy = n.scrollHeight - n.clientHeight; const dx = n.scrollWidth - n.clientWidth;
+    if (/auto|scroll/.test(s.overflowY) && dy > 0 && dy <= 8) out.push(`${nombre(n)} ↕${dy}`);
+    if (/auto|scroll/.test(s.overflowX) && dx > 0 && dx <= 8) out.push(`${nombre(n)} ↔${dx}`);
+  }
+  const d = document.scrollingElement; const dy = d.scrollHeight - window.innerHeight;
+  if (dy > 0 && dy <= 60) out.push(`página ↕${dy}`);
+  return out;
+});
 const j = async (method, url, body) => {
   const r = await fetch(url, { method, headers: body === undefined ? {} : { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
   const t = await r.text(); try { return JSON.parse(t); } catch { return t; }
@@ -41,7 +56,9 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
   fs.writeFileSync(path.join(CONF, 'ronron.json'), JSON.stringify({ db: FB, authBase: FB, webKey: 'prueba', uid, user: 'gonzalo', refresh: su.refreshToken, dev: 'atrio-prueba', seen: {} }));
   fs.writeFileSync(path.join(CONF, 'config.json'), JSON.stringify({ sources: { steam: false, heroic: false, lutris: false, emulators: false, custom: true }, customGames: [], behavior: { autostart: 'off', fullscreen: false, onLaunch: 'none' }, ui: 'revista' }));
   const EXPO = path.join(OUT, 'exportado'); fs.rmSync(EXPO, { recursive: true, force: true }); fs.mkdirSync(EXPO, { recursive: true });
-  const env = { ...process.env, ATRIO_PRUEBA_EXPORTA: EXPO, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_SUITE_BEAT: '4000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
+  const env = { ...process.env, ATRIO_PRUEBA_EXPORTA: EXPO, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_SUITE_BEAT: '4000', ATRIO_POWER_DRY: '1' };
+  // En Linux (Xvfb, a veces como root) sin el sandbox de Chromium; en el Mac, con él, como lo abre cualquiera
+  if (process.platform !== 'darwin') env.ATRIO_NO_SANDBOX = '1';
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY']) delete env[k];
   const electron = path.join(DESK, 'node_modules', 'electron', 'dist', 'electron');
   const CDP = 9700 + Math.floor(Math.random() * 200);
@@ -87,6 +104,7 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     await sleep(800);
     ok(await p.locator('.e-escena').count() === 2, 'el manuscrito enseña las dos escenas (la del PC y la del móvil)');
     await p.screenshot({ path: path.join(OUT, 'atrio-escribir-obra.png') });
+    { const b = await barrasSueltas(p); ok(!b.length, `la obra, sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
     await p.evaluate((id) => window.RV.ir({ v: 'editor', id }), 'm_escena');
     await sleep(700);
     ok((await p.locator('.ed-texto').innerText()).includes('Hola desde el móvil'), 'el editor abre la escena del móvil');
@@ -96,6 +114,7 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     const vivo = await hasta(async () => (await p.locator('.ed-texto').innerText()).includes('Y sigo escribiendo allí'), 8000, 200);
     ok(!!vivo, 'lo que escribe el móvil se ve al momento en el editor abierto');
     await p.screenshot({ path: path.join(OUT, 'atrio-escribir-editor.png') });
+    { const b = await barrasSueltas(p); ok(!b.length, `el editor llena la ventana justo (sin barras sobrantes) ${b.join(', ')}`); }
 
     console.log('Sin conexión');
     await j('GET', `${FB}/__offline?on=1`); await sleep(800);
@@ -119,7 +138,9 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     ok(tTip.endsWith(' —Así es— «dijo»…'), `la tipografía automática funciona en Atrio (${JSON.stringify(tTip.slice(-22))})`);
     await p.keyboard.press('Control+z'); await sleep(300); await p.keyboard.press('Control+y'); await sleep(1200);
     ok((await todo()).docs.find((d) => d.id === 'm_escena').texto === tTip, 'Ctrl+Z y Ctrl+Y (deshacer y rehacer)');
-    ok(/corrector (en es|el del sistema)/.test(logs.join('')), `el corrector está en español (${(logs.join('').match(/corrector[^\n]*/) || [''])[0]})`);
+    // (en macOS el corrector es el del sistema: Electron no deja elegir el idioma y macOS lo detecta solo)
+    ok(process.platform === 'darwin' ? /corrector el del sistema/.test(logs.join('')) : /corrector en es/.test(logs.join('')), `el corrector ortográfico (${(logs.join('').match(/corrector[^\n]*/) || [''])[0]})`);
+    if (process.platform === 'darwin') ok(/sandbox activo/.test(logs.join('')), 'con el sandbox de Chromium, como en cualquier Mac');
 
     console.log('Exportar a PDF y Word');
     for (let i = 2; i <= 4; i++) {

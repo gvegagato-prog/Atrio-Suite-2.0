@@ -1316,8 +1316,9 @@ body[data-entrada="mando"] .arte-opcion:focus { outline: 3px solid var(--acento)
 .e-check { display: inline-flex; align-items: center; gap: 6px; margin-right: 18px; font-size: 14px; }
 .e-campos { display: grid; gap: 8px; }
 .e-campo-fila { display: grid; grid-template-columns: 1fr 2fr auto; gap: 10px; align-items: end; }
-.e-tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--tinta); margin: 4px 0 18px; overflow-x: auto; }
-.e-tabs button { font-size: 12px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; padding: 12px 0 10px; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+/* (la raya de abajo es el fondo: así la de la pestaña activa la tapa sin salirse de la caja, y no sale una barra de desplazamiento) */
+.e-tabs { display: flex; gap: 22px; background: linear-gradient(var(--tinta), var(--tinta)) left bottom / 100% 1px no-repeat; margin: 4px 0 18px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.e-tabs button { font-size: 12px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; padding: 12px 0 10px; border-bottom: 3px solid transparent; white-space: nowrap; }
 .e-tabs button[aria-current="page"] { color: var(--acento); border-bottom-color: var(--acento); }
 .e-resumen { display: grid; gap: 8px; margin-bottom: 8px; font-size: 14px; color: var(--gris); }
 .e-estados { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 13px; }
@@ -1374,6 +1375,7 @@ body[data-entrada="mando"] .arte-opcion:focus { outline: 3px solid var(--acento)
 
 /* El editor */
 .ed { display: grid; grid-template-rows: auto auto auto 1fr auto; height: calc(100vh - var(--alto-cab, 118px)); padding-top: 6px; --tam: 20px; }
+main:has(> .ed) { padding-bottom: 0; }
 .ed-cab { display: flex; align-items: center; gap: 22px; padding: 6px 0 8px; }
 .ed-titulo { flex: 1; min-width: 0; border: 0; background: transparent; font-family: var(--serif); font-weight: 700; font-size: 30px; letter-spacing: -0.02em; border-bottom: 2px solid transparent; }
 .ed-titulo:focus { border-bottom-color: var(--acento); }
@@ -1425,7 +1427,7 @@ body[data-entrada="mando"] .arte-opcion:focus { outline: 3px solid var(--acento)
 .ed-item-acc { display: flex; gap: 16px; flex-wrap: wrap; }
 .ed-salir { display: none; }
 body.ed-foco #cabecera, body.ed-foco .ed-cab, body.ed-foco .ed-barra, body.ed-foco .ed-cuentas, body.ed-foco .ed-busca, body.ed-foco .ed-panel { display: none !important; }
-body.ed-foco .ed { height: 100vh; grid-template-rows: 1fr; }
+body.ed-foco .ed { height: calc(100vh - var(--alto-cab, 0px)); grid-template-rows: 1fr; }
 body.ed-foco .ed-cuerpo { grid-template-columns: 1fr !important; }
 body.ed-foco .ed-salir { display: block; position: fixed; top: 14px; right: 18px; font-size: 11px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; color: var(--gris); }
 body.ed-foco .ed-salir:hover { color: var(--acento); }

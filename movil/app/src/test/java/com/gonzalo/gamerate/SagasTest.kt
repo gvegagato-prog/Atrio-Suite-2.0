@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
@@ -64,6 +65,38 @@ open class SagasTest {
             f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
         return f.absolutePath
+    }
+
+    /**
+     * Pulsa el botón [texto] del diálogo abierto por su acción de accesibilidad, sin esperar a que Compose quede quieto.
+     * En Robolectric un campo de texto de ancho flexible dentro de un diálogo con el ancho de la plataforma hace que la
+     * ventana se mida dos veces con anchos distintos en cada pasada, y eso no se acaba nunca: cualquier espera
+     * (performClick, waitForIdle) se agota a los 60 s según lo cargada que esté la máquina (en CI fallaba siempre).
+     */
+    private fun pulsaEnDialogo(texto: String) {
+        val wmg = Class.forName("android.view.WindowManagerGlobal").getMethod("getInstance").invoke(null)
+        @Suppress("UNCHECKED_CAST")
+        fun vistas() = (wmg.javaClass.getDeclaredField("mViews").apply { isAccessible = true }.get(wmg) as List<android.view.View>).toList()
+        fun raices(v: android.view.View): List<androidx.compose.ui.node.RootForTest> = when (v) {
+            is androidx.compose.ui.node.RootForTest -> listOf(v)
+            is android.view.ViewGroup -> (0 until v.childCount).flatMap { raices(v.getChildAt(it)) }
+            else -> emptyList()
+        }
+        fun busca(n: androidx.compose.ui.semantics.SemanticsNode): androidx.compose.ui.semantics.SemanticsNode? =
+            if (n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.any { it.text == texto } == true) n
+            else n.children.firstNotNullOfOrNull { busca(it) }
+        // El diálogo es la última ventana (se le deja colocarse: unos fotogramas de la ventana, no de Compose)
+        var nodo: androidx.compose.ui.semantics.SemanticsNode? = null
+        for (i in 0 until 50) {
+            nodo = vistas().asReversed().flatMap { raices(it) }.firstNotNullOfOrNull { busca(it.semanticsOwner.unmergedRootSemanticsNode) }
+            if (nodo != null) break
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(16))
+        }
+        if (nodo == null) error("no está «$texto» en ningún diálogo")
+        var n: androidx.compose.ui.semantics.SemanticsNode? = nodo
+        while (n != null && n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.OnClick) == null) n = n.parent
+        val accion = n?.config?.getOrNull(androidx.compose.ui.semantics.SemanticsActions.OnClick)?.action ?: error("«$texto» no se puede pulsar")
+        accion()
     }
 
     private fun seed(): Store {
@@ -189,17 +222,18 @@ open class SagasTest {
         shoot("1_pestana")
         // Crear la de Rothfuss desde la sugerencia (ya viene con su nombre y sus libros en orden)
         rule.onAllNodesWithText("Crónica del asesino de reyes")[0].performScrollTo()
-        // El diálogo y el paso a la saga, fotograma a fotograma (con el reloj automático, Robolectric no da por
-        // terminada la animación de cerrar el diálogo en el móvil)
+        // El diálogo y el paso a la saga, fotograma a fotograma: con un campo de texto dentro, Robolectric vuelve a medir
+        // el diálogo sin parar (su anchura oscila: ver pulsaEnDialogo) y Compose no queda nunca quieto con el reloj en marcha
         rule.mainClock.autoAdvance = false
         rule.onAllNodesWithText("Crónica del asesino de reyes")[0].performClick()
         repeat(30) { rule.mainClock.advanceTimeByFrame() }
         com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_2_crear.png")
-        rule.onAllNodesWithText("Crear")[0].performClick()
+        pulsaEnDialogo("Crear")
         repeat(60) { rule.mainClock.advanceTimeByFrame() }
-        com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_3_saga.png")
+        // Ya sin el diálogo, otra vez el reloj automático: lo que llega después (portadas, la saga guardada) se termina de pintar
         rule.mainClock.autoAdvance = true
         rule.waitForIdle()
+        com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_3_saga.png")
         assertEquals(listOf(501L, 502L, 503L), Store(ctx).loadSagas().single().items)
         assertTrue(rule.onAllNodesWithText("AHORA MISMO").fetchSemanticsNodes().isNotEmpty())
         rule.onRoot().performTouchInput { swipeUp() }; shoot("4_saga_abajo")

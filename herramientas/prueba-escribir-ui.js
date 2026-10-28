@@ -15,6 +15,22 @@ const OUT = path.resolve(process.argv[2] || os.tmpdir());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fallos = 0;
 const ok = (c, m) => { console.log((c ? '  ✔ ' : '  ✘ ') + m); if (!c) fallos++; };
+// Barras de desplazamiento que sobran: cajas con scroll que desbordan solo unos píxeles (en Windows y en un Mac con
+// ratón las barras se ven siempre). La página entera tampoco debe pasarse de la ventana por poco.
+const barrasSueltas = (p) => p.evaluate(() => {
+  const out = [];
+  const nombre = (n) => n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : '');
+  for (const n of document.querySelectorAll('body *')) {
+    const s = getComputedStyle(n);
+    if (s.display === 'none') continue;
+    const dy = n.scrollHeight - n.clientHeight; const dx = n.scrollWidth - n.clientWidth;
+    if (/auto|scroll/.test(s.overflowY) && dy > 0 && dy <= 8) out.push(`${nombre(n)} ↕${dy}`);
+    if (/auto|scroll/.test(s.overflowX) && dx > 0 && dx <= 8) out.push(`${nombre(n)} ↔${dx}`);
+  }
+  const d = document.scrollingElement; const dy = d.scrollHeight - window.innerHeight;
+  if (dy > 0 && dy <= 60) out.push(`página ↕${dy}`);
+  return out;
+});
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.png': 'image/png' };
 
 const escr = crear({ dir: fs.mkdtempSync(path.join(os.tmpdir(), 'esc-ui-')), dev: 'pc', net: { uid: () => null } });
@@ -98,9 +114,11 @@ function siembra() {
   await sleep(400);
   ok(await p.locator('.e-escena').count() === 4 && await p.locator('.e-cap').count() === 3, 'manuscrito con 3 capítulos y 4 escenas');
   await p.screenshot({ path: path.join(OUT, 'pc-e03-manuscrito.png') });
+  { const b = await barrasSueltas(p); ok(!b.length, `manuscrito sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
   for (const [i, n] of [[1, 'fichas'], [2, 'notas'], [3, 'linea'], [4, 'cifras']]) {
     await p.locator('.e-tabs button').nth(i).click(); await sleep(350);
     await p.screenshot({ path: path.join(OUT, `pc-e0${3 + i}-${n}.png`) });
+    { const b = await barrasSueltas(p); ok(!b.length, `${n}: sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
     if (i === 1) ok(await p.locator('.e-ficha-tarj').count() === 3 && /sale en 2 escenas/i.test(await p.locator(".e-ficha-tarj").first().innerText()), 'fichas: «Aldara sale en 2 escenas»');
   }
   await p.locator('.e-tabs button').nth(0).click(); await sleep(300);
@@ -113,6 +131,7 @@ function siembra() {
   const texto0 = () => escr.get(e1.id).texto;
   ok((await p.locator('.ed-texto').evaluate((n) => n.textContent.replace(/​/g, ''))) === texto0(), 'lo que se ve es exactamente el texto guardado');
   await p.screenshot({ path: path.join(OUT, 'pc-e08-editor.png') });
+  { const b = await barrasSueltas(p); ok(!b.length, `editor sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
   // Escribir al final: letras, Enter, formato con teclas
   await p.locator('.ed-texto').click();
   await p.keyboard.press('Control+End');
@@ -205,6 +224,7 @@ function siembra() {
   await p.locator('.ed-tecla.pan').click();
   await p.locator('.ed-barra button', { hasText: 'Concentración' }).click(); await sleep(300);
   ok(await p.evaluate(() => document.body.classList.contains('ed-foco')), 'modo concentración');
+  { const b = await barrasSueltas(p); ok(!b.length, `concentración sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
   await p.screenshot({ path: path.join(OUT, 'pc-e13-concentracion.png') });
   await p.keyboard.press('Escape'); await sleep(200);
   ok(!(await p.evaluate(() => document.body.classList.contains('ed-foco'))), 'Esc sale de la concentración');
