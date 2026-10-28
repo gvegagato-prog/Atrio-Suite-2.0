@@ -120,5 +120,12 @@ t('guía de la novela (casos de herramientas/casos/guia.json, los mismos que el 
     if (c.diasReposo != null) assert.strictEqual(est[6].dias, c.diasReposo, `${c.nombre} (días)`);
   }
 });
+t('ventana de Atrio: la pantalla completa no se desactiva en macOS (fullscreen: false explícito la oculta)', () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'escritorio', 'src', 'main', 'main.js'), 'utf8');
+  const opciones = main.slice(main.indexOf('win = new BrowserWindow({'), main.indexOf('win.setMenuBarVisibility'));
+  assert.ok(opciones.length > 100, 'las opciones de la ventana');
+  assert.ok(!/^\s*fullscreen:/m.test(opciones), 'no hay «fullscreen:» en las opciones de la ventana');
+  assert.ok(/fullscreenable:\s*true/.test(opciones), 'fullscreenable: true');
+});
 console.log(fallos ? `FALLAN ${fallos}` : 'Todo bien');
 process.exit(fallos ? 1 : 0);

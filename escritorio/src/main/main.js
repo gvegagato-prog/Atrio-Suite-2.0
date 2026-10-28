@@ -719,8 +719,10 @@ function setupIpc() {
 
   ipcMain.handle('win:fullscreen', () => {
     if (!win) return false;
-    win.setFullScreen(!win.isFullScreen());
-    return win.isFullScreen();
+    const quiere = !win.isFullScreen();
+    win.setFullScreen(quiere);
+    // (en macOS la transición es asíncrona: se devuelve lo pedido, no el estado de ahora mismo)
+    return quiere;
   });
   ipcMain.handle('win:minimize', () => win && win.minimize());
   ipcMain.handle('app:quit', () => app.quit());
@@ -923,7 +925,9 @@ function createWindow() {
     show: false,
     // macOS: sin marco pero con los tres botones de siempre (cerrar, minimizar y ampliar), dentro de la cabecera
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 13 } } : { frame: false }),
-    fullscreen: false,
+    // OJO: no poner «fullscreen: false»: en macOS, según Electron, «cuando se pone explícitamente a false el botón de pantalla
+    // completa se oculta o se desactiva» (y entonces ni el botón, ni el menú, ni setFullScreen la ponen). Por defecto ya es false.
+    fullscreenable: true,
     backgroundColor: uiBackground(ui),
     title: 'Atrio',
     icon: path.join(__dirname, '..', 'renderer', 'icon.png'),
