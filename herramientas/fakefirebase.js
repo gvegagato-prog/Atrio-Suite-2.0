@@ -113,7 +113,15 @@ function send(res, code, body) {
 
 function authErr(res, msg) { send(res, 400, { error: { code: 400, message: msg, errors: [{ message: msg }] } }); }
 
+// Para probar «sin conexión» sin perder las sesiones: /__offline?on=1 corta todas las conexiones (y las nuevas) hasta /__offline?on=0
+let offline = false;
 const server = http.createServer((req, res) => {
+  if (req.url.startsWith('/__offline')) {
+    offline = /on=1/.test(req.url);
+    if (offline) for (const l of [...listeners]) { try { l.res.destroy(); } catch { /* */ } listeners.delete(l); }
+    res.writeHead(200); return res.end(String(offline));
+  }
+  if (offline) { req.socket.destroy(); return; }
   const chunks = [];
   req.on('data', (c) => { chunks.push(c); });
   req.on('end', () => {

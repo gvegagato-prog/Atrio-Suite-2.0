@@ -68,8 +68,11 @@
     else RV.aviso('Esta versión de Atrio no puede cambiar de interfaz.', 'error');
   };
 
-  const TITULOS = { juegos: 'Juegos', 'j-valorados': 'Valorados', 'j-juego': 'Juego', portada: 'Portada', diario: 'Diario', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes', descubrir: 'Descubrir', especial: 'Número especial' };
+  const TITULOS = { juegos: 'Juegos', 'j-valorados': 'Valorados', 'j-juego': 'Juego', portada: 'Portada', diario: 'Diario', escribir: 'Escribir', obra: 'Escribir', editor: 'Escribir', cifras: 'Cifras', pc: 'Tu PC', ajustes: 'Ajustes', descubrir: 'Descubrir', especial: 'Número especial' };
   function pintar(o = {}) {
+    // En el editor, un refresco de datos no repinta la página (se perdería dónde escribes): lo atiende el editor
+    if (o.refresco && ruta.v === 'editor' && RV.editorActivo && RV.editorActivo.id === ruta.id) { RV.editorActivo.refresca(); cabecera(); return; }
+    if (ruta.v !== 'editor' && RV.editorActivo) RV.editorActivo.cerrar();
     const pag = document.getElementById('pagina');
     // Lo que estabas escribiendo (y dónde), para no perderlo al redibujar con datos nuevos
     const campos = new Map();
@@ -137,6 +140,7 @@
       item('Portada', { v: 'portada' }, v === 'portada'),
       D.tipos().map((k) => item(k.title, { v: 'seccion', k: k.id }, kAct === k.id)),
       item('Diario', { v: 'diario' }, v === 'diario'),
+      item('Escribir', { v: 'escribir' }, v === 'escribir' || v === 'obra' || v === 'editor'),
       item('Descubrir', { v: 'descubrir', dom: 0 }, v === 'descubrir'),
       item('Cifras', { v: 'cifras' }, v === 'cifras'),
       item('Tu PC', { v: 'pc' }, v === 'pc'),
@@ -201,12 +205,14 @@
       // En un texto largo, Esc solo sale del campo (para no perder lo escrito por un descuido)
       if (act && act.tagName === 'TEXTAREA') { act.blur(); e.preventDefault(); return; }
       if (RV.cerrarDialogo()) { e.preventDefault(); return; }
+      if (RV.escEditor && RV.escEditor()) { e.preventDefault(); return; }
       if (escribiendo(act)) { act.blur(); }
       if (RV.volver()) e.preventDefault();
       return;
     }
     if (e.key === 'F11') { e.preventDefault(); api.toggleFullscreen(); return; }
     if (RV.hayDialogo()) return;
+    if (ruta.v === 'editor' && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') return;
     if ((e.key === '/' && !escribiendo(act)) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f')) {
       e.preventDefault();
       atajoBuscar();
@@ -295,6 +301,7 @@
   // ---------------------------------------------------------------- Arranque
   async function arrancar() {
     document.body.dataset.modo = RV.modo;
+    document.body.dataset.plat = (api && api.platform) || '';
     document.body.dataset.entrada = 'raton';
     RV.escala();
     try {

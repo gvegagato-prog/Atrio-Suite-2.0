@@ -514,6 +514,14 @@ async function doPower(action) {
   if (tracker) { if (cmd === 'suspend') tracker.pause(); else tracker.stop(); }
   if (process.env.ATRIO_POWER_DRY) return { ok: true, dry: cmd };
   const { execFile } = require('child_process');
+  if (process.platform === 'darwin') {
+    // macOS: lo hace «System Events» (la primera vez pide permiso para controlarlo) y pmset para suspender
+    const [bin, args] = cmd === 'suspend' ? ['/usr/bin/pmset', ['sleepnow']]
+      : ['/usr/bin/osascript', ['-e', `tell application "System Events" to ${cmd === 'reboot' ? 'restart' : 'shut down'}`]];
+    return new Promise((resolve, reject) => {
+      execFile(bin, args, { timeout: 20000 }, (err, _out, errOut) => (err ? reject(new Error(String(errOut || err.message).trim().slice(0, 200) || 'No se ha podido')) : resolve({ ok: true })));
+    });
+  }
   if (process.platform === 'win32') {
     // Windows: shutdown para apagar/reiniciar; para suspender, SetSuspendState (no hiberna)
     const [bin, args] = cmd === 'suspend'
@@ -902,7 +910,8 @@ function createWindow() {
     ...size,
     useContentSize: true,
     show: false,
-    frame: false,
+    // macOS: sin marco pero con los tres botones de siempre (cerrar, minimizar y ampliar), dentro de la cabecera
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 13 } } : { frame: false }),
     fullscreen: false,
     backgroundColor: uiBackground(ui),
     title: 'Atrio',
@@ -917,12 +926,18 @@ function createWindow() {
     },
   });
   win.setMenuBarVisibility(false);
+  // macOS: sin su menú no funcionan Cmd+C, Cmd+V, Cmd+Z, Cmd+Q… (la barra de menús es la del sistema)
+  if (process.platform === 'darwin') {
+    const { Menu } = require('electron');
+    Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' }]));
+  }
   web.attach(win, send);
   win.loadFile(uiFile(ui));
   // La pantalla completa se aplica después de mostrar la ventana: crearla ya a pantalla
   // completa da problemas en algunos compositores Wayland
   // Siempre a pantalla completa (la revista con su modo Juegos es el lanzador). --ventana para depurar
-  const wantFull = !shots && !process.argv.includes('--ventana') && (ui === 'revista' || !!cfg.behavior.fullscreen);
+  // (en macOS la pantalla completa es otro escritorio: solo si lo pides en Ajustes)
+  const wantFull = !shots && !process.argv.includes('--ventana') && ((ui === 'revista' && process.platform !== 'darwin') || !!cfg.behavior.fullscreen);
   win.once('ready-to-show', () => {
     if (shots) { win.showInactive(); return; }
     if (background) return;
@@ -1049,6 +1064,8 @@ app.whenReady().then(async () => {
     // Si llega un juego nuevo a la lista negra (desde el móvil), sale de la biblioteca al momento
     rescanLigero();
   });
+  // Escribir (obras, capítulos, escenas, fichas y notas de tu cuenta)
+  try { require('./escritos-cuenta').iniciar({ ronron, ipcMain, send, log, fetchImpl: (...a) => net.fetch(...a), dialog, ventana: () => win }); } catch (e) { log('escribir', e.message); }
   nube.start({
     config: () => config.get(), data: () => ronron.data(), edit: (op) => ronron.edit(op), log, fotosDir: FOTOS,
     onFotos: () => send('fotos', fotoNames()),
@@ -1176,3 +1193,5 @@ app.on('before-quit', (e) => {
   }
 });
 app.on('window-all-closed', () => app.quit());
+// macOS: al tocar el icono del Dock sin ventanas, se vuelve a abrir
+app.on('activate', () => { if (win && !win.isDestroyed()) { win.show(); } });

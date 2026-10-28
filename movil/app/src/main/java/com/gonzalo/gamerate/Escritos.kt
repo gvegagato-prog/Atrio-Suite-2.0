@@ -545,4 +545,14 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
 
     /** Al cerrar sesión en otra cuenta, lo de esta se queda en el dispositivo; solo se olvida lo que se sabía de la nube. */
     fun olvidaNube() { acked.clear(); guardaIndice() }
+
+    /** Si ahora estás en otra cuenta que la última vez, todo lo escrito aquí se sube a la nueva (y se olvida lo que se sabía de la anterior). */
+    fun cuenta(uid: String) {
+        if (uid.isBlank()) return
+        val f = File(dir, "cuenta.txt")
+        val antes = runCatching { f.readText() }.getOrDefault("")
+        if (antes == uid) return
+        if (antes.isNotEmpty()) olvidaNube()
+        runCatching { dir.mkdirs(); f.writeText(uid) }
+    }
 }

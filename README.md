@@ -5,10 +5,52 @@ Una sola app en dos sitios:
 - **Atrio en el móvil** (`movil/`, Android): tus juegos, libros, películas, series y categorías propias; valoraciones,
   apuntes, calendario, estadísticas, «Siguiente», modo pareja, copias en Drive… y el **mando del PC**.
   Es la app que antes se llamaba Ronrón: mismo paquete y misma firma, se instala encima sin perder datos.
-- **Atrio en el PC** (`escritorio/`, Linux y Windows): el launcher de Steam, Heroic, Lutris, emuladores y juegos
+- **Atrio en el PC** (`escritorio/`, Linux, Windows y macOS con Apple Silicon): el launcher de Steam, Heroic, Lutris, emuladores y juegos
   propios, con arte de SteamGridDB, mando, horas de juego y tus fichas… **conectado al móvil en directo**.
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
+
+## Escribir (móvil 6.80 y PC 3.0)
+
+Un apartado para escribir novelas, en el móvil, en el PC y en el Mac, con la misma cuenta y **sin conexión incluida**:
+lo que escribes se guarda en el dispositivo al momento, se sube solo cuando hay red y llega a los demás en directo.
+
+- **Obras, capítulos y escenas.** Cada escena es un documento (una novela larga no es un bloque enorme). Las partes
+  («Parte I»), el orden (arrastrar en el PC; subir y bajar en el móvil) y mover escenas entre capítulos. Estados de
+  cada escena (borrador, revisión, final) y vista de esquema con los resúmenes.
+- **El editor.** Una página de libro con el formato a la vista (títulos, citas, *cursiva*, **negrita** y saltos de
+  escena `***`, con los signos apagados), deshacer y rehacer, buscar y reemplazar (en la escena o en toda la obra),
+  modo concentración, máquina de escribir (la línea queda a media altura), tamaño y tipo de letra, y contadores
+  (palabras, tiempo de lectura, lo escrito hoy frente a tu meta). Se guarda solo.
+- **Fichas del mundo.** Personajes, lugares, objetos y reglas, con datos y alias: en cuanto nombras uno en el texto
+  queda subrayado y lo tienes en el panel, con «poner el nombre».
+- **Notas y tablón.** Notas, ideas, investigación y **plantillas** que puedes tener al lado mientras escribes
+  (y insertar con un toque), con color y fijadas arriba.
+- **Borradores, historial y comparar.** Borradores alternativos de una escena y las últimas 40 versiones (en cada
+  dispositivo). Se comparan párrafo a párrafo y se mezclan eligiendo de cada diferencia. Si dos dispositivos cambian la
+  misma escena a la vez, **no se pierde nada**: gana la más nueva y la otra queda como borrador.
+- **Línea temporal y cifras.** Hitos ordenables enlazados a escenas, escenas con «cuándo pasa», palabras por día
+  (30 días), racha, mejor día, palabras por capítulo, estado del manuscrito y cuándo terminarás al ritmo que llevas.
+- **Exportar e importar.** Word (.docx), libro (.epub), Markdown y texto; importar Word, Markdown o texto (los títulos
+  abren capítulos). Todo se hace en el dispositivo: el texto no se envía a ningún sitio.
+- **Sin IA.** No hay nada que mande tu texto a un servicio de terceros.
+
+El formato y las reglas de mezcla están en `docs/escribir.md`. Los datos van en `/users/<uid>/escritos` (un documento por
+escena, fichas…) con un índice pequeño (`escritosIdx`) que escuchan todos los dispositivos. Ojo: las reglas de la base de
+datos dejan a tu pareja **leer** `/users/<tu uid>` entero si la vinculas; Atrio solo le pide tus fichas, pero las obras
+quedan al alcance de su cuenta (si lo quieres cerrar, hay que afinar las reglas en la consola de Firebase).
+
+## Atrio en macOS (Apple Silicon)
+
+La acción «Atrio (PC, macOS Apple Silicon)» (`.github/workflows/escritorio-mac.yml`) construye `Atrio.app` en un Mac
+de GitHub, la firma «ad-hoc» (sin certificado de Apple Developer), comprueba que arranca y deja **Atrio-mac-arm64.zip**
+y **Atrio-mac-arm64.dmg** en los artefactos de la ejecución.
+Como no está firmada con un certificado de Apple ni notarizada, macOS avisará la primera vez: abre Atrio con clic
+derecho → «Abrir», o ejecuta `xattr -dr com.apple.quarantine /Applications/Atrio.app`. Para quitar el aviso para
+siempre hace falta una cuenta de Apple Developer (99 $ al año) con certificado y notarización.
+Datos en `~/Library/Application Support/Atrio-datos`. En el Mac funcionan la revista, Escribir, la cuenta, el móvil,
+las capturas (`screencapture`; pide el permiso de «Grabación de pantalla») y lo jugado en Steam o Heroic; no existen
+Lutris ni Polaris (streaming).
 
 ## Atrio en el escritorio (2.1): el lanzador y la revista
 

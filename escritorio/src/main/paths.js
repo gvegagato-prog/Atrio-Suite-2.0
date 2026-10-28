@@ -4,12 +4,15 @@ const path = require('path');
 const fs = require('fs');
 
 const IS_WIN = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
 const HOME = process.env.ATRIO_HOME || os.homedir();
 // En Windows todo va en %LOCALAPPDATA%\Atrio-datos (separado de la carpeta que usa Chromium)
 const WIN_BASE = IS_WIN ? path.join(process.env.LOCALAPPDATA || path.join(HOME, 'AppData', 'Local'), 'Atrio-datos') : null;
-const XDG_CONFIG = IS_WIN ? path.join(WIN_BASE, 'config') : (process.env.XDG_CONFIG_HOME || path.join(HOME, '.config'));
-const XDG_DATA = IS_WIN ? path.join(WIN_BASE, 'data') : (process.env.XDG_DATA_HOME || path.join(HOME, '.local', 'share'));
-const XDG_CACHE = IS_WIN ? path.join(WIN_BASE, 'cache') : (process.env.XDG_CACHE_HOME || path.join(HOME, '.cache'));
+// En macOS, lo de siempre: ~/Library/Application Support/Atrio-datos (y la caché en ~/Library/Caches)
+const MAC_BASE = IS_MAC ? path.join(HOME, 'Library', 'Application Support', 'Atrio-datos') : null;
+const XDG_CONFIG = IS_WIN ? path.join(WIN_BASE, 'config') : IS_MAC ? path.join(MAC_BASE, 'config') : (process.env.XDG_CONFIG_HOME || path.join(HOME, '.config'));
+const XDG_DATA = IS_WIN ? path.join(WIN_BASE, 'data') : IS_MAC ? path.join(MAC_BASE, 'data') : (process.env.XDG_DATA_HOME || path.join(HOME, '.local', 'share'));
+const XDG_CACHE = IS_WIN ? path.join(WIN_BASE, 'cache') : IS_MAC ? path.join(HOME, 'Library', 'Caches', 'Atrio') : (process.env.XDG_CACHE_HOME || path.join(HOME, '.cache'));
 // %APPDATA% (Roaming) de Windows: ahí guardan sus datos Heroic y otros programas
 const WIN_APPDATA = IS_WIN ? (process.env.APPDATA || path.join(HOME, 'AppData', 'Roaming')) : null;
 
@@ -44,4 +47,4 @@ function mkdirp(p) {
   fs.mkdirSync(p, { recursive: true });
 }
 
-module.exports = { IS_WIN, WIN_APPDATA, HOME, XDG_CONFIG, XDG_DATA, XDG_CACHE, APP_CONFIG_DIR, APP_CACHE_DIR, ART_DIR, expandHome, exists, readJson, mkdirp };
+module.exports = { IS_WIN, IS_MAC, WIN_APPDATA, HOME, XDG_CONFIG, XDG_DATA, XDG_CACHE, APP_CONFIG_DIR, APP_CACHE_DIR, ART_DIR, expandHome, exists, readJson, mkdirp };

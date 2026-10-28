@@ -43,3 +43,16 @@ Un documento está **pendiente** si su `u` ≠ `acked[id]`.
   no se pierde**: se guarda como borrador de esa escena (`b`, `conflicto` = 1, id `bc_<escena>_<u del perdedor>`, igual en todos los dispositivos).
 - Registro del día: por dispositivo, y al mezclar de cada uno se queda el mayor; el total es la suma.
 - Borrados: marca `d` (gana si es más nueva que la edición).
+
+## Dónde está cada cosa
+
+| | Móvil | PC |
+|---|-------|----|
+| Núcleo (archivos, mezcla, subida) | `Escritos.kt` | `escritorio/src/main/escritos.js` |
+| Texto (formato, deshacer, diferencias) | `EscribirTexto.kt`, `EscribirDiff.kt` | `revista/js/escribir-texto.js` |
+| Exportar / importar | `EscribirExport.kt` | `escritorio/src/main/escritos-export.js` |
+| Pantallas | `EscribirScreens.kt`, `EscribirMas.kt`, `EscribirEditor.kt`, `EscribirDialogos.kt` | `revista/js/escribir.js`, `escribir-editor.js` |
+| Escucha en directo del índice | `Sincro.kt` (stream «escritos») | `escritos-cuenta.js` |
+
+Pruebas cruzadas: `EscritosInteropTest.kt` hace trabajar al núcleo del móvil con el módulo de JavaScript del PC contra el
+mismo Firebase de mentira.

@@ -1,0 +1,68 @@
+name: Atrio (PC, macOS Apple Silicon)
+on:
+  push:
+    paths: ['escritorio/**', 'herramientas/**', '.github/workflows/escritorio-mac.yml']
+  workflow_dispatch:
+jobs:
+  mac:
+    # macos-15 es Apple Silicon (arm64). (macos-14 se retira el 2 de noviembre de 2026)
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: escritorio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dependencias
+        run: npm ci
+      - name: Pruebas de Escribir (guardado, sincronización, texto y exportar)
+        working-directory: .
+        run: |
+          node herramientas/prueba-escritos.js
+          node herramientas/prueba-escribir-texto.js
+          node herramientas/prueba-escribir-export.js
+      - name: Atrio.app (Apple Silicon)
+        run: npx electron-builder --mac dir --arm64 --publish never
+      - name: Firma ad-hoc y comprobación
+        run: |
+          APP=dist/mac-arm64/Atrio.app
+          file "$APP/Contents/MacOS/Atrio"
+          # Sin certificado de Apple Developer: firma «ad-hoc» (sin ella, un Mac con Apple Silicon no abre la app)
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv "$APP" 2>&1 | head -12
+          lipo -archs "$APP/Contents/MacOS/Atrio"
+      - name: Arranque (la app abre, carga la revista y no se cae)
+        run: |
+          APP="$PWD/dist/mac-arm64/Atrio.app"
+          export ATRIO_HOME="$RUNNER_TEMP/atrio-home"
+          mkdir -p "$ATRIO_HOME"
+          "$APP/Contents/MacOS/Atrio" --ventana > "$RUNNER_TEMP/atrio-salida.log" 2>&1 &
+          PID=$!
+          sleep 25
+          if ! kill -0 $PID 2>/dev/null; then echo "Atrio se ha cerrado solo"; cat "$RUNNER_TEMP/atrio-salida.log"; exit 1; fi
+          find "$ATRIO_HOME" -name '*.log' -exec sh -c 'echo "== $1"; tail -30 "$1"' _ {} \;
+          # La captura de pantalla del sistema (si el runner da permiso)
+          screencapture -x "$RUNNER_TEMP/atrio-pantalla.png" || true
+          kill $PID || true
+      - name: Zip y DMG
+        run: |
+          mkdir -p salida
+          ditto -c -k --sequesterRsrc --keepParent dist/mac-arm64/Atrio.app "salida/Atrio-mac-arm64.zip"
+          hdiutil create -volname "Atrio" -srcfolder dist/mac-arm64/Atrio.app -ov -format UDZO "salida/Atrio-mac-arm64.dmg"
+          ls -la salida
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Atrio-macOS-arm64
+          path: |
+            escritorio/salida/*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atrio-mac-registros
+          path: |
+            ${{ runner.temp }}/atrio-salida.log
+            ${{ runner.temp }}/atrio-pantalla.png

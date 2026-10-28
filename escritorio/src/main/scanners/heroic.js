@@ -1,6 +1,6 @@
 'use strict';
 const path = require('path');
-const { IS_WIN, WIN_APPDATA, HOME, XDG_CONFIG, expandHome, exists, readJson } = require('../paths');
+const { IS_WIN, IS_MAC, WIN_APPDATA, HOME, XDG_CONFIG, expandHome, exists, readJson } = require('../paths');
 const { sortKey } = require('../util');
 
 const RUNNER_LABEL = { legendary: 'Epic', gog: 'GOG', nile: 'Amazon', sideload: 'Heroic' };
@@ -8,7 +8,7 @@ const RUNNER_LABEL = { legendary: 'Epic', gog: 'GOG', nile: 'Amazon', sideload: 
 function roots(extra = []) {
   // Heroic guarda su configuración en la carpeta appData de Electron: ~/.config en Linux, %APPDATA% en Windows
   return [
-    ...(IS_WIN ? [path.join(WIN_APPDATA, 'heroic')] : [
+    ...(IS_WIN ? [path.join(WIN_APPDATA, 'heroic')] : IS_MAC ? [path.join(HOME, 'Library/Application Support/heroic')] : [
       path.join(XDG_CONFIG, 'heroic'),
       path.join(HOME, '.var/app/com.heroicgameslauncher.hgl/config/heroic'),
     ]),

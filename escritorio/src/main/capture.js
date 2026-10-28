@@ -8,6 +8,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 
 const IS_WIN = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
 
 function cleanEnv() {
   try { return require('./launcher').cleanEnv(); } catch { return process.env; }
@@ -15,7 +16,7 @@ function cleanEnv() {
 
 function which(cmd) {
   if (IS_WIN) return null;
-  for (const d of String(cleanEnv().PATH || '/usr/local/bin:/usr/bin:/bin').split(':')) {
+  for (const d of String(cleanEnv().PATH || '/usr/local/bin:/usr/bin:/bin').split(':').concat(IS_MAC ? ['/usr/sbin', '/opt/homebrew/bin'] : [])) {
     const p = path.join(d, cmd);
     try { fs.accessSync(p, fs.constants.X_OK); return p; } catch { /* sigue */ }
   }
@@ -54,6 +55,8 @@ const wayland = () => !!process.env.WAYLAND_DISPLAY || process.env.XDG_SESSION_T
 function methods() {
   const out = [];
   if (IS_WIN) return ['chromium'];
+  // macOS: la herramienta del sistema (pide permiso de «Grabación de pantalla» la primera vez) y, si no, la de Chromium
+  if (IS_MAC) return ['screencapture', 'chromium'];
   const d = desktop();
   if (/kde|plasma/.test(d) && which('spectacle')) out.push('spectacle');
   if (wayland() && which('grim') && !/kde|plasma|gnome/.test(d)) out.push('grim');
@@ -91,7 +94,8 @@ async function viaChromium(scope) {
 async function viaTool(method, scope, multi) {
   const file = path.join(os.tmpdir(), `atrio-captura-${process.pid}-${Date.now()}.png`);
   try {
-    if (method === 'spectacle') await run('spectacle', ['-b', '-n', scope === 'todas' || !multi ? '-f' : '-m', '-o', file], 20000);
+    if (method === 'screencapture') await run('/usr/sbin/screencapture', ['-x', '-t', 'png', file], 20000);
+    else if (method === 'spectacle') await run('spectacle', ['-b', '-n', scope === 'todas' || !multi ? '-f' : '-m', '-o', file], 20000);
     else if (method === 'grim') await run('grim', [file]);
     else if (method === 'gnome-screenshot') await run('gnome-screenshot', ['-f', file]);
     else if (method === 'import') await run('import', ['-window', 'root', file]);

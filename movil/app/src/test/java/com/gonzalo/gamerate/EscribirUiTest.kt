@@ -100,4 +100,30 @@ open class EscribirUiTest {
         rule.onAllNodesWithText("Notas")[0].performClick(); shoot("e11_panel_notas")
         assertTrue(e.obras().size == 1)
     }
+
+    /** Desde la portada de la revista (la interfaz que usas): «Escribir» en el menú de secciones lleva a tus obras. */
+    @Test fun desdeLaRevista() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val e = Escritos.get(ctx)
+        siembra(e)
+        val store = Store(ctx)
+        store.myName = "Gonzalo"
+        Skin.load(ctx); Skin.applyShell(2, ctx)
+        Mode.dark = false; Mode.themeMode = 1
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(store, 0L, false, "") {} } } }
+        rule.waitForIdle()
+        shoot("e20_revista_portada")
+        rule.onAllNodesWithText("Escribir")[0].performClick()
+        rule.waitForIdle()
+        assertTrue("las obras salen al entrar en Escribir", rule.onAllNodesWithText("La torre del cuervo").fetchSemanticsNodes().isNotEmpty())
+        shoot("e21_revista_escribir")
+        rule.onAllNodesWithText("La torre del cuervo")[0].performClick()
+        rule.onAllNodesWithText("Al pie de la torre")[0].performClick()
+        rule.waitForIdle()
+        assertTrue("el editor se abre y el dock se esconde", EscribirHub.enEditor)
+        shoot("e22_revista_editor")
+        androidx.test.espresso.Espresso.pressBack()
+        rule.waitForIdle()
+        assertTrue("Atrás cierra el editor", !EscribirHub.enEditor)
+    }
 }

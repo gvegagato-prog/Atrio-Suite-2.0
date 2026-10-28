@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { parseVdf, get, parseBinaryVdf } = require('../vdf');
-const { IS_WIN, HOME, expandHome, exists } = require('../paths');
+const { IS_WIN, IS_MAC, HOME, expandHome, exists } = require('../paths');
 
 // Windows: carpeta de Steam según el registro (HKCU\Software\Valve\Steam\SteamPath)
 function winSteamPath() {
@@ -39,7 +39,10 @@ function candidateRoots(extra = []) {
     path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Steam'),
     path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Steam'),
     ...extra.map(expandHome),
-  ].filter(Boolean) : [
+  ].filter(Boolean) : IS_MAC ? [
+    path.join(HOME, 'Library/Application Support/Steam'),
+    ...extra.map(expandHome),
+  ] : [
     path.join(HOME, '.local/share/Steam'),
     path.join(HOME, '.steam/steam'),
     path.join(HOME, '.steam/root'),

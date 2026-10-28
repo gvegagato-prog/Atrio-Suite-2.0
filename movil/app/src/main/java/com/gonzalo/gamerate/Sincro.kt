@@ -181,7 +181,7 @@ object Sincro {
         init(ctx)
         para()
         if (visible) app?.let { escucha(it); bajaPronto() }
-        app?.let { if (Store(it).paired) Escritos.pronto(it, 0) }
+        app?.let { c -> val st = Store(c); if (st.paired) { Escritos.get(c).cuenta(st.accUid); Escritos.pronto(c, 0) } }
     }
 
     private fun url(st: Store, path: String, force: Boolean): String? =

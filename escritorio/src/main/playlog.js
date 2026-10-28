@@ -112,6 +112,13 @@ function readCmdlines() {
     if (Date.now() - winSnap.at > 30 * 1000) return [];
     return winSnap.procs.map((p) => `${p.exe}\0${p.cmd}`);
   }
+  // macOS no tiene /proc: se lee la lista de procesos con ps
+  if (process.platform === 'darwin') {
+    try {
+      return require('child_process').execFileSync('/bin/ps', ['-axww', '-o', 'command='], { encoding: 'utf8', timeout: 4000, maxBuffer: 16 * 1024 * 1024 })
+        .split('\n').filter(Boolean);
+    } catch { return []; }
+  }
   const out = [];
   let pids = [];
   try { pids = fs.readdirSync('/proc').filter((p) => /^\d+$/.test(p)); } catch { return out; }

@@ -23,10 +23,13 @@ function cleanEnv(extra = {}) {
 }
 
 const IS_WIN = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
+// En Windows y macOS las direcciones (steam://, https://) las abre el sistema con el programa que las tenga registradas
+const ABRE_EL_SISTEMA = IS_WIN || IS_MAC;
 
 function which(cmd) {
   if (IS_WIN) return null;
-  const dirs = (cleanEnv().PATH || '/usr/local/bin:/usr/bin:/bin').split(':');
+  const dirs = (cleanEnv().PATH || '/usr/local/bin:/usr/bin:/bin').split(':').concat(IS_MAC ? ['/opt/homebrew/bin', '/usr/local/bin'] : []);
   for (const d of dirs) {
     const p = path.join(d, cmd);
     try { fs.accessSync(p, fs.constants.X_OK); return p; } catch { /* sigue */ }
@@ -86,7 +89,7 @@ async function launch(game) {
     case 'steam': {
       // Steam acepta la URL steam://rungameid/<id> tanto si ya está abierto como si no
       const url = `steam://rungameid/${l.appid}`;
-      if (IS_WIN) return openUrl(url);
+      if (ABRE_EL_SISTEMA) return openUrl(url);
       if (l.flatpak && which('flatpak')) return spawnDetached('flatpak', ['run', 'com.valvesoftware.Steam', url]);
       const bin = which('steam');
       if (bin) return spawnDetached(bin, [url]);
@@ -96,7 +99,7 @@ async function launch(game) {
       return spawnDetached('xdg-open', [url]);
     }
     case 'url':
-      if (IS_WIN) return openUrl(l.url);
+      if (ABRE_EL_SISTEMA) return openUrl(l.url);
       return spawnDetached('xdg-open', [l.url]);
     case 'exec':
       return spawnDetached(l.cmd, l.args || [], { cwd: l.cwd, env: l.env });

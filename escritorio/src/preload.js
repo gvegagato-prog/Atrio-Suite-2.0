@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('atrio', {
   fotoImportar: (src, donde) => invoke('foto:importar', src, donde),
   ronronArt: (id) => invoke('ronron:art', id),
   ronronAssets: (id, type, page) => invoke('ronron:assets', id, type, page),
+  escritosTodo: () => invoke('escritos:todo'),
+  escritos: (op, ...a) => invoke('escritos:op', op, ...a),
+  escritosExportar: (pid, formato, opciones) => invoke('escritos:exportar', pid, formato, opciones),
+  escritosImportar: () => invoke('escritos:importar'),
   suite: () => invoke('suite:state'),
   fotoPhones: () => invoke('foto:phones'),
   fotoList: () => invoke('foto:list'),
@@ -68,7 +72,7 @@ contextBridge.exposeInMainWorld('atrio', {
   webState: () => invoke('web:state'),
   on: (channel, cb) => {
     const allowed = ['art', 'art-idle', 'library', 'focus', 'game-ended', 'play', 'winfocus', 'notice', 'ronron',
-      'suite', 'shot-start', 'shot-taken', 'remote', 'web', 'web-key', 'web-error', 'stream', 'fotos'];
+      'suite', 'escritos', 'shot-start', 'shot-taken', 'remote', 'web', 'web-key', 'web-error', 'stream', 'fotos'];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, payload) => cb(payload));
   },

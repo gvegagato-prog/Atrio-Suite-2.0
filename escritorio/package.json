@@ -1,15 +1,16 @@
 {
   "name": "atrio",
   "productName": "Atrio",
-  "version": "2.9.0",
-  "description": "Atrio: tus juegos en el PC (Linux y Windows) y en el móvil",
+  "version": "3.0.0",
+  "description": "Atrio: tus juegos en el PC (Linux, Windows y macOS), tus obras escritas y el móvil",
   "main": "src/main/main.js",
   "author": "Gonzalo",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --linux AppImage",
-    "dist:win": "electron-builder --win nsis"
+    "dist:win": "electron-builder --win nsis",
+    "dist:mac": "electron-builder --mac dir --arm64"
   },
   "build": {
     "appId": "es.gonzalo.atrio",
@@ -59,6 +60,25 @@
       "shortcutName": "Atrio",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "category": "public.app-category.games",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSScreenCaptureDescription": "Atrio hace capturas de tus juegos (a tamaño real) cuando las pides desde el móvil.",
+        "NSAppleEventsUsageDescription": "Atrio puede apagar, reiniciar o suspender el equipo si lo pides desde el móvil."
+      }
     }
   },
   "devDependencies": {

@@ -189,4 +189,18 @@ class EscritosTest {
         sync(a, b, st = st)
         assertEquals(800, b.escritas(Escritos.hoy(), o.id))
     }
+
+    @Test fun alCambiarDeCuentaTodoSeSubeALaNueva() {
+        val st1 = cuenta(); val uid1 = st1.accUid
+        val e = Escritos(tmp("cuentas")) { "movil" }
+        val o = e.nuevo(Escritos.T_OBRA, "") { put("titulo", "Mía") }
+        e.cuenta(uid1)
+        sync(e, st = st1)
+        assertTrue(e.pendientes().isEmpty())
+        val st2 = cuenta()
+        e.cuenta(st2.accUid)
+        assertTrue("al cambiar de cuenta vuelve a estar todo pendiente", e.pendientes().isNotEmpty())
+        sync(e, st = st2)
+        assertTrue(http("GET", "$base/users/${st2.accUid}/escritos/${o.id}.json?auth=${st2.accToken}").contains("Mía"))
+    }
 }
