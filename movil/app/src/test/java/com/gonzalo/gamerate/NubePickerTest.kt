@@ -77,11 +77,11 @@ class NubePickerTest {
     }
 
     /**
-     * Espera a que se cumpla [c] (hasta 30 s: con todas las pruebas a la vez, la red de mentira va lenta). El diálogo va en su propia ventana: en Robolectric solo se vuelve a maquetar
+     * Espera a que se cumpla [c] (hasta 90 s: con todas las pruebas a la vez, la red de mentira va lenta). El diálogo va en su propia ventana: en Robolectric solo se vuelve a maquetar
      * si avanza el reloj de la app, así que aquí se hace avanzar (y se deja trabajar a la red de mentira).
      */
     private fun espera(c: () -> Boolean) {
-        val fin = System.currentTimeMillis() + 30_000
+        val fin = System.currentTimeMillis() + 90_000
         while (System.currentTimeMillis() < fin) {
             org.robolectric.shadows.ShadowLooper.idleMainLooper(50, java.util.concurrent.TimeUnit.MILLISECONDS)
             rule.waitForIdle()
