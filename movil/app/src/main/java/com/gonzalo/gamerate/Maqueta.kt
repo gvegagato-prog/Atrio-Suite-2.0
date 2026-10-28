@@ -54,11 +54,10 @@ data class MagCell(
     /** Encuadre de la imagen: zoom (1 = llena la casilla) y desplazamiento, en fracciones del tamaño de la casilla. */
     val zoom: Float = 1f, val ox: Float = 0f, val oy: Float = 0f,
     /** Forma de la imagen: "llenar" (toda la casilla), "original" (la de la foto), "vertical", "cuadrada", "apaisada"; "" las de antes. */
-    val shape: String = ""
+    val shape: String = "",
+    /** Forma (ancho / alto) que dejó el encuadre: lo que se ve al encuadrar es lo que sale en la página. 0: la de antes. */
+    val asp: Float = 0f
 )
-
-/** Las formas que puede tener una imagen en su casilla. */
-val MAG_SHAPES = listOf("llenar" to "Llenar la casilla", "original" to "La de la foto", "vertical" to "Vertical", "cuadrada" to "Cuadrada", "apaisada" to "Apaisada")
 
 /** Una fila: una o dos casillas; [split] es dónde va la línea (lo que ocupa la de la izquierda, 0–1). */
 data class MagRowSpec(val cells: List<MagCell>, val split: Float = 0.5f, /** Alto de la fila en dp (0: el que pida lo de dentro). */ val height: Float = 0f)
@@ -73,7 +72,7 @@ object MagLayouts {
             put(JSONObject().put("s", r.split.toDouble()).put("a", r.height.toDouble()).put("c", JSONArray().apply {
                 r.cells.forEach { c ->
                     put(JSONObject().put("t", c.type).put("h", c.title).put("x", c.text).put("i", c.image).put("f", c.fit)
-                        .put("z", c.zoom.toDouble()).put("ox", c.ox.toDouble()).put("oy", c.oy.toDouble()).put("sh", c.shape))
+                        .put("z", c.zoom.toDouble()).put("ox", c.ox.toDouble()).put("oy", c.oy.toDouble()).put("sh", c.shape).put("as", c.asp.toDouble()))
                 }
             }))
         }
@@ -88,7 +87,7 @@ object MagLayouts {
                 MagRowSpec((0 until cs.length()).map { j ->
                     val c = cs.getJSONObject(j)
                     MagCell(c.optString("t", "vacio"), c.optString("h"), c.optString("x"), c.optString("i"), c.optBoolean("f"),
-                        c.optDouble("z", 1.0).toFloat(), c.optDouble("ox", 0.0).toFloat(), c.optDouble("oy", 0.0).toFloat(), c.optString("sh"))
+                        c.optDouble("z", 1.0).toFloat(), c.optDouble("ox", 0.0).toFloat(), c.optDouble("oy", 0.0).toFloat(), c.optString("sh"), c.optDouble("as", 0.0).toFloat())
                 }.take(2), o.optDouble("s", 0.5).toFloat(), o.optDouble("a", 0.0).toFloat())
             }
         }
@@ -255,12 +254,13 @@ fun MagPage(
             }
             "imagen" -> {
                 if (c.title.isNotBlank()) MagLabel(c.title)
-                // La forma la eliges al encuadrar: llenar la casilla (lo que mida la fila), la de la foto, vertical, cuadrada o apaisada
+                // Fila de alto fijo: la imagen llena la casilla. Si no, tiene la forma que dejó el encuadre (la misma que se vio al encuadrar)
                 val fixed = LocalRowFixed.current
                 val split = LocalCellFraction.current < 0.99f
-                val fill = fixed || (c.shape == "llenar" && split)
+                val fill = fixed || (c.asp <= 0f && c.shape == "llenar" && split)
                 val shape = when {
                     fill -> Modifier.weight(1f).heightIn(min = 140.dp)
+                    c.asp > 0f -> Modifier.aspectRatio(c.asp.coerceIn(0.2f, 5f))
                     c.shape == "llenar" -> Modifier.aspectRatio(MagImages.ratios[c.image] ?: 0.75f)   // sola en la fila: la forma de la foto
                     else -> Modifier.aspectRatio(magAspect(c, null).coerceIn(0.3f, 4f))
                 }
@@ -442,9 +442,10 @@ fun MagPage(
             // El marco tiene la forma de la imagen en su casilla (y cambia si eliges otra forma)
             val k = "${p.first}:${p.second}"
             val sz = cellSizes[k]
-            val now = if (sz != null && sz.width > 0 && sz.height > 0) sz.width.toFloat() / sz.height else magAspect(cur, cellOuter[k])
-            FrameEditor(cur, { c -> if (c.shape == cur.shape) now else magAspect(c, cellOuter[k]) },
-                onSave = { setCell(p, it); framing = null }, onDismiss = { framing = null })
+            val medida = if (sz != null && sz.width > 0 && sz.height > 0) sz.width.toFloat() / sz.height else magAspect(cur, cellOuter[k])
+            // Fila de alto fijo: la casilla mide lo que mide. Si no, la forma que ya tenía la imagen (o la que tiene ahora)
+            val forma = if (rows.getOrNull(p.first)?.height ?: 0f > 0f || cur.asp <= 0f) medida else cur.asp
+            FrameEditor(cur, forma, onSave = { setCell(p, it); framing = null }, onDismiss = { framing = null })
         }
     }
     // Imagen
@@ -522,33 +523,23 @@ fun FramedImage(c: MagCell, modifier: Modifier) {
 }
 
 /**
- * Encuadrar: la imagen dentro de un marco con la forma que tendrá; dos dedos amplían o reducen, uno la mueve.
- * Se elige la forma (llenar la casilla, la de la foto, vertical, cuadrada, apaisada) y si se ve la foto entera o recortada.
+ * Encuadrar: la imagen dentro de un marco con la forma exacta que tendrá en la página; dos dedos amplían o reducen, uno la
+ * mueve. Se ve la foto entera apagada alrededor y, dentro del marco, lo que quedará. No hay más opciones.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun FrameEditor(c: MagCell, aspectOf: (MagCell) -> Float, onSave: (MagCell) -> Unit, onDismiss: () -> Unit) {
+fun FrameEditor(c: MagCell, frameAspect: Float, onSave: (MagCell) -> Unit, onDismiss: () -> Unit) {
     var zoom by remember { mutableStateOf(c.zoom) }
     var ox by remember { mutableStateOf(c.ox) }
     var oy by remember { mutableStateOf(c.oy) }
-    var shape by remember { mutableStateOf(c.shape.ifBlank { "llenar" }) }
-    var whole by remember { mutableStateOf(c.fit) }
     var box by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
-    fun current() = c.copy(zoom = zoom, ox = ox, oy = oy, shape = shape, fit = whole)
+    fun current() = c.copy(zoom = zoom, ox = ox, oy = oy, asp = frameAspect.coerceIn(0.2f, 5f))
     androidx.compose.ui.window.Dialog(onDismiss, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth().padding(16.dp).background(Paper).verticalScroll(rememberScrollState()).padding(18.dp)) {
             Text("Encuadrar", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-            Text("Pellizca para ampliar o reducir (puedes alejarla hasta verla entera). Arrastra para colocarla. Lo que quede dentro del marco es lo que se verá.",
+            Text("Pellizca para ampliar o reducir y arrastra para colocarla. Lo que queda dentro del marco, a todo color, es exactamente lo que se verá; lo apagado de alrededor queda fuera.",
                 color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
-            Text("FORMA", fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
-            androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                MAG_SHAPES.forEach { (id, name) -> Tool(name.uppercase(), accent = shape == id) { shape = id } }
-            }
-            androidx.compose.foundation.layout.FlowRow(Modifier.padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Tool("RECORTADA", accent = !whole) { whole = false }
-                Tool("FOTO ENTERA", accent = whole) { whole = true }
-            }
-            val aspect = aspectOf(current()).coerceIn(0.3f, 4f)
+            val aspect = frameAspect.coerceIn(0.2f, 5f)
             // El escenario enseña la foto ENTERA (apagada) y el marco, con lo que se verá, encima y a todo color.
             // Así se ve siempre qué queda dentro y qué fuera, y se puede alejar o mover hasta donde haga falta.
             BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -560,7 +551,7 @@ fun FrameEditor(c: MagCell, aspectOf: (MagCell) -> Float, onSave: (MagCell) -> U
                 val frameH = frameW / aspect
                 val ratio = MagImages.ratios[c.image]
                 // Tamaño de la foto sin zoom: llenando el marco (recortada) o cabiendo entera
-                val cover = !whole
+                val cover = !c.fit
                 val imgW = if (ratio == null) frameW else if ((ratio > aspect) == cover) frameH * ratio else frameW
                 val imgH = if (ratio == null) frameH else if ((ratio > aspect) == cover) frameH else frameW / ratio
                 val ctx = LocalContext.current

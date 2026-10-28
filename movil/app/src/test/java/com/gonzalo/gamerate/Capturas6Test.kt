@@ -237,6 +237,21 @@ open class Capturas6Test {
         rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r9e_resultado")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("r4b_ficha_valorado_2")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("r4c_ficha_valorado_3")
+        // Fila de alto automático (foto + nota): lo que se ve al encuadrar es lo que sale en la página
+        rule.runOnUiThread {
+            MagLayouts.save(ctx, "v:0:102", listOf(
+                MagRowSpec(listOf(MagCell("imagen", image = cover("Hades", 0xFFE96443.toInt(), 0xFF904E95.toInt()), shape = "llenar"), MagCell("nota")), 0.45f),
+                MagRowSpec(listOf(MagCell("texto", "Mi veredicto", "El mejor roguelike que he jugado.")))
+            ))
+        }
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r9i_auto_antes")
+        rule.onAllNodesWithText("EDITAR")[0].performClick()
+        rule.onNodeWithContentDescription("Casilla Imagen").performClick()
+        rule.onAllNodesWithText("Encuadrar la imagen")[0].performClick(); shoot("r9j_auto_encuadre")
+        rule.onAllNodesWithText("+ AMPLIAR")[0].performClick(); rule.onAllNodesWithText("+ AMPLIAR")[0].performClick()
+        rule.onAllNodesWithText("GUARDAR")[0].performClick()
+        rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r9k_auto_resultado")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.onAllNodesWithText("Jugando")[0].performClick()
         rule.onAllNodesWithText("Deadlock")[0].performClick(); shoot("r5_ficha_jugando")
