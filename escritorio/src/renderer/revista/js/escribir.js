@@ -355,7 +355,7 @@
     raiz.append(h('div.e-resumen', h('span', `${cifra(pal)}${meta ? ` de ${cifra(meta)} palabras` : ' palabras'} · ${RV.plural(caps.length, 'capítulo', 'capítulos')}`),
       meta ? barra(pal / meta, colorDe(obra.color)) : null,
       h('div.e-estados', ESTADOS.map((n, i) => h('span', h('i', { style: { background: COL_ESTADO[i] } }), `${ests[i]} ${n.toLowerCase()}`)),
-        h('button.e-chip', { type: 'button', 'aria-pressed': esquema ? 'true' : 'false', onclick: () => { esquema = !esquema; RV.refrescar(); } }, 'Esquema'))));
+        h('button.e-chip', { type: 'button', 'aria-pressed': esquema ? 'true' : 'false', title: 'Enseña el resumen de cada escena (el del panel de la escena) en vez del principio del texto', onclick: () => { esquema = !esquema; RV.refrescar(); } }, esquema ? 'Ver el texto' : 'Ver resúmenes'))));
     let parte = '';
     let arrastrando = null;
     const suelta = async (fn) => { try { await fn(); } catch (e) { E.err(e); } };

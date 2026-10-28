@@ -233,8 +233,8 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
             listOf("Manuscrito", "Fichas", "Notas", "Línea", "Cifras").forEachIndexed { i, n ->
                 val on = i == pestana
                 if (Skin.revista) Text(n.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
-                    modifier = Modifier.press(haptic = false) { pestana = i }.padding(vertical = 10.dp)
-                        .drawBehind { if (on) drawRect(ColGeneral, topLeft = Offset(0f, size.height - 7.dp.toPx()), size = Size(size.width, 2.dp.toPx())) })
+                    modifier = Modifier.press(haptic = false) { pestana = i }
+                        .drawBehind { if (on) drawRect(ColGeneral, topLeft = Offset(0f, size.height - 2.dp.toPx()), size = Size(size.width, 2.dp.toPx())) }.padding(vertical = 10.dp))
                 else SoftChip(n, on) { pestana = i }
             }
         }
@@ -271,7 +271,7 @@ private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     ESTADOS_ESCENA.forEachIndexed { i, n -> Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(9.dp).clip(CircleShape).background(colorEstado(i))); Spacer(Modifier.width(5.dp)); Text("${estados[i] ?: 0} ${n.lowercase()}", color = Muted, fontSize = 12.sp) } }
                     Spacer(Modifier.weight(1f))
-                    SoftChip("Esquema", esquema) { esquema = !esquema }
+                    SoftChip(if (esquema) "Ver el texto" else "Ver resúmenes", esquema) { esquema = !esquema }
                 }
             }
         }
