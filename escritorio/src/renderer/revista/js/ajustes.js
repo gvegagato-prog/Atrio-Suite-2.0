@@ -178,6 +178,12 @@
   function laRevista() {
     const rev = { tema: 'auto', acento: 'rojo', ...(D.config().revista || {}) };
     return [
+      // (solo revista, el Mac) Pantalla completa: al abrir, y ahora mismo
+      RV.soloRevista ? bloque('Pantalla completa', 'Abrir Atrio a pantalla completa, también para escribir. F11 o ⌃⌘F la ponen y la quitan al momento, en cualquier página.',
+        h('div.opciones', [[true, 'Abrir a pantalla completa'], [false, 'Abrir en ventana']].map(([v, n]) => h('button.opcion', {
+          type: 'button', 'aria-pressed': String((D.config().behavior || {}).fullscreen !== false) === String(v),
+          onclick: async () => { try { D.setPc(await RV.api.patchConfig({ behavior: { fullscreen: v } })); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); } RV.refrescar(); },
+        }, n)))) : null,
       bloque('Tema', 'Papel claro, papel oscuro o lo que diga el sistema.',
         h('div.opciones', RV.TEMAS.map(([id, n]) => h('button.opcion', {
           type: 'button', 'aria-pressed': String(rev.tema === id), onclick: () => guardarRevista({ tema: id }),

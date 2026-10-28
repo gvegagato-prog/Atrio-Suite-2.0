@@ -83,7 +83,9 @@ probarla en Linux, con `ATRIO_SOLO_REVISTA=1`): lo mismo que verías en el móvi
 Escribir, Descubrir, Cifras y Ajustes con el tema, la cuenta y la lista negra). **No tiene** lanzador ni Modo Juegos, ni
 «Tu PC», ni escanea ni abre juegos del equipo, ni apagar/reiniciar/suspender, ni streaming, ni se registra como
 dispositivo que el móvil pueda controlar. Windows y Linux siguen igual que siempre. Cosas propias del Mac: menú Edición en
-español (Deshacer y Rehacer también en el editor de Escribir), atajos con ⌘ y un icono con la retícula de macOS.
+español (Deshacer y Rehacer también en el editor de Escribir), atajos con ⌘, un icono con la retícula de macOS y
+**pantalla completa**: se abre a pantalla completa (se puede cambiar en Ajustes → La revista) y se alterna en cualquier
+página, también escribiendo, con F11, ⌃⌘F, el menú Visualización o el botón «⤢ Pantalla completa» de la cabecera.
 **No lo he podido probar en un Mac físico**: solo en el Mac de GitHub (cuando arranca) y en un Electron de Linux con la
 misma edición.
 

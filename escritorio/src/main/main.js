@@ -955,7 +955,12 @@ function createWindow() {
         { type: 'separator' },
         { role: 'startSpeaking', label: 'Empezar a leer en voz alta' }, { role: 'stopSpeaking', label: 'Dejar de leer' },
       ] },
-      { role: 'viewMenu' }, { role: 'windowMenu' },
+      { label: 'Visualización', submenu: [
+        { role: 'togglefullscreen', label: 'Pantalla completa' },
+        { type: 'separator' },
+        { role: 'resetZoom', label: 'Tamaño real' }, { role: 'zoomIn', label: 'Aumentar' }, { role: 'zoomOut', label: 'Reducir' },
+      ] },
+      { role: 'windowMenu' },
     ]));
   }
   web.attach(win, send);
@@ -965,7 +970,8 @@ function createWindow() {
   // completa da problemas en algunos compositores Wayland
   // Siempre a pantalla completa (la revista con su modo Juegos es el lanzador). --ventana para depurar
   // (en macOS la pantalla completa es otro escritorio: solo si lo pides en Ajustes)
-  const wantFull = !shots && !process.argv.includes('--ventana') && ((ui === 'revista' && process.platform !== 'darwin') || !!cfg.behavior.fullscreen);
+  // (solo revista, el Mac: se abre a pantalla completa salvo que en Ajustes → La revista lo quites; F11 o ⌃⌘F la alternan al momento)
+  const wantFull = !shots && !process.argv.includes('--ventana') && (SOLO_REVISTA ? cfg.behavior.fullscreen !== false : ((ui === 'revista' && process.platform !== 'darwin') || !!cfg.behavior.fullscreen));
   win.once('ready-to-show', () => {
     if (shots) { win.showInactive(); return; }
     if (background) return;
@@ -974,7 +980,7 @@ function createWindow() {
     if (ui === 'revista' && !process.argv.includes('--ventana')) win.maximize();
     if (wantFull) setTimeout(() => { if (win) win.setFullScreen(true); }, 250);
   });
-  win.on('show', () => { if (wantFull && win && !win.isFullScreen()) setTimeout(() => { if (win) win.setFullScreen(true); }, 250); });
+  win.on('show', () => { if (wantFull && !SOLO_REVISTA && win && !win.isFullScreen()) setTimeout(() => { if (win) win.setFullScreen(true); }, 250); });
 
   // Diagnóstico y recuperación si la parte gráfica se cae
   let reloads = 0;

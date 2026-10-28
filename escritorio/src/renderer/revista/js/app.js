@@ -148,7 +148,8 @@
       RV.soloRevista ? null : item('Tu PC', { v: 'pc' }, v === 'pc'),
       item('Ajustes', { v: 'ajustes' }, v === 'ajustes'));
     const folio = h('div.cab-folio',
-      RV.soloRevista ? null : h('button.enlace.acento', { type: 'button', onclick: () => RV.cambiarModo('juegos'), title: 'Botón Vista del mando (o C)' }, '⧉ Modo Juegos'),
+      RV.soloRevista ? h('button.enlace', { type: 'button', onclick: () => api.toggleFullscreen(), title: 'F11 (en el Mac, también ⌃⌘F)' }, '⤢ Pantalla completa')
+        : h('button.enlace.acento', { type: 'button', onclick: () => RV.cambiarModo('juegos'), title: 'Botón Vista del mando (o C)' }, '⧉ Modo Juegos'),
       h('span.versal', `Nº ${RV.diaDelAno(hoy)} · ${RV.fmtLargo(hoy)}`),
       pila.length || v !== 'portada' ? h('button.enlace', { type: 'button', onclick: () => RV.volver(), title: 'Esc' }, '← Volver') : null,
       h('span.hueco'),

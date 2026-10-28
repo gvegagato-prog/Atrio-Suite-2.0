@@ -123,6 +123,17 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
       await p.evaluate(() => window.RV.ir({ v: 'ajustes' })); await sleep(400);
       const tabs = await p.locator('.ajustes .pestana').allInnerTexts();
       ok(tabs.join('|').toLowerCase() === 'la revista|cuenta|lista negra', `Ajustes solo trae la revista, la cuenta y la lista negra (${tabs.join('|')})`);
+      // Pantalla completa: botón en la cabecera, ajuste «al abrir» y F11 (en macOS, la de verdad; aquí solo se mira que responde)
+      ok(/pantalla completa/i.test(cab), 'la cabecera tiene «Pantalla completa»');
+      ok((await p.locator('.ajustes-cuerpo').innerText()).match(/abrir a pantalla completa/i) !== null, 'Ajustes → La revista deja elegir abrir a pantalla completa o en ventana');
+      await p.locator('.ajustes-cuerpo button', { hasText: 'Abrir en ventana' }).click(); await sleep(500);
+      ok((await p.evaluate(() => window.atrio.state())).config.behavior.fullscreen === false, 'elegir «Abrir en ventana» se guarda');
+      await p.locator('.ajustes-cuerpo button', { hasText: 'Abrir a pantalla completa' }).click(); await sleep(500);
+      ok((await p.evaluate(() => window.atrio.state())).config.behavior.fullscreen === true, 'y elegir «Abrir a pantalla completa» también');
+      const f1 = await p.evaluate(() => window.atrio.toggleFullscreen()); await sleep(300);
+      const f2 = await p.evaluate(() => window.atrio.toggleFullscreen()); await sleep(300);
+      ok(typeof f1 === 'boolean' && typeof f2 === 'boolean' && f1 !== f2, `alternar la pantalla completa responde (${f1} → ${f2})`);
+      await p.evaluate(() => window.RV.ir({ v: 'ajustes' })); await sleep(300);
       await p.screenshot({ path: path.join(OUT, 'atrio-solo-revista-ajustes.png') });
       await p.evaluate(() => window.RV.ir({ v: 'portada' })); await sleep(500);
       await p.screenshot({ path: path.join(OUT, 'atrio-solo-revista-portada.png') });
