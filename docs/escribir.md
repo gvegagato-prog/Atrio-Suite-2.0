@@ -25,7 +25,7 @@ directamente la marca sola. Los registros del día no se borran con la obra.
 
 | t | qué | campos propios |
 |---|-----|----------------|
-| `p` | obra | titulo, autor, genero, sinopsis, color (#rrggbb), meta (palabras de la obra), diaria (palabras al día), fin (fecha tope, día), orden, arch (1 = archivada), creado |
+| `p` | obra | titulo, autor, genero, sinopsis, color (#rrggbb), meta (palabras de la obra), diaria (palabras al día), fin (fecha tope, día), orden, arch (1 = archivada), creado; de la guía de la novela: idea (la frase), gOn (1 = guía activada), g1…g11 (1 = paso hecho a mano, 2 = saltado) y g7t (ms en que empezó el reposo) |
 | `c` | capítulo | titulo, orden (decimal), parte (texto), resumen |
 | `e` | escena | cid, titulo, orden, texto (Markdown ligero), resumen, estado (0 borrador, 1 revisión, 2 final), pov (id de ficha), lugar (id de ficha), cuando (texto), etq (lista), palabras, meta |
 | `f` | ficha | tipo (`personaje` `lugar` `objeto` `mundo` `otro`), nombre, alias (texto, separado por comas), resumen, texto, campos ([{k,v}]), color, orden |
@@ -74,8 +74,9 @@ versión se guarda aparte (las 3 últimas, en `b/<id>.json`, solo en el disposit
 | Tipografía automática | `EscribirTexto.kt` (Tipografia) | `revista/js/escribir-texto.js` (ET.tipografia) |
 | Sinónimos (tesauro RLA-ES, LGPL 2.1) | `EscribirSinonimos.kt` + `assets/sinonimos` | `escritorio/src/main/sinonimos.js` |
 | Sprints | `EscribirSprint.kt` | `revista/js/escribir.js` (E.sprint) |
+| Guía de la novela (pasos, textos y qué se da por hecho) | `EscribirGuia.kt` | `revista/js/escribir-guia.js` (la lógica) y `escribir.js` (las pantallas) |
 
-Casos compartidos (los pasan el móvil y el PC): `herramientas/casos/mezcla.json`, `tipografia.json` y `sinonimos.json`.
+Casos compartidos (los pasan el móvil y el PC): `herramientas/casos/mezcla.json`, `tipografia.json`, `sinonimos.json` y `guia.json`.
 
 Pruebas cruzadas: `EscritosInteropTest.kt` hace trabajar al núcleo del móvil con el módulo de JavaScript del PC contra el
 mismo Firebase de mentira (leer y escribir, y cambiar a la vez párrafos distintos, borrar y recuperar).

@@ -33,6 +33,12 @@
     { "nombre": "borrada en uno y escrita en el otro: queda en la papelera con lo escrito", "base": { "id": "e4", "t": "e", "titulo": "T", "texto": "X", "palabras": 1 }, "nuestro": { "id": "e4", "t": "e", "titulo": "T", "texto": "X Y", "palabras": 2 }, "suyo": { "id": "e4", "t": "e", "titulo": "T", "texto": "X", "palabras": 1, "d": 1, "dt": 5, "dc": "c9" }, "prefiere": "suyo",
       "esperado": { "id": "e4", "t": "e", "titulo": "T", "texto": "X Y", "palabras": 2, "d": 1, "dt": 5, "dc": "c9" }, "choques": 0 },
     { "nombre": "listas y campos anidados se comparan enteros", "base": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "30" }], "etq": ["a"] }, "nuestro": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "31" }], "etq": ["a"] }, "suyo": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "30" }], "etq": ["a", "b"] }, "prefiere": "suyo",
-      "esperado": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "31" }], "etq": ["a", "b"] }, "choques": 0 }
+      "esperado": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "31" }], "etq": ["a", "b"] }, "choques": 0 },
+    { "nombre": "guía de la novela: el móvil y el PC marcan pasos distintos a la vez",
+      "base": { "id": "p1", "t": "p", "titulo": "Novela", "gOn": 1 },
+      "nuestro": { "id": "p1", "t": "p", "titulo": "Novela", "gOn": 1, "g4": 1, "idea": "Una aprendiz sube a una torre." },
+      "suyo": { "id": "p1", "t": "p", "titulo": "Novela", "gOn": 1, "g7t": 1700000000000, "diaria": 300 },
+      "prefiere": "nuestro",
+      "esperado": { "id": "p1", "t": "p", "titulo": "Novela", "gOn": 1, "g4": 1, "idea": "Una aprendiz sube a una torre.", "g7t": 1700000000000, "diaria": 300 }, "choques": 0 }
   ]
 }

@@ -62,6 +62,14 @@
   E.escritas = (dia, pid) => vivos().reduce((s, o) => (o.t === 'l' && o.dia === dia && (pid == null || o.pid === pid) ? s + Object.values(o.dev || {}).reduce((a, v) => a + num(v), 0) : s), 0);
   E.ultimosDias = (n, pid) => { const hoy = RV.hoy(); return Array.from({ length: n }, (_, i) => { const d = hoy - n + 1 + i; return [d, E.escritas(d, pid)]; }); };
   E.racha = (pid) => { let d = RV.hoy(); if (E.escritas(d, pid) === 0) d--; let n = 0; while (E.escritas(d, pid) > 0) { n++; d--; } return n; };
+  // Días distintos en los que has escrito algo en la obra
+  E.diasEscritos = (pid) => new Set(vivos().filter((o) => o.t === 'l' && o.pid === pid && Object.values(o.dev || {}).reduce((a, v) => a + num(v), 0) > 0).map((o) => o.dia)).size;
+  // Lo que la guía de la novela necesita saber de la obra (escribir-guia.js)
+  E.datosGuia = (pid) => {
+    const o = E.get(pid) || {};
+    const res = E.capitulos(pid).filter((c) => String(c.resumen || '').trim()).length + E.escenasDe(pid).filter((e) => String(e.resumen || '').trim()).length + E.hitos(pid).length;
+    return { obra: o, personajes: E.fichas(pid).filter((f) => f.tipo === 'personaje').length, resumenes: res, dias: E.diasEscritos(pid), palabras: E.palabrasObra(pid), ahora: Date.now() };
+  };
   E.ordenEntre = (a, b) => (a == null && b == null ? 1000 : a == null ? b - 1000 : b == null ? a + 1000 : (a + b) / 2);
   // Operaciones (las hace el proceso principal, que guarda y sube)
   const op = (nombre, ...args) => api.escritos(nombre, ...args);
@@ -220,9 +228,11 @@
     let color = obra ? obra.color || RV.COLORES[0] : RV.COLORES[0];
     const meta = RV.entrada(obra ? (obra.meta || '') : '80000', { type: 'number', min: '0' });
     const dia = RV.entrada(obra ? (obra.diaria || '') : '500', { type: 'number', min: '0' });
+    let guiada = obra ? RV.G.activa(obra) : true;
+    const gu = h('input', { type: 'checkbox', checked: guiada ? '' : null, onchange: (e) => { guiada = e.target.checked; } });
     const guardar = async (d) => {
       if (!t.value.trim()) { RV.aviso('Ponle un título.', 'error'); return; }
-      const c = { titulo: t.value.trim(), autor: au.value.trim(), genero: ge.value.trim(), sinopsis: si.value.trim(), color, meta: num(meta.value), diaria: num(dia.value) };
+      const c = { titulo: t.value.trim(), autor: au.value.trim(), genero: ge.value.trim(), sinopsis: si.value.trim(), color, meta: num(meta.value), diaria: num(dia.value), gOn: guiada ? 1 : 0 };
       try {
         if (obra) await op('edita', obra.id, c);
         else {
@@ -230,7 +240,7 @@
           const cap = await op('nuevo', 'c', o.id, { titulo: 'Capítulo 1' });
           const es = await op('nuevo', 'e', o.id, { cid: cap.id, titulo: 'Escena 1' });
           d.cerrar();
-          RV.ir({ v: 'editor', id: es.id });
+          if (guiada) RV.ir({ v: 'obra', id: o.id, tab: TAB_GUIA }); else RV.ir({ v: 'editor', id: es.id });
           return;
         }
         d.cerrar();
@@ -242,7 +252,8 @@
       ante: obra ? 'Ajustes de la obra' : 'Nueva obra', titulo: obra ? obra.titulo : 'Empieza una novela', ancho: true,
       cuerpo: [RV.campo('Título', t), h('div.e-dos', RV.campo('Autor o autora', au), RV.campo('Género', ge)), RV.campo('Sinopsis', si),
         RV.campo('Color', colores(color, (c) => { color = c; })),
-        h('div.e-dos', RV.campo('Meta de palabras', meta), RV.campo('Palabras al día', dia, 'Las metas son tuyas: sirven para ver cuánto llevas, no para presionarte.'))],
+        h('div.e-dos', RV.campo('Meta de palabras', meta), RV.campo('Palabras al día', dia, 'Las metas son tuyas: sirven para ver cuánto llevas, no para presionarte.')),
+        h('label.e-check.e-guiarme', gu, h('span', h('b', ' Guiarme paso a paso'), h('small', ' Una guía de 11 pasos, de la idea al manuscrito final: te dice qué toca ahora. Puedes quitarla cuando quieras.')))],
       acciones: [obra ? { texto: 'Borrar la obra', peligro: true, fn: borrar } : null, obra ? { texto: obra.arch ? 'Sacar del archivo' : 'Archivar', fn: archivar } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: obra ? 'Guardar' : 'Crear', principal: true, fn: guardar }],
     });
   };
@@ -266,7 +277,7 @@
     });
   };
 
-  E.dlgFicha = (pid, ficha, tipoNuevo = 'personaje', alCerrar) => {
+  E.dlgFicha = (pid, ficha, tipoNuevo = 'personaje', alCerrar, camposNuevos = null) => {
     let tipo = ficha ? ficha.tipo || 'personaje' : tipoNuevo;
     let color = ficha ? ficha.color || RV.COLORES[5] : RV.COLORES[5];
     const nom = RV.entrada(ficha ? ficha.nombre : '', { 'data-autofocus': true });
@@ -274,6 +285,7 @@
     const res = RV.entrada(ficha ? ficha.resumen : '', { placeholder: 'En una frase' });
     const tex = RV.areaTexto(ficha ? ficha.texto : '', { rows: '8', placeholder: 'Historia, personalidad, detalles…' });
     let campos = (ficha && Array.isArray(ficha.campos) ? ficha.campos : []).map((c) => ({ k: c.k || '', v: c.v || '' }));
+    if (!ficha && !campos.length && camposNuevos) campos = camposNuevos.map((k) => ({ k, v: '' }));
     if (!ficha && !campos.length) campos = tipo === 'personaje' ? ['Edad', 'Aspecto', 'Quiere', 'Teme'].map((k) => ({ k, v: '' })) : tipo === 'lugar' ? ['Clima', 'Gente'].map((k) => ({ k, v: '' })) : [];
     const filas = h('div.e-campos');
     const pintaCampos = () => filas.replaceChildren(...campos.map((c, i) => h('div.e-campo-fila',
@@ -488,7 +500,8 @@
   }
 
   // ---------------------------------------------------------------- Una obra
-  const TABS = ['Manuscrito', 'Fichas', 'Notas', 'Línea', 'Cifras'];
+  const TABS = ['Manuscrito', 'Fichas', 'Notas', 'Línea', 'Cifras', 'Guía'];
+  const TAB_GUIA = 5;
   RV.vistas.obra = (ruta) => {
     const obra = E.get(ruta.id);
     if (!obra) { RV.volver() || RV.ir({ v: 'escribir' }); return h('div.hoja'); }
@@ -499,7 +512,7 @@
         h('div.herramientas', h('button.enlace', { type: 'button', onclick: () => buscarObra(obra) }, 'Buscar'), h('button.enlace', { type: 'button', onclick: () => exportar(obra) }, 'Exportar'), h('button.enlace', { type: 'button', onclick: () => E.dlgObra(obra) }, 'Ajustes'))),
       obra.autor ? h('p.entradilla', obra.autor) : null, h('div.filete')));
     root.append(h('nav.e-tabs', TABS.map((n, i) => h('button', { type: 'button', 'aria-current': i === tab ? 'page' : null, onclick: () => RV.ir({ v: 'obra', id: obra.id, tab: i }, { reemplazar: true }) }, n))));
-    root.append([manuscrito, fichas, notas, linea, cifras][tab] ? [manuscrito, fichas, notas, linea, cifras][tab](obra) : manuscrito(obra));
+    root.append([manuscrito, fichas, notas, linea, cifras, guiaNovela][tab] ? [manuscrito, fichas, notas, linea, cifras, guiaNovela][tab](obra) : manuscrito(obra));
     return root;
   };
 
@@ -509,6 +522,8 @@
     const pid = obra.id; const caps = E.capitulos(pid); const pal = E.palabrasObra(pid); const meta = num(obra.meta);
     const ests = [0, 0, 0]; for (const e of E.escenasDe(pid)) ests[Math.min(2, num(e.estado))]++;
     const raiz = h('div.e-manu');
+    const sig = tarjetaGuia(obra);
+    if (sig) raiz.append(sig);
     raiz.append(h('div.e-resumen', h('span', `${cifra(pal)}${meta ? ` de ${cifra(meta)} palabras` : ' palabras'} · ${RV.plural(caps.length, 'capítulo', 'capítulos')}`),
       meta ? barra(pal / meta, colorDe(obra.color)) : null,
       h('div.e-estados', ESTADOS.map((n, i) => h('span', h('i', { style: { background: COL_ESTADO[i] } }), `${ests[i]} ${n.toLowerCase()}`)),
@@ -662,6 +677,96 @@
       ...caps.map((c, i) => h('div.e-cap-barra', h('span', String(i + 1)), barra(E.palabrasCapitulo(c.id) / maxCap), h('span', cifra(E.palabrasCapitulo(c.id)))))));
     const sp = E.sprintsObra(pid);
     if (sp) raiz.append(sp);
+    return raiz;
+  }
+
+  // ---------------------------------------------------------------- La guía de la novela (escribir-guia.js)
+  let abierto = { pid: '', id: 0 };
+  const guardaGuia = (obra, c) => op('edita', obra.id, c).catch(E.err);
+  // Marcar un paso (1 hecho, 2 saltado) y abrir el siguiente
+  const marca = (obra, p, v) => { abierto = { pid: obra.id, id: p.id < RV.G.PASOS.length ? p.id + 1 : 0, sig: abierto.sig }; return guardaGuia(obra, { [`g${p.id}`]: v }); };
+  const ACCIONES = {
+    1: (obra) => {
+      const ta = RV.areaTexto(obra.idea || '', { rows: '3', placeholder: 'Ejemplo: Una aprendiz de hechicera sube a la torre donde nadie vuelve para salvar a su hermana, y descubre que lo que la espera arriba es ella misma.', 'data-autofocus': true });
+      RV.dialogo({ ante: 'Paso 1', titulo: 'Tu historia en una frase', ancho: true,
+        cuerpo: [h('p.texto', 'Quién quiere qué, y qué se lo impide. Corta y sin nombres propios si puedes; no tiene que ser perfecta.'), RV.campo('La frase', ta)],
+        acciones: ['hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: 'Guardar', principal: true, fn: async (d) => { if (!ta.value.trim()) { RV.aviso('Escribe tu frase.', 'error'); return; } await guardaGuia(obra, { idea: ta.value.trim() }); d.cerrar(); } }] });
+    },
+    2: (obra) => E.dlgFicha(obra.id, null, 'personaje', null, ['Quiere', 'Se lo impide', 'Si fracasa', 'Edad']),
+    3: async (obra) => {
+      const pid = obra.id; const caps = E.capitulos(pid);
+      if (caps.length >= 3) { RV.ir({ v: 'obra', id: pid, tab: 0 }); RV.aviso('Ya tienes capítulos: abre cada uno y escribe su resumen.'); return; }
+      try {
+        const vacio = caps.length === 1 && caps[0].titulo === 'Capítulo 1' && E.palabrasCapitulo(caps[0].id) === 0 && !String(caps[0].resumen || '').trim();
+        const nombres = ['Planteamiento', 'Nudo', 'Desenlace'];
+        if (vacio) await op('edita', caps[0].id, { titulo: nombres[0] });
+        for (let i = caps.length; i < 3; i++) { const c = await op('nuevo', 'c', pid, { titulo: nombres[i] }); await op('nuevo', 'e', pid, { cid: c.id, titulo: 'Escena 1' }); }
+        RV.ir({ v: 'obra', id: pid, tab: 0 });
+        RV.aviso('Tres capítulos: abre cada uno (su título) y escribe en «Resumen» qué pasa. Con tres resúmenes, este paso queda hecho.');
+      } catch (e) { E.err(e); }
+    },
+    4: (obra) => {
+      const ex = E.notas(obra.id).find((n) => n.titulo === 'Promesas de la historia');
+      if (ex) { E.dlgNota(obra.id, ex); return; }
+      op('nuevo', 'n', obra.id, { tipo: 'idea', titulo: 'Promesas de la historia', color: RV.COLORES[2],
+        texto: 'Promesa: ¿qué le prometo al lector en las primeras páginas (tono, género, conflicto)?\n\nProgreso: ¿qué cambia en cada tramo para que el medio avance?\n\nRecompensa: ¿cómo cumple el final lo que prometí?\n' })
+        .then((n) => E.dlgNota(obra.id, n)).catch(E.err);
+    },
+    5: (obra) => {
+      const dia = RV.entrada(obra.diaria || '300', { type: 'number', min: '0', 'data-autofocus': true });
+      RV.dialogo({ ante: 'Paso 5', titulo: 'Tu meta de cada día', ancho: true,
+        cuerpo: [h('p.texto', 'Elige una cantidad que te parezca casi demasiado fácil. Mejor cumplirla todos los días que abandonar una grande.'), RV.campo('Palabras al día', dia, 'Para empezar, unas 300 (una sugerencia de Atrio). Siempre puedes subirla.'),
+          chips([['150', '150'], ['300', '300'], ['500', '500'], ['1000', '1000']], String(dia.value), (k) => { dia.value = k; })],
+        acciones: ['hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: 'Guardar', principal: true, fn: async (d) => { await guardaGuia(obra, { diaria: num(dia.value) }); d.cerrar(); } }] });
+    },
+    6: (obra) => { const e = E.escenasDe(obra.id).sort((a, b) => num(b.u) - num(a.u))[0]; RV.ir(e ? { v: 'editor', id: e.id } : { v: 'obra', id: obra.id, tab: 0 }); },
+    7: (obra) => guardaGuia(obra, { g7t: Date.now() }),
+    8: (obra) => RV.ir({ v: 'obra', id: obra.id, tab: 0 }),
+    9: (obra) => RV.ir({ v: 'obra', id: obra.id, tab: 0 }),
+    10: (obra) => exportar(obra),
+    11: (obra) => exportar(obra),
+  };
+  // La tarjeta del manuscrito con el paso que toca ahora (solo con la guía activada)
+  function tarjetaGuia(obra) {
+    if (!RV.G.activa(obra)) return null;
+    const est = RV.G.estados(E.datosGuia(obra.id)); const id = RV.G.siguiente(est);
+    if (!id) return null;
+    const p = RV.G.PASOS.find((x) => x.id === id);
+    return h('div.e-sigue.e-paso-ahora', h('span.versal.acento', `Guía · paso ${id} de ${RV.G.PASOS.length}`), h('span.titulo', p.titulo), h('span.cursiva', p.que),
+      h('div.fila-botones', h('button.boton-tinta', { type: 'button', onclick: () => ACCIONES[id](obra) }, p.accion), h('button.enlace', { type: 'button', onclick: () => { abierto = { pid: obra.id, id, sig: id }; RV.ir({ v: 'obra', id: obra.id, tab: TAB_GUIA }); } }, 'Ver la guía')));
+  }
+  function guiaNovela(obra) {
+    const pid = obra.id; const d = E.datosGuia(pid); const est = RV.G.estados(d); const sig = RV.G.siguiente(est); const hechos = RV.G.hechos(est);
+    const raiz = h('div.e-guia');
+    raiz.append(h('div.e-resumen', h('span', `${hechos} de ${RV.G.PASOS.length} pasos`), barra(hechos / RV.G.PASOS.length, colorDe(obra.color))));
+    if (String(obra.idea || '').trim()) raiz.append(h('blockquote.e-idea', obra.idea));
+    raiz.append(h('div.fila-botones', RV.G.activa(obra)
+      ? h('span.apagado', 'La guía está activada: el paso que toca sale arriba del manuscrito.')
+      : h('span.apagado', 'La guía está desactivada: no sale nada en el manuscrito.'),
+    h('button.enlace', { type: 'button', onclick: () => guardaGuia(obra, { gOn: RV.G.activa(obra) ? 0 : 1 }) }, RV.G.activa(obra) ? 'Desactivar' : 'Activar')));
+    // El paso abierto sigue al que toca: al acabar uno, se abre el siguiente
+    if (abierto.pid !== pid || abierto.sig !== sig) abierto = { pid, id: sig || 0, sig };
+    for (const p of RV.G.PASOS) {
+      const e = est[p.id - 1]; const abre = abierto.id === p.id; const g = `g${p.id}`;
+      const signo = e.estado === 'hecho' ? '✓' : e.estado === 'saltado' ? '–' : e.estado === 'curso' ? '…' : String(p.id);
+      const cab = h('button.e-paso-cab', { type: 'button', 'aria-expanded': abre ? 'true' : 'false', onclick: () => { abierto = { pid, id: abre ? 0 : p.id, sig }; RV.refrescar(); } },
+        h('i', signo), h('span.titulo', p.titulo),
+        h('span.versal', e.estado === 'hecho' ? 'Hecho' : e.estado === 'saltado' ? 'Saltado' : e.estado === 'curso' ? `Reposo: ${RV.plural(e.dias, 'día', 'días')}` : p.id === sig ? 'Toca ahora' : ''));
+      const cuerpo = abre ? h('div.e-paso-cuerpo', h('p.texto', p.que), h('ul', p.como.map((x) => h('li', x))),
+        p.id === 6 ? h('div', barra(num(obra.meta) ? d.palabras / num(obra.meta) : 0, colorDe(obra.color)), h('span.apagado', `${cifra(d.palabras)}${num(obra.meta) ? ` de ${cifra(num(obra.meta))}` : ''} palabras`)) : null,
+        p.id === 5 ? h('span.apagado', `Has escrito en ${RV.plural(d.dias, 'día', 'días')} distintos (con 3 se da por hecho).`) : null,
+        e.estado === 'hecho' ? h('p.cursiva.acento', p.hecho) : null,
+        h('div.fila-botones',
+          e.estado === 'curso' ? h('span.apagado', `Llevas ${RV.plural(e.dias, 'día', 'días')} sin abrirlo (unas semanas suele ir bien).`) : h('button.boton-tinta', { type: 'button', onclick: () => ACCIONES[p.id](obra) }, p.accion),
+          e.estado === 'curso' ? h('button.boton-borde', { type: 'button', onclick: () => guardaGuia(obra, { g7: 1 }) }, 'Ya he descansado') : null,
+          e.estado === 'curso' ? h('button.enlace', { type: 'button', onclick: () => guardaGuia(obra, { g7t: Date.now() }) }, 'Empezar de nuevo') : null,
+          e.estado === 'pendiente' && !p.auto ? h('button.boton-borde', { type: 'button', onclick: () => marca(obra, p, 1) }, 'Ya lo tengo') : null,
+          e.estado === 'pendiente' && p.auto ? h('button.enlace', { type: 'button', onclick: () => marca(obra, p, 1) }, 'Marcar como hecho') : null,
+          e.estado === 'pendiente' ? h('button.enlace.apagado', { type: 'button', onclick: () => marca(obra, p, 2) }, 'Saltar este paso') : null,
+          e.aMano ? h('button.enlace.apagado', { type: 'button', onclick: () => guardaGuia(obra, { [g]: 0 }) }, 'Quitar la marca') : null)) : null;
+      raiz.append(h('section.e-paso' + (e.estado === 'hecho' ? '.hecho' : '') + (p.id === sig ? '.ahora' : ''), cab, cuerpo));
+    }
+    raiz.append(h('p.apagado.e-fuentes', RV.G.FUENTES));
     return raiz;
   }
 

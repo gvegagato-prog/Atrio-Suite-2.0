@@ -121,6 +121,7 @@ fun ObraDialogo(e: Escritos, obra: Doc?, onCerrar: () -> Unit, onCreada: (Doc) -
     var color by remember { mutableStateOf(obra?.s("color")?.ifBlank { null } ?: COLORES_ESCRITO[0]) }
     var meta by remember { mutableStateOf(obra?.i("meta")?.takeIf { it > 0 }?.toString() ?: if (obra == null) "80000" else "") }
     var diaria by remember { mutableStateOf(obra?.i("diaria")?.takeIf { it > 0 }?.toString() ?: if (obra == null) "500" else "") }
+    var guiada by remember { mutableStateOf(if (obra == null) true else GuiaNovela.activa(obra)) }
     var borrar by remember { mutableStateOf(false) }
     HojaEscribir(if (obra == null) "Nueva obra" else "Ajustes de la obra", onCerrar) {
         CampoEscribir(titulo, { titulo = it }, "Título")
@@ -134,18 +135,23 @@ fun ObraDialogo(e: Escritos, obra: Doc?, onCerrar: () -> Unit, onCreada: (Doc) -
             CampoEscribir(diaria, { diaria = it.filter(Char::isDigit).take(6) }, "Palabras al día", modifier = Modifier.weight(1f), numero = true)
         }
         Text("Las metas son tuyas: sirven para ver cuánto llevas, no para presionarte.", color = Muted, fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SoftChip(if (guiada) "Guiarme paso a paso ✓" else "Guiarme paso a paso", guiada) { guiada = !guiada }
+            Text("Una guía de 11 pasos, de la idea al manuscrito final. Puedes quitarla cuando quieras.", color = Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BotonEscribir(if (obra == null) "Crear" else "Guardar") {
                 if (titulo.isBlank()) return@BotonEscribir
                 val cambia: JSONObject.() -> Unit = {
                     put("titulo", titulo.trim()); put("autor", autor.trim()); put("genero", genero.trim()); put("sinopsis", sinopsis.trim()); put("color", color)
-                    put("meta", meta.toIntOrNull() ?: 0); put("diaria", diaria.toIntOrNull() ?: 0)
+                    put("meta", meta.toIntOrNull() ?: 0); put("diaria", diaria.toIntOrNull() ?: 0); put("gOn", if (guiada) 1 else 0)
                 }
                 if (obra == null) {
                     val o = e.nuevo(Escritos.T_OBRA, "", cambia)
                     // Un capítulo y una escena para empezar a escribir ya
                     val c = e.nuevo(Escritos.T_CAP, o.id) { put("titulo", "Capítulo 1") }
                     e.nuevo(Escritos.T_ESCENA, o.id) { put("cid", c.id); put("titulo", "Escena 1") }
+                    if (guiada) EscribirHub.guiaAlEntrar = o.id to System.currentTimeMillis()
                     onCreada(o)
                 } else e.edita(obra.id, cambia)
                 onCerrar()
@@ -175,6 +181,8 @@ object EscribirHub {
     val enEditor: Boolean get() = editores > 0
     /** Una escena que abrir al entrar en Escribir (desde la portada), y cuándo se pidió. */
     var abrir by mutableStateOf<Pair<String, Long>?>(null)
+    /** Una obra recién creada con la guía: se abre en la pestaña Guía (y cuándo se pidió). */
+    var guiaAlEntrar: Pair<String, Long>? = null
     /** Avisar abajo con «Deshacer» (lo pone la app). */
     var deshacer: ((String, () -> Unit) -> Unit)? = null
 }
@@ -213,7 +221,7 @@ fun CapituloDialogo(e: Escritos, pid: String, cap: Doc?, onCerrar: () -> Unit) {
 // ---------------------------------------------------------------- Fichas
 
 @Composable
-fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "personaje", onCerrar: () -> Unit, abrirEscena: (Doc) -> Unit = {}) {
+fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "personaje", onCerrar: () -> Unit, abrirEscena: (Doc) -> Unit = {}, camposNuevos: List<String>? = null) {
     var nombre by remember { mutableStateOf(ficha?.s("nombre").orEmpty()) }
     var tipo by remember { mutableStateOf(ficha?.s("tipo")?.ifBlank { null } ?: tipoNuevo) }
     var alias by remember { mutableStateOf(ficha?.s("alias").orEmpty()) }
@@ -223,7 +231,8 @@ fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "per
     val campos = remember {
         mutableStateListOf<Pair<String, String>>().also { l ->
             ficha?.o?.optJSONArray("campos")?.let { a -> for (i in 0 until a.length()) a.optJSONObject(i)?.let { l.add(it.optString("k") to it.optString("v")) } }
-            if (l.isEmpty() && ficha == null) when (tipo) { "personaje" -> { l.add("Edad" to ""); l.add("Aspecto" to ""); l.add("Quiere" to ""); l.add("Teme" to "") }; "lugar" -> { l.add("Clima" to ""); l.add("Gente" to "") } }
+            if (l.isEmpty() && ficha == null && camposNuevos != null) camposNuevos.forEach { l.add(it to "") }
+            else if (l.isEmpty() && ficha == null) when (tipo) { "personaje" -> { l.add("Edad" to ""); l.add("Aspecto" to ""); l.add("Quiere" to ""); l.add("Teme" to "") }; "lugar" -> { l.add("Clima" to ""); l.add("Gente" to "") } }
         }
     }
     val sale = remember(ficha?.id, e.version) { if (ficha == null) emptyList() else e.escenasDe(pid).filter { s -> e.fichasEn(pid, s.s("texto")).any { it.id == ficha.id } } }

@@ -107,5 +107,18 @@ t('menú del botón derecho: correcciones, sinónimos y copiar', () => {
   assert.deepStrictEqual(leer.map((x) => x.role), ['copy'], 'fuera de un campo, solo copiar');
   assert.strictEqual(entradas({ isEditable: false, selectionText: '', editFlags: {} }, wc).length, 0, 'sin nada, no hay menú');
 });
+t('guía de la novela (casos de herramientas/casos/guia.json, los mismos que el móvil)', () => {
+  const G = require('../escritorio/src/renderer/revista/js/escribir-guia.js');
+  const j = JSON.parse(fs.readFileSync(path.join(__dirname, 'casos', 'guia.json'), 'utf8'));
+  assert.deepStrictEqual(G.PASOS.map((p) => p.id), j.pasos, 'los pasos');
+  assert.deepStrictEqual(G.PASOS.map((p) => p.titulo), j.titulos, 'los títulos');
+  for (const p of G.PASOS) assert.ok(p.titulo && p.que && p.como.length >= 3 && p.accion && p.hecho, `el paso ${p.id} tiene todos sus textos`);
+  for (const c of j.casos) {
+    const est = G.estados(c.datos);
+    assert.deepStrictEqual(est.filter((e) => e.estado !== 'pendiente').map((e) => `${e.id}:${e.estado}`), c.esperado, c.nombre);
+    assert.strictEqual(G.siguiente(est), c.siguiente, `${c.nombre} (siguiente)`);
+    if (c.diasReposo != null) assert.strictEqual(est[6].dias, c.diasReposo, `${c.nombre} (días)`);
+  }
+});
 console.log(fallos ? `FALLAN ${fallos}` : 'Todo bien');
 process.exit(fallos ? 1 : 0);

@@ -10,7 +10,7 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
-## Escribir (desde el móvil 6.80 y el PC 3.0; a fondo en 6.82 y 3.1)
+## Escribir (desde el móvil 6.80 y el PC 3.0; a fondo en 6.82 y 3.1; guía de la novela en 6.83 y 3.2)
 
 Un apartado para escribir novelas, en el móvil, en el PC y en el Mac, con la misma cuenta y **sin conexión incluida**:
 lo que escribes se guarda en el dispositivo al momento, se sube solo cuando hay red y llega a los demás en directo.
@@ -36,6 +36,15 @@ lo que escribes se guarda en el dispositivo al momento, se sube solo cuando hay 
 - **Cambios a la vez en dos sitios: se juntan.** Si cambias la misma escena en el móvil y en el PC (sin conexión, o a la
   vez), se juntan por campos, por párrafos y, dentro de un párrafo, por palabras. Solo si los dos cambian la misma frase
   manda la más nueva, y **el texto entero de la otra queda como borrador** (no se pierde nada).
+- **Guía para escribir una novela (si es tu primera).** Al crear una obra, «Guiarme paso a paso» (viene marcada) abre una
+  guía de 11 pasos, de la idea al manuscrito final: una frase de idea, personajes, esquema en tres actos, promesa-progreso-
+  recompensa, un hábito diario, el primer borrador sin corregir, dejarlo reposar, dos revisiones (la grande y la pequeña),
+  lectores de prueba y corrección final. En la pestaña **Guía** de cada obra (también para las que ya tienes) y, arriba
+  del manuscrito, una tarjeta con **el paso que toca ahora** y su botón (escribir la frase, crear un personaje con «Quiere /
+  Se lo impide / Si fracasa», crear los tres actos, poner la meta diaria, seguir escribiendo, empezar el reposo, exportar…).
+  Los pasos se marcan solos cuando se nota que lo has hecho (una frase, un personaje, tres resúmenes, tres días escribiendo,
+  llegar a la meta de palabras) o a mano; se pueden saltar. Se sincroniza como el resto. Basada en guías de Grammarly,
+  MasterClass y Escritor Flexible, el método Snowflake y las clases de Brandon Sanderson; las cantidades son orientativas.
 - **Papelera.** Lo que borras (una obra con todo lo suyo, un capítulo con sus escenas, una escena, una ficha…) se queda
   30 días en la papelera, en todos tus dispositivos, con «Deshacer» al borrar y «Recuperar» (vuelve a su sitio).
 - **Línea temporal y cifras.** Hitos ordenables enlazados a escenas, escenas con «cuándo pasa», palabras por día

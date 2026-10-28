@@ -31,6 +31,7 @@ const barrasSueltas = (p) => p.evaluate(() => {
   if (dy > 0 && dy <= 60) out.push(`página ↕${dy}`);
   return out;
 });
+const num4 = (x) => Number(x) || 0;
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.png': 'image/png' };
 
 const escr = crear({ dir: fs.mkdtempSync(path.join(os.tmpdir(), 'esc-ui-')), dev: 'pc', net: { uid: () => null } });
@@ -294,6 +295,52 @@ function siembra() {
   await p.locator('.dialogo .e-pap button', { hasText: 'Recuperar' }).click(); await sleep(500);
   ok(escr.capitulos(o.id).length === 3 && escr.escenasDe(o.id).length === 4 && await p.locator('.dialogo .e-pap-vacia').count() === 1, 'recuperar lo devuelve todo a su sitio');
   await p.keyboard.press('Escape');
+
+  console.log('La guía de la novela');
+  // Una obra nueva con la guía activada, como la deja «Nueva obra → Guiarme paso a paso»
+  const g = escr.nuevo('p', '', { titulo: 'Mi primera novela', gOn: 1, meta: 1000, diaria: 300 });
+  const gc = escr.nuevo('c', g.id, { titulo: 'Capítulo 1' }); escr.nuevo('e', g.id, { cid: gc.id, titulo: 'Escena 1' });
+  await sleep(300);
+  await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 0 }), g.id); await sleep(500);
+  ok(await p.locator('.e-paso-ahora').count() === 1 && /paso 1 de 11/i.test(await p.locator('.e-paso-ahora').innerText()), 'el manuscrito enseña el paso que toca (el 1 de 11)');
+  await p.screenshot({ path: path.join(OUT, 'pc-e20-guia-tarjeta.png') });
+  await p.locator('.e-paso-ahora button', { hasText: 'Escribir mi frase' }).click(); await sleep(400);
+  await p.locator('.dialogo textarea').fill('Una aprendiz sube a una torre para salvar a su hermana.');
+  await p.locator('.dialogo button', { hasText: 'Guardar' }).click(); await sleep(500);
+  ok(escr.get(g.id).idea.startsWith('Una aprendiz') && /paso 2 de 11/i.test(await p.locator('.e-paso-ahora').innerText()), 'guardar la frase marca el 1 y pasa al 2');
+  await p.locator('.e-paso-ahora button', { hasText: 'Ver la guía' }).click(); await sleep(500);
+  ok(await p.locator('.e-paso').count() === 11 && await p.locator('.e-paso.hecho').count() === 1 && /1 de 11 pasos/.test(await p.locator('.e-guia .e-resumen').innerText()), 'la pestaña Guía: 11 pasos y 1 hecho');
+  ok(/Una aprendiz/.test(await p.locator('.e-idea').innerText()) && await p.locator('.e-paso.ahora .e-paso-cuerpo').count() === 1, 'enseña tu frase y el paso de ahora abierto');
+  await p.screenshot({ path: path.join(OUT, 'pc-e21-guia.png') });
+  { const b = await barrasSueltas(p); ok(!b.length, `la guía, sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
+  // El paso 3 crea los tres actos
+  await p.locator('.e-paso-cab', { hasText: 'Un esquema ligero' }).click(); await sleep(300);
+  await p.locator('.e-paso-cuerpo button', { hasText: 'Crear los tres actos' }).click(); await sleep(700);
+  ok(escr.capitulos(g.id).map((c) => c.titulo).join() === 'Planteamiento,Nudo,Desenlace' && escr.escenasDe(g.id).length === 3, 'crear los tres actos: tres capítulos, el vacío renombrado');
+  // Un paso a mano: marcar, saltar y quitar la marca
+  await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 5 }), g.id); await sleep(400);
+  await p.locator('.e-paso-cab', { hasText: 'Promesa, progreso y recompensa' }).click(); await sleep(300);
+  await p.locator('.e-paso-cuerpo button', { hasText: 'Ya lo tengo' }).click(); await sleep(500);
+  ok(num4(escr.get(g.id).g4) === 1 && await p.locator('.e-paso.hecho').count() === 2, '«Ya lo tengo» marca un paso a mano');
+  ok(/Un hábito realista/.test(await p.locator('.e-paso.abierto, .e-paso:has(.e-paso-cuerpo)').first().innerText()), 'y abre el paso siguiente');
+  await p.locator('.e-paso-cab', { hasText: 'Promesa, progreso y recompensa' }).click(); await sleep(300);
+  await p.locator('.e-paso-cuerpo button', { hasText: 'Quitar la marca' }).click(); await sleep(500);
+  ok(await p.locator('.e-paso.hecho').count() === 1, '«Quitar la marca» lo deja como estaba');
+  // El reposo: empezar y que cuente días
+  await p.locator('.e-paso-cab', { hasText: 'Dejarlo reposar' }).click(); await sleep(300);
+  await p.locator('.e-paso-cuerpo button', { hasText: 'Empezar el reposo' }).click(); await sleep(500);
+  ok(escr.get(g.id).g7t > 0 && /Reposo: 0 días/i.test(await p.locator('.e-paso', { hasText: 'Dejarlo reposar' }).innerText()), 'el reposo empieza a contar días');
+  // Desactivar: ya no sale la tarjeta en el manuscrito
+  await p.locator('.e-guia button', { hasText: 'Desactivar' }).click(); await sleep(400);
+  await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 0 }), g.id); await sleep(400);
+  ok(await p.locator('.e-paso-ahora').count() === 0, 'con la guía desactivada no sale el paso en el manuscrito');
+  // «Nueva obra»: la casilla viene marcada y lleva a la guía
+  await p.evaluate(() => window.RV.E.dlgObra(null)); await sleep(400);
+  ok(await p.locator('.dialogo .e-guiarme input').isChecked(), 'en «Nueva obra», «Guiarme paso a paso» viene marcada');
+  await p.locator('.dialogo input[data-autofocus]').fill('Otra novela');
+  await p.locator('.dialogo button', { hasText: 'Crear' }).click(); await sleep(700);
+  ok(await p.locator('.e-guia').count() === 1 && await p.locator('.e-paso.ahora').count() === 1, 'al crearla se abre la guía, con el paso 1 por delante');
+  await p.screenshot({ path: path.join(OUT, 'pc-e22-guia-nueva.png') });
   ok(errores.length === 0, `sin errores en la página ${errores.slice(0, 3).join(' | ')}`);
   await b.close(); srv.close();
   console.log(fallos ? `FALLAN ${fallos}` : 'Todo bien');

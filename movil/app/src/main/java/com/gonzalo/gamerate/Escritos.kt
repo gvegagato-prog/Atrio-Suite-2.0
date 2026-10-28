@@ -437,6 +437,8 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         return n
     }
 
+    /** Días distintos en los que has escrito algo en la obra. */
+    fun diasEscritos(pid: String): Int = docs.values.filter { it.t == T_LOG && !it.borrado && it.pid == pid && total(it) > 0 }.map { it.n("dia") }.toSet().size
     fun palabrasObra(pid: String): Int = escenasDe(pid).sumOf { it.i("palabras") }
     fun palabrasCapitulo(cid: String): Int = escenas(cid).sumOf { it.i("palabras") }
 

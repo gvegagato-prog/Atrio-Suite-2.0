@@ -246,7 +246,9 @@ private fun TarjetaObra(e: Escritos, o: Doc, ver: Int, onClick: () -> Unit) {
 private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (String) -> Unit) {
     val ver = e.version
     val obra = e.get(id) ?: return
-    var pestana by rememberSaveable { mutableIntStateOf(0) }
+    val nueva = EscribirHub.guiaAlEntrar
+    var pestana by rememberSaveable(id) { mutableIntStateOf(if (nueva != null && nueva.first == id && System.currentTimeMillis() - nueva.second < 4000) 5 else 0) }
+    var accionGuia by remember { mutableStateOf<Int?>(null) }
     var ajustes by remember { mutableStateOf(false) }
     var exportar by remember { mutableStateOf(false) }
     var buscar by remember { mutableStateOf(false) }
@@ -257,7 +259,7 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
             IconPill(Icons.Rounded.Settings, "Ajustes de la obra") { ajustes = true }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(if (Skin.revista) 18.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf("Manuscrito", "Fichas", "Notas", "Línea", "Cifras").forEachIndexed { i, n ->
+            listOf("Manuscrito", "Fichas", "Notas", "Línea", "Cifras", "Guía").forEachIndexed { i, n ->
                 val on = i == pestana
                 if (Skin.revista) Text(n.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                     modifier = Modifier.press(haptic = false) { pestana = i }
@@ -267,21 +269,23 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (pestana) {
-                0 -> Manuscrito(e, obra, ver, abrir)
+                0 -> Manuscrito(e, obra, ver, abrir, hacerGuia = { accionGuia = it }, verGuia = { pestana = 5 })
                 1 -> FichasObra(e, obra, ver, abrir)
                 2 -> NotasObra(e, obra, ver)
                 3 -> LineaObra(e, obra, ver, abrir)
+                5 -> GuiaObra(e, obra, ver, hacer = { accionGuia = it })
                 else -> CifrasObra(e, obra, ver)
             }
         }
     }
+    accionGuia?.let { a -> AccionGuia(a, e, obra, abrir = abrir, irManuscrito = { pestana = 0 }, exportar = { exportar = true }, onCerrar = { accionGuia = null }) }
     if (ajustes) ObraDialogo(e, obra, onCerrar = { ajustes = false })
     if (exportar) ExportarDialogo(e, obra, onCerrar = { exportar = false })
     if (buscar) BuscarObraDialogo(e, obra, onCerrar = { buscar = false }, abrir = { buscar = false; abrir(it) })
 }
 
 @Composable
-private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit) {
+private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit, hacerGuia: (Int) -> Unit = {}, verGuia: () -> Unit = {}) {
     val pid = obra.id
     var esquema by rememberSaveable { mutableStateOf(false) }
     var etiqueta by rememberSaveable(pid) { mutableStateOf("") }
@@ -295,6 +299,7 @@ private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit
     if (etiqueta.isNotEmpty() && etiqueta !in etiquetas) etiqueta = ""
     fun pasa(s: Doc) = etiqueta.isEmpty() || s.lista("etq").any { it.trim() == etiqueta }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(40.dp))) {
+        item("guia") { TarjetaGuia(e, obra, ver, hacerGuia, verGuia) }
         item("resumen") {
             Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(cifraE(palabras) + (if (meta > 0) " de ${cifraE(meta)} palabras" else " palabras") + " · ${caps.size} ${if (caps.size == 1) "capítulo" else "capítulos"}", color = Muted, fontSize = 13.sp)
