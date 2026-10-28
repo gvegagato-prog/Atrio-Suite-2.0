@@ -549,19 +549,56 @@ fun FrameEditor(c: MagCell, aspectOf: (MagCell) -> Float, onSave: (MagCell) -> U
                 Tool("FOTO ENTERA", accent = whole) { whole = true }
             }
             val aspect = aspectOf(current()).coerceIn(0.3f, 4f)
-            Box(
-                Modifier.fillMaxWidth().heightIn(max = 460.dp).aspectRatio(aspect, matchHeightConstraintsFirst = aspect < 0.9f)
-                    .align(Alignment.CenterHorizontally).clipToBounds().background(Sand).border(2.dp, Charcoal)
-                    .onSizeChanged { box = it }
-                    .semantics { contentDescription = "Marco de la imagen" }
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, z, _ ->
-                            zoom = (zoom * z).coerceIn(0.2f, 6f)
-                            ox = (ox + pan.x / box.width).coerceIn(-3f, 3f)
-                            oy = (oy + pan.y / box.height).coerceIn(-3f, 3f)
+            // El escenario enseña la foto ENTERA (apagada) y el marco, con lo que se verá, encima y a todo color.
+            // Así se ve siempre qué queda dentro y qué fuera, y se puede alejar o mover hasta donde haga falta.
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val stageW = maxWidth
+                val stageH = minOf(maxWidth * 1.15f, 440.dp)
+                val availW = stageW - 36.dp
+                val availH = stageH - 36.dp
+                val frameW = if (availW / availH > aspect) availH * aspect else availW
+                val frameH = frameW / aspect
+                val ratio = MagImages.ratios[c.image]
+                // Tamaño de la foto sin zoom: llenando el marco (recortada) o cabiendo entera
+                val cover = !whole
+                val imgW = if (ratio == null) frameW else if ((ratio > aspect) == cover) frameH * ratio else frameW
+                val imgH = if (ratio == null) frameH else if ((ratio > aspect) == cover) frameH else frameW / ratio
+                val ctx = LocalContext.current
+                val req = remember(c.image) {
+                    // A tamaño completo (hasta 2048 px): al ampliar no se ve borrosa ni a trozos
+                    coil.request.ImageRequest.Builder(ctx).data(c.image).size(2048).build()
+                }
+                val layer: @Composable (Float) -> Unit = { alpha ->
+                    AsyncImage(
+                        model = req, contentDescription = null,
+                        modifier = Modifier.requiredSize(imgW, imgH).graphicsLayer {
+                            scaleX = zoom; scaleY = zoom
+                            translationX = ox * frameW.toPx(); translationY = oy * frameH.toPx()
+                            this.alpha = alpha
+                        },
+                        contentScale = ContentScale.FillBounds, colorFilter = Ediciones.filtro,
+                        onSuccess = { st: coil.compose.AsyncImagePainter.State.Success ->
+                            val sz = st.painter.intrinsicSize
+                            if (sz.width > 0f && sz.height > 0f && sz.width.isFinite()) MagImages.ratios[c.image] = sz.width / sz.height
                         }
-                    }
-            ) { FramedImage(current(), Modifier.matchParentSize()) }
+                    )
+                }
+                Box(
+                    Modifier.size(stageW, stageH).clipToBounds().background(Sand).border(2.dp, Charcoal)
+                        .semantics { contentDescription = "Marco de la imagen" }
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, pan, z, _ ->
+                                zoom = (zoom * z).coerceIn(0.2f, 6f)
+                                ox = (ox + pan.x / box.width).coerceIn(-3f, 3f)
+                                oy = (oy + pan.y / box.height).coerceIn(-3f, 3f)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    layer(0.35f)
+                    Box(Modifier.size(frameW, frameH).clipToBounds().border(2.dp, Charcoal).onSizeChanged { box = it }, contentAlignment = Alignment.Center) { layer(1f) }
+                }
+            }
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
                 Tool("− REDUCIR") { zoom = (zoom / 1.15f).coerceIn(0.2f, 6f) }
                 Tool("+ AMPLIAR") { zoom = (zoom * 1.15f).coerceIn(0.2f, 6f) }
