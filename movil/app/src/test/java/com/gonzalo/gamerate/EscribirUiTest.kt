@@ -235,6 +235,8 @@ open class EscribirUiTest {
         rule.onAllNodesWithText("Seguir con «La primera puerta»", substring = true)[0].performClick()
         rule.waitForIdle()
         shoot("e26b_tras_seguir")
+        // (en una máquina cargada el editor tarda unos fotogramas en componerse tras la transición: se espera, no se supone)
+        runCatching { rule.waitUntil(8000) { EscribirHub.enEditor && rule.onAllNodesWithText("Y la colcha le contó un secreto.", substring = true).fetchSemanticsNodes().isNotEmpty() } }
         assertTrue("abre el editor de esa escena", EscribirHub.enEditor && rule.onAllNodesWithText("Y la colcha le contó un secreto.", substring = true).fetchSemanticsNodes().isNotEmpty())
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         // En la obra: filtrar por etiqueta
