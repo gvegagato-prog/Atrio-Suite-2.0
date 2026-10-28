@@ -24,6 +24,7 @@ const SHOT_KEEP = 7 * 86400000;     // los trozos de una captura que nadie ha ba
 const INDEX = path.join(XDG_DATA, 'atrio', 'capturas.json');
 
 let ctx = null;          // lo que da main.js
+let solo = false;        // edición «solo revista» (Mac): ve tus dispositivos y sincroniza al momento, pero no se ofrece como PC ni atiende órdenes
 let rr = null;           // módulo ronron
 let suiteWatch = null;
 let stampsWatch = null;
@@ -90,7 +91,7 @@ function streamPayload() {
   };
 }
 async function pushLive(force) {
-  if (!rr.uid()) return;
+  if (solo || !rr.uid()) return;
   const p = livePayload();
   const txt = JSON.stringify(p);
   if (!force && txt === lastLive) return;
@@ -101,7 +102,7 @@ async function pushLive(force) {
 }
 
 async function pushLib() {
-  if (!rr.uid()) return;
+  if (solo || !rr.uid()) return;
   const games = ctx.library().map((g) => {
     const o = { k: g.key, n: g.name };
     if (g.cover) o.c = g.cover;
@@ -376,7 +377,7 @@ function startWatches() {
     onState: (s) => { conn = s; ctx.send('suite', state()); },
     onData: (t) => {
       tree = t || {};
-      handleCommands();
+      if (!solo) handleCommands();
       ctx.send('suite', state());
     },
   });
@@ -401,19 +402,21 @@ function check() {
     lastUid = uid;
     lastLive = '';
     lastLib = '';
-    if (uid) { startWatches(); pushLive(true); setTimeout(pushLib, 3000); } else stopWatches();
+    if (uid) { startWatches(); if (!solo) { pushLive(true); setTimeout(pushLib, 3000); } } else stopWatches();
     ctx.send('suite', state());
   }
 }
 
-function start(c, ronron) {
+function start(c, ronron, opts) {
   ctx = c;
   rr = ronron;
-  host.init({ config: () => ctx.config().stream || {}, log, onChange: (i) => { pushLive(false); try { ctx.send('stream', i); } catch { /* */ } } });
+  solo = !!(opts && opts.soloRevista);
+  if (!solo) host.init({ config: () => ctx.config().stream || {}, log, onChange: (i) => { pushLive(false); try { ctx.send('stream', i); } catch { /* */ } } });
   check();
   clearInterval(heart);
   heart = setInterval(() => {
     check();
+    if (solo) return;
     pushLive(true);
     cleanup().catch(() => {});
   }, Number(process.env.ATRIO_SUITE_BEAT || 60000));
@@ -422,7 +425,7 @@ function start(c, ronron) {
 
 async function stop() {
   clearInterval(heart);
-  if (rr && rr.uid()) {
+  if (!solo && rr && rr.uid()) {
     try { await patch(`/suite/live/${me()}`, { on: false, game: null, at: { '.sv': 'timestamp' } }); } catch { /* */ }
   }
   stopWatches();

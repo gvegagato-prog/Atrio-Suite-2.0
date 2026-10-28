@@ -4,6 +4,8 @@
 // simulado que hace lo mismo que Atrio en el móvil: ve el PC en directo, pide una captura, la baja, lanza un juego y
 // comprueba que al cerrarlo sus horas llegan a la ficha.
 // Uso (desde la raíz del repositorio): node herramientas/prueba-suite.js
+// Con SOLO=1 prueba la edición «solo revista» (la del Mac): ve el móvil, le pide las fotos de su galería y sincroniza al
+// momento, pero no se ofrece como PC ni atiende órdenes (nada de lanzar juegos, capturas ni apagar).
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -18,6 +20,7 @@ const HOME = path.join(OUT, 'home');
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(path.join(HOME, '.config', 'atrio'), { recursive: true });
 
+const SOLO = process.env.SOLO === '1';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let failed = 0;
 const ok = (cond, msg) => { console.log(`${cond ? '  ✔' : '  ✘'} ${msg}`); if (!cond) failed++; };
@@ -80,6 +83,8 @@ async function until(fn, ms, every = 500) {
   const cfgPath = path.join(HOME, '.config', 'atrio', 'config.json');
   fs.writeFileSync(cfgPath, JSON.stringify({ ...JSON.parse(fs.readFileSync(cfgPath, 'utf8')), stream: { user: 'sol', pass: 'luna' } }));
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_SUITE_BEAT: '4000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
+  // (solo revista: el sondeo periódico casi no corre, así se ve que lo del móvil llega por el aviso al momento y no esperando)
+  if (SOLO) Object.assign(env, { ATRIO_SOLO_REVISTA: '1', ATRIO_RONRON_EVERY: '120000' });
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY']) delete env[k];
   const electron = path.join(DESK, 'node_modules', 'electron', 'dist', 'electron');
   const CDP = 9700 + Math.floor(Math.random() * 200);
@@ -89,20 +94,22 @@ async function until(fn, ms, every = 500) {
   atrio.stderr.on('data', (d) => logs.push(String(d)));
 
   try {
-    console.log('1. El PC aparece en directo');
-    const live = await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba`); return v && v.on ? v : null; }, 40000);
-    ok(!!live, `Atrio conectado (${live ? live.name : '-'})`);
-    const lib = await until(async () => { const v = await db('GET', `/users/${uid}/suite/lib/atrio-prueba`); return v && v.games && v.games.length ? v : null; }, 20000);
-    ok(lib && lib.games.some((g) => g.k === 'custom:prueba'), 'Biblioteca del PC publicada para el móvil');
+    if (!SOLO) {
+      console.log('1. El PC aparece en directo');
+      const live = await until(async () => { const v = await db('GET', `/users/${uid}/suite/live/atrio-prueba`); return v && v.on ? v : null; }, 40000);
+      ok(!!live, `Atrio conectado (${live ? live.name : '-'})`);
+      const lib = await until(async () => { const v = await db('GET', `/users/${uid}/suite/lib/atrio-prueba`); return v && v.games && v.games.length ? v : null; }, 20000);
+      ok(lib && lib.games.some((g) => g.k === 'custom:prueba'), 'Biblioteca del PC publicada para el móvil');
+    }
 
-    console.log('2. Orden simple (ping)');
+    console.log(SOLO ? '2. (solo revista) sin órdenes: no se ofrece como PC' : '2. Orden simple (ping)');
     const send = async (op, a) => {
       const r = await db('POST', `/users/${uid}/suite/cmd/atrio-prueba`, { op, a: a || {}, t: { '.sv': 'timestamp' }, by: 'Móvil de prueba' });
       return until(async () => { const v = await db('GET', `/users/${uid}/suite/cmd/atrio-prueba/${r.name}/res`); return v || null; }, 60000, 300);
     };
     const t0 = Date.now();
-    const pong = await send('ping');
-    ok(pong && pong.ok, `Respuesta en ${Date.now() - t0} ms: ${pong && pong.msg}`);
+    const pong = SOLO ? null : await send('ping');
+    if (!SOLO) ok(pong && pong.ok, `Respuesta en ${Date.now() - t0} ms: ${pong && pong.msg}`);
 
     console.log('2b. Una foto de la galería del móvil, al PC en su calidad original');
     // El «móvil» con la app abierta: presencia y respuesta a la orden «foto» (sube el original por trozos)
@@ -170,21 +177,33 @@ async function until(fn, ms, every = 500) {
       throw new Error('no encuentro la ventana de Atrio');
     }
     const br = pg;
+    if (SOLO) await pg.evaluate(() => { window.__SOLO = true; });
     const tel = await until(async () => { const l = await pg.evaluate(() => window.atrio.fotoPhones()); return l && l.length ? l : null; }, 20000);
     ok(tel && tel[0].dev === 'mtest' && tel[0].name === 'Pixel de prueba', `El PC ve el móvil conectado (${tel ? tel.map((x) => x.name).join(', ') : '-'})`);
     const t3 = Date.now();
-    const r = await pg.evaluate(() => window.atrio.fotoFetch('mtest', 'foto_1700000000000.jpg', { key: 'custom:prueba', type: 'cover' }).catch((e) => ({ error: String(e.message || e) })));
+    const r = await pg.evaluate(() => window.atrio.fotoFetch('mtest', 'foto_1700000000000.jpg', window.__SOLO ? undefined : { key: 'custom:prueba', type: 'cover' }).catch((e) => ({ error: String(e.message || e) })));
     clearInterval(movil);
     ok(r && !r.error && r.orig && r.w === 4000, `Descargada en ${Date.now() - t3} ms: ${r && (r.error || r.msg)}`);
     ok(respondida && respondida.name === 'foto_1700000000000.jpg', 'Se pide al móvil por el nombre de la foto (con su extensión)');
     const enPc = path.join(HOME, '.local', 'share', 'atrio', 'fotos', 'foto_1700000000000.jpg');
     ok(fs.existsSync(enPc) && fs.readFileSync(enPc).equals(foto), 'Llega idéntica, byte a byte (sin recomprimir)');
-    ok(r && r.game && /^atrio:\/\/art\//.test((r.game.art || {}).cover || ''), 'Pasa a ser la portada del juego en el lanzador');
+    if (!SOLO) ok(r && r.game && /^atrio:\/\/art\//.test((r.game.art || {}).cover || ''), 'Pasa a ser la portada del juego en el lanzador');
     ok(r && r.names && /^atrio:\/\/foto\//.test(r.names.foto_1700000000000 || ''), 'Y la ficha la ve con su dirección del PC');
     const resto = await until(async () => { const v = await db('GET', `/users/${uid}/fotodata/${respondida && respondida.id}`); return v == null ? 'vacio' : null; }, 10000, 300);
     ok(resto === 'vacio', 'Los trozos se borran de la nube después');
     await br.close().catch(() => {});
 
+    if (SOLO) {
+      // Sin lanzador: el Mac no se anuncia como PC ni responde a órdenes
+      const vivo = await db('GET', `/users/${uid}/suite/live/atrio-prueba`);
+      ok(!vivo, 'No se publica como PC que el móvil pueda controlar');
+      const bib = await db('GET', `/users/${uid}/suite/lib/atrio-prueba`);
+      ok(!bib, 'Ni publica una biblioteca de juegos');
+      const cmd = await db('POST', `/users/${uid}/suite/cmd/atrio-prueba`, { op: 'ping', a: {}, t: { '.sv': 'timestamp' }, by: 'Móvil de prueba' });
+      await wait(6000);
+      const rp = await db('GET', `/users/${uid}/suite/cmd/atrio-prueba/${cmd.name}/res`);
+      ok(!rp, 'Y no atiende órdenes (ni lanzar juegos, ni capturas, ni apagar)');
+    } else {
     console.log('3. Captura desde el móvil a calidad original');
     const t1 = Date.now();
     const shot = await send('shot');
@@ -281,19 +300,24 @@ async function until(fn, ms, every = 500) {
     const pwIds = Object.entries((await db('GET', `/users/${uid}/suite/cmd/atrio-prueba`)) || {}).filter(([, c]) => c && c.op === 'power');
     ok(pwIds.length && pwIds.every(([, c]) => c.ack === true), 'La orden de apagar queda marcada como recibida');
 
+    }
+
     console.log('6. Un cambio del móvil llega al PC al momento');
     const d2 = { ...data, plays: [{ ...play, memos: [{ t: Date.now(), x: 'Apunte desde el móvil' }], updated: Date.now() + 1 }] };
     await db('PUT', `/users/${uid}/dev/mtest`, { name: 'gonzalo', user: 'gonzalo', device: 'android', updated: { '.sv': 'timestamp' }, data: JSON.stringify(d2) });
     const ts2 = await db('GET', `/users/${uid}/dev/mtest/updated`);
     const t2 = Date.now();
     await db('PATCH', `/users/${uid}`, { 'stamps/mtest': ts2 });
+    let tMerged = 0;
     const merged = await until(async () => {
       const f = path.join(HOME, '.local', 'share', 'atrio', 'ronron-datos.json');
       const d = JSON.parse(fs.readFileSync(f, 'utf8')).data;
       const p = (d.plays || []).find((x) => x.id === 4242);
-      return p && p.memos && p.memos.some((m) => m.x === 'Apunte desde el móvil') ? p : null;
+      if (p && p.memos && p.memos.some((m) => m.x === 'Apunte desde el móvil')) { tMerged = Date.now(); return p; }
+      return null;
     }, 15000, 200);
     ok(!!merged && !('segs' in merged), `Mezclado en Atrio en ${Date.now() - t2} ms`);
+    if (SOLO) ok(!!merged && tMerged - t2 < 10000, 'Llega al momento (por el aviso de la nube, no esperando al sondeo de 2 minutos)');
 
   } catch (e) {
     console.log('ERROR', e);

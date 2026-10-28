@@ -537,6 +537,14 @@ button.item:hover .item-tit { color: var(--acento); }
 .casilla:first-child { padding-left: 0; }
 .casilla:last-child { padding-right: 0; }
 .casilla + .casilla { border-left: 1px solid var(--tinta); }
+/* Maqueta que viene del móvil: filas de alto fijo e imágenes encuadradas (se dibujan enteras y la casilla las recorta) */
+.fila-cas.fija { overflow: hidden; }
+.fila-cas.fija > .casilla.maq { display: flex; flex-direction: column; }
+.maq-img { position: relative; overflow: hidden; width: 100%; }
+.fila-cas.fija .maq-img { flex: 1 1 0; min-height: 0; }
+.maq-img img { position: absolute; left: 50%; top: 50%; max-width: none; max-height: none; pointer-events: none; user-select: none; }
+.maq-img.sin-foto { display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; text-align: center; padding: 16px; border: 1px dashed var(--linea); color: var(--gris); }
+.maq-nota { margin-top: 18px; color: var(--gris); }
 .etiqueta {
   display: flex;
   align-items: center;

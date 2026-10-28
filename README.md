@@ -86,6 +86,20 @@ dispositivo que el móvil pueda controlar. Windows y Linux siguen igual que siem
 español (Deshacer y Rehacer también en el editor de Escribir), atajos con ⌘, un icono con la retícula de macOS y
 **pantalla completa**: se abre a pantalla completa (se puede cambiar en Ajustes → La revista) y se alterna en cualquier
 página, también escribiendo, con F11, ⌃⌘F, el menú Visualización o el botón «⤢ Pantalla completa» de la cabecera.
+**Sincronización en el Mac** (3.2.4): sigue vigilando tu cuenta (`suite.js` en modo `soloRevista`): lo que cambia el móvil
+llega al momento, ve tus dispositivos y puede pedirle las fotos de su galería (portadas y fondos elegidos en el móvil, en su
+calidad original, desde la casilla de imagen o desde «Imágenes de la ficha»); pero no se publica como PC ni atiende
+órdenes. Antes de la 3.2.4 esa parte se saltaba entera y no llegaban las fotos de la galería ni los cambios al momento.
+Prueba: `SOLO=1 node herramientas/prueba-suite.js`.
+
+**Maquetas de las fichas** (3.2.4, en todos los sistemas): la disposición que haces en el móvil (qué casilla va en cada fila,
+dónde está la línea, el alto de la fila, los textos libres y las fotos encuadradas) se pinta igual en la ficha del
+ordenador (`maqueta.js`, `ficha.js`). La foto se dibuja entera y la casilla la recorta después de moverla, sin huecos, con
+el mismo cálculo que el móvil (casos compartidos en `herramientas/casos/maqueta.json`). Las casillas que el ordenador aún
+no tiene (Guías, Crítica, Dónde verla, Lectura, Subrayados, Capítulos, Progreso, Partes, En tu diario, Enlaces) no se
+pintan y la página lo avisa. Por ahora **solo se leen**: la maqueta se cambia desde el móvil. Pruebas:
+`node herramientas/prueba-maqueta.js` y `node herramientas/prueba-maqueta-atrio.js` (con `SOLO=1`, la edición del Mac).
+
 **No lo he podido probar en un Mac físico**: solo en el Mac de GitHub (cuando arranca) y en un Electron de Linux con la
 misma edición.
 

@@ -1,0 +1,331 @@
+{
+ "_": "Casos compartidos: el PC (maqueta.js, prueba-maqueta.js) y el móvil (magPlace, EncuadreTest.kt) tienen que dar lo mismo.",
+ "lugar": [
+  {
+   "nombre": "centrada, sin zoom",
+   "c": {
+    "zoom": 1,
+    "ox": 0,
+    "oy": 0,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0.8,
+   "esperado": {
+    "z": 1,
+    "tx": 0.0,
+    "ty": 0
+   }
+  },
+  {
+   "nombre": "pegada arriba (casilla apaisada, foto vertical)",
+   "c": {
+    "zoom": 1,
+    "ox": 0,
+    "oy": 0.5,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0.8,
+   "esperado": {
+    "z": 1,
+    "tx": 0.0,
+    "ty": 100.0
+   }
+  },
+  {
+   "nombre": "desplazada mucho más abajo: se queda pegada arriba",
+   "c": {
+    "zoom": 1,
+    "ox": 0,
+    "oy": 2.0,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0.8,
+   "esperado": {
+    "z": 1,
+    "tx": 0.0,
+    "ty": 100.0
+   }
+  },
+  {
+   "nombre": "pegada abajo",
+   "c": {
+    "zoom": 1,
+    "ox": 0,
+    "oy": -0.5,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0.8,
+   "esperado": {
+    "z": 1,
+    "tx": 0.0,
+    "ty": -100.0
+   }
+  },
+  {
+   "nombre": "desplazada mucho más arriba",
+   "c": {
+    "zoom": 1,
+    "ox": 0,
+    "oy": -3.0,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0.8,
+   "esperado": {
+    "z": 1,
+    "tx": 0.0,
+    "ty": -100.0
+   }
+  },
+  {
+   "nombre": "foto apaisada en casilla vertical: se mueve de lado",
+   "c": {
+    "zoom": 1,
+    "ox": 0.4,
+    "oy": 0.3,
+    "fit": false
+   },
+   "caja": [
+    200,
+    320
+   ],
+   "ratio": 1.5,
+   "esperado": {
+    "z": 1,
+    "tx": 80.0,
+    "ty": 0.0
+   }
+  },
+  {
+   "nombre": "con zoom 1,5 se puede mover más",
+   "c": {
+    "zoom": 1.5,
+    "ox": 0.1,
+    "oy": 0.1,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0.8,
+   "esperado": {
+    "z": 1.5,
+    "tx": 32.0,
+    "ty": 20.0
+   }
+  },
+  {
+   "nombre": "no se aleja de «llenar» (zoom menor que 1)",
+   "c": {
+    "zoom": 0.4,
+    "ox": 0,
+    "oy": 0,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0.8,
+   "esperado": {
+    "z": 1,
+    "tx": 0.0,
+    "ty": 0
+   }
+  },
+  {
+   "nombre": "foto de la forma de la casilla: sin holgura",
+   "c": {
+    "zoom": 1,
+    "ox": 0.3,
+    "oy": 0.3,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 1.6,
+   "esperado": {
+    "z": 1,
+    "tx": 0.0,
+    "ty": 0.0
+   }
+  },
+  {
+   "nombre": "logo entero: se deja como está",
+   "c": {
+    "zoom": 0.6,
+    "ox": 0.2,
+    "oy": -0.1,
+    "fit": true
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 2.0,
+   "esperado": {
+    "z": 0.6,
+    "tx": 64.0,
+    "ty": -20.0
+   }
+  },
+  {
+   "nombre": "aún no se sabe la forma de la foto",
+   "c": {
+    "zoom": 1.2,
+    "ox": 0.1,
+    "oy": 0.2,
+    "fit": false
+   },
+   "caja": [
+    320,
+    200
+   ],
+   "ratio": 0,
+   "esperado": {
+    "z": 1.2,
+    "tx": 32.0,
+    "ty": 40.0
+   }
+  }
+ ],
+ "resolver": {
+  "lista": [
+   {
+    "id": 1,
+    "k": "v:1:7",
+    "j": "[{\"s\":0.45,\"a\":0,\"c\":[{\"t\":\"imagen\",\"i\":\"a.jpg\",\"as\":1.2},{\"t\":\"nota\"}]},{\"s\":0.5,\"a\":0,\"c\":[{\"t\":\"texto\",\"h\":\"Mi veredicto\",\"x\":\"Genial\"}]}]",
+    "updated": 100
+   },
+   {
+    "id": 2,
+    "k": "tpl:v:1",
+    "j": "[{\"s\":0.5,\"a\":0,\"c\":[{\"t\":\"opinion\"}]}]",
+    "updated": 50
+   },
+   {
+    "id": 3,
+    "k": "tpl:p:1",
+    "j": "[{\"s\":0.5,\"a\":0,\"c\":[{\"t\":\"datos\"}]}]",
+    "updated": 60
+   },
+   {
+    "id": 4,
+    "k": "v:1:9",
+    "j": "",
+    "updated": 300
+   },
+   {
+    "id": 5,
+    "k": "v:1:8",
+    "j": "no es json",
+    "updated": 300
+   },
+   {
+    "id": 6,
+    "k": "v:2:7",
+    "j": "[{\"s\":0.5,\"a\":0,\"c\":[{\"t\":\"datos\"}]}]",
+    "updated": 10
+   },
+   {
+    "id": 6,
+    "k": "v:2:7",
+    "j": "[{\"s\":0.5,\"a\":0,\"c\":[{\"t\":\"opinion\"}]}]",
+    "updated": 20
+   }
+  ],
+  "casos": [
+   {
+    "nombre": "la de la propia ficha",
+    "t": "g",
+    "kind": 1,
+    "id": 7,
+    "filas": 2,
+    "primera": [
+     "imagen",
+     "nota"
+    ],
+    "split": 0.45
+   },
+   {
+    "nombre": "sin la suya, la de su categoría",
+    "t": "g",
+    "kind": 1,
+    "id": 99,
+    "filas": 1,
+    "primera": [
+     "opinion"
+    ]
+   },
+   {
+    "nombre": "en curso usa las de «p»",
+    "t": "p",
+    "kind": 1,
+    "id": 99,
+    "filas": 1,
+    "primera": [
+     "datos"
+    ]
+   },
+   {
+    "nombre": "una maqueta vacía no cuenta: se usa la de la categoría",
+    "t": "g",
+    "kind": 1,
+    "id": 9,
+    "filas": 1,
+    "primera": [
+     "opinion"
+    ]
+   },
+   {
+    "nombre": "una maqueta rota no cuenta",
+    "t": "g",
+    "kind": 1,
+    "id": 8,
+    "filas": 1,
+    "primera": [
+     "opinion"
+    ]
+   },
+   {
+    "nombre": "de dos versiones, la más reciente",
+    "t": "g",
+    "kind": 2,
+    "id": 7,
+    "filas": 1,
+    "primera": [
+     "opinion"
+    ]
+   },
+   {
+    "nombre": "sin nada, la de siempre (null)",
+    "t": "g",
+    "kind": 3,
+    "id": 1,
+    "filas": 0
+   }
+  ]
+ }
+}

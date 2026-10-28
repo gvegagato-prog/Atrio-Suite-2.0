@@ -25,6 +25,19 @@ jobs:
         run: node herramientas/prueba-suite.js
         env:
           OUT: ${{ github.workspace }}/prueba-suite
+      - name: "Edición solo revista (la del Mac): ve el móvil, pide sus fotos y sincroniza al momento, sin ofrecerse como PC"
+        run: node herramientas/prueba-suite.js
+        env:
+          SOLO: '1'
+          OUT: ${{ github.workspace }}/prueba-suite-mac
+      - name: Maquetas de las fichas (las del móvil, también en la edición del Mac)
+        env:
+          PW: ${{ github.workspace }}/escritorio/node_modules/playwright-core
+        run: |
+          node herramientas/prueba-maqueta.js
+          (cd escritorio && npm i --no-save playwright-core@1.56.1)
+          node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-pc"
+          SOLO=1 node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-mac"
       - name: Capturas de la interfaz
         if: always()
         run: node herramientas/capturas-atrio.js capturas

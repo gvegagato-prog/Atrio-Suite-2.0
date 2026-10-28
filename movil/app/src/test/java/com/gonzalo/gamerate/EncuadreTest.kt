@@ -105,4 +105,27 @@ class EncuadreTest {
         assertEquals(0x808080, arriba)
         assertEquals(0x808080, abajo)
     }
+
+    private fun raiz(): File {
+        var dir: File? = File("").absoluteFile
+        while (dir != null && !File(dir, "herramientas/casos/maqueta.json").exists()) dir = dir.parentFile
+        return dir ?: error("no encuentro herramientas/casos")
+    }
+
+    /** Los mismos casos que el PC (herramientas/casos/maqueta.json): dónde se dibuja una imagen encuadrada. */
+    @Test fun casosCompartidosConElPc() {
+        val casos = org.json.JSONObject(File(raiz(), "herramientas/casos/maqueta.json").readText()).getJSONArray("lugar")
+        for (i in 0 until casos.length()) {
+            val c = casos.getJSONObject(i)
+            val m = c.getJSONObject("c"); val e = c.getJSONObject("esperado"); val caja = c.getJSONArray("caja")
+            val ratio = c.getDouble("ratio").toFloat()
+            MagImages.ratios.remove("caso")
+            if (ratio > 0f) MagImages.ratios["caso"] = ratio
+            val celda = MagCell("imagen", image = "caso", fit = m.getBoolean("fit"), zoom = m.getDouble("zoom").toFloat(), ox = m.getDouble("ox").toFloat(), oy = m.getDouble("oy").toFloat())
+            val (z, tx, ty) = magPlace(celda, caja.getDouble(0).toFloat(), caja.getDouble(1).toFloat())
+            assertEquals("${c.getString("nombre")}: zoom", e.getDouble("z"), z.toDouble(), 1e-3)
+            assertEquals("${c.getString("nombre")}: tx", e.getDouble("tx"), tx.toDouble(), 1e-3)
+            assertEquals("${c.getString("nombre")}: ty", e.getDouble("ty"), ty.toDouble(), 1e-3)
+        }
+    }
 }

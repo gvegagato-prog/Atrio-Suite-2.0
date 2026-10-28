@@ -1171,7 +1171,10 @@ app.whenReady().then(async () => {
   });
   setupIpc();
   createWindow();
-  if (!SOLO_REVISTA) suite.start({
+  // Edición «solo revista» (Mac): la suite solo vigila tu cuenta (los cambios del móvil llegan al momento y se pueden pedir
+  // al móvil las fotos de su galería); no se ofrece como PC ni atiende órdenes. Ver suite.js.
+  if (SOLO_REVISTA) suite.start({ log, send, fetch: (...a) => net.fetch(...a), version: () => app.getVersion(), config: () => config.get(), current: () => null, library: () => [] }, ronron, { soloRevista: true });
+  else suite.start({
     log, send, fetch: (...a) => net.fetch(...a), version: () => app.getVersion(), config: () => config.get(),
     current: currentGame, library: suiteLibrary,
     // Minutos jugados hoy en este PC (contando la partida en curso)

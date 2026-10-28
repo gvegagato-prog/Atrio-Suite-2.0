@@ -16,12 +16,13 @@
   const palabraEmpezar = (k) => (k.isGame ? 'Rejugar' : k.isBook ? 'Releer' : 'Volver a empezar');
 
   // ---------------------------------------------------------------- Casillas
-  function fila(celdas, cols) {
+  function fila(celdas, cols, alto) {
     const cs = celdas.filter(Boolean);
     if (!cs.length) return null;
     const cls = cs.length === 1 ? 'c1' : cs.length === 2 ? 'c2' : 'c3';
     const style = cs.length === 2 && cols ? { '--a': `${cols[0]}fr`, '--b': `${cols[1]}fr` } : {};
-    return h(`div.fila-cas.${cls}`, { style }, cs);
+    if (alto > 0) style.height = `${alto}px`;
+    return h(`div.fila-cas.${cls}${alto > 0 ? '.fija' : ''}`, { style }, cs);
   }
   const casilla = (etq, accion, ...contenido) => h('section.casilla', RV.etiqueta(etq, accion), contenido);
 
@@ -164,6 +165,95 @@
     pintar();
   }
 
+  // ---------------------------------------------------------------- La maqueta de la ficha (la del móvil)
+  // Lo que cada ficha tiene de maqueta (qué casilla va en cada fila, cuánto miden, sus textos y sus fotos) viaja con la
+  // cuenta, y aquí se pinta igual. Las casillas que el ordenador todavía no tiene (Guías, Crítica…) no se pintan y se avisa.
+  const NO_HAY = {
+    guias: 'Guías', critica: 'Crítica', donde: 'Dónde verla', lectura: 'Lectura', subrayados: 'Subrayados y notas',
+    capitulos: 'Capítulos', progreso: 'Progreso', partes: 'Partes', diario: 'En tu diario', enlaces: 'Enlaces',
+  };
+
+  // Una imagen encuadrada (zoom y posición, como en el móvil): se dibuja entera a su tamaño de «llenar» y la casilla la recorta
+  function casillaImagen(c, fija) {
+    const url = D.imagen(c.imagen);
+    const caja = h('div.maq-img');
+    const sec = h('section.casilla.maq', c.titulo ? RV.etiqueta(c.titulo) : null, caja);
+    if (!url) {
+      // Una foto de la galería del móvil que aún no está aquí: se le puede pedir (llega tal cual, en su calidad original)
+      caja.classList.add('sin-foto');
+      const nombre = (/([^/\\]+)$/.exec(c.imagen) || [])[1];
+      const pedir = D.fotoDe(c.imagen) && nombre && RV.api && RV.api.fotoFetch ? h('button.enlace.acento', {
+        type: 'button',
+        onclick: async (e) => {
+          const b = e.currentTarget;
+          try {
+            const tel = await RV.api.fotoPhones();
+            if (!tel || !tel.length) { RV.aviso('No veo el móvil: ábrelo con tu cuenta y vuelve a probar.', 'error'); return; }
+            b.textContent = 'Pidiéndola al móvil…';
+            const r = await RV.api.fotoFetch(tel[0].dev, nombre, null);
+            if (r && r.names) D.setFotos(r.names);
+            RV.refrescar();
+          } catch (err) { RV.aviso(RV.limpiaError(err), 'error'); b.textContent = 'Traerla del móvil →'; }
+        },
+      }, 'Traerla del móvil →') : null;
+      caja.append(h('span.versal', 'Foto de otro dispositivo: aún no se ha bajado'), pedir);
+      caja.style.aspectRatio = fija ? '' : String(c.asp > 0 ? c.asp : 1.2);
+      return sec;
+    }
+    const img = h('img', { alt: '', draggable: 'false' });
+    caja.append(img);
+    if (!fija) caja.style.aspectRatio = String(c.asp > 0 ? c.asp : 1.2);
+    const colocar = () => {
+      const bw = caja.clientWidth; const bh = caja.clientHeight;
+      if (!bw || !bh || !img.naturalWidth) return;
+      const p = RV.M.lugar(c, bw, bh, img.naturalWidth / img.naturalHeight);
+      img.style.width = `${p.dw}px`; img.style.height = `${p.dh}px`;
+      img.style.transform = `translate(-50%, -50%) translate(${p.tx}px, ${p.ty}px) scale(${p.z})`;
+    };
+    img.onload = () => {
+      // Una imagen de una versión anterior (sin forma guardada): la forma de la foto
+      if (!fija && !(c.asp > 0)) caja.style.aspectRatio = String(img.naturalWidth / img.naturalHeight);
+      colocar();
+    };
+    img.src = url;
+    if (typeof ResizeObserver === 'function') new ResizeObserver(colocar).observe(caja);
+    return sec;
+  }
+
+  function pintaMaqueta(cas, filas, kind, item, t, pcg) {
+    const g = t === 'g';
+    const b = !g ? D.baremo(item) : null;
+    const hayOpinion = !!(item.review && item.review.trim());
+    const nAp = (item.entries || []).length;
+    const B = {
+      nota: g && (() => casilla('Nota', { texto: 'Cambiar', fn: () => F.valorar(kind, item) }, bloqueNota(kind, item))),
+      opinion: g && (() => casilla('Opinión', { texto: hayOpinion ? 'Editar' : 'Escribir', fn: () => F.opinion(kind, item) }, hayOpinion ? cuerpo(item.review) : RV.vacio('Aún no has escrito nada.'))),
+      estado: !g && (() => casilla('Nota', { texto: 'Apuntar', fn: () => F.apuntar(kind, item) },
+        b ? bloqueNota(kind, b, `Media de ${RV.plural(nAp, 'apunte', 'apuntes')}`) : [RV.vacio('Aún sin nota: apunta algo y aquí saldrá la media.')])),
+      apuntes: !g && (() => casilla(`Apuntes${nAp ? ` · ${nAp}` : ''}`, { texto: '+ Apuntar', fn: () => F.apuntar(kind, item) }, apuntes(kind, item))),
+      datos: () => casilla('Datos', { texto: 'Editar', fn: () => F.datos(kind, item, t) }, datos(kind, item, t)),
+      horas: kind.isGame && (() => casilla('Horas', null, horas(kind, item, pcg))),
+      jugar: kind.isGame && !!pcg && (() => casilla('Jugar en el PC', null, enElPc(pcg))),
+    };
+    const faltan = new Set();
+    for (const f of filas) {
+      const dos = f.celdas.length === 2;
+      const nodos = f.celdas.map((c) => {
+        if (c.tipo === 'texto') {
+          if (!c.titulo && !c.texto) return null;
+          return h('section.casilla', c.titulo ? RV.etiqueta(c.titulo) : null, c.texto ? cuerpo(c.texto) : null);
+        }
+        if (c.tipo === 'imagen') return c.imagen ? casillaImagen(c, f.alto > 0) : null;
+        if (typeof B[c.tipo] === 'function') return B[c.tipo]();
+        if (NO_HAY[c.tipo]) faltan.add(NO_HAY[c.tipo]);
+        return null;
+      });
+      const r = fila(nodos, dos && nodos.filter(Boolean).length === 2 ? [f.split, 1 - f.split] : null, f.alto);
+      if (r) cas.append(r);
+    }
+    if (faltan.size) cas.append(h('p.versal.maq-nota', `Esta página tiene casillas que Atrio en el ordenador todavía no muestra: ${[...faltan].join(', ')}.`));
+  }
+
   // ---------------------------------------------------------------- La página
   RV.vistas.ficha = (ruta) => {
     const kind = D.tipo(ruta.k);
@@ -234,7 +324,9 @@
 
     // Casillas
     const cas = h('div.casillas');
-    if (t === 'g') {
+    const maq = RV.M.resolver(D.datos().maquetas, t, kind.id, item.id);
+    if (maq) pintaMaqueta(cas, maq, kind, item, t, pcg);
+    else if (t === 'g') {
       const opinion = item.review && item.review.trim() ? cuerpo(item.review) : RV.vacio('Aún no has escrito nada.');
       cas.append(fila([
         casilla('Nota', { texto: 'Cambiar', fn: () => F.valorar(kind, item) }, bloqueNota(kind, item)),
