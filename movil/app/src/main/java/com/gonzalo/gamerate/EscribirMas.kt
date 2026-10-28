@@ -225,6 +225,7 @@ fun CifrasObra(e: Escritos, obra: Doc, ver: Int) {
                 Text(ESTADOS_ESCENA.mapIndexed { i, n -> "${estados[i] ?: 0} ${n.lowercase()}" }.joinToString(" · "), color = Muted, fontSize = 12.sp)
             }
         }
+        item("sprints") { SprintsObra(pid) }
         if (caps.isNotEmpty()) item("caps") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Etiq("Palabras por capítulo")

@@ -156,9 +156,9 @@ fun ObraDialogo(e: Escritos, obra: Doc?, onCerrar: () -> Unit, onCreada: (Doc) -
             Spacer(Modifier.height(20.dp))
             if (!borrar) BotonEscribir("Borrar la obra", peligro = true, suave = true) { borrar = true }
             else {
-                Text("Se borrarán sus capítulos, escenas, fichas y notas, también en tus otros dispositivos. No se puede deshacer.", color = ColGeneral, fontSize = 13.sp)
+                Text("Irá a la papelera con sus capítulos, escenas, fichas y notas, también en tus otros dispositivos. Podrás recuperarla durante 30 días.", color = ColGeneral, fontSize = 13.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    BotonEscribir("Sí, borrarla", peligro = true) { e.borra(obra.id); onCerrar(); EscribirHub.obraBorrada = obra.id }
+                    BotonEscribir("Sí, a la papelera", peligro = true) { aLaPapelera(e, obra); onCerrar(); EscribirHub.obraBorrada = obra.id }
                     BotonEscribir("No", suave = true) { borrar = false }
                 }
             }
@@ -171,6 +171,8 @@ object EscribirHub {
     var obraBorrada by mutableStateOf("")
     /** El editor está abierto (la app esconde el dock). */
     var enEditor by mutableStateOf(false)
+    /** Avisar abajo con «Deshacer» (lo pone la app). */
+    var deshacer: ((String, () -> Unit) -> Unit)? = null
 }
 
 @Composable
@@ -193,9 +195,10 @@ fun CapituloDialogo(e: Escritos, pid: String, cap: Doc?, onCerrar: () -> Unit) {
         if (cap != null) {
             if (!borrar) BotonEscribir("Borrar el capítulo", peligro = true, suave = true) { borrar = true }
             else {
-                Text("Se borrarán también sus ${e.escenas(cap.id).size} escenas.", color = ColGeneral, fontSize = 13.sp)
+                val n = e.escenas(cap.id).size
+                Text("Irá a la papelera con ${if (n == 1) "su escena" else "sus $n escenas"}. Podrás recuperarlo durante 30 días.", color = ColGeneral, fontSize = 13.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    BotonEscribir("Sí, borrarlo", peligro = true) { e.borra(cap.id); onCerrar() }
+                    BotonEscribir("Sí, a la papelera", peligro = true) { aLaPapelera(e, cap); onCerrar() }
                     BotonEscribir("No", suave = true) { borrar = false }
                 }
             }
@@ -219,7 +222,6 @@ fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "per
             if (l.isEmpty() && ficha == null) when (tipo) { "personaje" -> { l.add("Edad" to ""); l.add("Aspecto" to ""); l.add("Quiere" to ""); l.add("Teme" to "") }; "lugar" -> { l.add("Clima" to ""); l.add("Gente" to "") } }
         }
     }
-    var borrar by remember { mutableStateOf(false) }
     val sale = remember(ficha?.id, e.version) { if (ficha == null) emptyList() else e.escenasDe(pid).filter { s -> e.fichasEn(pid, s.s("texto")).any { it.id == ficha.id } } }
     HojaEscribir(if (ficha == null) "Nueva ficha" else nombre.ifBlank { "Ficha" }, onCerrar) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScrollSafe()) {
@@ -254,10 +256,7 @@ fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "per
                 if (ficha == null) e.nuevo(Escritos.T_FICHA, pid, cambia) else e.edita(ficha.id, cambia)
                 onCerrar()
             }
-            if (ficha != null) {
-                if (!borrar) BotonEscribir("Borrar", peligro = true, suave = true) { borrar = true }
-                else BotonEscribir("Confirmar borrado", peligro = true) { e.borra(ficha.id); onCerrar() }
-            }
+            if (ficha != null) BotonEscribir("Borrar", peligro = true, suave = true) { aLaPapelera(e, ficha); onCerrar() }
         }
     }
 }
@@ -275,7 +274,6 @@ fun NotaDialogo(e: Escritos, pid: String, nota: Doc?, tipoNuevo: String = "nota"
     var tipo by remember { mutableStateOf(nota?.s("tipo")?.ifBlank { null } ?: tipoNuevo) }
     var color by remember { mutableStateOf(nota?.s("color")?.ifBlank { null } ?: COLORES_ESCRITO[2]) }
     var fija by remember { mutableStateOf(nota?.b("fija") == true) }
-    var borrar by remember { mutableStateOf(false) }
     HojaEscribir(if (nota == null) "Nueva nota" else titulo.ifBlank { "Nota" }, onCerrar) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScrollSafe()) {
             TIPOS_NOTA.forEach { (k, n) -> SoftChip(n, tipo == k) { tipo = k } }
@@ -295,10 +293,7 @@ fun NotaDialogo(e: Escritos, pid: String, nota: Doc?, tipoNuevo: String = "nota"
                 if (nota == null) e.nuevo(Escritos.T_NOTA, pid, cambia) else e.edita(nota.id, cambia)
                 onCerrar()
             }
-            if (nota != null) {
-                if (!borrar) BotonEscribir("Borrar", peligro = true, suave = true) { borrar = true }
-                else BotonEscribir("Confirmar borrado", peligro = true) { e.borra(nota.id); onCerrar() }
-            }
+            if (nota != null) BotonEscribir("Borrar", peligro = true, suave = true) { aLaPapelera(e, nota); onCerrar() }
         }
     }
 }
@@ -309,7 +304,6 @@ fun HitoDialogo(e: Escritos, pid: String, hito: Doc?, onCerrar: () -> Unit) {
     var cuando by remember { mutableStateOf(hito?.s("cuando").orEmpty()) }
     var nota by remember { mutableStateOf(hito?.s("nota").orEmpty()) }
     var eid by remember { mutableStateOf(hito?.s("eid").orEmpty()) }
-    var borrar by remember { mutableStateOf(false) }
     val escenas = remember(e.version) { listOf("" to "Ninguna") + e.escenasDe(pid).map { it.id to it.s("titulo").ifBlank { "Sin título" } } }
     HojaEscribir(if (hito == null) "Nuevo hito" else "Hito", onCerrar) {
         CampoEscribir(titulo, { titulo = it }, "Qué pasa")
@@ -323,10 +317,7 @@ fun HitoDialogo(e: Escritos, pid: String, hito: Doc?, onCerrar: () -> Unit) {
                 if (hito == null) e.nuevo(Escritos.T_HITO, pid, cambia) else e.edita(hito.id, cambia)
                 onCerrar()
             }
-            if (hito != null) {
-                if (!borrar) BotonEscribir("Borrar", peligro = true, suave = true) { borrar = true }
-                else BotonEscribir("Confirmar borrado", peligro = true) { e.borra(hito.id); onCerrar() }
-            }
+            if (hito != null) BotonEscribir("Borrar", peligro = true, suave = true) { aLaPapelera(e, hito); onCerrar() }
         }
     }
 }

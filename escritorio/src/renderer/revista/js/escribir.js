@@ -65,6 +65,15 @@
   const op = (nombre, ...args) => api.escritos(nombre, ...args);
   E.op = op;
   E.err = (e) => RV.aviso(RV.limpiaError(e), 'error');
+  const TIPO = { p: 'Obra', c: 'Capítulo', e: 'Escena', f: 'Ficha', n: 'Nota', h: 'Hito', b: 'Borrador' };
+  const tituloDe = (d) => (d.t === 'f' ? d.nombre : d.titulo || d.nombre) || 'Sin título';
+  // A la papelera, con «Deshacer» en el aviso
+  E.aPapelera = async (d) => {
+    try {
+      await op('borra', d.id);
+      RV.aviso(`${TIPO[d.t] || 'Escrito'} «${tituloDe(d)}» en la papelera`, null, { texto: 'Deshacer', fn: () => op('restaura', d.id).catch(E.err) });
+    } catch (e) { E.err(e); }
+  };
 
   RV.COLORES = ['#B0102F', '#D9822B', '#C9A227', '#5B8C5A', '#3E8E9E', '#4A6FA5', '#7B5EA7', '#A8577E', '#6B6B6B'];
   const ESTADOS = ['Borrador', 'Revisión', 'Final'];
@@ -108,22 +117,96 @@
   E.colorDe = colorDe;
 
   // Selector de colores
+  // (los botones se marcan sin volver a crearlos: dentro de un <label>, quitar el botón pulsado haría que el label
+  // pulsara el primero)
   const colores = (valor, alCambiar) => {
     let v = valor;
-    const fila = h('div.e-colores');
-    const pinta = () => fila.replaceChildren(...RV.COLORES.map((c) => h('button.e-color', { type: 'button', 'aria-label': c, 'aria-pressed': c.toLowerCase() === (v || '').toLowerCase() ? 'true' : 'false', style: { background: c }, onclick: () => { v = c; alCambiar(c); pinta(); } })));
-    pinta();
-    return fila;
+    const botones = RV.COLORES.map((c) => h('button.e-color', { type: 'button', 'aria-label': c, style: { background: c }, onclick: () => { v = c; alCambiar(c); marca(); } }));
+    const marca = () => botones.forEach((b, i) => b.setAttribute('aria-pressed', RV.COLORES[i].toLowerCase() === (v || '').toLowerCase() ? 'true' : 'false'));
+    marca();
+    return h('div.e-colores', botones);
   };
   const chips = (opciones, actual, alElegir) => {
-    const fila = h('div.e-chips');
-    const pinta = () => fila.replaceChildren(...opciones.map(([k, n]) => h('button.e-chip', { type: 'button', 'aria-pressed': k === actual ? 'true' : 'false', onclick: () => { actual = k; alElegir(k); pinta(); } }, n)));
-    pinta();
-    return fila;
+    const botones = opciones.map(([k, n]) => h('button.e-chip', { type: 'button', onclick: () => { actual = k; alElegir(k); marca(); } }, n));
+    const marca = () => botones.forEach((b, i) => b.setAttribute('aria-pressed', opciones[i][0] === actual ? 'true' : 'false'));
+    marca();
+    return h('div.e-chips', botones);
   };
   const selector = (valor, opciones, alCambiar) => {
     const s = h('select.entrada', { onchange: () => alCambiar(s.value) }, opciones.map(([k, n]) => h('option', { value: k, selected: k === valor ? '' : null }, n)));
     return s;
+  };
+
+  // ---------------------------------------------------------------- Sprints de escritura
+  // Escribir sin parar durante un rato (10, 25, 45 min…), con una meta si quieres. Cuentan las palabras nuevas de la obra
+  // (en cualquier escena). Sigue aunque salgas del editor o cierres Atrio; lo hecho se guarda en este PC (Cifras).
+  const lee = (k, def) => { try { return JSON.parse(localStorage.getItem(k) || '') ?? def; } catch { return def; } };
+  const graba = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } };
+  const SP = {
+    actual: lee('escribir:sprint', null),
+    activo(pid) { const s = SP.actual; return !!(s && s.hasta > Date.now() && (pid == null || s.pid === pid)); },
+    llevas() { const s = SP.actual; if (!s) return 0; const hoy = RV.hoy(); return Math.max(0, E.escritas(s.dia, s.pid) + (hoy !== s.dia ? E.escritas(hoy, s.pid) : 0) - s.base); },
+    empieza(pid, min, meta) {
+      const d = RV.hoy(); const desde = Date.now();
+      SP.actual = { pid, min, meta: meta || 0, desde, hasta: desde + min * 60000, dia: d, base: E.escritas(d, pid) };
+      graba('escribir:sprint', SP.actual); vigila(); RV.refrescar();
+    },
+    termina(ya = false) {
+      const s = SP.actual; if (!s) return;
+      const fin = ya ? Math.min(Date.now(), s.hasta) : s.hasta;
+      const min = Math.max(ya ? 0 : s.min, Math.round((fin - s.desde) / 60000));
+      const r = { pid: s.pid, desde: s.desde, min, pal: SP.llevas(), meta: s.meta };
+      SP.actual = null; graba('escribir:sprint', null);
+      if (min >= 1) graba('escribir:sprints', [...SP.historial(), r].slice(-200));
+      if (min >= 1 || r.pal > 0) resultado(r);
+      if (RV.editorActivo) RV.editorActivo.refresca();
+    },
+    historial: (pid) => (lee('escribir:sprints', []) || []).filter((x) => pid == null || x.pid === pid),
+  };
+  E.sprint = SP;
+  let timerSprint = null;
+  function vigila() {
+    clearTimeout(timerSprint);
+    if (!SP.actual) return;
+    const q = SP.actual.hasta - Date.now();
+    if (q <= 0) { if (E.cargado()) SP.termina(); else timerSprint = setTimeout(vigila, 1000); return; }
+    timerSprint = setTimeout(vigila, Math.min(q, 60000));
+  }
+  setTimeout(vigila, 1500);
+  const porMinuto = (r) => (r.min ? Math.floor(r.pal / r.min) : 0);
+  function resultado(r) {
+    const antes = SP.historial(r.pid).filter((x) => x.desde !== r.desde);
+    const record = antes.length && porMinuto(r) > Math.max(...antes.map(porMinuto));
+    const obra = E.get(r.pid);
+    RV.dialogo({
+      ante: 'Sprint terminado', titulo: `${cifra(r.pal)} palabras`, cuerpo: [
+        h('p.versal', `${r.min ? `En ${r.min} min · ${porMinuto(r)} por minuto` : 'En menos de un minuto'}${obra ? ` · ${obra.titulo || ''}` : ''}`),
+        r.meta ? h('p.texto', r.pal >= r.meta ? `Meta de ${cifra(r.meta)} conseguida.` : `Te quedaste a ${cifra(r.meta - r.pal)} de la meta (${cifra(r.meta)}).`) : null,
+        record ? h('p.texto.acento', 'Es tu mejor ritmo en esta obra.') : null],
+      acciones: ['hueco', { texto: 'Seguir', principal: true, fn: (d) => d.cerrar() }],
+    });
+  }
+  E.dlgSprint = (pid) => {
+    let min = 25;
+    const meta = RV.entrada('', { type: 'number', min: '0', placeholder: 'Opcional' });
+    const mejor = SP.historial(pid).reduce((m, x) => Math.max(m, porMinuto(x)), 0);
+    RV.dialogo({
+      ante: 'Escribir', titulo: 'Sprint de escritura', cuerpo: [
+        h('p.texto', 'Escribe sin parar, sin corregir, hasta que acabe el tiempo. Cuentan las palabras nuevas de toda la obra.'),
+        // (no en un <label>: un clic en cualquier botón de dentro pulsaría el primero)
+        h('div.campo', h('span', 'Cuánto'), chips([5, 10, 15, 20, 25, 30, 45, 60].map((m) => [m, `${m} min`]), min, (k) => { min = k; })),
+        RV.campo('Meta de palabras', meta), mejor ? h('p.apagado', `Tu mejor ritmo en esta obra: ${mejor} palabras por minuto.`) : null],
+      acciones: ['hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: 'Empezar', principal: true, fn: (d) => { d.cerrar(); SP.empieza(pid, min, num(meta.value)); } }],
+    });
+  };
+  E.sprintsObra = (pid) => {
+    const l = SP.historial(pid).sort((a, b) => b.desde - a.desde);
+    if (!l.length) return null;
+    const f = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return h('section', h('div.etiqueta', h('span.t', 'Sprints (en este PC)')),
+      h('p.cursiva', `${l.length} · ${cifra(l.reduce((s, x) => s + x.pal, 0))} palabras en ${l.reduce((s, x) => s + x.min, 0)} min · mejor ritmo ${Math.max(...l.map(porMinuto))} por minuto`),
+      h('table.e-sprints', h('tbody', l.slice(0, 8).map((x) => h('tr', h('td', f.format(new Date(x.desde)).replace(/\./g, '')), h('td', `${x.min} min`),
+        h('td', `${cifra(x.pal)} palabras${x.meta ? (x.pal >= x.meta ? ' ✓' : ` de ${cifra(x.meta)}`) : ''}`), h('td', `${porMinuto(x)}/min`))))));
   };
 
   // ---------------------------------------------------------------- Diálogos: obra, capítulo, ficha, nota, hito
@@ -152,7 +235,7 @@
       } catch (e) { E.err(e); }
     };
     const archivar = async (d) => { try { await op('edita', obra.id, { arch: obra.arch ? 0 : 1 }); d.cerrar(); RV.ir({ v: 'escribir' }); } catch (e) { E.err(e); } };
-    const borrar = (d) => RV.confirmar(`¿Borrar «${obra.titulo}»?`, 'Se borrarán sus capítulos, escenas, fichas y notas, también en tus otros dispositivos. No se puede deshacer.', 'Borrar la obra', async () => { try { await op('borra', obra.id); d.cerrar(); RV.ir({ v: 'escribir' }, { reemplazar: true }); } catch (e) { E.err(e); } });
+    const borrar = (d) => RV.confirmar(`¿Borrar «${obra.titulo}»?`, 'Irá a la papelera con sus capítulos, escenas, fichas y notas, también en tus otros dispositivos. Podrás recuperarla durante 30 días.', 'A la papelera', async () => { d.cerrar(); await E.aPapelera(obra); RV.ir({ v: 'escribir' }, { reemplazar: true }); });
     RV.dialogo({
       ante: obra ? 'Ajustes de la obra' : 'Nueva obra', titulo: obra ? obra.titulo : 'Empieza una novela', ancho: true,
       cuerpo: [RV.campo('Título', t), h('div.e-dos', RV.campo('Autor o autora', au), RV.campo('Género', ge)), RV.campo('Sinopsis', si),
@@ -169,7 +252,7 @@
     RV.dialogo({
       ante: cap ? 'Capítulo' : 'Nuevo capítulo', titulo: cap ? cap.titulo || 'Capítulo' : 'Otro capítulo', ancho: true,
       cuerpo: [RV.campo('Título', t), RV.campo('Parte', pa), RV.campo('Resumen', re)],
-      acciones: [cap ? { texto: 'Borrar el capítulo', peligro: true, fn: (d) => RV.confirmar('¿Borrar el capítulo?', `Se borrarán también sus ${E.escenas(cap.id).length} escenas.`, 'Borrar', async () => { await op('borra', cap.id); d.cerrar(); }) } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
+      acciones: [cap ? { texto: 'Borrar el capítulo', peligro: true, fn: (d) => RV.confirmar('¿Borrar el capítulo?', `Irá a la papelera con ${E.escenas(cap.id).length === 1 ? 'su escena' : `sus ${E.escenas(cap.id).length} escenas`}. Podrás recuperarlo durante 30 días.`, 'A la papelera', async () => { d.cerrar(); await E.aPapelera(cap); }) } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
         { texto: 'Guardar', principal: true, fn: async (d) => {
           try {
             const c = { titulo: t.value.trim() || `Capítulo ${E.capitulos(pid).length + 1}`, parte: pa.value.trim(), resumen: re.value.trim() };
@@ -203,7 +286,7 @@
         RV.campo('Otros nombres', ali, 'Separados por comas: así se reconoce en tus escenas (queda subrayado al escribirlo).'), RV.campo('Resumen', res),
         RV.campo('Datos', filas), RV.campo('Notas largas', tex), RV.campo('Color', colores(color, (c) => { color = c; })),
         sale.length ? h('div', h('div.versal', `Sale en ${RV.plural(sale.length, 'escena', 'escenas')}`), ...sale.slice(0, 30).map((s) => h('button.enlace.acento', { type: 'button', style: { display: 'block' }, onclick: () => { RV.cerrarDialogo(); RV.ir({ v: 'editor', id: s.id }); } }, s.titulo || 'Sin título'))) : null],
-      acciones: [ficha ? { texto: 'Borrar', peligro: true, fn: (d) => RV.confirmar(`¿Borrar a ${ficha.nombre}?`, 'Se borra la ficha (los textos no cambian).', 'Borrar', async () => { await op('borra', ficha.id); d.cerrar(); }) } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
+      acciones: [ficha ? { texto: 'Borrar', peligro: true, fn: (d) => { d.cerrar(); E.aPapelera(ficha); } } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
         { texto: 'Guardar', principal: true, fn: async (d) => {
           if (!nom.value.trim()) { RV.aviso('Ponle un nombre.', 'error'); return; }
           try {
@@ -226,7 +309,7 @@
       ante: nota ? 'Nota' : 'Nueva nota', titulo: nota ? nota.titulo || 'Nota' : 'Al tablón', ancho: true,
       cuerpo: [chips(TIPOS_NOTA.map(([k, , s]) => [k, s]), tipo, (k) => { tipo = k; }), RV.campo('Título', ti), RV.campo('Texto', tx, 'Una plantilla es un texto que puedes tener al lado mientras escribes o insertar en una escena.'),
         RV.campo('Color', colores(color, (c) => { color = c; })), h('label.e-check', fj, ' Fijada arriba')],
-      acciones: [nota ? { texto: 'Borrar', peligro: true, fn: (d) => RV.confirmar('¿Borrar la nota?', 'Se borra en todos tus dispositivos.', 'Borrar', async () => { await op('borra', nota.id); d.cerrar(); }) } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
+      acciones: [nota ? { texto: 'Borrar', peligro: true, fn: (d) => { d.cerrar(); E.aPapelera(nota); } } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
         { texto: 'Guardar', principal: true, fn: async (d) => {
           if (!ti.value.trim() && !tx.value.trim()) { d.cerrar(); return; }
           try { const c = { tipo, titulo: ti.value.trim(), texto: tx.value, color, fija: fija ? 1 : 0 }; if (nota) await op('edita', nota.id, c); else await op('nuevo', 'n', pid, c); d.cerrar(); } catch (e) { E.err(e); }
@@ -243,12 +326,56 @@
     RV.dialogo({
       ante: hito ? 'Hito' : 'Nuevo hito', titulo: hito ? hito.titulo : 'Un momento de la historia', ancho: true,
       cuerpo: [RV.campo('Qué pasa', ti), RV.campo('Cuándo', cu), RV.campo('Escena', es), RV.campo('Nota', no)],
-      acciones: [hito ? { texto: 'Borrar', peligro: true, fn: (d) => RV.confirmar('¿Borrar el hito?', 'Se borra en todos tus dispositivos.', 'Borrar', async () => { await op('borra', hito.id); d.cerrar(); }) } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
+      acciones: [hito ? { texto: 'Borrar', peligro: true, fn: (d) => { d.cerrar(); E.aPapelera(hito); } } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
         { texto: 'Guardar', principal: true, fn: async (d) => {
           if (!ti.value.trim()) { RV.aviso('Cuenta qué pasa.', 'error'); return; }
           try { const c = { titulo: ti.value.trim(), cuando: cu.value.trim(), nota: no.value, eid: eid || null }; if (hito) await op('edita', hito.id, c); else await op('nuevo', 'h', pid, c); d.cerrar(); } catch (e) { E.err(e); }
         } }],
     });
+  };
+
+  // La papelera: lo borrado de los últimos 30 días, para recuperarlo (vuelve a su sitio) o borrarlo para siempre
+  const PLURAL = { c: ['capítulo', 'capítulos'], e: ['escena', 'escenas'], f: ['ficha', 'fichas'], n: ['nota', 'notas'], h: ['hito', 'hitos'], b: ['borrador', 'borradores'] };
+  const cuantos = (tipos) => {
+    const n = {}; for (const t of tipos) n[t] = (n[t] || 0) + 1;
+    const l = Object.keys(PLURAL).filter((t) => n[t]).map((t) => `${n[t]} ${n[t] === 1 ? PLURAL[t][0] : PLURAL[t][1]}`);
+    return l.length > 1 ? `${l.slice(0, -1).join(', ')} y ${l[l.length - 1]}` : l[0] || '';
+  };
+  E.dlgPapelera = () => {
+    const seguro = new Set();
+    let d = null;
+    const fila = ({ d: x, con, obra }) => {
+      const cuando = num(x.dt || x.u);
+      const quedan = Math.max(0, Math.floor((cuando + 30 * 86400000 - Date.now()) / 86400000));
+      const linea = String(x.t === 'f' ? x.resumen || '' : x.t === 'p' ? x.sinopsis || '' : x.t === 'c' ? x.resumen || '' : x.texto || '').split('\n').find((l) => l.trim() && !l.startsWith('#')) || '';
+      const meta = [con.length ? `Con ${cuantos(con)}` : '', x.t === 'e' || x.t === 'b' ? `${cifra(E.palabras(x.texto))} palabras` : '', `borrado ${hace(cuando)}`, quedan <= 1 ? 'se borra del todo mañana' : `quedan ${quedan} días`].filter(Boolean).join(' · ');
+      return h('div.e-pap',
+        h('div.versal.acento', `${TIPO[x.t] || 'Escrito'}${obra ? ` · ${obra}` : ''}`),
+        h('div.e-pap-titulo', tituloDe(x)),
+        linea ? h('div.e-pap-linea', linea) : null,
+        h('div.e-pap-meta', meta),
+        h('div.fila-botones',
+          h('button.boton-tinta', { type: 'button', onclick: async () => { try { await op('restaura', x.id); RV.aviso(`«${tituloDe(x)}» ha vuelto a su sitio`); pinta(); } catch (e) { E.err(e); } } }, 'Recuperar'),
+          h('button.enlace' + (seguro.has(x.id) ? '.acento' : '.apagado'), { type: 'button', onclick: async () => {
+            if (!seguro.has(x.id)) { seguro.add(x.id); pinta(); return; }
+            try { await op('purga', x.id); pinta(); } catch (e) { E.err(e); }
+          } }, seguro.has(x.id) ? 'Sí, para siempre' : 'Borrar para siempre')));
+    };
+    const pinta = async () => {
+      let lista = [];
+      try { lista = await op('papeleraDetalle'); } catch (e) { E.err(e); }
+      if (!d) return;
+      reemplaza(d.cuerpo, h('p.texto', 'Lo que borras se queda aquí 30 días, también en tus otros dispositivos. Al recuperarlo vuelve a su sitio, con lo que se fue con ello.'),
+        lista.length ? lista.map(fila) : h('p.e-pap-vacia', 'La papelera está vacía.'));
+      const b = d.pie.querySelector('.e-vaciar');
+      if (b) b.hidden = !lista.length;
+    };
+    d = RV.dialogo({
+      ante: 'Escribir', titulo: 'Papelera', ancho: true, cuerpo: [h('p.texto', 'Cargando…')],
+      acciones: [{ texto: 'Vaciar la papelera', peligro: true, clase: 'e-vaciar', fn: () => RV.confirmar('¿Vaciar la papelera?', 'Se borrará para siempre todo lo que hay en ella, en todos tus dispositivos.', 'Vaciar', async () => { try { await op('vaciaPapelera'); pinta(); } catch (e) { E.err(e); } }) },
+        'hueco', { texto: 'Cerrar', principal: true, fn: (x) => x.cerrar() }],
+    });
+    pinta();
   };
 
   // Comparar con otro texto (un borrador o una versión): diferencia a diferencia, eliges de cada una
@@ -322,6 +449,7 @@
       root.append(h('button.enlace.apagado', { type: 'button', style: { marginTop: '24px' }, onclick: () => { archivoAbierto = !archivoAbierto; RV.refrescar(); } }, `Archivadas ${archivoAbierto ? '▴' : '▾'} ${arch.length}`));
       if (archivoAbierto) root.append(h('div.e-obras', arch.map(tarjeta)));
     }
+    root.append(h('button.enlace.apagado.e-ir-papelera', { type: 'button', onclick: () => E.dlgPapelera() }, `Papelera${estado.papelera ? ` · ${estado.papelera}` : ''}`));
     return root;
   };
   async function importar() {
@@ -407,7 +535,7 @@
         h('span.versal', 'Mover a otro capítulo'),
         ...caps.filter((c) => c.id !== s.cid).map((c) => acc(c.titulo || 'Sin título', () => op('mueveEscena', s.id, c.id, (E.escenas(c.id).slice(-1)[0] || {}).id || null, null))),
         acc('Duplicar', () => op('duplicaEscena', s.id)),
-        h('button.enlace-serif.acento', { type: 'button', onclick: () => { d.cerrar(); RV.confirmar('¿Borrar la escena?', 'Se borra también en tus otros dispositivos.', 'Borrar', async () => { await op('borra', s.id); }); } }, 'Borrar')),
+        h('button.enlace-serif.acento', { type: 'button', onclick: () => { d.cerrar(); E.aPapelera(s); } }, 'Borrar')),
       acciones: [{ texto: 'Cerrar', fn: (x) => x.cerrar() }],
     });
     return pid && d;
@@ -495,6 +623,8 @@
       h('div.e-apilada', ests.map((n, i) => (n ? h('span', { style: { flex: String(n), background: COL_ESTADO[i] } }) : null))), h('p.cursiva', ESTADOS.map((n, i) => `${ests[i]} ${n.toLowerCase()}`).join(' · '))));
     if (caps.length) raiz.append(h('section', h('div.etiqueta', h('span.t', 'Palabras por capítulo')),
       ...caps.map((c, i) => h('div.e-cap-barra', h('span', String(i + 1)), barra(E.palabrasCapitulo(c.id) / maxCap), h('span', cifra(E.palabrasCapitulo(c.id)))))));
+    const sp = E.sprintsObra(pid);
+    if (sp) raiz.append(sp);
     return raiz;
   }
 
@@ -531,11 +661,13 @@
   }
 
   // ---------------------------------------------------------------- Datos en directo
+  // (los escritos pueden llegar antes de que cargue app.js, que es quien sabe en qué página estamos)
+  const vista = () => (typeof RV.ruta === 'function' ? RV.ruta().v : '');
   const cambia = RV.debounce(() => {
-    const r = RV.ruta().v;
+    const r = vista();
     if (r === 'editor') { if (RV.escribirEditorCambio) RV.escribirEditorCambio(); return; }
     if (r === 'escribir' || r === 'obra') RV.refrescar();
   }, 60);
   api.on('escritos', (x) => { E.set(x.docs, x.estado); cambia(); });
-  api.escritosTodo().then((x) => { E.set(x.docs, x.estado); if (['escribir', 'obra', 'editor'].includes(RV.ruta().v)) RV.refrescar(); }).catch(() => { cargado = true; });
+  api.escritosTodo().then((x) => { E.set(x.docs, x.estado); if (['escribir', 'obra', 'editor'].includes(vista())) RV.refrescar(); }).catch(() => { cargado = true; });
 })(window.RV);

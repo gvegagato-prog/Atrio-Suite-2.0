@@ -8,10 +8,18 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const M = require('./escritos-mezcla');
 
 const T = { OBRA: 'p', CAP: 'c', ESCENA: 'e', FICHA: 'f', NOTA: 'n', BORRADOR: 'b', HITO: 'h', LOG: 'l' };
 const LIMPIEZA = 180 * 86400000;
+// Lo borrado se queda en la papelera 30 días; luego solo queda la marca de borrado (para tus otros dispositivos)
+const PAPELERA = 30 * 86400000;
 const VERSIONES = 40;
+// Cuántas versiones de la nube se guardan de cada documento (la base para juntar lo cambiado a la vez en dos sitios)
+const BASES = 3;
+const LAPIDA = new Set(['id', 't', 'pid', 'u', 'pu', 'd']);
+// Una marca de borrado sin nada dentro (lo que queda al vaciar la papelera, o lo que dejaban las versiones antiguas)
+const lapida = (o) => !!o && o.d === 1 && Object.keys(o).every((k) => LAPIDA.has(k));
 
 // Cuántas palabras tiene un texto (los signos del formato no cuentan); igual que Escritos.palabras del móvil
 const PALABRA = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
@@ -39,6 +47,9 @@ function crear({ dir, dev, net, log = () => {} }) {
 
   const dDocs = path.join(dir, 'd');
   const dVers = path.join(dir, 'v');
+  const dBases = path.join(dir, 'b');
+  const baseHecha = new Map();
+  const intentos = new Map();
   fs.mkdirSync(dDocs, { recursive: true });
   for (const f of fs.readdirSync(dDocs)) {
     if (!f.endsWith('.json')) continue;
@@ -50,7 +61,8 @@ function crear({ dir, dev, net, log = () => {} }) {
   const graba = (f, txt) => { const tmp = `${f}.tmp`; fs.writeFileSync(tmp, txt); fs.renameSync(tmp, f); };
   const guarda = (o) => { try { graba(path.join(dDocs, `${o.id}.json`), JSON.stringify(o)); } catch (e) { log('escritos: no se pudo guardar', e.message); } };
   const guardaIndice = () => { try { graba(path.join(dir, 'acked.json'), JSON.stringify(Object.fromEntries(acked))); } catch { /* */ } };
-  const borrado = (o) => o && o.d === 1;
+  const borrado = (o) => !!o && o.d === 1;
+  const enPapelera = (o) => borrado(o) && !lapida(o);
   const vivos = () => [...docs.values()].filter((o) => !borrado(o));
   const porOrden = (a, b) => (num(a.orden) - num(b.orden)) || (num(a.u) - num(b.u));
   const avisa = () => { try { alCambiar(); } catch { /* */ } };
@@ -58,7 +70,7 @@ function crear({ dir, dev, net, log = () => {} }) {
   const api = {
     T, palabras, hoy,
     onChange(f) { alCambiar = f || (() => {}); },
-    estado: () => ({ error, ultima, pendientes: api.pendientes().length }),
+    estado: () => ({ error, ultima, pendientes: api.pendientes().length, papelera: api.papelera().length }),
     todos: () => vivos(),
     get: (id) => { const o = docs.get(id); return o && !borrado(o) ? o : null; },
     tipo: (t, pid) => vivos().filter((o) => o.t === t && (pid == null || o.pid === pid)).sort(porOrden),
@@ -71,12 +83,10 @@ function crear({ dir, dev, net, log = () => {} }) {
     hitos: (pid) => api.tipo(T.HITO, pid),
     borradores: (eid) => vivos().filter((o) => o.t === T.BORRADOR && o.eid === eid).sort((a, b) => a.u - b.u),
 
-    // Pone o cambia un documento: la hora de edición siempre sube (aunque dos cambios caigan en el mismo milisegundo)
+    // Pone o cambia un documento: la hora de edición siempre sube (aunque dos cambios caigan en el mismo milisegundo) y
+    // apunta en «pu» de qué versión de la nube parte, para poder juntarlo luego con lo cambiado a la vez en otro sitio
     pon(o) {
-      const antes = docs.get(o.id);
-      const d = { ...o, u: Math.max(Date.now(), (antes ? num(antes.u) : 0) + 1) };
-      docs.set(d.id, d);
-      guarda(d);
+      const d = ponSin(o);
       avisa();
       pronto(0.7);
       return d;
@@ -110,26 +120,74 @@ function crear({ dir, dev, net, log = () => {} }) {
       if (ahora > antes) api.registra(d.pid, ahora - antes);
       return r;
     },
-    // Borra (queda la marca, para que se borre también en tus otros dispositivos); una obra borra todo lo suyo
+    // Manda a la papelera (con lo que va dentro: una obra con todo lo suyo, un capítulo con sus escenas, una escena con sus
+    // borradores). Se borra también en tus otros dispositivos, pero se puede recuperar durante 30 días. Las palabras
+    // escritas cada día no se borran (las escribiste).
     borra(id) {
-      const d = docs.get(id);
+      const d = api.get(id);
       if (!d) return;
+      const v = vivos();
+      const conBorradores = (e) => [e.id, ...v.filter((b) => b.t === T.BORRADOR && b.eid === e.id).map((b) => b.id)];
       let ids;
-      if (d.t === T.OBRA) ids = [...docs.values()].filter((o) => o.pid === id).map((o) => o.id);
-      else if (d.t === T.CAP) ids = [id, ...[...docs.values()].filter((o) => o.t === T.ESCENA && o.cid === id).flatMap((e) => [e.id, ...[...docs.values()].filter((b) => b.t === T.BORRADOR && b.eid === e.id).map((b) => b.id)])];
-      else if (d.t === T.ESCENA) ids = [id, ...[...docs.values()].filter((o) => o.t === T.BORRADOR && o.eid === id).map((o) => o.id)];
+      if (d.t === T.OBRA) ids = [id, ...v.filter((o) => o.pid === id && o.id !== id && o.t !== T.LOG).map((o) => o.id)];
+      else if (d.t === T.CAP) ids = [id, ...v.filter((o) => o.t === T.ESCENA && o.cid === id).flatMap(conBorradores)];
+      else if (d.t === T.ESCENA) ids = conBorradores(d);
       else ids = [id];
       const ahora = Date.now();
       for (const i of ids) {
         const x = docs.get(i);
         if (!x) continue;
-        const o = { id: x.id, t: x.t, pid: x.pid, d: 1, u: Math.max(ahora, num(x.u) + 1) };
-        docs.set(i, o); guarda(o);
-        if (x.t === T.ESCENA) { try { fs.unlinkSync(path.join(dVers, `${i}.json`)); } catch { /* */ } }
+        const o = { ...x, d: 1, dt: ahora };
+        if (i === id) delete o.dc; else o.dc = id;
+        ponSin(o);
       }
-      if (d.t === T.ESCENA) for (const h of api.hitos(d.pid)) if (h.eid === id) { const { eid, ...r } = h; api.pon(r); }
       avisa(); pronto(0.7);
     },
+    // Lo que hay en la papelera (lo que se borró, sin lo que se fue con ello), lo último primero
+    papelera: () => [...docs.values()].filter((o) => enPapelera(o) && o.t !== T.LOG && (!o.dc || !enPapelera(docs.get(o.dc))))
+      .sort((a, b) => (num(b.dt || b.u) - num(a.dt || a.u)) || (num(b.u) - num(a.u))),
+    // Para enseñar la papelera: cada cosa con lo que se fue con ella y el título de su obra
+    papeleraDetalle: () => api.papelera().map((d) => {
+      const obra = d.t === T.OBRA ? null : api.cualquiera(d.pid);
+      return { d, con: api.conElBorrado(d.id).map((x) => x.t), obra: obra ? obra.titulo || 'Sin título' : '' };
+    }),
+    // Lo que se fue a la papelera con id (las escenas de un capítulo, lo de una obra…)
+    conElBorrado: (id) => [...docs.values()].filter((o) => enPapelera(o) && o.dc === id),
+    // Un documento vivo o de la papelera (para enseñar de dónde era lo borrado)
+    cualquiera: (id) => { const o = docs.get(id); return o && (!borrado(o) || enPapelera(o)) ? o : null; },
+    // Saca algo de la papelera, con lo que se fue con ello. Si estaba dentro de algo que también se borró (una escena de un
+    // capítulo borrado, un capítulo de una obra borrada), eso vuelve también, para que aparezca donde estaba.
+    restaura(id) {
+      const d = docs.get(id);
+      if (!enPapelera(d)) return;
+      const ids = new Set();
+      const con = (x) => { if (ids.has(x.id)) return; ids.add(x.id); for (const y of api.conElBorrado(x.id)) con(y); };
+      const dentroDe = (x) => (x.t === T.OBRA ? [] : x.t === T.ESCENA ? [x.cid, x.pid] : x.t === T.BORRADOR ? [x.eid, x.pid] : [x.pid]);
+      const padres = (x) => { for (const pid of dentroDe(x)) { const p = docs.get(pid); if (enPapelera(p) && !ids.has(p.id)) { con(p); padres(p); } } };
+      con(d); padres(d);
+      for (const i of ids) {
+        const x = docs.get(i);
+        if (!x) continue;
+        const { d: _d, dt, dc, ...o } = x;
+        ponSin(o);
+      }
+      avisa(); pronto(0.7);
+    },
+    // Borra para siempre lo de la papelera: id (con lo suyo), o lo de antes de «antesDe» (por defecto, hace 30 días)
+    purga(id = null, antesDe = Date.now() - PAPELERA) {
+      const ids = new Set();
+      const con = (x) => { if (ids.has(x.id)) return; ids.add(x.id); for (const y of api.conElBorrado(x.id)) con(y); };
+      if (id) { const x = docs.get(id); if (enPapelera(x)) con(x); } else for (const x of [...docs.values()]) if (enPapelera(x) && num(x.dt || x.u) < antesDe) con(x);
+      if (!ids.size) return;
+      for (const i of ids) {
+        const x = docs.get(i);
+        if (!x) continue;
+        ponSin({ id: x.id, t: x.t, pid: x.pid, d: 1 });
+        for (const f of [path.join(dVers, `${i}.json`), path.join(dBases, `${i}.json`)]) { try { fs.unlinkSync(f); } catch { /* */ } }
+      }
+      avisa(); pronto(0.7);
+    },
+    vaciaPapelera() { api.purga(null, Infinity); },
     mueve(id, antes, despues) {
       const a = antes && docs.get(antes) ? num(docs.get(antes).orden) : null;
       const b = despues && docs.get(despues) ? num(docs.get(despues).orden) : null;
@@ -267,9 +325,19 @@ function crear({ dir, dev, net, log = () => {} }) {
       const lote = []; let peso = 0;
       for (const d of quedan) { const len = JSON.stringify(d).length; if (lote.length && (peso + len > 600000 || lote.length >= 40)) break; lote.push(d); peso += len; }
       const body = {};
-      for (const d of lote) { body[`escritos/${d.id}`] = d; body[`escritosIdx/${d.id}`] = d.u; }
+      for (const d of lote) {
+        body[`escritos/${d.id}`] = d; body[`escritosIdx/${d.id}`] = d.u;
+        if (!intentos.has(d.id)) intentos.set(d.id, new Set());
+        intentos.get(d.id).add(d.u);
+      }
       await net.db('PATCH', `/users/${uid}`, body, 'print=silent');
-      for (const d of lote) acked.set(d.id, d.u);
+      for (const s of lote) {
+        acked.set(s.id, s.u);
+        intentos.delete(s.id);
+        // Si mientras subía se siguió escribiendo, lo de ahora parte de lo que acaba de subir
+        const ahora = docs.get(s.id);
+        if (ahora && ahora.u !== s.u && ahora.t !== T.LOG) { apuntaBase(s); const o = { ...ahora, pu: s.u }; docs.set(s.id, o); guarda(o); }
+      }
       guardaIndice();
     }
   }
@@ -278,9 +346,7 @@ function crear({ dir, dev, net, log = () => {} }) {
     const idx = (await net.db('GET', `/users/${uid}/escritosIdx`)) || {};
     const faltan = [];
     for (const [id, ru] of Object.entries(idx)) {
-      const l = docs.get(id);
-      // (el registro del día no se da por igual solo por la hora: dos dispositivos pueden apuntarlo en el mismo milisegundo)
-      if (l && l.u === ru && l.t !== T.LOG) { acked.set(id, ru); continue; }
+      // (con la misma hora que lo de aquí también se baja: dos dispositivos pueden guardar en el mismo milisegundo)
       if (acked.get(id) === ru) continue;
       faltan.push(id);
     }
@@ -294,36 +360,102 @@ function crear({ dir, dev, net, log = () => {} }) {
     if (cambio) avisa();
   }
 
-  /** Mezcla un documento que ha llegado de la nube. Devuelve true si cambia lo que se ve aquí. */
+  function ponSin(o) {
+    const antes = docs.get(o.id);
+    // Se deja de estar igual que en la nube: esa versión es la base si luego hay que juntar
+    if (antes && antes.t !== T.LOG && acked.get(o.id) === num(antes.u)) apuntaBase(antes);
+    const d = { ...o, u: Math.max(Date.now(), (antes ? num(antes.u) : 0) + 1) };
+    if (d.t === T.LOG) delete d.pu; else d.pu = acked.has(d.id) ? acked.get(d.id) : 0;
+    docs.set(d.id, d);
+    guarda(d);
+    return d;
+  }
+
+  // ---- Bases: versiones que estuvieron en la nube, para juntar lo cambiado a la vez en dos sitios
+  function apuntaBase(o) {
+    const u = num(o.u);
+    if (!o.id || o.t === T.LOG || lapida(o) || baseHecha.get(o.id) === u) return;
+    baseHecha.set(o.id, u);
+    const f = path.join(dBases, `${o.id}.json`);
+    let l = [];
+    try { l = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { /* primera */ }
+    l = [...l.filter((x) => num(x.u) !== u), o].slice(-BASES);
+    try { fs.mkdirSync(dBases, { recursive: true }); graba(f, JSON.stringify(l)); } catch { /* */ }
+  }
+  function base(id, u) {
+    if (!(u > 0)) return null;
+    try { return JSON.parse(fs.readFileSync(path.join(dBases, `${id}.json`), 'utf8')).filter((x) => num(x.u) === u).pop() || null; } catch { return null; }
+  }
+  function adopta(r) { docs.set(r.id, r); acked.set(r.id, num(r.u)); guarda(r); }
+
+  /**
+   * Mezcla un documento que ha llegado de la nube. Devuelve true si cambia lo que se ve aquí.
+   * Si aquí no había cambios y lo de fuera parte de lo de aquí, se queda lo de fuera. Si se cambió en los dos sitios a la
+   * vez (o lo de fuera se subió sin haber visto lo de aquí), se juntan a partir de la versión de la que salen los dos (la
+   * base): lo que cambió en uno solo se queda, y si los dos cambiaron el mismo campo o el mismo párrafo, manda el más nuevo;
+   * en una escena, el texto que no se queda se guarda como borrador (no se pierde nada). Ver docs/escribir.md.
+   */
   function aplica(id, r) {
     r = { ...r, id: r.id || id };
     const ru = num(r.u);
     const l = docs.get(id);
     const ack = acked.has(id) ? acked.get(id) : 0;
-    if (!l) { docs.set(id, r); acked.set(id, ru); guarda(r); return true; }
+    if (!l) { adopta(r); return true; }
     if (l.t === T.LOG || r.t === T.LOG) return mezclaLog(l, r);
     const lu = num(l.u);
-    if (lu === ru) { acked.set(id, ru); return false; }
-    const pendiente = lu !== ack;
-    if (!pendiente) {
-      if (ru > lu) { docs.set(id, r); acked.set(id, ru); guarda(r); return true; }
-      acked.set(id, ru); // lo de aquí es más nuevo que lo de la nube: queda pendiente y se sube
+    // Misma hora y mismo contenido: es la misma versión. Misma hora y otro contenido: se guardó a la vez en otro sitio
+    const choca = lu === ru && M.contenido(l) !== M.contenido(r);
+    if (lu === ru && !choca) { acked.set(id, ru); return false; }
+    // Lo subió este dispositivo y no llegó a confirmarse (se cortó la red a mitad): ya está en lo de aquí
+    if (!choca && intentos.has(id) && intentos.get(id).has(ru)) {
+      intentos.delete(id);
+      acked.set(id, ru);
+      apuntaBase(r);
+      const o = { ...l, pu: ru }; docs.set(id, o); guarda(o);
       return false;
     }
-    // Se cambió en los dos sitios a la vez: gana el más nuevo y el texto del otro se guarda como borrador
-    const gana = ru > lu ? r : l;
-    const pierde = ru > lu ? l : r;
-    if (l.t === T.ESCENA && !borrado(gana) && !borrado(pierde) && String(pierde.texto || '').trim() && pierde.texto !== gana.texto) {
-      const bid = `bc_${id}_${pierde.u}`;
-      if (!docs.has(bid)) {
-        const nombre = `Versión de otro dispositivo (${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(pierde.u)).replace(/\./g, '')})`;
-        const o = { id: bid, t: T.BORRADOR, pid: l.pid, eid: id, conflicto: 1, nombre, texto: pierde.texto, u: pierde.u };
-        docs.set(bid, o); guarda(o);
-      }
+    const pendiente = lu !== ack || choca;
+    const rpu = r.pu == null ? -1 : num(r.pu);
+    if (!pendiente) {
+      // Lo de fuera parte de lo de aquí (o viene de un dispositivo con una versión antigua, sin «pu»)
+      if (rpu === lu || (rpu === -1 && ru > lu)) { adopta(r); return true; }
+      if (rpu === -1) { acked.set(id, ru); return false; } // lo de aquí es más nuevo: queda pendiente y se sube
     }
-    acked.set(id, ru);
-    if (ru > lu) { docs.set(id, gana); guarda(gana); }
-    return ru > lu;
+    const anc = base(id, rpu) || (pendiente ? base(id, ack) : null);
+    // Sin base y sin cambios aquí: lo de fuera viene de lo de aquí por versiones que no se llegaron a ver
+    if (!pendiente && !anc) { adopta(r); return true; }
+    if (lapida(l) || lapida(r)) {
+      // Una marca de borrado sin nada dentro no se junta: manda la más nueva
+      acked.set(id, ru);
+      if (ru > lu) { adopta(r); return true; }
+      return false;
+    }
+    return junta(l, r, anc);
+  }
+
+  function junta(l, r, anc) {
+    const lu = num(l.u); const ru = num(r.u);
+    const nuestro = lu > ru || (lu === ru && M.contenido(l) > M.contenido(r));
+    const m = M.docs(anc, l, r, nuestro, palabras);
+    if (l.t === T.ESCENA && m.chocan.has('texto')) aparta(l, nuestro ? r : l, m.o.texto || '');
+    apuntaBase(r);
+    acked.set(l.id, ru);
+    const antes = M.contenido(l);
+    if (M.canon(m.o) === M.contenido(r)) { adopta(r); return antes !== M.contenido(r); }
+    const d = { ...m.o, u: Math.max(lu, ru) + 1, pu: ru };
+    docs.set(l.id, d); guarda(d);
+    return antes !== M.contenido(d);
+  }
+
+  // El texto de «pierde» se guarda como borrador de la escena (si no es el que se ha quedado). Mismo id en todos los dispositivos.
+  function aparta(l, pierde, queda) {
+    const txt = String(pierde.texto || '');
+    if (!txt.trim() || txt === queda) return;
+    const bid = `bc_${l.id}_${num(pierde.u)}`;
+    if (docs.has(bid)) return;
+    const nombre = `Versión en conflicto (${new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(num(pierde.u))).replace(/\./g, '').replace(',', '')})`;
+    const o = { id: bid, t: T.BORRADOR, pid: l.pid, eid: l.id, conflicto: 1, nombre, texto: txt, u: num(pierde.u) };
+    docs.set(bid, o); guarda(o);
   }
 
   function mezclaLog(l, r) {
@@ -349,10 +481,10 @@ function crear({ dir, dev, net, log = () => {} }) {
       for (const o of viejos) { body[`escritos/${o.id}`] = null; body[`escritosIdx/${o.id}`] = null; }
       try { await net.db('PATCH', `/users/${uid}`, body, 'print=silent'); } catch { return; }
     }
-    for (const o of viejos) { docs.delete(o.id); acked.delete(o.id); try { fs.unlinkSync(path.join(dDocs, `${o.id}.json`)); } catch { /* */ } }
+    for (const o of viejos) { docs.delete(o.id); acked.delete(o.id); for (const f of [path.join(dDocs, `${o.id}.json`), path.join(dBases, `${o.id}.json`)]) { try { fs.unlinkSync(f); } catch { /* */ } } }
     guardaIndice();
   };
   return api;
 }
 
-module.exports = { crear, palabras, T, hoy };
+module.exports = { crear, palabras, T, hoy, lapida, PAPELERA };

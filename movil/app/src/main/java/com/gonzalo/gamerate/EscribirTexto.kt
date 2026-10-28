@@ -132,6 +132,31 @@ object EdicionTexto {
     }
 }
 
+/**
+ * Tipografía automática al escribir: dos guiones son una raya (—), un guion y un espacio al empezar una línea abren un
+ * diálogo (—), tres puntos son puntos suspensivos (…), las comillas rectas son « o » según dónde estén, y << >> son « ».
+ * Igual que ET.tipografia del PC (los dos se prueban con herramientas/casos/tipografia.json).
+ */
+object Tipografia {
+    private const val ABREN = " \t\n([{«“—-"
+
+    /** [texto] es como queda justo después de escribir [ch], con el cursor en [cursor]. Devuelve el cambio, o null. */
+    fun aplica(texto: String, cursor: Int, ch: Char): Pair<String, Int>? {
+        if (cursor < 1 || cursor > texto.length || texto[cursor - 1] != ch) return null
+        fun cambia(n: Int, por: String) = (texto.substring(0, cursor - n) + por + texto.substring(cursor)) to (cursor - n + por.length)
+        val antes = if (cursor >= 2) texto[cursor - 2] else '\n'
+        return when (ch) {
+            '-' -> if (cursor >= 2 && antes == '-') cambia(2, "—") else null
+            ' ' -> if (cursor >= 2 && antes == '-' && (cursor < 3 || texto[cursor - 3] == '\n')) cambia(2, "—") else null
+            '.' -> if (cursor >= 3 && texto.substring(cursor - 3, cursor) == "...") cambia(3, "…") else null
+            '"' -> cambia(1, if (cursor < 2 || antes in ABREN) "«" else "»")
+            '<' -> if (cursor >= 2 && antes == '<') cambia(2, "«") else null
+            '>' -> if (cursor >= 2 && antes == '>') cambia(2, "»") else null
+            else -> null
+        }
+    }
+}
+
 /** Deshacer y rehacer lo escrito (instantáneas del texto, unidas si caen muy seguidas). */
 class HistorialTexto(inicial: TextFieldValue, private val tope: Int = 200) {
     private val atras = ArrayDeque<TextFieldValue>()
@@ -148,6 +173,9 @@ class HistorialTexto(inicial: TextFieldValue, private val tope: Int = 200) {
         actual = v
         adelante.clear()
     }
+
+    /** El próximo cambio va aparte (no se junta con el anterior): así se deshace solo lo que hizo la tipografía automática. */
+    fun corte() { ultima = 0L }
 
     val puedeDeshacer get() = atras.isNotEmpty()
     val puedeRehacer get() = adelante.isNotEmpty()

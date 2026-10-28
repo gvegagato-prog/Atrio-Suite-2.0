@@ -79,7 +79,18 @@
         "NSScreenCaptureDescription": "Atrio hace capturas de tus juegos (a tamaño real) cuando las pides desde el móvil.",
         "NSAppleEventsUsageDescription": "Atrio puede apagar, reiniciar o suspender el equipo si lo pides desde el móvil."
       }
-    }
+    },
+    "extraResources": [
+      {
+        "from": "../movil/app/src/main/assets/sinonimos",
+        "to": "sinonimos",
+        "filter": [
+          "th_es_v2.dat",
+          "COPYING",
+          "LEEME.txt"
+        ]
+      }
+    ]
   },
   "devDependencies": {
     "electron": "^44.7.0",

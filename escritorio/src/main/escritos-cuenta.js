@@ -8,7 +8,8 @@ const { watch } = require('./stream');
 const fs = require('fs');
 const X = require('./escritos-export');
 
-const OPS = new Set(['nuevo', 'edita', 'escribe', 'borra', 'mueve', 'mueveEscena', 'duplicaEscena', 'registra', 'instantanea', 'reemplaza', 'versiones', 'sincroniza']);
+const OPS = new Set(['nuevo', 'edita', 'escribe', 'borra', 'mueve', 'mueveEscena', 'duplicaEscena', 'registra', 'instantanea', 'reemplaza', 'versiones', 'sincroniza',
+  'papelera', 'papeleraDetalle', 'conElBorrado', 'cualquiera', 'restaura', 'purga', 'vaciaPapelera']);
 
 function iniciar({ ronron, ipcMain, send, log, fetchImpl, dir, dialog, ventana = () => null }) {
   const escr = crear({
@@ -72,7 +73,10 @@ function iniciar({ ronron, ipcMain, send, log, fetchImpl, dir, dialog, ventana =
   setTimeout(mira, 1200);
   // Por si algo quedó sin subir (sin red un buen rato): se vuelve a intentar
   setInterval(() => { if (ronron.uid() && escr.pendientes().length) escr.pronto(0.5); }, 30000);
-  setInterval(() => { escr.limpia().catch(() => {}); }, 6 * 3600 * 1000);
+  // Lo de la papelera de hace más de 30 días se borra del todo, y las marcas de borrado muy viejas se quitan
+  const ordena = () => { try { escr.purga(); } catch { /* */ } escr.limpia().catch(() => {}); };
+  setTimeout(ordena, 90 * 1000);
+  setInterval(ordena, 6 * 3600 * 1000);
   return escr;
 }
 

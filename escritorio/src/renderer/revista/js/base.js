@@ -224,14 +224,19 @@ window.RV = window.RV || {};
 
   // ---------------------------------------------------------------- Avisos
   let avisoT = null;
-  RV.aviso = (msg, tipo) => {
+  // Con «accion» ({ texto, fn }) lleva un botón (p. ej. «Deshacer») y dura más
+  RV.aviso = (msg, tipo, accion) => {
     const el = document.getElementById('aviso');
     if (!el || !msg) return;
     el.textContent = String(msg);
+    if (accion) {
+      el.append(RV.h('button.aviso-accion', { type: 'button', onclick: () => { el.classList.remove('ver', 'con-accion'); clearTimeout(avisoT); accion.fn(); } }, accion.texto));
+    }
     el.classList.toggle('error', tipo === 'error');
+    el.classList.toggle('con-accion', !!accion);
     el.classList.add('ver');
     clearTimeout(avisoT);
-    avisoT = setTimeout(() => el.classList.remove('ver'), tipo === 'error' ? 6500 : 3200);
+    avisoT = setTimeout(() => el.classList.remove('ver', 'con-accion'), accion ? 8000 : tipo === 'error' ? 6500 : 3200);
   };
 
   // ---------------------------------------------------------------- Diálogos
@@ -272,7 +277,7 @@ window.RV = window.RV || {};
       if (a === 'hueco') { pie.append(h('span.hueco')); continue; }
       if (!a) continue;
       const cls = a.principal ? 'button.boton-tinta' : a.peligro ? 'button.enlace.acento' : 'button.enlace';
-      pie.append(h(cls, { type: 'button', onclick: () => a.fn(d) }, a.texto));
+      pie.append(h(cls + (a.clase ? `.${a.clase}` : ''), { type: 'button', onclick: () => a.fn(d) }, a.texto));
     }
     if (o.fueraCierra) velo.addEventListener('mousedown', (e) => { if (e.target === velo) d.cerrar(); });
     capa.append(velo);
@@ -324,7 +329,9 @@ window.RV = window.RV || {};
   RV.dato = (k, v, serif) => h('li.dato', h('span.k', k), h('span.guia'), h(`span.v${serif ? '.serif' : ''}`, v));
   RV.vacio = (texto, grande) => h(`p.vacio${grande ? '.grande' : ''}`, texto);
   // Campo con su etiqueta en versalitas
-  RV.campo = (etiqueta, control, ayuda) => h('label.campo', h('span', etiqueta), control, ayuda ? h('small', ayuda) : null);
+  // Un <label> solo si el control es un campo (pulsar el texto lo enfoca). Con un grupo de botones, no: si un botón se
+  // vuelve a pintar al pulsarlo, el label pulsaría el primero (y se elegiría otra cosa)
+  RV.campo = (etiqueta, control, ayuda) => h(control && /^(INPUT|SELECT|TEXTAREA)$/.test(control.tagName) ? 'label.campo' : 'div.campo', h('span', etiqueta), control, ayuda ? h('small', ayuda) : null);
   RV.entrada = (valor, attrs = {}) => h('input.entrada', { type: 'text', spellcheck: 'false', ...attrs, value: valor == null ? '' : valor });
   RV.areaTexto = (valor, attrs = {}) => { const t = h('textarea.entrada', { rows: '6', spellcheck: 'true', ...attrs }); t.value = valor || ''; return t; };
 

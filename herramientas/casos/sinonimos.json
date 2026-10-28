@@ -1,0 +1,11 @@
+{
+  "_": "Sinónimos con el tesauro de RLA-ES (movil/app/src/main/assets/sinonimos). Los prueban EscribirTextoTest.kt (móvil) y prueba-escribir-texto.js (PC): «grupos» son los primeros grupos que tienen que salir, tal cual.",
+  "casos": [
+    { "palabra": "casa", "grupos": [["apartamento", "habitáculo", "habitación", "alojamiento", "residencia", "vivienda", "domicilio", "morada"]] },
+    { "palabra": "casas", "grupos": [["apartamentos", "habitáculos", "habitaciones", "alojamientos", "residencias", "viviendas", "domicilios", "moradas"]] },
+    { "palabra": "Rápidas", "grupos": [["Aladas", "Veloces", "Ligeras", "Raudas"], ["Bruscas", "Imprevistas", "Repentinas", "Súbitas", "Inesperadas"]] },
+    { "palabra": "sombra", "grupos": [["bruma", "oscuridad", "confusión", "velo"]] },
+    { "palabra": "veloces", "grupos": [["alados", "rápidos", "ligeros", "raudos"]] },
+    { "palabra": "xyzzy", "grupos": [] }
+  ]
+}

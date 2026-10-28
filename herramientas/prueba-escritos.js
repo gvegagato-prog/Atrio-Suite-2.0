@@ -8,7 +8,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('assert');
-const { crear } = require('../escritorio/src/main/escritos');
+const { crear, palabras, lapida } = require('../escritorio/src/main/escritos');
+const M = require('../escritorio/src/main/escritos-mezcla');
 
 const port = 9300 + Math.floor(Math.random() * 600);
 const base = `http://127.0.0.1:${port}`;
@@ -40,6 +41,23 @@ function dispositivo(c, nombre, urlBase = base) {
   const srv = spawn('node', [path.join(__dirname, 'fakefirebase.js'), String(port)], { stdio: 'ignore' });
   await sleep(700);
   try {
+    console.log('Mezcla (casos de herramientas/casos/mezcla.json, los mismos que el móvil)');
+    {
+      const casos = JSON.parse(fs.readFileSync(path.join(__dirname, 'casos', 'mezcla.json'), 'utf8'));
+      for (const c of casos.texto) {
+        const m = M.texto(c.base, c.nuestro, c.suyo, c.prefiere === 'nuestro', !!c.ambos);
+        ok(m.texto === c.esperado && m.choques === c.choques, `texto: ${c.nombre}${m.texto === c.esperado ? '' : ` → ${JSON.stringify(m.texto)}`}`);
+      }
+      for (const c of casos.docs) {
+        const m = M.docs(c.base, c.nuestro, c.suyo, c.prefiere === 'nuestro', palabras);
+        const bien = M.canon(m.o) === M.canon(c.esperado) && m.choques === c.choques && (!c.chocan || [...m.chocan].sort().join() === [...c.chocan].sort().join());
+        ok(bien, `documento: ${c.nombre}${bien ? '' : ` → ${M.canon(m.o)} (${m.choques})`}`);
+      }
+      const baseL = Array.from({ length: 3000 }, (_, i) => `Párrafo ${i + 1}.`).join('\n');
+      const t0 = Date.now();
+      const m = M.texto(baseL, baseL.replace('Párrafo 2.\n', 'Párrafo 2 (móvil).\n'), baseL.replace('Párrafo 2999.', 'Párrafo 2999 (PC).'), true);
+      ok(m.choques === 0 && m.texto === baseL.replace('Párrafo 2.\n', 'Párrafo 2 (móvil).\n').replace('Párrafo 2999.', 'Párrafo 2999 (PC).') && Date.now() - t0 < 3000, 'una escena de 3.000 párrafos se junta sin choques y deprisa');
+    }
     console.log('Núcleo');
     {
       const { e } = dispositivo({ uid: null }, 'solo');
@@ -62,8 +80,12 @@ function dispositivo(c, nombre, urlBase = base) {
       e.mueve(c2.id, null, c.id);
       ok(e.capitulos(o.id).map((x) => x.titulo).join() === 'Dos,Uno', 'reordena capítulos');
       ok(e.instantanea(s.id, 'primera', { fuerza: true }) && !e.instantanea(s.id, 'primera', { fuerza: true }), 'versiones sin repetir');
+      const pal = e.palabrasObra(o.id);
       e.borra(o.id);
-      ok(e.todos().length === 0, 'borrar una obra borra todo lo suyo');
+      ok(e.todos().filter((x) => x.t !== 'l').length === 0, 'borrar una obra la manda a la papelera con todo lo suyo');
+      ok(e.papelera().map((x) => x.id).join() === o.id && e.escritas(e.hoy(), o.id) >= 5, 'en la papelera solo se ve la obra; las palabras del día se quedan');
+      e.restaura(o.id);
+      ok(e.palabrasObra(o.id) === pal && e.capitulos(o.id).length === 2 && e.fichas(o.id).length === 3 && !e.papelera().length, 'y vuelve con todo');
     }
     console.log('Disco');
     {
@@ -123,8 +145,116 @@ function dispositivo(c, nombre, urlBase = base) {
       await a.sincroniza(); await b.sincroniza(); await a.sincroniza();
       ok(b.get(s.id).texto === 'Base. Lo que escribí en la tablet.' && a.get(s.id).texto === b.get(s.id).texto, 'gana el más nuevo y los dos acaban igual');
       const bor = b.borradores(s.id);
-      ok(bor.length === 1 && bor[0].texto === 'Base. Lo que escribí en el PC.' && bor[0].conflicto === 1, 'el texto del otro se guarda como borrador');
+      ok(bor.length === 1 && bor[0].texto === 'Base. Lo que escribí en el PC.' && bor[0].conflicto === 1, 'el mismo párrafo cambiado en los dos: el texto del otro se guarda como borrador');
       ok(a.borradores(s.id).length === 1 && !a.pendientes().length && !b.pendientes().length, 'el borrador llega al otro, una sola vez');
+      a.parar(); b.parar();
+    }
+    console.log('Párrafos y campos distintos a la vez');
+    {
+      const c = await cuenta();
+      const a = dispositivo(c, 'pc').e; const b = dispositivo(c, 'tablet').e;
+      const o = a.nuevo('p', '', { titulo: 'Juntar' });
+      const ca = a.nuevo('c', o.id, { titulo: 'Uno' });
+      const s = a.nuevo('e', o.id, { cid: ca.id, titulo: 'Escena', texto: 'Primer párrafo.\n\nSegundo párrafo.\n\nTercero.' });
+      await a.sincroniza(); await b.sincroniza();
+      a.escribe(s.id, 'Primer párrafo, en el PC.\n\nSegundo párrafo.\n\nTercero.');
+      a.edita(s.id, { titulo: 'Título del PC' });
+      await sleep(5);
+      b.escribe(s.id, 'Primer párrafo.\n\nSegundo párrafo.\n\nTercero, en la tablet.\n\nY uno nuevo.');
+      b.edita(s.id, { resumen: 'Resumen de la tablet' });
+      await a.sincroniza(); await b.sincroniza(); await a.sincroniza();
+      const esperado = 'Primer párrafo, en el PC.\n\nSegundo párrafo.\n\nTercero, en la tablet.\n\nY uno nuevo.';
+      ok(a.get(s.id).texto === esperado && b.get(s.id).texto === esperado, 'se juntan los dos textos, igual en los dos');
+      ok(a.get(s.id).titulo === 'Título del PC' && b.get(s.id).resumen === 'Resumen de la tablet' && b.get(s.id).titulo === 'Título del PC' && a.get(s.id).resumen === 'Resumen de la tablet', 'y los campos de cada uno');
+      ok(a.get(s.id).palabras === palabras(esperado) && !a.borradores(s.id).length && !b.borradores(s.id).length, 'sin choques no hay borradores');
+      ok(!a.pendientes().length && !b.pendientes().length, 'nada pendiente');
+      a.parar(); b.parar();
+    }
+    console.log('Una subida que no vio lo del otro');
+    {
+      const c = await cuenta();
+      const a = dispositivo(c, 'pc').e; const b = dispositivo(c, 'tablet').e;
+      const o = a.nuevo('p', '', { titulo: 'Carrera' });
+      const ca = a.nuevo('c', o.id, { titulo: 'Uno' });
+      const s = a.nuevo('e', o.id, { cid: ca.id, texto: 'Uno.\n\nDos.' });
+      await a.sincroniza(); await b.sincroniza();
+      a.escribe(s.id, 'Uno (PC).\n\nDos.');
+      await a.sincroniza();
+      b.escribe(s.id, 'Uno.\n\nDos (tablet).');
+      const d = b.get(s.id);
+      await http('PATCH', `${base}/users/${c.uid}.json?auth=${c.token}`, { [`escritos/${s.id}`]: d, [`escritosIdx/${s.id}`]: d.u });
+      await a.sincroniza();
+      ok(a.get(s.id).texto === 'Uno (PC).\n\nDos (tablet).', 'no pisa lo del otro: lo junta');
+      await b.sincroniza(); await a.sincroniza();
+      ok(b.get(s.id).texto === 'Uno (PC).\n\nDos (tablet).' && !a.borradores(s.id).length && !a.pendientes().length && !b.pendientes().length, 'y los dos acaban igual');
+      a.parar(); b.parar();
+    }
+    console.log('Papelera');
+    {
+      const c = await cuenta();
+      const a = dispositivo(c, 'pc').e; const b = dispositivo(c, 'tablet').e;
+      const o = a.nuevo('p', '', { titulo: 'Papelera' });
+      const ca = a.nuevo('c', o.id, { titulo: 'Uno' });
+      const s1 = a.nuevo('e', o.id, { cid: ca.id, texto: 'La primera escena.' });
+      const s2 = a.nuevo('e', o.id, { cid: ca.id, texto: 'La segunda escena.' });
+      const n = a.nuevo('n', o.id, { titulo: 'Idea', texto: 'Algo' });
+      await a.sincroniza(); await b.sincroniza();
+      a.borra(s1.id); a.borra(ca.id); a.borra(n.id);
+      await a.sincroniza(); await b.sincroniza();
+      ok(!b.escenasDe(o.id).length && !b.capitulos(o.id).length && !b.notas(o.id).length, 'se borra en el otro');
+      ok(b.papelera().map((x) => x.id).sort().join() === [n.id, ca.id, s1.id].sort().join() && b.conElBorrado(ca.id).map((x) => x.id).join() === s2.id, 'y está en su papelera (el capítulo con su escena dentro)');
+      b.restaura(ca.id);
+      await b.sincroniza(); await a.sincroniza();
+      ok(a.escenasDe(o.id).map((x) => x.id).join() === s2.id && a.get(s2.id).texto === 'La segunda escena.', 'se recupera desde el otro y vuelve con lo suyo');
+      a.restaura(s1.id);
+      await a.sincroniza(); await b.sincroniza();
+      ok(b.escenasDe(o.id).length === 2, 'la escena que se borró sola también');
+      b.vaciaPapelera();
+      await b.sincroniza(); await a.sincroniza();
+      a.restaura(n.id);
+      const raw = await http('GET', `${base}/users/${c.uid}/escritos/${n.id}.json?auth=${c.token}`);
+      ok(!a.papelera().length && !b.papelera().length && !a.get(n.id) && lapida(raw), 'vaciar la papelera la vacía en todos lados (queda solo la marca)');
+      a.borra(s1.id); a.borra(ca.id);
+      a.restaura(s1.id);
+      ok(a.escenasDe(o.id).length === 2 && !a.papelera().length, 'recuperar una escena de un capítulo borrado trae el capítulo');
+      a.borra(s1.id);
+      a.purga(null, Date.now() + 1);
+      ok(!a.papelera().length, 'lo viejo se vacía solo');
+      a.parar(); b.parar();
+    }
+    console.log('Borrado en un sitio y escrito en otro');
+    {
+      const c = await cuenta();
+      const a = dispositivo(c, 'pc').e; const b = dispositivo(c, 'tablet').e;
+      const o = a.nuevo('p', '', { titulo: 'Cruce' });
+      const ca = a.nuevo('c', o.id, { titulo: 'Uno' });
+      const s = a.nuevo('e', o.id, { cid: ca.id, texto: 'Antes.' });
+      await a.sincroniza(); await b.sincroniza();
+      a.borra(s.id);
+      await sleep(5);
+      b.escribe(s.id, 'Antes. Y lo que escribí sin saberlo.');
+      await a.sincroniza(); await b.sincroniza(); await a.sincroniza();
+      const p = b.papelera().find((x) => x.id === s.id);
+      ok(!b.get(s.id) && p && p.texto === 'Antes. Y lo que escribí sin saberlo.', 'queda en la papelera con lo último escrito');
+      a.restaura(s.id);
+      await a.sincroniza(); await b.sincroniza();
+      ok(b.get(s.id) && b.get(s.id).texto === 'Antes. Y lo que escribí sin saberlo.', 'y se recupera');
+      a.parar(); b.parar();
+    }
+    console.log('Seguir escribiendo en los dos');
+    {
+      const c = await cuenta();
+      const a = dispositivo(c, 'pc').e; const b = dispositivo(c, 'tablet').e;
+      const o = a.nuevo('p', '', { titulo: 'Seguido' });
+      const ca = a.nuevo('c', o.id, { titulo: 'Uno' });
+      const s = a.nuevo('e', o.id, { cid: ca.id, texto: 'Una' });
+      await a.sincroniza(); await b.sincroniza();
+      let txt = 'Una';
+      for (let i = 0; i < 6; i++) { txt += ' palabra'; a.escribe(s.id, txt); await a.sincroniza(); await b.sincroniza(); }
+      b.escribe(s.id, `${txt}\n\nDesde la tablet.`);
+      a.escribe(s.id, `${txt} final`);
+      await b.sincroniza(); await a.sincroniza(); await b.sincroniza();
+      ok(a.get(s.id).texto === `${txt} final\n\nDesde la tablet.` && b.get(s.id).texto === a.get(s.id).texto && !a.borradores(s.id).length, 'uno sigue el párrafo y el otro añade otro: se juntan (aunque guarden en el mismo milisegundo)');
       a.parar(); b.parar();
     }
     console.log('Palabras del día');

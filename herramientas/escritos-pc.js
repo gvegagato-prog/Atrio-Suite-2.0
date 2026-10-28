@@ -2,12 +2,14 @@
 'use strict';
 // Hace de «Atrio en el PC» para la prueba cruzada con el móvil (EscritosInteropTest.kt): baja lo de la cuenta, escribe
 // en la primera escena, añade una ficha y 77 palabras escritas, y sube. Uso: node escritos-pc.js <base> <uid> <token>
+// Con «mezcla1 <carpeta>»: cambia el segundo párrafo de la escena de la obra «Mezcla» y borra su nota (sin ver lo que hace
+// el móvil a la vez); con «mezcla2 <carpeta>»: baja y cuenta cómo ha quedado.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { crear } = require('../escritorio/src/main/escritos');
 
-const [base, uid, token] = process.argv.slice(2);
+const [base, uid, token, modo, carpeta] = process.argv.slice(2);
 const http = async (method, url, body) => {
   const r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   const t = await r.text();
@@ -15,9 +17,24 @@ const http = async (method, url, body) => {
   return t ? JSON.parse(t) : null;
 };
 (async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'esc-pc-'));
+  const dir = carpeta || fs.mkdtempSync(path.join(os.tmpdir(), 'esc-pc-'));
+  fs.mkdirSync(dir, { recursive: true });
   const e = crear({ dir, dev: 'atrio-pc', net: { uid: () => uid, db: (m, p, b, q) => http(m, `${base}${p}.json?auth=${token}${q ? `&${q}` : ''}`, b) } });
   await e.sincroniza();
+  if (modo === 'mezcla1' || modo === 'mezcla2') {
+    const obra = e.obras().find((o) => o.titulo === 'Mezcla');
+    const escena = e.escenasDe(obra.id)[0];
+    if (modo === 'mezcla1') {
+      const p = escena.texto.split('\n\n');
+      p[1] = `${p[1]} Y esto, en el PC.`;
+      e.escribe(escena.id, p.join('\n\n'));
+      e.borra(e.notas(obra.id)[0].id);
+      await e.sincroniza();
+    }
+    e.parar();
+    console.log(JSON.stringify({ texto: e.get(escena.id).texto, notas: e.notas(obra.id).length, papelera: e.papelera().length, borradores: e.borradores(escena.id).length, pendientes: e.pendientes().length }));
+    process.exit(0);
+  }
   const obra = e.obras()[0];
   const escena = e.escenasDe(obra.id)[0];
   const leido = { obras: e.obras().map((o) => o.titulo), texto: escena.texto, fichas: e.fichas(obra.id).map((f) => f.nombre), borradores: e.borradores(escena.id).length, hoyMovil: e.escritas(e.hoy(), obra.id) };

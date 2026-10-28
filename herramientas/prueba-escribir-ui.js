@@ -126,12 +126,16 @@ function siembra() {
   await p.keyboard.press('Control+b');
   await sleep(900);
   ok(/\*\*—raya—\.\*\*|—\*\*raya\*\*—|\*\*raya\*\*/.test(texto0()) || texto0().includes('**'), `Ctrl+B pone negrita (${JSON.stringify(texto0().slice(-30))})`);
+  const conNegrita = texto0();
   await p.keyboard.press('Control+z');
   await sleep(900);
-  ok(texto0() === t1 || texto0().length < t1.length + 6, 'Ctrl+Z la deshace');
+  ok(texto0() === t1, 'Ctrl+Z la deshace');
   await p.keyboard.press('Control+Shift+z');
   await sleep(900);
-  ok(texto0().includes('**'), 'Ctrl+Mayús+Z la rehace');
+  ok(texto0() === conNegrita, 'Ctrl+Mayús+Z la rehace');
+  await p.keyboard.press('Control+z'); await sleep(500);
+  await p.keyboard.press('Control+y'); await sleep(900);
+  ok(texto0() === conNegrita, 'y Ctrl+Y también');
   // Un Enter final (línea vacía al final) se conserva
   await p.keyboard.press('Control+End');
   await p.keyboard.press('Enter');
@@ -139,6 +143,30 @@ function siembra() {
   ok(texto0().endsWith('\n'), 'un salto de línea al final no se pierde');
   ok(escr.escritas(escr.hoy(), o.id) > 340, 'las palabras escritas suben las del día');
   await p.screenshot({ path: path.join(OUT, 'pc-e08b-escribiendo.png') });
+
+  console.log('Tipografía automática y sprint');
+  await p.keyboard.press('Control+End');
+  await p.keyboard.type('\n- Vamos --dijo-- a "casa"...');
+  await sleep(900);
+  ok(texto0().endsWith('\n—Vamos —dijo— a «casa»…'), `-- es una raya, - al empezar es un diálogo, " son « », ... es … (${JSON.stringify(texto0().slice(-30))})`);
+  await p.keyboard.press('Control+z'); await sleep(700);
+  ok(texto0().endsWith('a «casa»...'), 'deshacer quita solo el último cambio de la tipografía');
+  await p.keyboard.press('Control+Shift+z'); await sleep(700);
+  ok(texto0().endsWith('a «casa»…'), `y rehacer lo vuelve a poner (${JSON.stringify(texto0().slice(-20))})`);
+  await p.locator('.ed-barra button', { hasText: 'Sprint' }).click(); await sleep(300);
+  await p.locator('.dialogo .e-chip', { hasText: '10 min' }).click();
+  await p.locator('.dialogo input[type=number]').fill('20');
+  await p.locator('.dialogo button', { hasText: 'Empezar' }).click(); await sleep(400);
+  await p.locator('.ed-texto').click(); await p.keyboard.press('Control+End');
+  await p.keyboard.type(' Y siguió escribiendo sin parar un buen rato.');
+  await sleep(1500);
+  ok(/sprint 9:5\d/i.test(await p.locator('.ed-cuentas').innerText()) && /\+\d+ de 20/.test(await p.locator('.ed-cuentas').innerText()), `el sprint enseña el tiempo y lo escrito (${(await p.locator('.ed-cuentas').innerText()).replace(/\n/g, ' ')})`);
+  await p.screenshot({ path: path.join(OUT, 'pc-e08c-sprint.png') });
+  await p.locator('.ed-cuentas button', { hasText: 'Terminar' }).click(); await sleep(400);
+  const fin = await p.locator('.dialogo').innerText();
+  ok(/sprint terminado/i.test(fin) && /palabras/i.test(fin), 'al terminar, el resultado');
+  await p.screenshot({ path: path.join(OUT, 'pc-e08d-sprint-fin.png') });
+  await p.keyboard.press('Escape'); await sleep(200);
 
   console.log('Panel, buscar y concentración');
   await p.locator('.ed-tecla.pan').click(); await sleep(400);
@@ -183,6 +211,32 @@ function siembra() {
   console.log('Salir y volver');
   await p.locator('.ed-cab button').first().click(); await sleep(400);
   ok((await p.evaluate(() => window.RV.ruta().v)) === 'obra', 'volver a la obra');
+
+  console.log('Colores de la obra');
+  await p.evaluate((id) => window.RV.E.dlgObra(window.RV.E.get(id)), o.id); await sleep(400);
+  await p.locator('.dialogo .e-color').nth(4).click(); await sleep(100);
+  ok(await p.locator('.dialogo .e-color').nth(4).getAttribute('aria-pressed') === 'true' && await p.locator('.dialogo .e-color[aria-pressed=true]').count() === 1, 'elegir un color marca ese (y no el primero)');
+  await p.locator('.dialogo button', { hasText: 'Guardar' }).click(); await sleep(400);
+  ok(escr.get(o.id).color === '#3E8E9E', `y se guarda (${escr.get(o.id).color})`);
+
+  console.log('Papelera');
+  const s2 = escr.escenasDe(o.id)[1];
+  await p.evaluate((id) => window.RV.E.aPapelera(window.RV.E.get(id)), s2.id); await sleep(500);
+  ok(!escr.get(s2.id) && await p.locator('.e-escena').count() === 3, 'borrar una escena la quita del manuscrito');
+  ok(/en la papelera/.test(await p.locator('#aviso').innerText()) && await p.locator('#aviso .aviso-accion').isVisible(), 'el aviso dice que está en la papelera, con «Deshacer»');
+  await p.screenshot({ path: path.join(OUT, 'pc-e15-deshacer.png') });
+  await p.locator('#aviso .aviso-accion').click(); await sleep(500);
+  ok(!!escr.get(s2.id) && await p.locator('.e-escena').count() === 4, '«Deshacer» la trae de vuelta');
+  const c2 = escr.capitulos(o.id)[1];
+  await p.evaluate((id) => window.RV.E.aPapelera(window.RV.E.get(id)), c2.id); await sleep(300);
+  await p.evaluate(() => window.RV.ir({ v: 'escribir' })); await sleep(500);
+  ok(/papelera · 1/i.test(await p.locator('.e-ir-papelera').innerText()), 'la biblioteca enseña cuánto hay en la papelera');
+  await p.locator('.e-ir-papelera').click(); await sleep(500);
+  ok(await p.locator('.dialogo .e-pap').count() === 1 && /con 1 escena/i.test(await p.locator('.dialogo .e-pap').innerText()), 'en la papelera, el capítulo con su escena dentro');
+  await p.screenshot({ path: path.join(OUT, 'pc-e16-papelera.png') });
+  await p.locator('.dialogo .e-pap button', { hasText: 'Recuperar' }).click(); await sleep(500);
+  ok(escr.capitulos(o.id).length === 3 && escr.escenasDe(o.id).length === 4 && await p.locator('.dialogo .e-pap-vacia').count() === 1, 'recuperar lo devuelve todo a su sitio');
+  await p.keyboard.press('Escape');
   ok(errores.length === 0, `sin errores en la página ${errores.slice(0, 3).join(' | ')}`);
   await b.close(); srv.close();
   console.log(fallos ? `FALLAN ${fallos}` : 'Todo bien');

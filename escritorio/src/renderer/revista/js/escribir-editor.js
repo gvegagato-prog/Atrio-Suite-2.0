@@ -26,7 +26,7 @@
 
   function crear(escena0, ruta) {
     const id = escena0.id; const pid = escena0.pid;
-    const p = { tam: 20, fuente: 0, maquina: false, ...prefs() };
+    const p = { tam: 20, fuente: 0, maquina: false, tipografia: true, ...prefs() };
     let texto = escena0.texto || '';
     let guardado = texto;
     const inicio = E.palabras(texto);
@@ -102,8 +102,17 @@
       cuentas.replaceChildren(...[
         h('span', selPal ? `${selPal} de ${pal} palabras` : `${E.cifra(pal)} palabras`), h('span', `${Math.max(1, Math.ceil(pal / 220))} min`),
         ses ? h('span' + (ses > 0 ? '.acento' : ''), `${ses > 0 ? '+' : ''}${ses} en esta sesión`) : null,
-        meta ? h('span' + (pal >= meta ? '.hecho' : ''), `meta ${meta}`) : null, h('span.hueco'), dia ? h('span' + (hoy >= dia ? '.hecho' : ''), `hoy ${hoy}/${dia}`) : null].filter(Boolean));
+        meta ? h('span' + (pal >= meta ? '.hecho' : ''), `meta ${meta}`) : null, h('span.hueco'), ...tiraSprint(), dia ? h('span' + (hoy >= dia ? '.hecho' : ''), `hoy ${hoy}/${dia}`) : null].filter(Boolean));
     };
+    // El sprint en marcha: lo que queda y lo escrito
+    const SP = E.sprint;
+    const tiraSprint = () => {
+      if (!SP.activo(pid)) return [];
+      const q = Math.max(0, Math.round((SP.actual.hasta - Date.now()) / 1000)); const n = SP.llevas(); const m = SP.actual.meta;
+      return [h('span.ed-sprint', `Sprint ${Math.floor(q / 60)}:${String(q % 60).padStart(2, '0')}`), h('span' + (m && n >= m ? '.hecho' : '.acento'), `+${n}${m ? ` de ${m}` : ''}`),
+        h('button.enlace.apagado', { type: 'button', onclick: () => SP.termina(true) }, 'Terminar')];
+    };
+    const timerSprint = setInterval(() => { if (SP.activo(pid)) pie(); }, 1000);
 
     // ---- Máquina de escribir: la línea donde escribes se queda a un 40 % de la altura
     const centra = () => {
@@ -121,10 +130,16 @@
     const aplica = (fn) => { const o = offsets() || { a: texto.length, b: texto.length }; const r = fn({ text: texto, a: o.a, b: o.b }); cambio(r.text, r.a, r.b); pagina.focus({ preventScroll: true }); };
     pagina.addEventListener('compositionstart', () => { componiendo = true; });
     pagina.addEventListener('compositionend', () => { componiendo = false; pagina.dispatchEvent(new Event('input')); });
-    pagina.addEventListener('input', () => {
+    pagina.addEventListener('input', (e) => {
       if (componiendo) return;
+      const antes = texto;
       texto = leer();
       const o = offsets() || { a: texto.length, b: texto.length };
+      // Tipografía automática (— « » …): un carácter tecleado; se deshace aparte
+      if (p.tipografia && e.inputType === 'insertText' && e.data && e.data.length === 1 && o.a === o.b && texto.length === antes.length + 1) {
+        const r = ET.tipografia(texto, o.a, e.data);
+        if (r) { hist.apunta({ text: texto, a: o.a, b: o.b }); hist.corte(); cambio(r.texto, r.cursor, r.cursor); hist.corte(); return; }
+      }
       hist.apunta({ text: texto, a: o.a, b: o.b });
       pie(); aviso(); centra();
       clearTimeout(timerPinta); timerPinta = setTimeout(() => { if (!componiendo) repinta(); }, 140);
@@ -140,8 +155,10 @@
     const rehacer = () => { const v = hist.rehace(); if (v) { texto = v.text; pinta(); ponSel(v.a, v.b); pie(); aviso(); } };
     pagina.addEventListener('keydown', (e) => {
       const ctrl = e.ctrlKey || e.metaKey; const k = e.key.toLowerCase();
-      // (deshacer y rehacer los pide el propio sistema —el teclado o el menú Edición de macOS— y llegan por «beforeinput»)
-      if (ctrl && k === 'b') { e.preventDefault(); aplica((v) => ET.envuelve(v, '**')); } else if (ctrl && k === 'i') { e.preventDefault(); aplica((v) => ET.envuelve(v, '*')); }
+      // Deshacer y rehacer son nuestros (Chromium no tiene nada que rehacer: su lista no se entera de nuestros cambios).
+      // Con la tecla se cogen aquí; el menú Edición de macOS llega por «beforeinput»
+      if (ctrl && k === 'z' && !e.altKey) { e.preventDefault(); if (e.shiftKey) rehacer(); else deshacer(); } else if (ctrl && k === 'y' && !e.shiftKey && !e.altKey) { e.preventDefault(); rehacer(); }
+      else if (ctrl && k === 'b') { e.preventDefault(); aplica((v) => ET.envuelve(v, '**')); } else if (ctrl && k === 'i') { e.preventDefault(); aplica((v) => ET.envuelve(v, '*')); }
       else if (ctrl && k === 'f') { e.preventDefault(); abreBusca(); }
     });
     // «Fichas» y «Escena» del panel pueden cambiar mientras escribes
@@ -157,6 +174,8 @@
       tecla('Letra −', 'Letra más pequeña', () => { p.tam = Math.max(14, p.tam - 1); aplicaPrefs(); }), tecla('Letra +', 'Letra más grande', () => { p.tam = Math.min(34, p.tam + 1); aplicaPrefs(); }),
       tecla(['Serif', 'Sans', 'Mono'][p.fuente], 'Tipo de letra', () => { p.fuente = (p.fuente + 1) % 3; aplicaPrefs(); }, '.fuente'),
       tecla('Máquina', 'Máquina de escribir: la línea queda a media altura', () => { p.maquina = !p.maquina; aplicaPrefs(); centra(); }, '.maq'),
+      tecla('— «»', 'Tipografía automática: -- es una raya, ... son puntos suspensivos, las comillas son « »', () => { p.tipografia = !p.tipografia; aplicaPrefs(); }, '.tipo'),
+      tecla('Sprint', 'Sprint de escritura', () => { if (SP.activo()) SP.termina(true); else E.dlgSprint(pid); }),
       tecla('Concentración', 'Solo el texto (Esc para salir)', () => ponFoco(true)), tecla('Panel', 'Panel de la escena', () => { panelAbierto = !panelAbierto; pintaPanel(); }, '.pan'));
     const aplicaPrefs = () => {
       guardaPrefs(p);
@@ -164,6 +183,7 @@
       nodo.dataset.fuente = ['serif', 'sans', 'mono'][p.fuente];
       const f = barra.querySelector('.fuente'); if (f) f.textContent = ['Serif', 'Sans', 'Mono'][p.fuente];
       const m = barra.querySelector('.maq'); if (m) m.setAttribute('aria-pressed', p.maquina ? 'true' : 'false');
+      const tp = barra.querySelector('.tipo'); if (tp) tp.setAttribute('aria-pressed', p.tipografia ? 'true' : 'false');
     };
 
     // ---- Concentración
@@ -238,7 +258,7 @@
           ...bs.map((b) => h('div.ed-item' + (b.conflicto ? '.conflicto' : ''), h('div.ed-item-cab', h('b', b.nombre || 'Borrador')), h('span.versal', `${E.palabras(b.texto)} palabras${b.conflicto ? ' · se guardó al juntar dos cambios a la vez' : ''}`), h('p.apagado', String(b.texto || '').slice(0, 200)),
             h('div.ed-item-acc', h('button.enlace', { type: 'button', onclick: () => E.dlgCompara(texto, b.nombre || 'Borrador', b.texto || '', (t) => reemplazaTexto(t, true)) }, 'Comparar y mezclar'),
               h('button.enlace', { type: 'button', onclick: async () => { await api.escritos('nuevo', 'b', pid, { eid: id, nombre: `Antes de usar «${b.nombre}»`, texto }); reemplazaTexto(b.texto || '', false); } }, 'Usar este'),
-              h('button.enlace.apagado', { type: 'button', onclick: () => api.escritos('borra', b.id).catch(E.err) }, 'Borrar')))));
+              h('button.enlace.apagado', { type: 'button', onclick: () => E.aPapelera(b) }, 'Borrar')))));
       } else {
         cuerpo.append(h('p.apagado', 'Cada cierto tiempo (y al salir) se guarda una versión de la escena en este PC: las últimas 40.'));
         api.escritos('versiones', id).then((vs) => {
@@ -268,7 +288,7 @@
     const inst = {
       id, nodo,
       cerrar() {
-        clearTimeout(timerGuarda); clearTimeout(timerPinta); clearInterval(timerSnap);
+        clearTimeout(timerGuarda); clearTimeout(timerPinta); clearInterval(timerSnap); clearInterval(timerSprint);
         document.removeEventListener('selectionchange', selCambia);
         if (texto !== guardado) { api.escritos('escribe', id, texto).catch(() => {}); guardado = texto; }
         api.escritos('instantanea', id, texto, {}).catch(() => {});

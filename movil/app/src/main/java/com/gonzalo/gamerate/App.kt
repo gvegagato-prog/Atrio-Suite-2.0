@@ -1080,7 +1080,10 @@ private fun AppContenido(
 
                 when {
                     // Escribir: tus obras, el editor y todo lo de escribir (siempre tuyo, no se mezcla con lo de tu pareja)
-                    dest == 5 -> EscribirScreen()
+                    dest == 5 -> {
+                        SideEffect { EscribirHub.deshacer = { m, u -> undoable(m, u) } }
+                        EscribirScreen()
+                    }
                     dest == 4 -> {
                         // El Diario: lo de cada día (todo o una categoría); con tu pareja, también lo suyo
                         val dk = if (pv) p!!.kindById(diaryKind) else myKinds.find { it.id == diaryKind } ?: GAMES

@@ -56,13 +56,22 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         const val T_OBRA = "p"; const val T_CAP = "c"; const val T_ESCENA = "e"; const val T_FICHA = "f"
         const val T_NOTA = "n"; const val T_BORRADOR = "b"; const val T_HITO = "h"; const val T_LOG = "l"
         private const val LIMPIEZA = 180L * 86_400_000L
+        /** Lo borrado se queda en la papelera 30 días; luego solo queda la marca de borrado (para tus otros dispositivos). */
+        const val PAPELERA = 30L * 86_400_000L
         const val VERSIONES = 40
+        /** Cuántas versiones de la nube se guardan de cada documento (la base para juntar lo cambiado a la vez en dos sitios). */
+        private const val BASES = 3
+        private val LAPIDA = setOf("id", "t", "pid", "u", "pu", "d")
+
+        /** Una marca de borrado sin nada dentro (lo que queda al vaciar la papelera, o lo que dejaban las versiones antiguas). */
+        fun lapida(o: JSONObject): Boolean = o.optInt("d") == 1 && o.keys().asSequence().all { it in LAPIDA }
         const val ESPERA = 700L
 
         @Volatile private var inst: Escritos? = null
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private var programada: Job? = null
         private var fallos = 0
+        @Volatile private var ordenada = 0L
         private val escuchando = java.util.concurrent.atomic.AtomicBoolean(false)
 
         /** Los escritos de esta app. */
@@ -74,7 +83,7 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         }
 
         /** Solo para las pruebas: empezar de cero. */
-        fun reiniciaParaPruebas() { synchronized(this) { inst?.parar(); inst = null; programada?.cancel(); programada = null; fallos = 0 } }
+        fun reiniciaParaPruebas() { synchronized(this) { inst?.parar(); inst = null; programada?.cancel(); programada = null; fallos = 0; ordenada = 0L } }
 
         fun nuevoId(t: String): String = t + "_" + java.util.UUID.randomUUID().toString().replace("-", "").take(12)
 
@@ -119,6 +128,7 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
             return try {
                 e.sincroniza(st)
                 fallos = 0
+                if (System.currentTimeMillis() - ordenada > 6 * 3_600_000L) { ordenada = System.currentTimeMillis(); e.purga(); runCatching { e.limpia(st) } }
                 if (e.pendientes().isNotEmpty()) pronto(c)
                 true
             } catch (ex: Exception) {
@@ -216,18 +226,28 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
 
     // ------------------------------------------------------------------ Cambios
 
-    /** Pone o cambia un documento. La hora de edición siempre sube (aunque dos cambios caigan en el mismo milisegundo). */
+    /**
+     * Pone o cambia un documento. La hora de edición siempre sube (aunque dos cambios caigan en el mismo milisegundo) y
+     * apunta en «pu» de qué versión de la nube parte, para poder juntarlo luego con lo que se cambie a la vez en otro sitio.
+     */
     fun pon(o: JSONObject): Doc {
-        val d: Doc
-        synchronized(lock) {
-            val antes = docs[o.getString("id")]
-            o.put("u", maxOf(System.currentTimeMillis(), (antes?.u ?: 0L) + 1))
-            d = Doc(o)
-            docs[d.id] = d
-            guarda(d)
-        }
+        val d = synchronized(lock) { ponSin(o) }
         avisa()
         alCambiar?.invoke()
+        return d
+    }
+
+    /** [pon] sin avisar (con el candado puesto): para cambiar varios de una vez. */
+    private fun ponSin(o: JSONObject): Doc {
+        val id = o.getString("id")
+        val antes = docs[id]
+        // Se deja de estar igual que en la nube: esa versión es la base si luego hay que juntar
+        if (antes != null && antes.t != T_LOG && acked[id] == antes.u) apuntaBase(antes.o)
+        o.put("u", maxOf(System.currentTimeMillis(), (antes?.u ?: 0L) + 1))
+        if (o.optString("t") == T_LOG) o.remove("pu") else o.put("pu", acked[id] ?: 0L)
+        val d = Doc(o)
+        docs[id] = d
+        guarda(d)
         return d
     }
 
@@ -265,28 +285,99 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         return r
     }
 
-    /** Borra un documento (queda la marca, para que se borre también en tus otros dispositivos). Una obra borra todo lo suyo. */
+    /**
+     * Manda un documento a la papelera (con lo que va dentro: una obra con todo lo suyo, un capítulo con sus escenas, una
+     * escena con sus borradores). Se borra también en tus otros dispositivos, pero se puede recuperar durante 30 días.
+     * Las palabras escritas cada día no se borran (las escribiste).
+     */
     fun borra(id: String) {
-        val d = docs[id] ?: return
+        val d = get(id) ?: return
+        val vivos = todos()
+        fun conBorradores(e: Doc) = listOf(e.id) + vivos.filter { it.t == T_BORRADOR && it.s("eid") == e.id }.map { it.id }
         val ids = when (d.t) {
-            T_OBRA -> docs.values.filter { it.pid == id }.map { it.id }
-            T_CAP -> listOf(id) + docs.values.filter { it.t == T_ESCENA && it.s("cid") == id }.flatMap { e -> listOf(e.id) + docs.values.filter { it.t == T_BORRADOR && it.s("eid") == e.id }.map { it.id } }
-            T_ESCENA -> listOf(id) + docs.values.filter { it.t == T_BORRADOR && it.s("eid") == id }.map { it.id }
+            T_OBRA -> listOf(id) + vivos.filter { it.pid == id && it.id != id && it.t != T_LOG }.map { it.id }
+            T_CAP -> listOf(id) + vivos.filter { it.t == T_ESCENA && it.s("cid") == id }.flatMap { conBorradores(it) }
+            T_ESCENA -> conBorradores(d)
             else -> listOf(id)
         }
+        val ahora = System.currentTimeMillis()
         synchronized(lock) {
-            val ahora = System.currentTimeMillis()
             ids.forEach { i ->
                 val x = docs[i] ?: return@forEach
-                val o = JSONObject().put("id", x.id).put("t", x.t).put("pid", x.pid).put("d", 1).put("u", maxOf(ahora, x.u + 1))
-                docs[i] = Doc(o); guarda(docs[i]!!)
-                if (x.t == T_ESCENA) runCatching { File(File(dir, "v"), "$i.json").delete() }
+                val o = JSONObject(x.o.toString()).put("d", 1).put("dt", ahora)
+                if (i == id) o.remove("dc") else o.put("dc", id)
+                ponSin(o)
             }
         }
-        // Los hitos que apuntaban a una escena borrada se quedan, sin escena
-        if (d.t == T_ESCENA) docs.values.filter { it.t == T_HITO && it.s("eid") == id }.forEach { h -> edita(h.id) { remove("eid") } }
         avisa()
+        alCambiar?.invoke()
     }
+
+    private fun enPapelera(d: Doc?) = d != null && d.borrado && !lapida(d.o)
+
+    /** Lo que hay en la papelera (lo que se borró, sin lo que se fue con ello), lo último primero. */
+    fun papelera(): List<Doc> = docs.values.filter { d ->
+        enPapelera(d) && d.t != T_LOG && (d.s("dc").isEmpty() || !enPapelera(docs[d.s("dc")]))
+    }.sortedWith(compareByDescending<Doc> { it.n("dt", it.u) }.thenByDescending { it.u })
+
+    /** Lo que se fue a la papelera con [id] (las escenas de un capítulo, lo de una obra…). */
+    fun conElBorrado(id: String): List<Doc> = docs.values.filter { enPapelera(it) && it.s("dc") == id }
+
+    /** Un documento de la papelera (para enseñarlo: su obra, su capítulo…), o uno vivo. */
+    fun cualquiera(id: String): Doc? = docs[id]?.takeIf { !it.borrado || enPapelera(it) }
+
+    /**
+     * Saca algo de la papelera, con lo que se fue con ello. Si estaba dentro de algo que también se borró (una escena de
+     * un capítulo borrado, un capítulo de una obra borrada), eso vuelve también, para que aparezca donde estaba.
+     */
+    fun restaura(id: String) {
+        val d = docs[id]
+        if (!enPapelera(d)) return
+        val ids = LinkedHashSet<String>()
+        fun con(x: Doc) { if (ids.add(x.id)) conElBorrado(x.id).forEach { con(it) } }
+        fun dentroDe(x: Doc): List<String> = when (x.t) {
+            T_OBRA -> emptyList()
+            T_ESCENA -> listOf(x.s("cid"), x.pid)
+            T_BORRADOR -> listOf(x.s("eid"), x.pid)
+            else -> listOf(x.pid)
+        }
+        fun padres(x: Doc) { dentroDe(x).forEach { pid -> docs[pid]?.takeIf { enPapelera(it) && it.id !in ids }?.let { p -> con(p); padres(p) } } }
+        con(d!!)
+        padres(d)
+        synchronized(lock) {
+            ids.forEach { i ->
+                val x = docs[i] ?: return@forEach
+                val o = JSONObject(x.o.toString()); o.remove("d"); o.remove("dt"); o.remove("dc")
+                ponSin(o)
+            }
+        }
+        avisa()
+        alCambiar?.invoke()
+    }
+
+    /** Borra para siempre lo que está en la papelera: [id] (con lo suyo), o todo si es null, o lo de hace más de [antesDe]. */
+    fun purga(id: String? = null, antesDe: Long = System.currentTimeMillis() - PAPELERA) {
+        val ids = LinkedHashSet<String>()
+        fun con(x: Doc) { if (ids.add(x.id)) conElBorrado(x.id).forEach { con(it) } }
+        when {
+            id != null -> docs[id]?.takeIf { enPapelera(it) }?.let { con(it) }
+            else -> docs.values.filter { enPapelera(it) && it.n("dt", it.u) < antesDe }.forEach { con(it) }
+        }
+        if (ids.isEmpty()) return
+        synchronized(lock) {
+            ids.forEach { i ->
+                val x = docs[i] ?: return@forEach
+                ponSin(JSONObject().put("id", x.id).put("t", x.t).put("pid", x.pid).put("d", 1))
+                runCatching { archivoVersiones(i).delete() }
+                runCatching { archivoBase(i).delete() }
+            }
+        }
+        avisa()
+        alCambiar?.invoke()
+    }
+
+    /** Vacía la papelera. */
+    fun vaciaPapelera() = purga(antesDe = Long.MAX_VALUE)
 
     /** Pone [id] entre [antes] y [despues] (sus ids; null = el principio o el final). Para arrastrar. */
     fun mueve(id: String, antes: String?, despues: String?) {
@@ -446,9 +537,20 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
             val lote = ArrayList<Doc>(); var peso = 0
             for (d in quedan) { val len = d.o.toString().length; if (lote.isNotEmpty() && (peso + len > 600_000 || lote.size >= 40)) break; lote.add(d); peso += len }
             val body = JSONObject()
-            lote.forEach { body.put("escritos/${it.id}", it.o); body.put("escritosIdx/${it.id}", it.u) }
+            lote.forEach { body.put("escritos/${it.id}", it.o); body.put("escritosIdx/${it.id}", it.u); intentos.getOrPut(it.id) { ConcurrentHashMap.newKeySet() }.add(it.u) }
             Account.db(st, "PATCH", base(st), body.toString(), "print=silent", ok404 = false)
-            lote.forEach { acked[it.id] = it.u }
+            synchronized(lock) {
+                lote.forEach { s ->
+                    acked[s.id] = s.u
+                    intentos.remove(s.id)
+                    // Si mientras subía se siguió escribiendo, lo de ahora parte de lo que acaba de subir
+                    val ahora = docs[s.id]
+                    if (ahora != null && ahora.u != s.u && ahora.t != T_LOG) {
+                        apuntaBase(s.o)
+                        docs[s.id] = Doc(JSONObject(ahora.o.toString()).put("pu", s.u)).also { guarda(it) }
+                    }
+                }
+            }
             guardaIndice()
             quedan = pendientes().sortedBy { it.u }.filter { q -> lote.none { it.id == q.id && it.u == q.u } }
         }
@@ -460,9 +562,7 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         val faltan = ArrayList<String>()
         idx.keys().forEach { id ->
             val ru = idx.optLong(id)
-            val l = docs[id]
-            // (el registro del día no se da por igual solo por la hora: dos dispositivos pueden apuntarlo en el mismo milisegundo)
-            if (l != null && l.u == ru && l.t != T_LOG) { acked[id] = ru; return@forEach }
+            // (con la misma hora que lo de aquí también se baja: dos dispositivos pueden guardar en el mismo milisegundo)
             if (acked[id] == ru) return@forEach
             faltan += id
         }
@@ -475,39 +575,124 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         if (cambio) avisa()
     }
 
-    /** Mezcla un documento que ha llegado de la nube. Devuelve true si cambia lo que se ve aquí. */
+    /**
+     * Mezcla un documento que ha llegado de la nube. Devuelve true si cambia lo que se ve aquí.
+     *
+     * Si aquí no había cambios y lo de fuera parte de lo de aquí, se queda lo de fuera. Si se cambió en los dos sitios a la
+     * vez (o lo de fuera se subió sin haber visto lo de aquí), se juntan a partir de la versión de la que salen los dos (la
+     * base): lo que cambió en uno solo se queda, y si los dos cambiaron el mismo campo o el mismo párrafo, manda el más
+     * nuevo; en una escena, el texto que no se queda se guarda como borrador (no se pierde nada). Ver docs/escribir.md.
+     */
     internal fun aplica(id: String, r: JSONObject): Boolean {
         if (!r.has("id")) r.put("id", id)
         val ru = r.optLong("u")
         synchronized(lock) {
             val l = docs[id]
             val ack = acked[id] ?: 0L
-            if (l == null) { val d = Doc(r); docs[id] = d; acked[id] = ru; guarda(d); return true }
+            if (l == null) { adopta(r); return true }
             if (l.t == T_LOG || r.optString("t") == T_LOG) return mezclaLog(l, r)
             val lu = l.u
-            if (lu == ru) { acked[id] = ru; return false }
-            val pendiente = lu != ack
-            if (!pendiente) {
-                if (ru > lu) { val d = Doc(r); docs[id] = d; acked[id] = ru; guarda(d); return true }
-                acked[id] = ru   // lo de aquí es más nuevo que lo de la nube: queda pendiente y se sube
+            // Misma hora y mismo contenido: es la misma versión. Misma hora y otro contenido: se guardó a la vez en otro sitio
+            val choca = lu == ru && EscribirMezcla.contenido(l.o) != EscribirMezcla.contenido(r)
+            if (lu == ru && !choca) { acked[id] = ru; return false }
+            // Lo subió este dispositivo y no llegó a confirmarse (se cortó la red a mitad): ya está en lo de aquí
+            if (!choca && intentos[id]?.contains(ru) == true) {
+                intentos.remove(id)
+                acked[id] = ru
+                apuntaBase(r)
+                docs[id] = Doc(JSONObject(l.o.toString()).put("pu", ru)).also { guarda(it) }
                 return false
             }
-            // Se cambió en los dos sitios a la vez: gana el más nuevo y el texto del otro se guarda como borrador
-            val gana = if (ru > lu) Doc(r) else l
-            val pierde = if (ru > lu) l else Doc(r)
-            if (l.t == T_ESCENA && !gana.borrado && !pierde.borrado && pierde.s("texto").isNotBlank() && pierde.s("texto") != gana.s("texto")) {
-                val bid = "bc_${id}_${pierde.u}"
-                if (docs[bid] == null) {
-                    val o = JSONObject().put("id", bid).put("t", T_BORRADOR).put("pid", l.pid).put("eid", id).put("conflicto", 1)
-                        .put("nombre", "Versión de otro dispositivo (" + java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale("es")).format(java.util.Date(pierde.u)) + ")")
-                        .put("texto", pierde.s("texto")).put("u", pierde.u)
-                    docs[bid] = Doc(o); guarda(docs[bid]!!)
-                }
+            val pendiente = lu != ack || choca
+            val rpu = r.optLong("pu", -1L)
+            if (!pendiente) {
+                // Lo de fuera parte de lo de aquí (o viene de un dispositivo con una versión antigua, sin «pu»)
+                if (rpu == lu || (rpu == -1L && ru > lu)) { adopta(r); return true }
+                if (rpu == -1L) { acked[id] = ru; return false }   // lo de aquí es más nuevo: queda pendiente y se sube
             }
-            acked[id] = ru
-            if (ru > lu) { docs[id] = gana; guarda(gana) }
-            return ru > lu
+            val anc = base(id, rpu) ?: if (pendiente) base(id, ack) else null
+            // Sin base y sin cambios aquí: lo de fuera viene de lo de aquí por versiones que no se llegaron a ver
+            if (!pendiente && anc == null) { adopta(r); return true }
+            if (lapida(l.o) || lapida(r)) {
+                // Una marca de borrado sin nada dentro no se junta: manda la más nueva
+                acked[id] = ru
+                if (ru > lu) { adopta(r); return true }
+                return false
+            }
+            return junta(l, r, anc)
         }
+    }
+
+    private fun adopta(r: JSONObject) {
+        val d = Doc(r)
+        docs[d.id] = d
+        acked[d.id] = d.u
+        guarda(d)
+    }
+
+    /** Junta lo de aquí [l] con lo de fuera [r] a partir de [anc] (la versión de la que salen los dos, si se tiene). */
+    private fun junta(l: Doc, r: JSONObject, anc: JSONObject?): Boolean {
+        val id = l.id
+        val lu = l.u; val ru = r.optLong("u")
+        val nuestro = lu > ru || (lu == ru && EscribirMezcla.contenido(l.o) > EscribirMezcla.contenido(r))
+        val m = EscribirMezcla.docs(anc, l.o, r, nuestro)
+        if (l.t == T_ESCENA && "texto" in m.chocan) aparta(l, if (nuestro) Doc(r) else l, m.o.optString("texto"))
+        apuntaBase(r)
+        acked[id] = ru
+        val antes = EscribirMezcla.contenido(l.o)
+        if (EscribirMezcla.canon(m.o) == EscribirMezcla.contenido(r)) { adopta(r); return antes != EscribirMezcla.contenido(r) }
+        m.o.put("u", maxOf(lu, ru) + 1).put("pu", ru)
+        val d = Doc(m.o)
+        docs[id] = d
+        guarda(d)
+        return antes != EscribirMezcla.contenido(m.o)
+    }
+
+    /** Guarda el texto de [pierde] como borrador de la escena (si no es el que se ha quedado). Mismo id en todos los dispositivos. */
+    private fun aparta(l: Doc, pierde: Doc, queda: String) {
+        val txt = pierde.s("texto")
+        if (txt.isBlank() || txt == queda) return
+        val bid = "bc_${l.id}_${pierde.u}"
+        if (docs[bid] != null) return
+        val o = JSONObject().put("id", bid).put("t", T_BORRADOR).put("pid", l.pid).put("eid", l.id).put("conflicto", 1)
+            .put("nombre", "Versión en conflicto (" + java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale("es")).format(java.util.Date(pierde.u)) + ")")
+            .put("texto", txt).put("u", pierde.u)
+        docs[bid] = Doc(o)
+        guarda(docs[bid]!!)
+    }
+
+    // ------------------------------------------------------------------ Bases (versiones de la nube, para juntar)
+
+    private fun archivoBase(id: String) = File(File(dir, "b"), "$id.json")
+    private val baseHecha = ConcurrentHashMap<String, Long>()
+    private val intentos = ConcurrentHashMap<String, MutableSet<Long>>()
+
+    /** Apunta [o] como una versión que está (o estuvo) en la nube: la base si luego hay que juntar cambios hechos a la vez. */
+    private fun apuntaBase(o: JSONObject) {
+        val id = o.optString("id"); val u = o.optLong("u")
+        if (id.isEmpty() || o.optString("t") == T_LOG || lapida(o) || baseHecha[id] == u) return
+        baseHecha[id] = u
+        val txt = o.toString()
+        disco.execute {
+            runCatching {
+                val f = archivoBase(id)
+                val a = runCatching { JSONArray(f.readText()) }.getOrDefault(JSONArray())
+                val l = (0 until a.length()).mapNotNull { a.optJSONObject(it) }.filter { it.optLong("u") != u } + JSONObject(txt)
+                f.parentFile?.mkdirs()
+                graba(f, JSONArray().apply { l.takeLast(BASES).forEach { put(it) } }.toString())
+            }
+        }
+    }
+
+    /** La versión [u] de [id] que se vio en la nube (si se apuntó). */
+    private fun base(id: String, u: Long): JSONObject? {
+        if (u <= 0L) return null
+        return disco.submit<JSONObject?> {
+            runCatching {
+                val a = JSONArray(archivoBase(id).readText())
+                (0 until a.length()).mapNotNull { a.optJSONObject(it) }.lastOrNull { it.optLong("u") == u }
+            }.getOrNull()
+        }.get()
     }
 
     private fun mezclaLog(l: Doc, r: JSONObject): Boolean {
@@ -536,7 +721,7 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
             viejos.forEach { body.put("escritos/${it.id}", JSONObject.NULL); body.put("escritosIdx/${it.id}", JSONObject.NULL) }
             runCatching { Account.db(st, "PATCH", base(st), body.toString(), "print=silent", ok404 = false) }.onFailure { return }
         }
-        synchronized(lock) { viejos.forEach { docs.remove(it.id); acked.remove(it.id); runCatching { archivo(it.id).delete() } } }
+        synchronized(lock) { viejos.forEach { docs.remove(it.id); acked.remove(it.id); runCatching { archivo(it.id).delete() }; runCatching { archivoBase(it.id).delete() } } }
         guardaIndice()
     }
 

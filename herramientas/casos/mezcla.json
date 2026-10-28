@@ -1,0 +1,38 @@
+{
+  "_": "Casos de la mezcla a tres bandas de Escribir. Los prueban EscribirMezclaTest.kt (móvil) y prueba-escritos.js (PC): los dos tienen que dar lo mismo.",
+  "texto": [
+    { "nombre": "cada uno un párrafo distinto", "base": "Uno.\n\nDos.\n\nTres.", "nuestro": "Uno cambiado.\n\nDos.\n\nTres.", "suyo": "Uno.\n\nDos.\n\nTres cambiado.", "prefiere": "nuestro", "esperado": "Uno cambiado.\n\nDos.\n\nTres cambiado.", "choques": 0 },
+    { "nombre": "el mismo párrafo: gana el preferido", "base": "Uno.\n\nDos.", "nuestro": "Uno.\n\nDos (móvil).", "suyo": "Uno.\n\nDos (PC).", "prefiere": "suyo", "esperado": "Uno.\n\nDos (PC).", "choques": 1 },
+    { "nombre": "uno añade al final, el otro al principio", "base": "Medio.", "nuestro": "Principio.\nMedio.", "suyo": "Medio.\nFinal.", "prefiere": "nuestro", "esperado": "Principio.\nMedio.\nFinal.", "choques": 0 },
+    { "nombre": "los dos añaden lo mismo", "base": "A\nB", "nuestro": "A\nB\nC", "suyo": "A\nB\nC", "prefiere": "suyo", "esperado": "A\nB\nC", "choques": 0 },
+    { "nombre": "los dos añaden párrafos distintos en el mismo sitio: se quedan los dos", "base": "A\nC", "nuestro": "A\nB1\nC", "suyo": "A\nB2\nC", "prefiere": "suyo", "esperado": "A\nB2\nB1\nC", "choques": 0 },
+    { "nombre": "los dos siguen escribiendo al final", "base": "Empieza.", "nuestro": "Empieza.\n\nEn el móvil.", "suyo": "Empieza.\n\nEn el PC.", "prefiere": "nuestro", "esperado": "Empieza.\n\nEn el móvil.\n\nEn el PC.", "choques": 0 },
+    { "nombre": "uno borra un párrafo, el otro cambia otro", "base": "A\nB\nC\nD", "nuestro": "A\nC\nD", "suyo": "A\nB\nC\nD cambiado", "prefiere": "nuestro", "esperado": "A\nC\nD cambiado", "choques": 0 },
+    { "nombre": "sin cambios en uno", "base": "Hola", "nuestro": "Hola", "suyo": "Hola y adiós", "prefiere": "nuestro", "esperado": "Hola y adiós", "choques": 0 },
+    { "nombre": "base vacía y dos textos distintos", "base": "", "nuestro": "Mío", "suyo": "Tuyo", "prefiere": "nuestro", "esperado": "Mío", "choques": 1 },
+    { "nombre": "cambios en medio y choque al final", "base": "A\nB\nC\nD\nE", "nuestro": "A\nB2\nC\nD\nE móvil", "suyo": "A\nB\nC\nD3\nE PC", "prefiere": "suyo", "esperado": "A\nB2\nC\nD3\nE PC", "choques": 1 },
+    { "nombre": "el mismo párrafo en sitios distintos: se junta por palabras", "base": "Ella abrió la puerta.", "nuestro": "Ella abrió despacio la puerta.", "suyo": "Ella abrió la puerta. Dentro no había nadie.", "prefiere": "nuestro", "esperado": "Ella abrió despacio la puerta. Dentro no había nadie.", "choques": 0 },
+    { "nombre": "uno corrige una palabra y el otro sigue el párrafo", "base": "Uno.\n\nEl perro ladraba.", "nuestro": "Uno.\n\nEl perro ladró.", "suyo": "Uno.\n\nEl perro ladraba. Nadie lo oyó.", "prefiere": "suyo", "esperado": "Uno.\n\nEl perro ladró. Nadie lo oyó.", "choques": 0 },
+    { "nombre": "uno sigue la última línea y el otro añade un párrafo detrás", "base": "Línea", "nuestro": "Línea final", "suyo": "Línea\n\nOtro párrafo.", "prefiere": "suyo", "esperado": "Línea final\n\nOtro párrafo.", "choques": 0 },
+    { "nombre": "la misma palabra cambiada en los dos: choca", "base": "Era de noche.", "nuestro": "Era de día.", "suyo": "Era de madrugada.", "prefiere": "nuestro", "esperado": "Era de día.", "choques": 1 },
+    { "nombre": "choque con «los dos» (notas): no se pierde nada", "base": "Idea.", "nuestro": "Idea buena.", "suyo": "Idea mala.", "prefiere": "nuestro", "ambos": true, "esperado": "Idea buena.\nIdea mala.", "choques": 0 }
+  ],
+  "docs": [
+    { "nombre": "campos distintos se juntan", "base": { "id": "e1", "t": "e", "titulo": "T", "resumen": "R", "texto": "X" }, "nuestro": { "id": "e1", "t": "e", "titulo": "T móvil", "resumen": "R", "texto": "X" }, "suyo": { "id": "e1", "t": "e", "titulo": "T", "resumen": "R PC", "texto": "X\nY" }, "prefiere": "nuestro",
+      "esperado": { "id": "e1", "t": "e", "titulo": "T móvil", "resumen": "R PC", "texto": "X\nY", "palabras": 2 }, "choques": 0 },
+    { "nombre": "un campo quitado en uno", "base": { "id": "f1", "t": "f", "nombre": "Ana", "alias": "A" }, "nuestro": { "id": "f1", "t": "f", "nombre": "Ana" }, "suyo": { "id": "f1", "t": "f", "nombre": "Ana", "alias": "A", "color": "#B0102F" }, "prefiere": "suyo",
+      "esperado": { "id": "f1", "t": "f", "nombre": "Ana", "color": "#B0102F" }, "choques": 0 },
+    { "nombre": "el mismo campo: el preferido", "base": { "id": "c1", "t": "c", "titulo": "Uno" }, "nuestro": { "id": "c1", "t": "c", "titulo": "Uno (móvil)" }, "suyo": { "id": "c1", "t": "c", "titulo": "Uno (PC)" }, "prefiere": "suyo",
+      "esperado": { "id": "c1", "t": "c", "titulo": "Uno (PC)" }, "choques": 1, "chocan": ["titulo"] },
+    { "nombre": "sin base: en una nota se quedan los dos textos", "base": null, "nuestro": { "id": "n1", "t": "n", "titulo": "A", "texto": "mío" }, "suyo": { "id": "n1", "t": "n", "titulo": "A", "texto": "tuyo" }, "prefiere": "nuestro",
+      "esperado": { "id": "n1", "t": "n", "titulo": "A", "texto": "mío\ntuyo" }, "choques": 0 },
+    { "nombre": "sin base: en una escena el texto choca", "base": null, "nuestro": { "id": "e2", "t": "e", "texto": "mío" }, "suyo": { "id": "e2", "t": "e", "texto": "tuyo" }, "prefiere": "suyo",
+      "esperado": { "id": "e2", "t": "e", "texto": "tuyo", "palabras": 1 }, "choques": 1, "chocan": ["texto"] },
+    { "nombre": "las palabras de la escena no chocan: se cuentan de nuevo", "base": { "id": "e3", "t": "e", "texto": "Uno dos.\n\nTres.", "palabras": 3, "u": 10 }, "nuestro": { "id": "e3", "t": "e", "texto": "Uno dos cuatro.\n\nTres.", "palabras": 4, "u": 12, "pu": 10 }, "suyo": { "id": "e3", "t": "e", "texto": "Uno dos.\n\nTres cinco seis.", "palabras": 5, "u": 11, "pu": 10 }, "prefiere": "nuestro",
+      "esperado": { "id": "e3", "t": "e", "texto": "Uno dos cuatro.\n\nTres cinco seis.", "palabras": 6 }, "choques": 0 },
+    { "nombre": "borrada en uno y escrita en el otro: queda en la papelera con lo escrito", "base": { "id": "e4", "t": "e", "titulo": "T", "texto": "X", "palabras": 1 }, "nuestro": { "id": "e4", "t": "e", "titulo": "T", "texto": "X Y", "palabras": 2 }, "suyo": { "id": "e4", "t": "e", "titulo": "T", "texto": "X", "palabras": 1, "d": 1, "dt": 5, "dc": "c9" }, "prefiere": "suyo",
+      "esperado": { "id": "e4", "t": "e", "titulo": "T", "texto": "X Y", "palabras": 2, "d": 1, "dt": 5, "dc": "c9" }, "choques": 0 },
+    { "nombre": "listas y campos anidados se comparan enteros", "base": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "30" }], "etq": ["a"] }, "nuestro": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "31" }], "etq": ["a"] }, "suyo": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "30" }], "etq": ["a", "b"] }, "prefiere": "suyo",
+      "esperado": { "id": "f2", "t": "f", "campos": [{ "k": "Edad", "v": "31" }], "etq": ["a", "b"] }, "choques": 0 }
+  ]
+}

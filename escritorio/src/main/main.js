@@ -932,6 +932,7 @@ function createWindow() {
     Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' }]));
   }
   web.attach(win, send);
+  require('./menu-contextual').poner(win, log);
   win.loadFile(uiFile(ui));
   // La pantalla completa se aplica después de mostrar la ventana: crearla ya a pantalla
   // completa da problemas en algunos compositores Wayland

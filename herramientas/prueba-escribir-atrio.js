@@ -105,6 +105,16 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     ok(!!sube2, 'vuelve la red: sube solo');
     ok(await hasta(async () => (await todo()).estado.pendientes === 0, 10000), 'y ya no queda nada pendiente');
 
+    console.log('Editor: tipografía, rehacer y corrector');
+    await p.locator('.ed-texto').click(); await p.keyboard.press('Control+End');
+    await p.keyboard.type(' --Así es-- "dijo"...');
+    await sleep(1200);
+    const tTip = (await todo()).docs.find((d) => d.id === 'm_escena').texto;
+    ok(tTip.endsWith(' —Así es— «dijo»…'), `la tipografía automática funciona en Atrio (${JSON.stringify(tTip.slice(-22))})`);
+    await p.keyboard.press('Control+z'); await sleep(300); await p.keyboard.press('Control+y'); await sleep(1200);
+    ok((await todo()).docs.find((d) => d.id === 'm_escena').texto === tTip, 'Ctrl+Z y Ctrl+Y (deshacer y rehacer)');
+    ok(/corrector (en es|el del sistema)/.test(logs.join('')), `el corrector está en español (${(logs.join('').match(/corrector[^\n]*/) || [''])[0]})`);
+
     console.log('Exportar y estado en la página');
     ok(!/Error|error/.test(logs.join('').split('\n').filter((l) => /escrib/i.test(l)).join('\n')), 'sin errores de Escribir en el registro');
   } catch (e) { console.error(e); fallos++; }

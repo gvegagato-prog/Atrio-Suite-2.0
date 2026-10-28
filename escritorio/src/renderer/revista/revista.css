@@ -823,6 +823,9 @@ textarea.entrada:focus { border-color: var(--acento); }
   pointer-events: none;
 }
 #aviso.ver { opacity: 1; transform: none; }
+#aviso.con-accion { pointer-events: auto; display: flex; align-items: center; gap: 18px; }
+#aviso .aviso-accion { font: inherit; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; color: var(--papel); background: none; border: 0; border-bottom: 2px solid var(--acento); padding: 2px 0; cursor: pointer; }
+#aviso .aviso-accion:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
 #aviso.error { background: var(--acento); color: var(--papel); }
 
 /* Destello al hacer una captura de pantalla */
@@ -1266,6 +1269,20 @@ body[data-entrada="mando"] .arte-opcion:focus { outline: 3px solid var(--acento)
 .e-barras .meta { position: absolute; left: 0; right: 0; height: 1px; background: var(--acento); opacity: .6; }
 .e-nube { font-size: 13px; color: var(--gris); margin: 6px 0 0; }
 .e-nube.mal { color: var(--acento); }
+/* Escribir: sprints */
+.ed-sprint { font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; color: var(--acento); font-variant-numeric: tabular-nums; }
+.e-sprints { border-collapse: collapse; font-size: 14px; }
+.e-sprints td { padding: 4px 18px 4px 0; color: var(--gris); }
+.e-sprints td:nth-child(3) { color: var(--tinta); }
+/* Escribir: la papelera */
+.e-ir-papelera { display: block; margin-top: 28px; }
+.e-pap { border-top: 1px solid var(--linea); padding: 14px 0 10px; display: grid; gap: 4px; }
+.e-pap:first-of-type { border-top: 0; }
+.e-pap-titulo { font-family: var(--serif); font-weight: 700; font-size: 22px; line-height: 1.15; }
+.e-pap-linea { font-family: var(--serif); font-style: italic; color: var(--gris); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e-pap-meta { color: var(--gris); font-size: 13px; }
+.e-pap .fila-botones { margin-top: 6px; }
+.e-pap-vacia { font-family: var(--serif); font-style: italic; font-size: 20px; color: var(--gris); padding: 18px 0; }
 .e-obras { display: grid; gap: 14px; margin-top: 18px; }
 .e-obra { display: flex; border: 1px solid var(--linea); background: var(--crudo); width: 100%; text-align: left; }
 .e-obra:hover { border-color: var(--tinta); }

@@ -105,6 +105,26 @@
     return { text: `${v.text.slice(0, a)}«${sel}»${v.text.slice(b)}`, a: a + 1, b: sel ? b + 1 : a + 1 };
   };
 
+  // ---------------------------------------------------------------- Tipografía automática
+  // Dos guiones son una raya (—), un guion y un espacio al empezar una línea abren un diálogo (—), tres puntos son puntos
+  // suspensivos (…), las comillas rectas son « o » según dónde estén, y << >> son « ». Igual que Tipografia del móvil
+  // (los dos se prueban con herramientas/casos/tipografia.json). «texto» es como queda justo después de escribir «ch».
+  const ABREN = ' \t\n([{«“—-';
+  ET.tipografia = (texto, cursor, ch) => {
+    if (cursor < 1 || cursor > texto.length || texto[cursor - 1] !== ch) return null;
+    const cambia = (n, por) => ({ texto: texto.slice(0, cursor - n) + por + texto.slice(cursor), cursor: cursor - n + por.length });
+    const antes = cursor >= 2 ? texto[cursor - 2] : '\n';
+    switch (ch) {
+      case '-': return cursor >= 2 && antes === '-' ? cambia(2, '—') : null;
+      case ' ': return cursor >= 2 && antes === '-' && (cursor < 3 || texto[cursor - 3] === '\n') ? cambia(2, '—') : null;
+      case '.': return cursor >= 3 && texto.slice(cursor - 3, cursor) === '...' ? cambia(3, '…') : null;
+      case '"': return cambia(1, cursor < 2 || ABREN.includes(antes) ? '«' : '»');
+      case '<': return cursor >= 2 && antes === '<' ? cambia(2, '«') : null;
+      case '>': return cursor >= 2 && antes === '>' ? cambia(2, '»') : null;
+      default: return null;
+    }
+  };
+
   // ---------------------------------------------------------------- Deshacer y rehacer
   ET.Historial = class {
     constructor(inicial, tope = 200) { this.atras = []; this.adelante = []; this.actual = inicial; this.ultima = 0; this.tope = tope; }
@@ -115,6 +135,8 @@
       if (!this.atras.length || grande || ahora - this.ultima > junta) { this.atras.push(this.actual); if (this.atras.length > this.tope) this.atras.shift(); }
       this.ultima = ahora; this.actual = v; this.adelante = [];
     }
+    // El próximo cambio va aparte: así se deshace solo lo que hizo la tipografía automática
+    corte() { this.ultima = 0; }
     get puedeDeshacer() { return this.atras.length > 0; }
     get puedeRehacer() { return this.adelante.length > 0; }
     deshace() { const v = this.atras.pop(); if (!v) return null; this.adelante.push(this.actual); this.actual = v; this.ultima = 0; return v; }

@@ -40,6 +40,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -80,6 +91,12 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
     var tam by remember { mutableFloatStateOf(prefs.getFloat("tam", 19f)) }
     var fuente by remember { mutableIntStateOf(prefs.getInt("fuente", 0)) }
     var maquina by remember { mutableStateOf(prefs.getBoolean("maquina", false)) }
+    var tipografia by remember { mutableStateOf(prefs.getBoolean("tipografia", true)) }
+    var sprint by remember { mutableStateOf(false) }
+    var sinonimos by remember { mutableStateOf<Pair<IntRange, List<List<String>>>?>(null) }
+    var avisoEd by remember { mutableStateOf("") }
+    LaunchedEffect(avisoEd) { if (avisoEd.isNotEmpty()) { kotlinx.coroutines.delay(2500); avisoEd = "" } }
+    LaunchedEffect(Unit) { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Sinonimos.carga(ctx) } }
     var foco by remember { mutableStateOf(false) }
     var panel by remember { mutableStateOf(false) }
     var buscar by remember { mutableStateOf(false) }
@@ -117,6 +134,27 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
 
     fun cambia(v: TextFieldValue) { tf = v; historial.apunta(v) }
     fun pon(texto: String) { cambia(TextFieldValue(texto, TextRange(texto.length))) }
+    // Lo que llega del teclado: si es un solo carácter, la tipografía automática (— « » …), que se deshace aparte
+    fun teclea(v: TextFieldValue) {
+        val antes = tf
+        val c = v.selection.start
+        if (tipografia && v.selection.collapsed && c >= 1 && v.text.length == antes.text.length + 1 && v.composition.let { it == null || it.end <= c - 3 } &&
+            v.text.regionMatches(0, antes.text, 0, c - 1) && v.text.regionMatches(c, antes.text, c - 1, v.text.length - c)) {
+            Tipografia.aplica(v.text, c, v.text[c - 1])?.let { (t, k) ->
+                historial.apunta(v); historial.corte()
+                val r = TextFieldValue(t, TextRange(k))
+                tf = r; historial.apunta(r); historial.corte()
+                return
+            }
+        }
+        cambia(v)
+    }
+    fun abreSinonimos() {
+        val r = Sinonimos.palabraEn(tf.text, tf.selection.start, tf.selection.end)
+        if (r == null) { avisoEd = "Pon el cursor en una palabra"; return }
+        val g = Sinonimos.busca(tf.text.substring(r.first, r.last + 1))
+        if (g.isEmpty()) avisoEd = "Sin sinónimos para «${tf.text.substring(r.first, r.last + 1)}»" else sinonimos = r to g
+    }
 
     // ---- Buscar y reemplazar
     var consulta by remember { mutableStateOf("") }
@@ -182,7 +220,10 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
                             IconPill(Icons.Rounded.MoreVert, "Más") { menu = true }
                             DropdownMenu(menu, { menu = false }, containerColor = Paper) {
                                 DropdownMenuItem({ Text("Buscar y reemplazar") }, { menu = false; buscar = true })
+                                DropdownMenuItem({ Text(if (SprintEscribir.activo()) "Terminar el sprint" else "Sprint de escritura…") }, { menu = false; if (SprintEscribir.activo()) SprintEscribir.termina(ctx, e, ya = true) else sprint = true })
+                                DropdownMenuItem({ Text("Sinónimos de la palabra") }, { menu = false; abreSinonimos() })
                                 DropdownMenuItem({ Text(if (maquina) "Máquina de escribir: sí" else "Máquina de escribir: no") }, { menu = false; maquina = !maquina; prefs.edit().putBoolean("maquina", maquina).apply() })
+                                DropdownMenuItem({ Text(if (tipografia) "Tipografía automática (— « » …): sí" else "Tipografía automática (— « » …): no") }, { menu = false; tipografia = !tipografia; prefs.edit().putBoolean("tipografia", tipografia).apply() })
                                 DropdownMenuItem({ Text("Letra más grande") }, { tam = (tam + 1f).coerceAtMost(30f); prefs.edit().putFloat("tam", tam).apply() })
                                 DropdownMenuItem({ Text("Letra más pequeña") }, { tam = (tam - 1f).coerceAtLeast(14f); prefs.edit().putFloat("tam", tam).apply() })
                                 DropdownMenuItem({ Text("Tipo de letra: " + listOf("con serifa", "de palo seco", "máquina")[fuente]) }, { fuente = (fuente + 1) % 3; prefs.edit().putInt("fuente", fuente).apply() })
@@ -232,8 +273,24 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
                     Column(Modifier.fillMaxSize().verticalScroll(scroll), horizontalAlignment = Alignment.CenterHorizontally) {
                         Column(Modifier.widthIn(max = 700.dp).fillMaxWidth().padding(horizontal = if (foco) 28.dp else 22.dp).padding(top = margenSup)) {
                             BasicTextField(
-                                tf, { cambia(it) },
-                                modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = (vista / densidad.density * 0.7f).dp).focusRequester(foco1),
+                                tf, { teclea(it) },
+                                modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = (vista / densidad.density * 0.7f).dp).focusRequester(foco1)
+                                    // Con teclado físico: Ctrl+B, Ctrl+I, Ctrl+Z, Ctrl+Y (o Ctrl+Mayús+Z), Ctrl+F, Ctrl+S (guarda una versión), Esc
+                                    .onPreviewKeyEvent { ev ->
+                                        if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                        if (ev.key == Key.Escape) { when { buscar -> { buscar = false; consulta = "" }; foco -> foco = false; else -> return@onPreviewKeyEvent false }; return@onPreviewKeyEvent true }
+                                        if (!ev.isCtrlPressed && !ev.isMetaPressed) return@onPreviewKeyEvent false
+                                        when (ev.key) {
+                                            Key.B -> cambia(EdicionTexto.envuelve(tf, "**"))
+                                            Key.I -> cambia(EdicionTexto.envuelve(tf, "*"))
+                                            Key.Z -> (if (ev.isShiftPressed) historial.rehace() else historial.deshace())?.let { tf = it }
+                                            Key.Y -> historial.rehace()?.let { tf = it }
+                                            Key.F -> buscar = true
+                                            Key.S -> { e.escribe(eid, tf.text); guardado = tf.text; e.instantanea(eid, tf.text, fuerza = true); avisoEd = "Versión guardada" }
+                                            else -> return@onPreviewKeyEvent false
+                                        }
+                                        true
+                                    },
                                 textStyle = TextStyle(fontFamily = familia, fontSize = tam.sp, lineHeight = (tam * 1.62f).sp, color = Charcoal),
                                 cursorBrush = SolidColor(ColGeneral),
                                 visualTransformation = formato,
@@ -258,18 +315,43 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
                         Spacer(Modifier.weight(1f))
                         if (diaria > 0) Text("hoy $hoy/$diaria", color = if (hoy >= diaria) Color5() else Muted, fontSize = 12.sp)
                     }
+                    if (SprintEscribir.activo(pid) || avisoEd.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (SprintEscribir.activo(pid)) TiraSprint(e) { SprintEscribir.termina(ctx, e, ya = true) }
+                        Spacer(Modifier.weight(1f))
+                        if (avisoEd.isNotEmpty()) Text(avisoEd, color = ColGeneral, fontSize = 12.sp)
+                    }
                     BarraFormato(
                         puedeDeshacer = historial.puedeDeshacer, puedeRehacer = historial.puedeRehacer,
                         onDeshacer = { historial.deshace()?.let { tf = it } }, onRehacer = { historial.rehace()?.let { tf = it } },
                         onNegrita = { cambia(EdicionTexto.envuelve(tf, "**")) }, onCursiva = { cambia(EdicionTexto.envuelve(tf, "*")) },
                         onTitulo = { cambia(EdicionTexto.prefijoLinea(tf, "## ")) }, onCita = { cambia(EdicionTexto.prefijoLinea(tf, "> ")) },
                         onSalto = { cambia(EdicionTexto.salto(tf)) }, onComillas = { cambia(EdicionTexto.comillas(tf)) },
-                        onRaya = { cambia(EdicionTexto.inserta(tf, "—")) }, onBuscar = { buscar = !buscar }
+                        onRaya = { cambia(EdicionTexto.inserta(tf, "—")) }, onBuscar = { buscar = !buscar }, onSinonimos = { abreSinonimos() }
                     )
                 }
             }
             if (ancha && panel && !foco) Column(Modifier.width(360.dp).fillMaxHeight().background(Crudo).statusBarsPadding().navigationBarsPadding()) {
                 PanelEscena(e, escena, ver, onCierra = { panel = false }, inserta = { x -> cambia(EdicionTexto.inserta(tf, x)) }, pon = { pon(it) }, textoActual = { tf.text }, abrirEscena = abrirEscena)
+            }
+        }
+        if (sprint) SprintDialogo(e, pid) { sprint = false }
+        sinonimos?.let { (r, grupos) ->
+            val palabra = tf.text.substring(r.first, (r.last + 1).coerceAtMost(tf.text.length))
+            ModalBottomSheet({ sinonimos = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Crudo, shape = shp(28.dp)) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Sinónimos de «$palabra»", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Charcoal)
+                    grupos.take(12).forEach { g ->
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            g.forEach { s -> SoftChip(s, false) {
+                                val fin = (r.last + 1).coerceAtMost(tf.text.length)
+                                if (tf.text.substring(r.first, fin) == palabra) cambia(TextFieldValue(tf.text.replaceRange(r.first, fin, s), TextRange(r.first + s.length)))
+                                sinonimos = null
+                            } }
+                        }
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+                    }
+                    Text("Del diccionario libre de sinónimos RLA-ES.", color = Muted, fontSize = 11.sp)
+                }
             }
         }
         if (!ancha && panel && !foco) ModalBottomSheet({ panel = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Crudo, shape = shp(28.dp)) {
@@ -287,7 +369,7 @@ private fun Color5() = androidx.compose.ui.graphics.Color(0xFF5B8C5A)
 private fun BarraFormato(
     puedeDeshacer: Boolean, puedeRehacer: Boolean, onDeshacer: () -> Unit, onRehacer: () -> Unit,
     onNegrita: () -> Unit, onCursiva: () -> Unit, onTitulo: () -> Unit, onCita: () -> Unit,
-    onSalto: () -> Unit, onComillas: () -> Unit, onRaya: () -> Unit, onBuscar: () -> Unit
+    onSalto: () -> Unit, onComillas: () -> Unit, onRaya: () -> Unit, onBuscar: () -> Unit, onSinonimos: () -> Unit
 ) {
     Row(Modifier.fillMaxWidth().background(Crudo).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
         @Composable fun Tecla(icono: androidx.compose.ui.graphics.vector.ImageVector, desc: String, on: Boolean = true, f: () -> Unit) =
@@ -295,8 +377,8 @@ private fun BarraFormato(
                 Icon(icono, desc, tint = if (on) Charcoal else Line, modifier = Modifier.size(22.dp))
             }
         @Composable fun Letra(t: String, desc: String, f: () -> Unit) =
-            Box(Modifier.size(44.dp).clip(CircleShape).press(haptic = false, onClick = f), contentAlignment = Alignment.Center) {
-                Text(t, color = Charcoal, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = Display)
+            Box(Modifier.size(44.dp).clip(CircleShape).press(haptic = false, onClick = f).semantics(mergeDescendants = true) { contentDescription = desc }, contentAlignment = Alignment.Center) {
+                Text(t, color = Charcoal, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = Display, modifier = Modifier.clearAndSetSemantics { })
             }
         Tecla(Icons.AutoMirrored.Rounded.Undo, "Deshacer", puedeDeshacer, onDeshacer)
         Tecla(Icons.AutoMirrored.Rounded.Redo, "Rehacer", puedeRehacer, onRehacer)
@@ -308,6 +390,7 @@ private fun BarraFormato(
         Tecla(Icons.Rounded.HorizontalRule, "Salto de escena", f = onSalto)
         Letra("«»", "Comillas", onComillas)
         Letra("—", "Raya", onRaya)
+        Letra("≈", "Sinónimos", onSinonimos)
         Box(Modifier.width(1.dp).height(24.dp).background(Line))
         Tecla(Icons.Rounded.Search, "Buscar", f = onBuscar)
     }
@@ -480,7 +563,7 @@ private fun PestanaBorradores(e: Escritos, escena: Doc, actual: String, pon: (St
                     e.nuevo(Escritos.T_BORRADOR, escena.pid) { put("eid", escena.id); put("nombre", "Antes de usar «${b.s("nombre")}»"); put("texto", actual) }
                     pon(b.s("texto"))
                 }
-                SoftChip("Borrar", false) { e.borra(b.id) }
+                SoftChip("Borrar", false) { aLaPapelera(e, b) }
             }
         }
     }

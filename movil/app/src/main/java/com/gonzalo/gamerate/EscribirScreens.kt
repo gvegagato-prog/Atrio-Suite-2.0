@@ -77,6 +77,7 @@ fun EscribirScreen() {
     LaunchedEffect(EscribirHub.obraBorrada) { if (EscribirHub.obraBorrada.isNotEmpty() && EscribirHub.obraBorrada == obraId) { obraId = null; escenaId = null } }
     if (obraId != null && e.get(obraId!!) == null) { obraId = null; escenaId = null }
     BackHandler(enabled = obraId != null && escenaId == null) { obraId = null }
+    VigilaSprint(e, ctx)
     when {
         escenaId != null -> EscribirEditor(escenaId!!, onBack = { escenaId = null }, abrirEscena = { escenaId = it })
         obraId != null -> ObraScreen(e, obraId!!, onBack = { obraId = null }, abrir = { escenaId = it })
@@ -90,8 +91,10 @@ private fun BibliotecaEscribir(e: Escritos, ver: Int, abrirObra: (String) -> Uni
     val scope = rememberCoroutineScope()
     var nueva by remember { mutableStateOf(false) }
     var archivo by remember { mutableStateOf(false) }
+    var papelera by remember { mutableStateOf(false) }
     var aviso by remember { mutableStateOf("") }
     val obras = remember(ver) { e.obras() }
+    val enPapelera = remember(ver) { e.papelera().size }
     val activas = obras.filter { !it.b("arch") }.sortedByDescending { o -> e.escenasDe(o.id).maxOfOrNull { it.u } ?: o.u }
     val archivadas = obras.filter { it.b("arch") }
     val hoy = Escritos.hoy()
@@ -138,9 +141,14 @@ private fun BibliotecaEscribir(e: Escritos, ver: Int, abrirObra: (String) -> Uni
                 }
                 if (archivo) items(archivadas, key = { "a" + it.id }) { o -> TarjetaObra(e, o, ver) { abrirObra(o.id) } }
             }
+            item("papelera") {
+                Text("PAPELERA" + if (enPapelera > 0) " · $enPapelera" else "", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
+                    modifier = Modifier.padding(top = 18.dp, bottom = 6.dp).press(haptic = false) { papelera = true }.padding(vertical = 6.dp))
+            }
         }
     }
     if (nueva) ObraDialogo(e, null, onCerrar = { nueva = false }, onCreada = { abrirObra(it.id) })
+    if (papelera) PapeleraEscribir(e, onCerrar = { papelera = false })
 }
 
 @Composable
@@ -335,7 +343,7 @@ private fun FilaEscena(e: Escritos, s: Doc, caps: List<Doc>, esquema: Boolean, o
                 DropdownMenuItem({ Text("Bajar") }, { menu = false; baja(e, s, caps) })
                 DropdownMenuItem({ Text("Mover a otro capítulo…") }, { menu = false; mover = true })
                 DropdownMenuItem({ Text("Duplicar") }, { menu = false; e.duplicaEscena(s.id) })
-                DropdownMenuItem({ Text("Borrar", color = ColGeneral) }, { menu = false; e.borra(s.id) })
+                DropdownMenuItem({ Text("Borrar", color = ColGeneral) }, { menu = false; aLaPapelera(e, s) })
             }
         }
     }

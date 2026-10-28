@@ -65,5 +65,47 @@ t('comparar y mezclar', () => {
   assert.strictEqual(ET.mezcla(p, [false, true]), 'Uno.\n\nDos.\n\nTres.\n\nCuatro.');
   assert.strictEqual(ET.compara('Igual.', 'Igual.').filter((x) => x.aqui).length, 0);
 });
+const fs = require('fs');
+const path = require('path');
+t('tipografía automática (casos de herramientas/casos/tipografia.json, los mismos que el móvil)', () => {
+  for (const c of JSON.parse(fs.readFileSync(path.join(__dirname, 'casos', 'tipografia.json'), 'utf8')).casos) {
+    const r = ET.tipografia(c.texto, c.cursor, c.ch);
+    if (c.esperado == null) assert.strictEqual(r, null, c.nombre);
+    else assert.deepStrictEqual(r, { texto: c.esperado, cursor: c.cursorEsperado }, c.nombre);
+  }
+});
+t('la tipografía se deshace sola', () => {
+  const h = new ET.Historial(v('Hola'));
+  h.apunta(v('Hola -'), 1000); h.apunta(v('Hola --'), 1100); h.corte(); h.apunta(v('Hola —'), 1100); h.corte();
+  assert.strictEqual(h.deshace().text, 'Hola --');
+  assert.strictEqual(h.deshace().text, 'Hola');
+});
+t('sinónimos (casos de herramientas/casos/sinonimos.json, los mismos que el móvil)', () => {
+  const S = require('../escritorio/src/main/sinonimos');
+  assert.ok(S.carga() > 20000, 'el tesauro se encuentra y tiene más de 20.000 palabras');
+  for (const c of JSON.parse(fs.readFileSync(path.join(__dirname, 'casos', 'sinonimos.json'), 'utf8')).casos) {
+    const r = S.busca(c.palabra);
+    assert.deepStrictEqual(r.slice(0, c.grupos.length), c.grupos, c.palabra);
+    if (!c.grupos.length) assert.strictEqual(r.length, 0);
+  }
+});
+t('menú del botón derecho: correcciones, sinónimos y copiar', () => {
+  const { entradas } = require('../escritorio/src/main/menu-contextual');
+  const hecho = [];
+  const wc = { replaceMisspelling: (x) => hecho.push(['corrige', x]), replace: (x) => hecho.push(['cambia', x]), session: { addWordToSpellCheckerDictionary: (x) => hecho.push(['añade', x]) } };
+  const mal = entradas({ isEditable: true, misspelledWord: 'csa', dictionarySuggestions: ['casa', 'cosa'], selectionText: '', editFlags: { canCut: false, canCopy: false, canPaste: true } }, wc);
+  assert.deepStrictEqual(mal.slice(0, 3).map((x) => x.label), ['casa', 'cosa', 'Añadir «csa» al diccionario']);
+  mal[0].click(); mal[2].click();
+  assert.deepStrictEqual(hecho, [['corrige', 'casa'], ['añade', 'csa']]);
+  const sin = entradas({ isEditable: true, misspelledWord: '', selectionText: 'casa', editFlags: { canCut: true, canCopy: true, canPaste: true } }, wc);
+  const sub = sin.find((x) => x.label === 'Sinónimos de «casa»');
+  assert.ok(sub && sub.submenu.some((x) => x.label === 'vivienda'), 'sinónimos de la palabra elegida');
+  sub.submenu.find((x) => x.label === 'vivienda').click();
+  assert.deepStrictEqual(hecho[2], ['cambia', 'vivienda']);
+  assert.ok(sin.some((x) => x.role === 'paste') && sin.some((x) => x.role === 'cut'), 'cortar, copiar y pegar');
+  const leer = entradas({ isEditable: false, selectionText: 'algo', editFlags: {} }, wc);
+  assert.deepStrictEqual(leer.map((x) => x.role), ['copy'], 'fuera de un campo, solo copiar');
+  assert.strictEqual(entradas({ isEditable: false, selectionText: '', editFlags: {} }, wc).length, 0, 'sin nada, no hay menú');
+});
 console.log(fallos ? `FALLAN ${fallos}` : 'Todo bien');
 process.exit(fallos ? 1 : 0);

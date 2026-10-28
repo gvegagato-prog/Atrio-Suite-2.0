@@ -1,0 +1,20 @@
+{
+  "_": "Tipografía automática del editor de Escribir: «texto» es como queda justo después de escribir «ch» (el cursor, detrás). La prueban EscribirTextoTest.kt (móvil) y prueba-escribir-texto.js (PC).",
+  "casos": [
+    { "nombre": "dos guiones son una raya", "texto": "Hola --", "cursor": 7, "ch": "-", "esperado": "Hola —", "cursorEsperado": 6 },
+    { "nombre": "un inciso con raya", "texto": "—No hay nada --", "cursor": 15, "ch": "-", "esperado": "—No hay nada —", "cursorEsperado": 14 },
+    { "nombre": "guion y espacio al empezar la línea: diálogo", "texto": "Uno.\n- ", "cursor": 7, "ch": " ", "esperado": "Uno.\n—", "cursorEsperado": 6 },
+    { "nombre": "guion y espacio al empezar el texto", "texto": "- ", "cursor": 2, "ch": " ", "esperado": "—", "cursorEsperado": 1 },
+    { "nombre": "un guion en medio de la frase se queda", "texto": "franco- ", "cursor": 8, "ch": " ", "esperado": null },
+    { "nombre": "tres puntos son puntos suspensivos", "texto": "Y entonces...", "cursor": 13, "ch": ".", "esperado": "Y entonces…", "cursorEsperado": 11 },
+    { "nombre": "dos puntos seguidos no", "texto": "Y..", "cursor": 3, "ch": ".", "esperado": null },
+    { "nombre": "comillas al abrir", "texto": "Dijo \"", "cursor": 6, "ch": "\"", "esperado": "Dijo «", "cursorEsperado": 6 },
+    { "nombre": "comillas al cerrar", "texto": "Dijo «hola\"", "cursor": 11, "ch": "\"", "esperado": "Dijo «hola»", "cursorEsperado": 11 },
+    { "nombre": "comillas al empezar el texto", "texto": "\"", "cursor": 1, "ch": "\"", "esperado": "«", "cursorEsperado": 1 },
+    { "nombre": "comillas tras una raya", "texto": "—\"", "cursor": 2, "ch": "\"", "esperado": "—«", "cursorEsperado": 2 },
+    { "nombre": "comillas con el texto detrás", "texto": "Era \" y más", "cursor": 5, "ch": "\"", "esperado": "Era « y más", "cursorEsperado": 5 },
+    { "nombre": "<< abre comillas", "texto": "Le dijo <<", "cursor": 10, "ch": "<", "esperado": "Le dijo «", "cursorEsperado": 9 },
+    { "nombre": ">> las cierra", "texto": "«sí>>", "cursor": 5, "ch": ">", "esperado": "«sí»", "cursorEsperado": 4 },
+    { "nombre": "una letra normal no cambia nada", "texto": "Hola", "cursor": 4, "ch": "a", "esperado": null }
+  ]
+}

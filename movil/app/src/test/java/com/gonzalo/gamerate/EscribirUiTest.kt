@@ -9,6 +9,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.withKeyDown
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.performTextInputSelection
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import kotlinx.coroutines.Dispatchers
@@ -127,5 +134,84 @@ open class EscribirUiTest {
         androidx.test.espresso.Espresso.pressBack()
         rule.waitForIdle()
         assertTrue("Atrás cierra el editor", !EscribirHub.enEditor)
+    }
+
+    /** Borrar con «Deshacer» y recuperar desde la papelera, en la app de verdad. */
+    @Test fun papeleraConDeshacer() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val e = Escritos.get(ctx)
+        val o = siembra(e)
+        val store = Store(ctx)
+        store.myName = "Gonzalo"
+        Skin.load(ctx); Skin.applyShell(2, ctx)
+        Mode.dark = false; Mode.themeMode = 1
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(store, 0L, false, "") {} } } }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Escribir")[0].performClick()
+        rule.waitForIdle()
+        rule.onAllNodesWithText("La torre del cuervo")[0].performClick()
+        rule.waitForIdle()
+        val s = e.escenasDe(o.id)[1]
+        rule.runOnIdle { aLaPapelera(e, s) }
+        rule.waitUntil(5000) { rule.onAllNodesWithText("Deshacer", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("el aviso dice qué se ha ido a la papelera", rule.onAllNodesWithText("Escena «La primera puerta» en la papelera").fetchSemanticsNodes().isNotEmpty())
+        shoot("e23_deshacer")
+        rule.onAllNodesWithText("Deshacer", ignoreCase = true)[0].performClick()
+        rule.waitForIdle()
+        assertTrue("«Deshacer» la trae de vuelta", e.get(s.id) != null)
+        // Un capítulo a la papelera y recuperarlo desde allí
+        val c = e.capitulos(o.id)[1]
+        rule.runOnIdle { aLaPapelera(e, c) }
+        androidx.test.espresso.Espresso.pressBack()
+        rule.waitForIdle()
+        rule.onAllNodesWithText("PAPELERA · 1")[0].performClick()
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("El cuervo").fetchSemanticsNodes().isNotEmpty())
+        shoot("e24_papelera")
+        rule.onAllNodesWithText("Recuperar", ignoreCase = true)[0].performClick()
+        rule.waitForIdle()
+        assertTrue("vuelve con su escena", e.capitulos(o.id).size == 3 && e.escenasDe(o.id).size == 4)
+        assertTrue(rule.onAllNodesWithText("La papelera está vacía.").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    /** El editor: tipografía automática al teclear, atajos de un teclado físico y sinónimos. */
+    @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
+    @Test fun editorTipografiaAtajosYSinonimos() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val e = Escritos.get(ctx)
+        val o = e.nuevo(Escritos.T_OBRA, "") { put("titulo", "Pruebas") }
+        val c = e.nuevo(Escritos.T_CAP, o.id) { put("titulo", "Uno") }
+        val s = e.nuevo(Escritos.T_ESCENA, o.id) { put("cid", c.id); put("titulo", "Escena"); put("texto", "") }
+        Skin.load(ctx); Skin.shell = 0; Mode.dark = false; Mode.themeMode = 1
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { EscribirEditor(s.id, onBack = {}, abrirEscena = {}) } } }
+        rule.waitForIdle()
+        val editor = rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[1]
+        editor.performClick()
+        "- Hola --dijo-- \"casa\"...".forEach { ch -> editor.performTextInput(ch.toString()) }
+        rule.waitForIdle()
+        assertTrue("tipografía: ${editor.fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.EditableText)}",
+            rule.onAllNodesWithText("—Hola —dijo— «casa»…").fetchSemanticsNodes().isNotEmpty())
+        // Deshacer quita solo el último cambio de la tipografía (… vuelve a ser ...)
+        editor.performKeyInput { withKeyDown(androidx.compose.ui.input.key.Key.CtrlLeft) { pressKey(androidx.compose.ui.input.key.Key.Z) } }
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("—Hola —dijo— «casa»...").fetchSemanticsNodes().isNotEmpty())
+        editor.performKeyInput { withKeyDown(androidx.compose.ui.input.key.Key.CtrlLeft) { pressKey(androidx.compose.ui.input.key.Key.Y) } }
+        rule.waitForIdle()
+        assertTrue("Ctrl+Y lo rehace", rule.onAllNodesWithText("—Hola —dijo— «casa»…").fetchSemanticsNodes().isNotEmpty())
+        // Sinónimos de la palabra del cursor
+        editor.performTextInputSelection(androidx.compose.ui.text.TextRange(15))
+        Thread.sleep(300); rule.waitForIdle()
+        rule.onNodeWithContentDescription("Sinónimos").performScrollTo().performClick()
+        rule.waitUntil(5000) { rule.onAllNodesWithText("vivienda").fetchSemanticsNodes().isNotEmpty() }
+        shoot("e25_sinonimos")
+        rule.onAllNodesWithText("vivienda")[0].performClick()
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("—Hola —dijo— «vivienda»…").fetchSemanticsNodes().isNotEmpty())
+        // Ctrl+B pone negrita a lo elegido
+        editor.performTextInputSelection(androidx.compose.ui.text.TextRange(1, 5))
+        editor.performKeyInput { withKeyDown(androidx.compose.ui.input.key.Key.CtrlLeft) { pressKey(androidx.compose.ui.input.key.Key.B) } }
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("—**Hola** —dijo— «vivienda»…").fetchSemanticsNodes().isNotEmpty())
+        rule.waitUntil(3000) { e.get(s.id)?.s("texto") == "—**Hola** —dijo— «vivienda»…" }
     }
 }
