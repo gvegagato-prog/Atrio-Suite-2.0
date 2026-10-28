@@ -5,8 +5,16 @@ on:
   workflow_dispatch:
 jobs:
   mac:
-    # macos-15 es Apple Silicon (arm64). (macos-14 se retira el 2 de noviembre de 2026)
-    runs-on: macos-15
+    # Se prueba en dos versiones de macOS, las dos Apple Silicon (arm64): la 15 y la 26 (la «latest» de GitHub). Si una no
+    # consigue máquina, la otra sigue. (macos-14 se retira el 2 de noviembre de 2026)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, sufijo: '' }
+          - { os: macos-26, sufijo: '-macos26' }
+    name: mac (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: escritorio
@@ -63,13 +71,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Atrio-macOS-arm64
+          name: Atrio-macOS-arm64${{ matrix.sufijo }}
           path: |
             escritorio/salida/*
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: atrio-mac-pruebas
+          name: atrio-mac-pruebas${{ matrix.sufijo }}
           path: |
             ${{ runner.temp }}/atrio-prueba/*.png
             ${{ runner.temp }}/atrio-prueba/atrio.log
