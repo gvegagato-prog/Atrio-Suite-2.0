@@ -167,7 +167,7 @@
       else if (ctrl && k === 'f') { e.preventDefault(); abreBusca(); }
     });
     // «Fichas» y «Escena» del panel pueden cambiar mientras escribes
-    titulo.addEventListener('input', RV.debounce(() => { api.escritos('edita', id, { titulo: titulo.value }).catch(E.err); }, 500));
+    titulo.addEventListener('input', RV.debounce(() => api.escritos('edita', id, { titulo: titulo.value }).catch(E.err), 500, true));
 
     // ---- Barra de formato
     const tecla = (t, ayuda, f, extra) => h('button.ed-tecla' + (extra || ''), { type: 'button', title: ayuda, 'aria-label': ayuda, onmousedown: (e) => e.preventDefault(), onclick: f }, t);
@@ -239,7 +239,7 @@
         const re = RV.areaTexto(e.resumen || '', { rows: '4' }); const cu = RV.entrada(e.cuando || ''); const et = RV.entrada((e.etq || []).join(', ')); const me = RV.entrada(e.meta || '', { type: 'number', min: '0' });
         const fs = E.fichas(pid);
         const sel = (campo, tipo) => { const s = h('select.entrada', { onchange: () => api.escritos('edita', id, { [campo]: s.value || null }).catch(E.err) }, h('option', { value: '' }, '—'), ...fs.filter((f) => f.tipo === tipo).map((f) => h('option', { value: f.id, selected: e[campo] === f.id ? '' : null }, f.nombre))); return s; };
-        const guardaCampos = RV.debounce(() => api.escritos('edita', id, { resumen: re.value, cuando: cu.value, etq: et.value.split(',').map((x) => x.trim()).filter(Boolean), meta: num(me.value) }).catch(E.err), 500);
+        const guardaCampos = RV.debounce(() => api.escritos('edita', id, { resumen: re.value, cuando: cu.value, etq: et.value.split(',').map((x) => x.trim()).filter(Boolean), meta: num(me.value) }).catch(E.err), 500, true);
         for (const c of [re, cu, et, me]) c.addEventListener('input', guardaCampos);
         cuerpo.append(h('div.versal', 'Estado'), h('div.e-chips', E.ESTADOS.map((n, i) => h('button.e-chip', { type: 'button', 'aria-pressed': num(e.estado) === i ? 'true' : 'false', onclick: () => api.escritos('edita', id, { estado: i }).then(pintaPanel).catch(E.err) }, n))),
           campoPanel('Resumen de la escena', re), h('div.e-dos', campoPanel('Punto de vista', sel('pov', 'personaje')), campoPanel('Lugar', sel('lugar', 'lugar'))),
@@ -301,6 +301,13 @@
 
     const inst = {
       id, nodo,
+      // Guarda ya lo último que se ha escrito y espera a que esté guardado (al cerrar la ventana o salir de Atrio)
+      async vaciar() {
+        clearTimeout(timerGuarda); timerGuarda = null;
+        if (texto === guardado) return;
+        const t = texto; guardado = t;
+        try { await api.escritos('escribe', id, t); } catch (e) { guardado = ''; E.err(e); }
+      },
       cerrar() {
         clearTimeout(timerGuarda); clearTimeout(timerPinta); clearInterval(timerSnap); clearInterval(timerSprint);
         document.removeEventListener('selectionchange', selCambia);
@@ -342,4 +349,6 @@
   RV.escribirEditorCambio = () => { if (RV.editorActivo) RV.editorActivo.refresca(); };
   RV.escEditor = () => !!(RV.editorActivo && RV.editorActivo.escape());
   window.addEventListener('beforeunload', () => { if (RV.editorActivo) RV.editorActivo.cerrar(); });
+  // Para Atrio al cerrar: lo que se esté escribiendo (el texto de la escena y los campos con espera) se guarda ya y se espera
+  RV.vaciarEscribir = async () => { try { if (RV.editorActivo) await RV.editorActivo.vaciar(); await RV.vaciarPendientes(); } catch { /* */ } return true; };
 })(window.RV);

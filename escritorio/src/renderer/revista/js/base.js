@@ -41,7 +41,17 @@ window.RV = window.RV || {};
   };
   RV.$ = (s, r = document) => r.querySelector(s);
   RV.$$ = (s, r = document) => [...r.querySelectorAll(s)];
-  RV.debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  // vaciable: si algo está esperando para guardarse (Escribir), RV.vaciarPendientes() lo hace ya (al cerrar la ventana o salir)
+  const pendientes = new Set();
+  RV.debounce = (fn, ms, vaciable) => {
+    let t; let args = null;
+    const ejecuta = () => { t = null; pendientes.delete(ejecuta); const a = args; args = null; return fn(...a); };
+    return (...a) => { clearTimeout(t); args = a; t = setTimeout(ejecuta, ms); if (vaciable) pendientes.add(ejecuta); };
+  };
+  RV.vaciarPendientes = async () => {
+    const todos = [...pendientes];
+    for (const f of todos) { try { await f(); } catch { /* */ } }
+  };
   RV.num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
   RV.plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
   RV.limpiaError = (e) => String((e && e.message) || e || 'Algo ha fallado').replace(/^Error invoking remote method '[^']+': (Error: )?/, '');

@@ -32,6 +32,7 @@ jobs:
           node herramientas/prueba-escribir-texto.js
           node herramientas/prueba-escribir-export.js
           node herramientas/prueba-maqueta.js
+          node herramientas/prueba-escribir-copias.js
       - name: Atrio.app (Apple Silicon)
         run: npx electron-builder --mac dir --arm64 --publish never
       - name: Firma ad-hoc y comprobación

@@ -392,6 +392,49 @@
     pinta();
   };
 
+  // Copias de seguridad: Atrio guarda solo, en una carpeta de este equipo (aparte de tu cuenta), una copia completa de todo lo
+  // escrito cada vez que algo cambia. De cualquier copia se saca una obra como obra NUEVA: nunca pisa lo que tienes ahora.
+  E.dlgCopias = () => {
+    let d = null;
+    const abiertas = new Set();
+    const cuando = (t) => new Date(t).toLocaleString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const fila = (c, obras) => h('div.e-pap',
+      h('div.versal.acento', cuando(c.t)),
+      h('div.e-pap-titulo', `${RV.plural(c.obras, 'obra', 'obras')} · ${cifra(c.palabras)} palabras`),
+      h('div.e-pap-meta', `${Math.max(1, Math.round(c.bytes / 1024))} KB · ${c.archivo}`),
+      abiertas.has(c.archivo)
+        ? h('div.e-copia-obras', (obras || []).map((o) => h('div.e-copia-obra',
+          h('span', `${o.titulo} · ${RV.plural(o.escenas, 'escena', 'escenas')} · ${cifra(o.palabras)} palabras`),
+          h('button.boton-tinta', { type: 'button', onclick: async () => {
+            try {
+              const r = await api.escritosCopiaRestaurar(c.archivo, o.id);
+              RV.aviso(`Sacada como obra nueva: «${r.titulo}»`);
+              if (d) d.cerrar();
+              RV.ir({ v: 'obra', id: r.id, tab: 0 });
+            } catch (e) { E.err(e); }
+          } }, 'Sacar como obra nueva'))))
+        : h('div.fila-botones', h('button.enlace', { type: 'button', onclick: () => { abiertas.add(c.archivo); pinta(); } }, 'Ver las obras de esta copia →')));
+    const pinta = async () => {
+      let r = { carpeta: '', lista: [] };
+      try { r = await api.escritosCopias(); } catch (e) { E.err(e); }
+      if (!d) return;
+      const detalle = {};
+      for (const c of r.lista) if (abiertas.has(c.archivo)) { try { detalle[c.archivo] = await api.escritosCopiaObras(c.archivo); } catch (e) { E.err(e); } }
+      reemplaza(d.cuerpo,
+        h('p.texto', 'Atrio guarda solo una copia completa de todo lo que escribes (también lo de la papelera) en una carpeta de este equipo, aparte de tu cuenta: la primera a los pocos segundos de abrir, luego cada cuarto de hora si algo ha cambiado, y al cerrar. Se conservan las últimas 40. Sacar una obra de una copia la deja como obra nueva: no toca lo que tienes ahora.'),
+        r.carpeta ? h('p.versal', r.carpeta) : null,
+        r.lista.length ? r.lista.map((c) => fila(c, detalle[c.archivo])) : h('p.e-pap-vacia', 'Todavía no hay ninguna copia: se hará la primera enseguida.'));
+    };
+    d = RV.dialogo({
+      ante: 'Escribir', titulo: 'Copias de seguridad', ancho: true, cuerpo: [h('p.texto', 'Cargando…')],
+      acciones: [
+        { texto: 'Hacer una copia ahora', fn: async () => { try { const c = await api.escritosCopiaAhora(); RV.aviso(c ? 'Copia hecha.' : 'No hay nada nuevo desde la última copia.'); pinta(); } catch (e) { E.err(e); } } },
+        { texto: 'Abrir la carpeta', fn: async () => { try { await api.escritosCopiaCarpeta(); } catch (e) { E.err(e); } } },
+        'hueco', { texto: 'Cerrar', principal: true, fn: (x) => x.cerrar() }],
+    });
+    pinta();
+  };
+
   // Comparar con otro texto (un borrador o una versión): diferencia a diferencia, eliges de cada una
   E.dlgCompara = (actual, nombre, otro, alAplicar) => {
     const ET = RV.ET;
@@ -490,6 +533,7 @@
       if (archivoAbierto) root.append(h('div.e-obras', arch.map(tarjeta)));
     }
     root.append(h('button.enlace.apagado.e-ir-papelera', { type: 'button', onclick: () => E.dlgPapelera() }, `Papelera${estado.papelera ? ` · ${estado.papelera}` : ''}`));
+    root.append(h('button.enlace.apagado.e-ir-papelera', { type: 'button', onclick: () => E.dlgCopias() }, 'Copias de seguridad'));
     return root;
   };
   async function importar() {

@@ -80,3 +80,14 @@ Casos compartidos (los pasan el móvil y el PC): `herramientas/casos/mezcla.json
 
 Pruebas cruzadas: `EscritosInteropTest.kt` hace trabajar al núcleo del móvil con el módulo de JavaScript del PC contra el
 mismo Firebase de mentira (leer y escribir, y cambiar a la vez párrafos distintos, borrar y recuperar).
+
+## Copias de seguridad (PC y Mac, 3.2.5)
+
+Una novela no se puede volver a escribir, así que el escritorio guarda **copias completas** en una carpeta de este equipo,
+aparte de la cuenta (`<datos>/atrio/escritos-copias`, en el Mac `~/Library/Application Support/Atrio-datos/data/atrio/escritos-copias`):
+la primera a los 20 s de abrir, luego cada 15 minutos si algo ha cambiado, y al cerrar la ventana o salir (⌘W, ⌘Q). Se
+conservan las últimas 40. Cada archivo (`copia-AAAA-MM-DD_HHMMSS-<n>obras-<p>pal.json`) lleva todos los documentos, también la
+papelera. En Escribir → «Copias de seguridad» se ven, se abre la carpeta y de cualquier copia se saca una obra como **obra
+nueva** (ids nuevos y enlaces entre capítulos, escenas, fichas, hitos y borradores intactos; nunca pisa lo que hay).
+Los archivos se escriben con `fsync` (guardado durable). Código: `escritos-copias.js`; pruebas: `prueba-escribir-copias.js` y
+`prueba-escribir-cierre.js` (Atrio de verdad: teclear y cerrar al momento, ⌘W y ⌘Q). Pendiente: el móvil no tiene aún estas copias.

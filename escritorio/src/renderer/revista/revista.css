@@ -1466,3 +1466,6 @@ body.ed-foco .ed-salir:hover { color: var(--acento); }
 /* macOS: la ventana no tiene marco y los tres botones (cerrar, minimizar, ampliar) van sobre la cabecera */
 body[data-plat="darwin"] #cabecera { padding-top: 30px; }
 body[data-plat="darwin"].ed-foco .ed-salir { top: 36px; }
+.e-ir-papelera + .e-ir-papelera { margin-top: 10px; }
+.e-copia-obras { display: grid; gap: 8px; margin-top: 10px; }
+.e-copia-obra { display: flex; align-items: center; gap: 14px; justify-content: space-between; border-top: 1px solid var(--linea); padding-top: 8px; }

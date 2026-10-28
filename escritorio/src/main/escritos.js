@@ -58,7 +58,13 @@ function crear({ dir, dev, net, log = () => {} }) {
   try { for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(path.join(dir, 'acked.json'), 'utf8')))) acked.set(k, Number(v)); } catch { /* sin nada aún */ }
 
   // Escritura atómica (archivo temporal y renombrar): un corte a medias no deja un documento roto
-  const graba = (f, txt) => { const tmp = `${f}.tmp`; fs.writeFileSync(tmp, txt); fs.renameSync(tmp, f); };
+  // (con fsync: si se va la luz o se cuelga el sistema justo después, el archivo ya está en el disco y no queda vacío)
+  const graba = (f, txt) => {
+    const tmp = `${f}.tmp`;
+    const fd = fs.openSync(tmp, 'w');
+    try { fs.writeSync(fd, txt); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    fs.renameSync(tmp, f);
+  };
   const guarda = (o) => { try { graba(path.join(dDocs, `${o.id}.json`), JSON.stringify(o)); } catch (e) { log('escritos: no se pudo guardar', e.message); } };
   const guardaIndice = () => { try { graba(path.join(dir, 'acked.json'), JSON.stringify(Object.fromEntries(acked))); } catch { /* */ } };
   const borrado = (o) => !!o && o.d === 1;
@@ -72,6 +78,8 @@ function crear({ dir, dev, net, log = () => {} }) {
     onChange(f) { alCambiar = f || (() => {}); },
     estado: () => ({ error, ultima, pendientes: api.pendientes().length, papelera: api.papelera().length }),
     todos: () => vivos(),
+    // Todo lo que hay (también la papelera y las marcas de borrado), para las copias de seguridad
+    copiaTodo: () => [...docs.values()].map((o) => ({ ...o })),
     get: (id) => { const o = docs.get(id); return o && !borrado(o) ? o : null; },
     tipo: (t, pid) => vivos().filter((o) => o.t === t && (pid == null || o.pid === pid)).sort(porOrden),
     obras: () => api.tipo(T.OBRA),

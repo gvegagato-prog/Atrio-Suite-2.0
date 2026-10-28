@@ -18,6 +18,14 @@ function iniciar({ ronron, ipcMain, send, log, fetchImpl, dir, dialog, ventana =
     net: { uid: () => ronron.uid(), db: (m, p, b, q) => ronron.db(m, p, b, q || '', false) },
     log,
   });
+  // Copias de seguridad en una carpeta de este equipo (aparte de la cuenta); ver escritos-copias.js
+  const copias = require('./escritos-copias').iniciar({ escr, carpeta: dir ? path.join(dir, '..', 'escritos-copias') : path.join(XDG_DATA, 'atrio', 'escritos-copias'), log });
+  escr.copias = copias;
+  ipcMain.handle('escritos:copias', () => ({ carpeta: copias.carpeta, lista: copias.lista() }));
+  ipcMain.handle('escritos:copiaAhora', () => copias.copia(true));
+  ipcMain.handle('escritos:copiaObras', (_e, archivo) => copias.obrasDe(archivo));
+  ipcMain.handle('escritos:copiaRestaurar', (_e, archivo, obraId) => copias.restaura(archivo, obraId));
+  ipcMain.handle('escritos:copiaCarpeta', async () => { const { shell } = require('electron'); return shell.openPath(copias.carpeta); });
   const estado = () => ({ ...escr.estado(), signed: !!ronron.uid() });
   let pend = null;
   // Se avisa a la ventana con todo lo de ahora (junta cambios seguidos)

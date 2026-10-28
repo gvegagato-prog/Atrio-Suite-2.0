@@ -28,6 +28,7 @@ jobs:
           node herramientas/prueba-escribir-texto.js
           node herramientas/prueba-escribir-export.js
           node herramientas/prueba-maqueta.js
+          node herramientas/prueba-escribir-copias.js
       - name: Prueba de Atrio de verdad, en la edición solo revista (Electron bajo Xvfb)
         # Abre Atrio con una cuenta en un Firebase de mentira y comprueba, además de Escribir, que no hay lanzador: ni «Modo
         # Juegos», ni «Tu PC», ni abrir juegos, ni apagar el equipo, y que el equipo no se registra como controlable.
@@ -42,6 +43,9 @@ jobs:
           # La maqueta de las fichas del móvil, pintada en Atrio, y la suite sin ofrecerse como PC (ve el móvil, pide sus fotos, sincroniza al momento)
           node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-mac"
           node herramientas/prueba-suite.js
+          # Escribir: lo último que se teclea queda guardado al cerrar (⌘W y ⌘Q) y al cerrar queda una copia de seguridad
+          SOLO=1 node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-mac"
+          COMO=salir SOLO=1 node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-mac-q"
       - name: Atrio.app (Apple Silicon, desde Linux)
         run: npx electron-builder --mac dir --arm64 --publish never
       - name: rcodesign

@@ -71,6 +71,22 @@ let scanning = null;
 let lastScan = 0;
 let tracker = null;
 let quitting = false;
+let escribir = null; // Escribir (escritos-cuenta.js)
+
+// Antes de cerrar la ventana o salir (⌘Q, ⌘W): lo que se esté escribiendo se guarda ya y se ESPERA a que esté guardado (el
+// editor espera unos instantes antes de guardar, y al cerrar solo lo enviaba sin esperar) y, si algo ha cambiado, se hace
+// una copia de seguridad. (No he conseguido reproducir una pérdida de letras con lo de antes: esto lo asegura.)
+async function vaciaEscribir() {
+  try {
+    if (win && !win.isDestroyed() && !win.webContents.isLoading()) {
+      await Promise.race([
+        win.webContents.executeJavaScript('(window.RV && RV.vaciarEscribir) ? RV.vaciarEscribir() : true'),
+        new Promise((r) => setTimeout(r, 2000)),
+      ]);
+    }
+  } catch (e) { log('escribir: al cerrar', e.message); }
+  try { if (escribir && escribir.copias) escribir.copias.copia(); } catch (e) { log('escribir: copia al cerrar', e.message); }
+}
 let background = process.argv.includes('--background');
 
 // ---------- Versiones de Proton instaladas (para juegos añadidos con umu-run) ----------
@@ -432,6 +448,11 @@ async function horasAlCerrar(key) {
   try {
     await ronron.edit({ op: 'addMin', kind: 0, id: Number(p.id), min });
   } catch (e) { log('horas al cerrar', e.message); }
+}
+
+// Solo para las pruebas (ATRIO_PRUEBA_CIERRE=1): cerrar la ventana (⌘W) o salir de Atrio (⌘Q) por el camino de siempre
+if (process.env.ATRIO_PRUEBA_CIERRE === '1') {
+  ipcMain.handle('prueba:cierre', (_e, como) => { setTimeout(() => { if (como === 'salir') app.quit(); else if (win) win.close(); }, 0); return true; });
 }
 
 function setupSuiteIpc() {
@@ -1006,8 +1027,19 @@ function createWindow() {
     dialog.showErrorBox('Atrio no ha podido mostrar la interfaz',
       `La parte gráfica se ha cerrado varias veces (${details.reason}).\n\nHay un registro con los detalles en:\n${LOG_PATH}`);
   });
-  // Con el arranque automático activo, cerrar la ventana la oculta y Atrio sigue contando horas
+  // Escribir: se guarda lo último antes de que la ventana desaparezca (se vuelve a cerrar cuando está guardado)
+  let vaciando = false;
+  let vaciado = false;
   win.on('close', (e) => {
+    if (!shots && !vaciado) {
+      e.preventDefault();
+      if (vaciando) return;
+      vaciando = true;
+      vaciaEscribir().finally(() => { vaciando = false; vaciado = true; try { if (win && !win.isDestroyed()) win.close(); } catch { /* */ } });
+      return;
+    }
+    vaciado = false;
+    // Con el arranque automático activo, cerrar la ventana la oculta y Atrio sigue contando horas
     if (quitting || shots || install.state().mode !== 'hidden') return;
     e.preventDefault();
     win.hide();
@@ -1108,7 +1140,7 @@ app.whenReady().then(async () => {
     rescanLigero();
   });
   // Escribir (obras, capítulos, escenas, fichas y notas de tu cuenta)
-  try { require('./escritos-cuenta').iniciar({ ronron, ipcMain, send, log, fetchImpl: (...a) => net.fetch(...a), dialog, ventana: () => win }); } catch (e) { log('escribir', e.message); }
+  try { escribir = require('./escritos-cuenta').iniciar({ ronron, ipcMain, send, log, fetchImpl: (...a) => net.fetch(...a), dialog, ventana: () => win }); } catch (e) { log('escribir', e.message); }
   nube.start({
     config: () => config.get(), data: () => ronron.data(), edit: (op) => ronron.edit(op), log, fotosDir: FOTOS,
     onFotos: () => send('fotos', fotoNames()),
@@ -1236,7 +1268,7 @@ app.on('before-quit', (e) => {
   if (!suiteStopped) {
     suiteStopped = true;
     e.preventDefault();
-    Promise.race([suite.stop(), new Promise((r) => setTimeout(r, 2500))]).finally(() => app.quit());
+    Promise.race([vaciaEscribir().then(() => suite.stop()), new Promise((r) => setTimeout(r, 4500))]).finally(() => app.quit());
   }
 });
 app.on('window-all-closed', () => app.quit());
