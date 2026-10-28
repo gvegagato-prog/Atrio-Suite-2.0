@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('atrio', {
   meta: (key) => invoke('meta:get', key),
   autostart: () => invoke('autostart:get'),
   setAutostart: (mode) => invoke('autostart:set', mode),
+  abrirInicioSesion: () => invoke('sistema:inicioSesion'),
   log: (msg) => invoke('log', msg),
   playForget: (key) => invoke('play:forget', key),
   ronron: () => invoke('ronron:state'),

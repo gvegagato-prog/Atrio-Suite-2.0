@@ -10,6 +10,7 @@
   const S = {};
   RV.ajustesPc = S;
   const WIN = api.platform === 'win32';
+  const MAC = api.platform === 'darwin';
   const cfg = () => D.config();
 
   // ---------------------------------------------------------------- Piezas
@@ -90,12 +91,13 @@
 
   // ---------------------------------------------------------------- Juegos añadidos
   const RUNNERS = WIN ? [['native', 'Ejecutable (.exe)'], ['command', 'Comando propio']]
+    : MAC ? [['native', 'Aplicación de Mac'], ['command', 'Comando propio']]
     : [['native', 'Nativo de Linux'], ['umu', 'Windows con Proton'], ['wine', 'Windows con Wine'], ['command', 'Comando propio']];
   S.propios = () => {
     const c = cfg();
     const runner = Object.fromEntries(RUNNERS);
     const lista = (c.customGames || []);
-    return [bloque('Juegos añadidos', WIN ? 'Cualquier juego que no venga de una tienda: su .exe o un comando propio.' : 'Cualquier juego que no venga de una tienda: ejecutables de Linux, AppImage, scripts o juegos de Windows con Proton.',
+    return [bloque('Juegos añadidos', WIN ? 'Cualquier juego que no venga de una tienda: su .exe o un comando propio.' : MAC ? 'Cualquier juego que no venga de una tienda: su aplicación (Juego.app) o un comando propio.' : 'Cualquier juego que no venga de una tienda: ejecutables de Linux, AppImage, scripts o juegos de Windows con Proton.',
       lista.length ? lista.map((g) => fila(g.name, `${runner[g.runner] || ''}: ${g.runner === 'command' ? g.command : g.exec}`,
         h('button.enlace', { type: 'button', onclick: () => editarPropio(g.id) }, 'Editar'),
         h('button.enlace.apagado', { type: 'button', onclick: () => RV.confirmar(`¿Quitar ${g.name}?`, 'Se quita de Atrio. Los archivos del juego no se tocan.', 'Quitar', () => guardar({ customGames: lista.filter((x) => x.id !== g.id) }, `${g.name} quitado`)) }, 'Quitar')))
@@ -108,10 +110,10 @@
     const dato = ya ? { ...ya } : { id: uid(), name: '', exec: '', runner: 'native', args: '', prefix: '', protonPath: '', command: '' };
     const nombre = RV.entrada(dato.name, { placeholder: 'Por ejemplo: Hollow Knight', 'data-autofocus': !ya ? true : null });
     const exe = ruta(dato.exec, {
-      title: 'El ejecutable del juego', placeholder: 'Ruta al ejecutable, script o .exe',
+      title: MAC ? 'La aplicación del juego' : 'El ejecutable del juego', placeholder: MAC ? 'Ruta a la aplicación (Juego.app)' : 'Ruta al ejecutable, script o .exe',
       alElegir: (p) => {
         if (!nombre.value.trim()) nombre.value = p.split(/[\\/]/).pop().replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
-        if (!WIN && /\.(exe|msi|bat)$/i.test(p) && dato.runner === 'native') { dato.runner = 'umu'; pintar(); }
+        if (!WIN && !MAC && /\.(exe|msi|bat)$/i.test(p) && dato.runner === 'native') { dato.runner = 'umu'; pintar(); }
       },
     });
     const args = RV.entrada(dato.args, { placeholder: 'Opcional, por ejemplo: -windowed' });
@@ -128,12 +130,12 @@
     const dyn = h('div.formulario');
     const runnerSel = h('div');
     function pintar() {
-      if (WIN && dato.runner !== 'command') dato.runner = 'native';
+      if ((WIN || MAC) && dato.runner !== 'command') dato.runner = 'native';
       const r = dato.runner;
       runnerSel.replaceChildren(opciones(RUNNERS, r, (v) => { dato.runner = v; pintar(); }));
       dyn.replaceChildren(...(r === 'command'
         ? [RV.campo('Comando', comando, WIN ? 'Se ejecuta con cmd.exe.' : 'Se ejecuta con /bin/sh. Útil para scripts o lanzadores de otros programas.')]
-        : [RV.campo('Ejecutable', exe.el, r === 'native' ? (WIN ? 'El archivo .exe del juego.' : 'Juegos nativos de Linux, AppImage o scripts .sh.') : 'Archivo .exe del juego de Windows.'),
+        : [RV.campo(MAC ? 'Aplicación' : 'Ejecutable', exe.el, r === 'native' ? (WIN ? 'El archivo .exe del juego.' : MAC ? 'La aplicación del juego, normalmente en la carpeta Aplicaciones. Atrio cuenta las horas mientras está abierta.' : 'Juegos nativos de Linux, AppImage o scripts .sh.') : 'Archivo .exe del juego de Windows.'),
           RV.campo('Argumentos', args),
           r !== 'native' ? RV.campo('Prefijo de Wine', prefijo.el, 'Cada juego tiene su propio prefijo, donde se guardan su configuración y partidas.') : null,
           r === 'umu' ? RV.campo('Versión de Proton', h('div', protones, proton), 'Hace falta umu-launcher (sudo pacman -S umu-launcher).') : null].filter(Boolean)));
@@ -328,13 +330,16 @@
     const b = cfg().behavior || {};
     const arranque = h('div', nota('Comprobando…'));
     api.autostart().then((st) => {
-      if (!st.available) { arranque.replaceChildren(nota(WIN ? 'Para abrir Atrio al iniciar sesión, instálalo con el instalador.' : 'Para abrir Atrio al iniciar sesión, usa la versión AppImage.')); return; }
+      if (!st.available) { arranque.replaceChildren(nota(WIN ? 'Para abrir Atrio al iniciar sesión, instálalo con el instalador.' : MAC ? 'Para abrir Atrio al iniciar sesión, usa Atrio.app (en la carpeta Aplicaciones).' : 'Para abrir Atrio al iniciar sesión, usa la versión AppImage.')); return; }
       arranque.replaceChildren(
+        st.aprobar ? h('div', nota('macOS pide que lo apruebes: en Ajustes del Sistema → General → Elementos de inicio, activa Atrio.'),
+          h('button.enlace.acento', { type: 'button', onclick: () => api.abrirInicioSesion() }, 'Abrir Ajustes del Sistema')) : null,
+        st.fueraDeAplicaciones ? nota('Atrio no está en la carpeta Aplicaciones: arrástralo allí (desde el DMG) para que se abra bien al iniciar sesión y se actualice.') : null,
         opciones([['visible', 'Abrir Atrio'], ['hidden', 'En segundo plano'], ['off', 'No abrir solo']], st.mode, async (v) => {
           try { await api.setAutostart(v); RV.aviso(v === 'off' ? 'Atrio ya no se abrirá al iniciar sesión' : 'Atrio se abrirá al iniciar sesión'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
           RV.refrescar();
         }),
-        nota('Al iniciar sesión, Atrio se abre solo y cuenta también lo que juegues desde Steam. En segundo plano no se ve hasta que lo abras; cerrar la ventana solo la oculta.'),
+        nota(MAC ? 'Al iniciar sesión, Atrio se abre solo y cuenta lo que juegues. En segundo plano no se ve hasta que lo abras desde el Dock; cerrar la ventana solo la oculta.' : 'Al iniciar sesión, Atrio se abre solo y cuenta también lo que juegues desde Steam. En segundo plano no se ve hasta que lo abras; cerrar la ventana solo la oculta.'),
         st.installed && st.path ? nota(`Atrio está instalado en ${st.path}.`) : null);
     }).catch(() => arranque.replaceChildren());
     return [

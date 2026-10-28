@@ -148,23 +148,32 @@ const win = {
 };
 
 // ---------- macOS ----------
-// Atrio.app se arrastra a Aplicaciones (no hay nada que instalar). El arranque al iniciar sesión se guarda en los
-// «Elementos de inicio de sesión» con app.setLoginItemSettings (lo que se pide en Ajustes → Comportamiento).
+// Atrio.app se arrastra a Aplicaciones (no hay nada que instalar). El arranque al iniciar sesión es un «Elemento de
+// inicio de sesión» (app.setLoginItemSettings; desde macOS 13 lo gestiona el sistema y a veces pide aprobarlo en
+// Ajustes del Sistema). macOS ya no deja pedir «abrir oculto»: si eliges «En segundo plano», es Atrio quien no enseña
+// la ventana cuando ve que lo ha abierto el inicio de sesión (wasOpenedAtLogin; ver main.js).
 const mac = {
   async installSelf() { return { installed: false, reason: 'macos' }; },
   writeMenuEntry() { return true; },
   setAutostart(mode) {
     const { app } = require('electron');
-    if (!app.isPackaged) throw new Error('Solo disponible con Atrio.app instalado');
-    app.setLoginItemSettings({ openAtLogin: mode !== 'off', openAsHidden: mode === 'hidden', args: mode === 'hidden' ? ['--background'] : [] });
-    return mac.state();
+    if (!app.isPackaged) throw new Error('Solo disponible con Atrio.app (no al probarlo desde el código)');
+    app.setLoginItemSettings({ openAtLogin: mode !== 'off' });
+    return mac.state(mode);
   },
-  state() {
+  state(pedido) {
     const { app } = require('electron');
     let st = {};
     try { st = app.getLoginItemSettings(); } catch { /* */ }
-    const mode = !st.openAtLogin ? 'off' : st.openAsHidden || (st.executableWillLaunchAtLogin && false) ? 'hidden' : 'visible';
-    return { available: app.isPackaged, mode, installed: app.isPackaged, path: process.execPath, menu: app.isPackaged, viaSteam: false, mac: true };
+    let quiere = pedido;
+    if (!quiere) { try { quiere = require('./config').get().behavior.autostart; } catch { /* */ } }
+    const aprobar = st.status === 'requires-approval';
+    const mode = !st.openAtLogin && !aprobar ? 'off' : quiere === 'hidden' ? 'hidden' : 'visible';
+    return {
+      available: app.isPackaged, mode, installed: app.isPackaged, path: process.execPath, menu: app.isPackaged, viaSteam: false, mac: true,
+      // macOS pide aprobarlo (Ajustes del Sistema → General → Elementos de inicio) / Atrio no está en Aplicaciones
+      aprobar, fueraDeAplicaciones: app.isPackaged && !process.execPath.startsWith('/Applications/'),
+    };
   },
 };
 

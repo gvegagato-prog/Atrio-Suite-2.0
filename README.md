@@ -10,7 +10,7 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
-## Escribir (móvil 6.80 y PC 3.0)
+## Escribir (desde el móvil 6.80 y el PC 3.0; a fondo en 6.82 y 3.1)
 
 Un apartado para escribir novelas, en el móvil, en el PC y en el Mac, con la misma cuenta y **sin conexión incluida**:
 lo que escribes se guarda en el dispositivo al momento, se sube solo cuando hay red y llega a los demás en directo.
@@ -22,17 +22,32 @@ lo que escribes se guarda en el dispositivo al momento, se sube solo cuando hay 
   escena `***`, con los signos apagados), deshacer y rehacer, buscar y reemplazar (en la escena o en toda la obra),
   modo concentración, máquina de escribir (la línea queda a media altura), tamaño y tipo de letra, y contadores
   (palabras, tiempo de lectura, lo escrito hoy frente a tu meta). Se guarda solo.
+  **Tipografía automática** (`--` es una raya, `- ` al empezar la línea abre un diálogo, `...` son puntos suspensivos y
+  las comillas son « »; se deshace aparte), **sinónimos** de la palabra (tesauro libre de RLA-ES, en el dispositivo),
+  **sprints** de escritura con meta e historial, atajos de teclado (también con un teclado físico en Android: Ctrl+B,
+  Ctrl+I, Ctrl+Z, Ctrl+Y, Ctrl+F, Ctrl+S) y, en el PC, corrector ortográfico en español y menú del botón derecho
+  (correcciones, añadir al diccionario, sinónimos, cortar/copiar/pegar).
 - **Fichas del mundo.** Personajes, lugares, objetos y reglas, con datos y alias: en cuanto nombras uno en el texto
   queda subrayado y lo tienes en el panel, con «poner el nombre».
 - **Notas y tablón.** Notas, ideas, investigación y **plantillas** que puedes tener al lado mientras escribes
   (y insertar con un toque), con color y fijadas arriba.
 - **Borradores, historial y comparar.** Borradores alternativos de una escena y las últimas 40 versiones (en cada
-  dispositivo). Se comparan párrafo a párrafo y se mezclan eligiendo de cada diferencia. Si dos dispositivos cambian la
-  misma escena a la vez, **no se pierde nada**: gana la más nueva y la otra queda como borrador.
+  dispositivo). Se comparan párrafo a párrafo y se mezclan eligiendo de cada diferencia.
+- **Cambios a la vez en dos sitios: se juntan.** Si cambias la misma escena en el móvil y en el PC (sin conexión, o a la
+  vez), se juntan por campos, por párrafos y, dentro de un párrafo, por palabras. Solo si los dos cambian la misma frase
+  manda la más nueva, y **el texto entero de la otra queda como borrador** (no se pierde nada).
+- **Papelera.** Lo que borras (una obra con todo lo suyo, un capítulo con sus escenas, una escena, una ficha…) se queda
+  30 días en la papelera, en todos tus dispositivos, con «Deshacer» al borrar y «Recuperar» (vuelve a su sitio).
 - **Línea temporal y cifras.** Hitos ordenables enlazados a escenas, escenas con «cuándo pasa», palabras por día
   (30 días), racha, mejor día, palabras por capítulo, estado del manuscrito y cuándo terminarás al ritmo que llevas.
-- **Exportar e importar.** Word (.docx), libro (.epub), Markdown y texto; importar Word, Markdown o texto (los títulos
-  abren capítulos). Todo se hace en el dispositivo: el texto no se envía a ningún sitio.
+- **Exportar e importar.** Word (.docx), **PDF**, libro (.epub), Markdown y texto. Word y PDF en dos estilos: «Libro»
+  (A5 con las letras de la revista, justificado, capítulos en página nueva) y **«Manuscrito»** para editoriales y
+  concursos (Times New Roman 12, márgenes de 2,5 cm, interlineado 1,5 o doble, portada con el recuento de palabras,
+  páginas numeradas y FIN; no hay un formato único: si una editorial pide otro, mandan sus normas). En Android,
+  «Guardar en…» (cualquier carpeta o nube) o Compartir. Importar Word, Markdown o texto (los títulos abren capítulos).
+  Todo se hace en el dispositivo: el texto no se envía a ningún sitio.
+- **Seguir donde lo dejaste.** La biblioteca empieza por la última escena que tocaste (en cualquier dispositivo) y la
+  portada de la revista tiene el bloque «Escribiendo» con «Seguir con…». El manuscrito se filtra por etiquetas.
 - **Sin IA.** No hay nada que mande tu texto a un servicio de terceros.
 
 El formato y las reglas de mezcla están en `docs/escribir.md`. Los datos van en `/users/<uid>/escritos` (un documento por
@@ -43,14 +58,19 @@ quedan al alcance de su cuenta (si lo quieres cerrar, hay que afinar las reglas 
 ## Atrio en macOS (Apple Silicon)
 
 La acción «Atrio (PC, macOS Apple Silicon)» (`.github/workflows/escritorio-mac.yml`) construye `Atrio.app` en un Mac
-de GitHub, la firma «ad-hoc» (sin certificado de Apple Developer), comprueba que arranca y deja **Atrio-mac-arm64.zip**
-y **Atrio-mac-arm64.dmg** en los artefactos de la ejecución.
+de GitHub, la firma «ad-hoc» (sin certificado de Apple Developer), la **prueba de verdad** (la abre con una cuenta de
+prueba y la maneja por CDP: Escribir en directo, sin conexión, tipografía, deshacer, PDF y Word; deja capturas en el
+artefacto «atrio-mac-pruebas») y deja **Atrio-mac-arm64.zip** y **Atrio-mac-arm64.dmg** (con el acceso a Aplicaciones
+para arrastrar) en los artefactos de la ejecución.
 Como no está firmada con un certificado de Apple ni notarizada, macOS avisará la primera vez: abre Atrio con clic
 derecho → «Abrir», o ejecuta `xattr -dr com.apple.quarantine /Applications/Atrio.app`. Para quitar el aviso para
 siempre hace falta una cuenta de Apple Developer (99 $ al año) con certificado y notarización.
 Datos en `~/Library/Application Support/Atrio-datos`. En el Mac funcionan la revista, Escribir, la cuenta, el móvil,
 las capturas (`screencapture`; pide el permiso de «Grabación de pantalla») y lo jugado en Steam o Heroic; no existen
-Lutris ni Polaris (streaming).
+Lutris ni Polaris (streaming). Cosas propias del Mac: menú Edición en español (Deshacer y Rehacer también en el editor
+de Escribir), atajos con ⌘, juegos añadidos a mano como aplicación (`Juego.app`, con sus horas), abrirse al iniciar
+sesión (si macOS pide aprobarlo, Ajustes → Comportamiento lleva a «Elementos de inicio») y un icono con la retícula de
+macOS. **No lo he podido probar en un Mac físico**: solo en el Mac de GitHub (sin pantalla real ni permisos).
 
 ## Atrio en el escritorio (2.1): el lanzador y la revista
 

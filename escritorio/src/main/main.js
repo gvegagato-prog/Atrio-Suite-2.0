@@ -70,7 +70,7 @@ let scanning = null;
 let lastScan = 0;
 let tracker = null;
 let quitting = false;
-const background = process.argv.includes('--background');
+let background = process.argv.includes('--background');
 
 // ---------- Versiones de Proton instaladas (para juegos añadidos con umu-run) ----------
 function protonList() {
@@ -722,6 +722,8 @@ function setupIpc() {
   ipcMain.handle('fs:exists', (_e, p) => exists(p));
   ipcMain.handle('log:path', () => LOG_PATH);
   ipcMain.handle('autostart:get', () => ({ ...install.state(), steam: steamShortcut.findAtrio() }));
+  // macOS: abrir «Elementos de inicio de sesión» en Ajustes del Sistema (cuando pide aprobar que Atrio se abra solo)
+  ipcMain.handle('sistema:inicioSesion', () => { if (process.platform === 'darwin') shell.openExternal('x-apple.systempreferences:com.apple.LoginItems-Settings.extension'); }); 
   ipcMain.handle('autostart:set', (_e, mode) => {
     const st = install.setAutostart(mode, steamVia());
     config.patch({ behavior: { autostart: mode } });
@@ -926,10 +928,26 @@ function createWindow() {
     },
   });
   win.setMenuBarVisibility(false);
-  // macOS: sin su menú no funcionan Cmd+C, Cmd+V, Cmd+Z, Cmd+Q… (la barra de menús es la del sistema)
+  // macOS: sin su menú no funcionan Cmd+C, Cmd+V, Cmd+Z, Cmd+Q… (la barra de menús es la del sistema). Deshacer y
+  // rehacer se los pide a la página: en el editor de Escribir son suyos (Chromium no sabe qué deshacer allí)
   if (process.platform === 'darwin') {
     const { Menu } = require('electron');
-    Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' }]));
+    const pide = (que) => () => send('menu', que);
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { role: 'appMenu' },
+      { label: 'Edición', submenu: [
+        { label: 'Deshacer', accelerator: 'CmdOrCtrl+Z', click: pide('deshacer') },
+        { label: 'Rehacer', accelerator: 'Shift+CmdOrCtrl+Z', click: pide('rehacer') },
+        { type: 'separator' },
+        { role: 'cut', label: 'Cortar' }, { role: 'copy', label: 'Copiar' }, { role: 'paste', label: 'Pegar' },
+        { role: 'pasteAndMatchStyle', label: 'Pegar sin formato' }, { role: 'selectAll', label: 'Seleccionar todo' },
+        { type: 'separator' },
+        { label: 'Buscar…', accelerator: 'CmdOrCtrl+F', click: pide('buscar') },
+        { type: 'separator' },
+        { role: 'startSpeaking', label: 'Empezar a leer en voz alta' }, { role: 'stopSpeaking', label: 'Dejar de leer' },
+      ] },
+      { role: 'viewMenu' }, { role: 'windowMenu' },
+    ]));
   }
   web.attach(win, send);
   require('./menu-contextual').poner(win, log);
@@ -1036,6 +1054,10 @@ app.whenReady().then(async () => {
     if (!primary) { app.quit(); return; }
   }
   config.load();
+  // macOS: abierto por el inicio de sesión con «En segundo plano» elegido: sin enseñar la ventana
+  if (process.platform === 'darwin' && app.isPackaged && config.get().behavior.autostart === 'hidden') {
+    try { if (app.getLoginItemSettings().wasOpenedAtLogin) background = true; } catch { /* */ }
+  }
   // Windows: el instalador ya hizo su parte; la primera vez se activa el arranque al iniciar sesión
   if (process.platform === 'win32' && app.isPackaged && !process.env.ATRIO_SHOTS) {
     try {

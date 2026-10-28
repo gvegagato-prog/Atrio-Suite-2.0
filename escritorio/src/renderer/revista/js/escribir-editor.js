@@ -12,6 +12,9 @@
   RV.vistas = RV.vistas || {};
   RV.editorActivo = null;
 
+  // Los atajos se escriben como en cada sistema (⌘ en macOS)
+  const MAC = api.platform === 'darwin';
+  const atajo = (t) => (MAC ? t.replace(/Ctrl\+Mayús\+/g, '⇧⌘').replace(/Ctrl\+/g, '⌘') : t);
   const prefs = () => { try { return JSON.parse(localStorage.getItem('escribir:prefs') || '{}'); } catch { return {}; } };
   const guardaPrefs = (p) => { try { localStorage.setItem('escribir:prefs', JSON.stringify(p)); } catch { /* */ } };
   const esc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -153,8 +156,10 @@
     function selCambia() { if (document.activeElement === pagina) { pie(); } }
     const deshacer = () => { const v = hist.deshace(); if (v) { texto = v.text; pinta(); ponSel(v.a, v.b); pie(); aviso(); } };
     const rehacer = () => { const v = hist.rehace(); if (v) { texto = v.text; pinta(); ponSel(v.a, v.b); pie(); aviso(); } };
+    let ultimaTecla = 0;
     pagina.addEventListener('keydown', (e) => {
       const ctrl = e.ctrlKey || e.metaKey; const k = e.key.toLowerCase();
+      if (ctrl && (k === 'z' || k === 'y')) ultimaTecla = Date.now();
       // Deshacer y rehacer son nuestros (Chromium no tiene nada que rehacer: su lista no se entera de nuestros cambios).
       // Con la tecla se cogen aquí; el menú Edición de macOS llega por «beforeinput»
       if (ctrl && k === 'z' && !e.altKey) { e.preventDefault(); if (e.shiftKey) rehacer(); else deshacer(); } else if (ctrl && k === 'y' && !e.shiftKey && !e.altKey) { e.preventDefault(); rehacer(); }
@@ -166,11 +171,11 @@
 
     // ---- Barra de formato
     const tecla = (t, ayuda, f, extra) => h('button.ed-tecla' + (extra || ''), { type: 'button', title: ayuda, 'aria-label': ayuda, onmousedown: (e) => e.preventDefault(), onclick: f }, t);
-    const barra = h('div.ed-barra', tecla('↶', 'Deshacer (Ctrl+Z)', deshacer), tecla('↷', 'Rehacer (Ctrl+Mayús+Z)', rehacer), h('i'),
-      tecla('B', 'Negrita (Ctrl+B)', () => aplica((v) => ET.envuelve(v, '**')), '.neg'), tecla('I', 'Cursiva (Ctrl+I)', () => aplica((v) => ET.envuelve(v, '*')), '.cur'),
+    const barra = h('div.ed-barra', tecla('↶', atajo('Deshacer (Ctrl+Z)'), deshacer), tecla('↷', atajo('Rehacer (Ctrl+Mayús+Z)'), rehacer), h('i'),
+      tecla('B', atajo('Negrita (Ctrl+B)'), () => aplica((v) => ET.envuelve(v, '**')), '.neg'), tecla('I', atajo('Cursiva (Ctrl+I)'), () => aplica((v) => ET.envuelve(v, '*')), '.cur'),
       tecla('T', 'Título', () => aplica((v) => ET.prefijoLinea(v, '## '))), tecla('❝', 'Cita', () => aplica((v) => ET.prefijoLinea(v, '> '))), tecla('* * *', 'Salto de escena', () => aplica((v) => ET.salto(v))),
       tecla('«»', 'Comillas', () => aplica((v) => ET.comillas(v))), tecla('—', 'Raya', () => aplica((v) => ET.inserta(v, '—'))), h('i'),
-      tecla('Buscar', 'Buscar y reemplazar (Ctrl+F)', () => abreBusca()), h('span.hueco'),
+      tecla('Buscar', atajo('Buscar y reemplazar (Ctrl+F)'), () => abreBusca()), h('span.hueco'),
       tecla('Letra −', 'Letra más pequeña', () => { p.tam = Math.max(14, p.tam - 1); aplicaPrefs(); }), tecla('Letra +', 'Letra más grande', () => { p.tam = Math.min(34, p.tam + 1); aplicaPrefs(); }),
       tecla(['Serif', 'Sans', 'Mono'][p.fuente], 'Tipo de letra', () => { p.fuente = (p.fuente + 1) % 3; aplicaPrefs(); }, '.fuente'),
       tecla('Máquina', 'Máquina de escribir: la línea queda a media altura', () => { p.maquina = !p.maquina; aplicaPrefs(); centra(); }, '.maq'),
@@ -210,8 +215,14 @@
       h('button.enlace', { type: 'button', onclick: () => { const rx = busquedaRx(); if (rx) { const t = texto.replace(rx, () => rIn.value); cambio(t, 0, 0); actualiza(); } } }, 'Todos aquí'),
       h('button.enlace', { type: 'button', onclick: async () => { if (!busqueda) return; await guarda(); try { const n = await api.escritos('reemplaza', pid, busqueda, rIn.value, busquedaMayus); RV.aviso(`${RV.plural(n, 'cambio', 'cambios')} en toda la obra`); } catch (e) { E.err(e); } } }, 'Todos en la obra'),
       h('button.enlace.apagado', { type: 'button', onclick: () => cierraBusca() }, '✕'));
-    function abreBusca() { buscaFila.hidden = false; const s = offsets(); if (s && s.a !== s.b) qIn.value = texto.slice(Math.min(s.a, s.b), Math.max(s.a, s.b)); qIn.focus(); qIn.select(); actualiza(); }
-    function cierraBusca() { buscaFila.hidden = true; busqueda = ''; qIn.value = ''; repinta(); pagina.focus({ preventScroll: true }); }
+    // (al cerrar la búsqueda, el cursor vuelve a donde estaba, o al último resultado elegido)
+    let selAntes = null;
+    function abreBusca() { buscaFila.hidden = false; const s = offsets(); if (s) selAntes = s; if (s && s.a !== s.b) qIn.value = texto.slice(Math.min(s.a, s.b), Math.max(s.a, s.b)); qIn.focus(); qIn.select(); actualiza(); }
+    function cierraBusca() {
+      const n = hallazgos(); const ir = actual >= 0 && n[actual] ? { a: n[actual][0], b: n[actual][1] } : selAntes;
+      buscaFila.hidden = true; busqueda = ''; qIn.value = ''; pinta(); pagina.focus({ preventScroll: true });
+      if (ir) ponSel(ir.a, ir.b);
+    }
 
     // ---- Panel
     const campoPanel = (et, ctl) => h('label.campo', h('span', et), ctl);
@@ -308,6 +319,10 @@
         if (panelAbierto && !panel.contains(document.activeElement)) pintaPanel();
         pie();
       },
+      // Lo que pide el menú Edición de macOS (si la tecla ya lo hizo, no se repite)
+      conFoco: () => document.activeElement === pagina,
+      menu(que) { if (Date.now() - ultimaTecla < 400) return; if (que === 'deshacer') deshacer(); else rehacer(); },
+      busca() { abreBusca(); },
       escape() {
         if (!buscaFila.hidden) { cierraBusca(); return true; }
         if (foco) { ponFoco(false); return true; }

@@ -34,24 +34,29 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP"
           codesign -dv "$APP" 2>&1 | head -12
           lipo -archs "$APP/Contents/MacOS/Atrio"
-      - name: Arranque (la app abre, carga la revista y no se cae)
+      - name: Prueba de Atrio de verdad (la app firmada, por CDP)
+        # Abre Atrio.app con una cuenta en un Firebase de mentira y lo maneja como una persona: Escribir sube y baja en
+        # directo, sin conexión y al volver, tipografía, deshacer y rehacer, PDF y Word. Deja capturas de pantalla.
+        working-directory: .
+        env:
+          ATRIO_BIN: ${{ github.workspace }}/escritorio/dist/mac-arm64/Atrio.app/Contents/MacOS/Atrio
+          PW: ${{ github.workspace }}/escritorio/node_modules/playwright-core
         run: |
-          APP="$PWD/dist/mac-arm64/Atrio.app"
-          export ATRIO_HOME="$RUNNER_TEMP/atrio-home"
-          mkdir -p "$ATRIO_HOME"
-          "$APP/Contents/MacOS/Atrio" --ventana > "$RUNNER_TEMP/atrio-salida.log" 2>&1 &
-          PID=$!
-          sleep 25
-          if ! kill -0 $PID 2>/dev/null; then echo "Atrio se ha cerrado solo"; cat "$RUNNER_TEMP/atrio-salida.log"; exit 1; fi
-          find "$ATRIO_HOME" -name '*.log' -exec sh -c 'echo "== $1"; tail -30 "$1"' _ {} \;
-          # La captura de pantalla del sistema (si el runner da permiso)
-          screencapture -x "$RUNNER_TEMP/atrio-pantalla.png" || true
-          kill $PID || true
-      - name: Zip y DMG
+          (cd escritorio && npm i --no-save playwright-core@1.56.1)
+          node herramientas/prueba-escribir-atrio.js "$RUNNER_TEMP/atrio-prueba"
+      - name: Zip y DMG (con el acceso a Aplicaciones para arrastrar)
         run: |
-          mkdir -p salida
+          mkdir -p salida dmg
           ditto -c -k --sequesterRsrc --keepParent dist/mac-arm64/Atrio.app "salida/Atrio-mac-arm64.zip"
-          hdiutil create -volname "Atrio" -srcfolder dist/mac-arm64/Atrio.app -ov -format UDZO "salida/Atrio-mac-arm64.dmg"
+          ditto dist/mac-arm64/Atrio.app dmg/Atrio.app
+          ln -s /Applications dmg/Aplicaciones
+          hdiutil create -volname "Atrio" -srcfolder dmg -ov -format UDZO "salida/Atrio-mac-arm64.dmg"
+          # Comprobación: el DMG se monta y trae la app firmada y el acceso a Aplicaciones
+          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" "salida/Atrio-mac-arm64.dmg"
+          ls -la "$RUNNER_TEMP/dmg"
+          test -L "$RUNNER_TEMP/dmg/Aplicaciones"
+          codesign --verify --deep --strict "$RUNNER_TEMP/dmg/Atrio.app"
+          hdiutil detach "$RUNNER_TEMP/dmg"
           ls -la salida
       - uses: actions/upload-artifact@v4
         if: always()
@@ -62,7 +67,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: atrio-mac-registros
+          name: atrio-mac-pruebas
           path: |
-            ${{ runner.temp }}/atrio-salida.log
-            ${{ runner.temp }}/atrio-pantalla.png
+            ${{ runner.temp }}/atrio-prueba/*.png
+            ${{ runner.temp }}/atrio-prueba/atrio.log
+            ${{ runner.temp }}/atrio-prueba/exportado/*

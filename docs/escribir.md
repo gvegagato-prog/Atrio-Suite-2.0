@@ -69,6 +69,13 @@ versión se guarda aparte (las 3 últimas, en `b/<id>.json`, solo en el disposit
 | Exportar / importar | `EscribirExport.kt` | `escritorio/src/main/escritos-export.js` |
 | Pantallas | `EscribirScreens.kt`, `EscribirMas.kt`, `EscribirEditor.kt`, `EscribirDialogos.kt` | `revista/js/escribir.js`, `escribir-editor.js` |
 | Escucha en directo del índice | `Sincro.kt` (stream «escritos») | `escritos-cuenta.js` |
+| Papelera | `EscribirPapelera.kt` | `revista/js/escribir.js` (dlgPapelera) |
+| PDF | `EscribirPdf.kt` (PdfDocument) | `escritorio/src/main/escritos-pdf.js` (Chromium) |
+| Tipografía automática | `EscribirTexto.kt` (Tipografia) | `revista/js/escribir-texto.js` (ET.tipografia) |
+| Sinónimos (tesauro RLA-ES, LGPL 2.1) | `EscribirSinonimos.kt` + `assets/sinonimos` | `escritorio/src/main/sinonimos.js` |
+| Sprints | `EscribirSprint.kt` | `revista/js/escribir.js` (E.sprint) |
+
+Casos compartidos (los pasan el móvil y el PC): `herramientas/casos/mezcla.json`, `tipografia.json` y `sinonimos.json`.
 
 Pruebas cruzadas: `EscritosInteropTest.kt` hace trabajar al núcleo del móvil con el módulo de JavaScript del PC contra el
 mismo Firebase de mentira (leer y escribir, y cambiar a la vez párrafos distintos, borrar y recuperar).

@@ -101,8 +101,16 @@ async function launch(game) {
     case 'url':
       if (ABRE_EL_SISTEMA) return openUrl(l.url);
       return spawnDetached('xdg-open', [l.url]);
-    case 'exec':
+    case 'exec': {
+      // macOS: una aplicación (Juego.app) es una carpeta; se abre su ejecutable de dentro, para que Atrio vea cuándo
+      // termina (y cuente las horas), como con cualquier otro juego
+      if (IS_MAC && /\.app\/?$/i.test(l.cmd || '')) {
+        const bin = ejecutableDeApp(l.cmd);
+        if (bin) return spawnDetached(bin, l.args || [], { cwd: l.cwd, env: l.env });
+        return spawnDetached('/usr/bin/open', ['-W', '-a', l.cmd, ...(l.args && l.args.length ? ['--args', ...l.args] : [])], { cwd: l.cwd, env: l.env });
+      }
       return spawnDetached(l.cmd, l.args || [], { cwd: l.cwd, env: l.env });
+    }
     case 'shell':
       if (!l.command || !l.command.trim()) throw new Error('Este juego no tiene comando de lanzamiento');
       // Windows: lo interpreta cmd.exe (las rutas van entre comillas dobles)
@@ -113,4 +121,14 @@ async function launch(game) {
   }
 }
 
-module.exports = { launch, cleanEnv, which, spawnDetached };
+/** El ejecutable de dentro de una .app de macOS (CFBundleExecutable de su Info.plist), o null. */
+function ejecutableDeApp(app) {
+  const dir = path.join(app, 'Contents', 'MacOS');
+  let nombre = null;
+  try { nombre = require('child_process').execFileSync('/usr/bin/plutil', ['-extract', 'CFBundleExecutable', 'raw', '-o', '-', path.join(app, 'Contents', 'Info.plist')], { encoding: 'utf8', timeout: 4000 }).trim(); } catch { /* sin plutil o sin la clave */ }
+  if (nombre && fs.existsSync(path.join(dir, nombre))) return path.join(dir, nombre);
+  try { const l = fs.readdirSync(dir).filter((f) => !f.startsWith('.')); if (l.length === 1) return path.join(dir, l[0]); } catch { /* */ }
+  return null;
+}
+
+module.exports = { launch, cleanEnv, which, spawnDetached, ejecutableDeApp };

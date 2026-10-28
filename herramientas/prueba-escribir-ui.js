@@ -168,6 +168,21 @@ function siembra() {
   await p.screenshot({ path: path.join(OUT, 'pc-e08d-sprint-fin.png') });
   await p.keyboard.press('Escape'); await sleep(200);
 
+  console.log('Menú Edición de macOS');
+  await p.locator('.ed-texto').click(); await p.keyboard.press('Control+End');
+  await p.keyboard.type(' Frase del menú.'); await sleep(1000);
+  const conFrase = texto0();
+  await p.evaluate(() => window.__emit('menu', 'deshacer')); await sleep(900);
+  ok(!texto0().includes('Frase del menú.'), 'Edición → Deshacer deshace en el editor');
+  await p.evaluate(() => window.__emit('menu', 'rehacer')); await sleep(900);
+  ok(texto0() === conFrase, 'Edición → Rehacer lo rehace');
+  await p.keyboard.press('Control+z'); await p.evaluate(() => window.__emit('menu', 'deshacer')); await sleep(900);
+  await p.keyboard.press('Control+Shift+z'); await sleep(900);
+  ok(texto0() === conFrase, 'si la tecla ya lo hizo, el menú no lo repite');
+  await p.evaluate(() => window.__emit('menu', 'buscar')); await sleep(300);
+  ok(await p.locator('.ed-busca').isVisible(), 'Edición → Buscar abre la búsqueda del editor');
+  await p.keyboard.press('Escape'); await sleep(200);
+
   console.log('Panel, buscar y concentración');
   await p.locator('.ed-tecla.pan').click(); await sleep(400);
   await p.screenshot({ path: path.join(OUT, 'pc-e09-panel-escena.png') });

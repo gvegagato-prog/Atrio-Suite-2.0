@@ -711,7 +711,7 @@
 
   // ---------------------------------------------------------------- Datos en directo
   // (los escritos pueden llegar antes de que cargue app.js, que es quien sabe en qué página estamos)
-  const vista = () => (typeof RV.ruta === 'function' ? RV.ruta().v : '');
+  const vista = () => (typeof RV.ruta === 'function' && typeof RV.refrescar === 'function' ? RV.ruta().v || 'portada' : null);
   // (la portada solo se repinta si cambia lo que enseña de Escribir)
   let firmaPortada = '';
   const firma = () => { const s = E.ultimaEscena(); return s ? `${s.id}|${s.titulo}|${s.palabras}|${E.escritas(RV.hoy())}|${E.obras().length}` : ''; };
@@ -719,7 +719,7 @@
     const r = vista();
     if (r === 'editor') { if (RV.escribirEditorCambio) RV.escribirEditorCambio(); return; }
     if (r === 'escribir' || r === 'obra') RV.refrescar();
-    if (!r || r === 'portada') { const f = firma(); if (f !== firmaPortada) { firmaPortada = f; RV.refrescar(); } }
+    if (r === 'portada') { const f = firma(); if (f !== firmaPortada) { firmaPortada = f; RV.refrescar(); } }
   }, 60);
   api.on('escritos', (x) => { E.set(x.docs, x.estado); cambia(); });
   api.escritosTodo().then((x) => { E.set(x.docs, x.estado); if (['escribir', 'obra', 'editor'].includes(vista())) RV.refrescar(); }).catch(() => { cargado = true; });

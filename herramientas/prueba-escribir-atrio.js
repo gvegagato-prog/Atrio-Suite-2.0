@@ -3,6 +3,7 @@
 // Escribir en Atrio de verdad (Electron bajo Xvfb) con la cuenta en el Firebase de mentira: lo que se escribe en Atrio
 // sube solo; lo que sube «el móvil» (la base de datos, con el mismo formato) llega en directo; y sin conexión se sigue
 // escribiendo y, al volver la red, sube solo. Uso (desde la raíz): node herramientas/prueba-escribir-atrio.js [carpeta]
+// Con ATRIO_BIN prueba una app ya construida (en el Mac de GitHub: Atrio.app/Contents/MacOS/Atrio), sin Xvfb.
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -29,21 +30,25 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
 
 (async () => {
   fs.rmSync(HOME, { recursive: true, force: true }); fs.rmSync(STATE, { force: true });
-  fs.mkdirSync(path.join(HOME, '.config', 'atrio'), { recursive: true });
+  // (donde guarda Atrio su configuración: en macOS, ~/Library/Application Support/Atrio-datos)
+  const CONF = process.platform === 'darwin' ? path.join(HOME, 'Library', 'Application Support', 'Atrio-datos', 'config', 'atrio') : path.join(HOME, '.config', 'atrio');
+  fs.mkdirSync(CONF, { recursive: true });
   let fb = fake(); await sleep(700);
   const su = await j('POST', `${FB}/v1/accounts:signUp?key=prueba`, { email: 'gonzalo@ronron.example.com', password: 'secreto1', returnSecureToken: true });
   const uid = su.localId; const tok = su.idToken;
   const db = (m, p, b) => j(m, `${FB}${p}.json?auth=${tok}`, b);
   await db('PUT', '/config/webKey', 'prueba');
-  fs.writeFileSync(path.join(HOME, '.config', 'atrio', 'ronron.json'), JSON.stringify({ db: FB, authBase: FB, webKey: 'prueba', uid, user: 'gonzalo', refresh: su.refreshToken, dev: 'atrio-prueba', seen: {} }));
-  fs.writeFileSync(path.join(HOME, '.config', 'atrio', 'config.json'), JSON.stringify({ sources: { steam: false, heroic: false, lutris: false, emulators: false, custom: true }, customGames: [], behavior: { autostart: 'off', fullscreen: false, onLaunch: 'none' }, ui: 'revista' }));
+  fs.writeFileSync(path.join(CONF, 'ronron.json'), JSON.stringify({ db: FB, authBase: FB, webKey: 'prueba', uid, user: 'gonzalo', refresh: su.refreshToken, dev: 'atrio-prueba', seen: {} }));
+  fs.writeFileSync(path.join(CONF, 'config.json'), JSON.stringify({ sources: { steam: false, heroic: false, lutris: false, emulators: false, custom: true }, customGames: [], behavior: { autostart: 'off', fullscreen: false, onLaunch: 'none' }, ui: 'revista' }));
   const EXPO = path.join(OUT, 'exportado'); fs.rmSync(EXPO, { recursive: true, force: true }); fs.mkdirSync(EXPO, { recursive: true });
   const env = { ...process.env, ATRIO_PRUEBA_EXPORTA: EXPO, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_SUITE_BEAT: '4000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY']) delete env[k];
   const electron = path.join(DESK, 'node_modules', 'electron', 'dist', 'electron');
   const CDP = 9700 + Math.floor(Math.random() * 200);
   const logs = [];
-  const atrio = spawn('xvfb-run', ['-a', '-s', '-screen 0 1700x1000x24', electron, '--no-sandbox', '--ventana', '--revista', `--remote-debugging-port=${CDP}`, DESK], { env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+  const args = ['--ventana', '--revista', `--remote-debugging-port=${CDP}`];
+  const atrio = process.env.ATRIO_BIN ? spawn(process.env.ATRIO_BIN, args, { env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
+    : spawn('xvfb-run', ['-a', '-s', '-screen 0 1700x1000x24', electron, '--no-sandbox', ...args, DESK], { env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   atrio.stdout.on('data', (d) => logs.push(String(d))); atrio.stderr.on('data', (d) => logs.push(String(d)));
   let navegador = null;
   try {
@@ -123,22 +128,31 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     }
     const ex = (formato, op) => p.evaluate(([id, f, x]) => window.atrio.escritosExportar(id, f, x), [o.id, formato, op]);
     const { execFileSync } = require('child_process');
-    const info = (f) => execFileSync('pdfinfo', [f]).toString();
-    const txt = (f) => execFileSync('pdftotext', ['-layout', f, '-']).toString();
+    // (con poppler se mira por dentro; sin él, al menos que sea un PDF con sus páginas)
+    const poppler = (() => { try { execFileSync('pdfinfo', ['-v'], { stdio: 'ignore' }); return true; } catch { return false; } })();
+    const paginasDe = (f) => (fs.readFileSync(f, 'latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+    // El tamaño de página, del /MediaBox del propio PDF (en puntos): A5 = 420 × 595, A4 = 595 × 842
+    const tamano = (f) => { const m = /\/MediaBox\s*\[\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)\s*\]/.exec(fs.readFileSync(f, 'latin1')); if (!m) return '?'; const [w, hh] = [Math.round(+m[1]), Math.round(+m[2])]; return Math.abs(w - 420) <= 2 && Math.abs(hh - 595) <= 2 ? '(A5)' : Math.abs(w - 595) <= 2 && Math.abs(hh - 842) <= 2 ? '(A4)' : `${w}x${hh}`; };
+    const info = (f) => (poppler ? execFileSync('pdfinfo', [f]).toString() : `Pages: ${paginasDe(f)}\nPage size: ${tamano(f)}`);
+    const txt = (f) => (poppler ? execFileSync('pdftotext', ['-layout', f, '-']).toString() : null);
     const libro = await ex('pdf', { estilo: 'libro', titulosDeCapitulo: true });
     ok(libro && fs.existsSync(libro) && fs.readFileSync(libro).subarray(0, 5).toString() === '%PDF-', `PDF (libro) guardado (${libro && path.basename(libro)})`);
     const il = info(libro);
     const paginas = Number((il.match(/Pages:\s+(\d+)/) || [])[1]);
     ok(/\(A5\)/.test(il) && paginas >= 5, `A5 y ${paginas} páginas`);
     const tl = txt(libro);
-    ok(/Desde Atrio/.test(tl) && /Capítulo 3/.test(tl) && /\n\s*3\s*\n/.test(tl), 'con portada, capítulos y páginas numeradas');
-    ok(/Fraunces|Libro/i.test(execFileSync('pdffonts', [libro]).toString()), 'con las letras de la revista');
-    execFileSync('pdftoppm', ['-png', '-r', '60', '-f', '1', '-l', '3', libro, path.join(OUT, 'pdf-libro')]);
+    if (poppler) {
+      ok(/Desde Atrio/.test(tl) && /Capítulo 3/.test(tl) && /\n\s*3\s*\n/.test(tl), 'con portada, capítulos y páginas numeradas');
+      ok(/Fraunces|Libro/i.test(execFileSync('pdffonts', [libro]).toString()), 'con las letras de la revista');
+      execFileSync('pdftoppm', ['-png', '-r', '60', '-f', '1', '-l', '3', libro, path.join(OUT, 'pdf-libro')]);
+    } else console.log('  (sin poppler: no se mira el texto de los PDF por dentro)');
     const ms = await ex('pdf', { estilo: 'manuscrito', interlineado: '2' });
     const im = info(ms);
-    ok(/\(A4\)/.test(im), 'PDF (manuscrito) en A4');
-    ok(/DESDE ATRIO/.test(txt(ms)) && /palabras/.test(txt(ms)) && /FIN/.test(txt(ms)), 'con portada, recuento de palabras y FIN');
-    execFileSync('pdftoppm', ['-png', '-r', '60', '-f', '1', '-l', '2', ms, path.join(OUT, 'pdf-manuscrito')]);
+    ok(/\(A4\)/.test(im) && paginasDe(ms) >= 3, 'PDF (manuscrito) en A4');
+    if (poppler) {
+      ok(/DESDE ATRIO/.test(txt(ms)) && /palabras/.test(txt(ms)) && /FIN/.test(txt(ms)), 'con portada, recuento de palabras y FIN');
+      execFileSync('pdftoppm', ['-png', '-r', '60', '-f', '1', '-l', '2', ms, path.join(OUT, 'pdf-manuscrito')]);
+    }
     const wd = await ex('docx', { estilo: 'manuscrito' });
     ok(wd && /\(manuscrito\)\.docx$/.test(wd) && fs.readFileSync(wd).subarray(0, 2).toString() === 'PK', 'Word (manuscrito)');
 

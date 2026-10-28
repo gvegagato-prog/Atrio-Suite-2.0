@@ -46,12 +46,21 @@ un `.dmg`). Sin cuenta de Apple Developer va firmada «ad-hoc», así que la pri
 `xattr -dr com.apple.quarantine /Applications/Atrio.app`). Probarla desde Linux no es posible: `npm run dist:mac` genera el
 `.app` pero no se puede ejecutar ni firmar fuera de un Mac. Datos: `~/Library/Application Support/Atrio-datos`.
 Captura de pantalla con `screencapture` (pide permiso de Grabación de pantalla); apagar/reiniciar/suspender con
-`osascript` y `pmset`; arranque al iniciar sesión con los «Elementos de inicio de sesión».
+`osascript` y `pmset`; arranque al iniciar sesión con los «Elementos de inicio de sesión» (`app.setLoginItemSettings`;
+«En segundo plano» lo hace Atrio al ver `wasOpenedAtLogin`, porque macOS ya no deja pedir «abrir oculto»; si el sistema
+pide aprobarlo, Ajustes → Comportamiento lo dice y abre «Elementos de inicio»). Menú Edición propio: Deshacer, Rehacer y
+Buscar se los pide a la página (`menu` por IPC), porque en el editor de Escribir son suyos. Juegos añadidos `.app`: se
+abre el ejecutable de dentro (`CFBundleExecutable`) para que cuenten las horas. Icono: `build/icon-mac.png`
+(`herramientas/icono-mac.py`, 1024 px con la retícula de macOS). En CI, `herramientas/prueba-escribir-atrio.js` con
+`ATRIO_BIN` prueba la app firmada por CDP.
 
 ## Escribir
 
 Dentro de la revista (modo Revista → «Escribir»): obras, capítulos y escenas, el editor con formato a la vista, fichas,
-notas, borradores, historial, línea temporal, cifras y exportar a Word/EPUB/Markdown/texto. Lo guarda y sube
-`src/main/escritos.js` (formato en `docs/escribir.md`); la interfaz está en `src/renderer/revista/js/escribir*.js`.
+notas, borradores, historial, línea temporal, cifras, papelera, sprints y exportar a Word/PDF/EPUB/Markdown/texto. Lo
+guarda y sube `src/main/escritos.js` (mezcla en `escritos-mezcla.js`; formato en `docs/escribir.md`); el PDF lo imprime
+Chromium (`escritos-pdf.js`), los sinónimos están en `sinonimos.js` (el tesauro se copia de
+`movil/app/src/main/assets/sinonimos` con `extraResources`) y el menú del botón derecho con el corrector en
+`menu-contextual.js`. La interfaz está en `src/renderer/revista/js/escribir*.js`.
 Pruebas: `node herramientas/prueba-escritos.js`, `prueba-escribir-texto.js`, `prueba-escribir-export.js`, y con
 Chromium/Electron `prueba-escribir-ui.js` y `prueba-escribir-atrio.js`.

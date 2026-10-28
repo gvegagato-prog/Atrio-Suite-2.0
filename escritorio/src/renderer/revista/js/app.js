@@ -220,6 +220,14 @@
     }
     if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); RV.volver(); }
   });
+  // El menú Edición de macOS (deshacer, rehacer, buscar): en el editor de Escribir son suyos; en otro campo, los de siempre
+  api.on('menu', (que) => {
+    const ed = RV.editorActivo;
+    if (que === 'buscar') { if (ed && ruta.v === 'editor') ed.busca(); else if (!RV.hayDialogo()) atajoBuscar(); return; }
+    if (que !== 'deshacer' && que !== 'rehacer') return;
+    if (ed && ruta.v === 'editor' && ed.conFoco()) { ed.menu(que); return; }
+    try { document.execCommand(que === 'deshacer' ? 'undo' : 'redo'); } catch { /* */ }
+  });
   // El botón «atrás» del ratón
   window.addEventListener('mouseup', (e) => { if (e.button === 3 && !RV.hayDialogo()) { e.preventDefault(); RV.volver(); } });
 
