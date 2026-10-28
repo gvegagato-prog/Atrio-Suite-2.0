@@ -42,7 +42,8 @@ mando) se abre desde Ajustes de la revista; para volver, Ajustes del lanzador �
 ## macOS (Apple Silicon)
 
 `Atrio.app` se construye en GitHub (acción «Atrio (macOS Apple Silicon)»: artefacto «Atrio-macOS-arm64», con un `.zip` y
-un `.dmg`). Sin cuenta de Apple Developer va firmada «ad-hoc», así que la primera vez: clic derecho → Abrir (o
+un `.dmg`). Sin cuenta de Apple Developer va firmada «ad-hoc», así que la primera vez (macOS 15: el clic derecho →
+Abrir ya no vale): Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente» tras intentar abrirla (o
 `xattr -dr com.apple.quarantine /Applications/Atrio.app`). Probarla desde Linux no es posible: `npm run dist:mac` genera el
 `.app` pero no se puede ejecutar ni firmar fuera de un Mac. Datos: `~/Library/Application Support/Atrio-datos`.
 Captura de pantalla con `screencapture` (pide permiso de Grabación de pantalla); apagar/reiniciar/suspender con

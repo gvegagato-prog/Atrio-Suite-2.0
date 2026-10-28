@@ -62,8 +62,10 @@ de GitHub, la firma «ad-hoc» (sin certificado de Apple Developer), la **prueba
 prueba y la maneja por CDP: Escribir en directo, sin conexión, tipografía, deshacer, PDF y Word; deja capturas en el
 artefacto «atrio-mac-pruebas») y deja **Atrio-mac-arm64.zip** y **Atrio-mac-arm64.dmg** (con el acceso a Aplicaciones
 para arrastrar) en los artefactos de la ejecución.
-Como no está firmada con un certificado de Apple ni notarizada, macOS avisará la primera vez: abre Atrio con clic
-derecho → «Abrir», o ejecuta `xattr -dr com.apple.quarantine /Applications/Atrio.app`. Para quitar el aviso para
+Como no está firmada con un certificado de Apple ni notarizada, macOS no la abrirá la primera vez. En macOS 15
+(Sequoia) ya no vale el clic derecho → «Abrir»: intenta abrirla, cierra el aviso y ve a Ajustes del Sistema →
+Privacidad y seguridad → Seguridad → «Abrir igualmente» (sale durante una hora), con tu contraseña; o ejecuta
+`xattr -dr com.apple.quarantine /Applications/Atrio.app`. Después se abre normal. Para quitar el aviso para
 siempre hace falta una cuenta de Apple Developer (99 $ al año) con certificado y notarización.
 Datos en `~/Library/Application Support/Atrio-datos`. En el Mac funcionan la revista, Escribir, la cuenta, el móvil,
 las capturas (`screencapture`; pide el permiso de «Grabación de pantalla») y lo jugado en Steam o Heroic; no existen
