@@ -1,0 +1,53 @@
+name: Atrio (PC, macOS construido desde Linux)
+# Plan B cuando GitHub no consigue arrancar una máquina macOS (se queda en «waiting for a hosted runner to come online»):
+# construye Atrio.app para Apple Silicon en una máquina Linux y la firma «ad-hoc» con rcodesign (apple-codesign), que firma
+# sin un Mac. NO se puede abrir ni probar la app aquí (no hay macOS): solo se comprueba que el .app tiene sus binarios
+# arm64 y que la firma es válida. La buena es la de escritorio-mac.yml (prueba la app firmada de verdad).
+on:
+  workflow_dispatch:
+jobs:
+  mac-desde-linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: escritorio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dependencias
+        run: npm ci
+      - name: Pruebas de Escribir (guardado, sincronización, texto y exportar)
+        working-directory: .
+        run: |
+          node herramientas/prueba-escritos.js
+          node herramientas/prueba-escribir-texto.js
+          node herramientas/prueba-escribir-export.js
+      - name: Atrio.app (Apple Silicon, desde Linux)
+        run: npx electron-builder --mac dir --arm64 --publish never
+      - name: rcodesign
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/indygreg/apple-platform-rs/releases?per_page=30" \
+            | python3 -c "import sys,json; r=[x for x in json.load(sys.stdin) if x['tag_name'].startswith('apple-codesign')]; a=[y['browser_download_url'] for y in r[0]['assets'] if 'x86_64-unknown-linux-musl' in y['name'] and y['name'].endswith('.tar.gz')]; print(a[0])")
+          echo "$url"
+          mkdir -p "$RUNNER_TEMP/rc" && curl -fsSL "$url" | tar -xz -C "$RUNNER_TEMP/rc" --strip-components=1
+          "$RUNNER_TEMP/rc/rcodesign" --version
+      - name: "Firma ad-hoc y comprobación (sin Mac, solo se mira la estructura)"
+        run: |
+          APP=dist/mac-arm64/Atrio.app
+          file "$APP/Contents/MacOS/Atrio"
+          "$RUNNER_TEMP/rc/rcodesign" sign "$APP"
+          "$RUNNER_TEMP/rc/rcodesign" print-signature-info "$APP" | head -40
+          "$RUNNER_TEMP/rc/rcodesign" verify "$APP/Contents/MacOS/Atrio" || echo "verify: ver arriba"
+      - name: Zip
+        run: |
+          mkdir -p salida
+          (cd dist/mac-arm64 && zip -ryq "$GITHUB_WORKSPACE/escritorio/salida/Atrio-mac-arm64-desde-Linux.zip" Atrio.app)
+          ls -la salida
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Atrio-macOS-arm64-desde-Linux-SIN-PROBAR
+          path: escritorio/salida/*
