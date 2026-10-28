@@ -141,7 +141,8 @@
   };
 
   // Escribir (o cambiar) una entrada del diario
-  RV.diario.escribir = (dia, nota) => {
+  // (sobre: las fichas de las que habla una entrada nueva, «categoría:id»)
+  RV.diario.escribir = (dia, nota, sobre) => {
     const texto = RV.areaTexto(nota ? nota.x : '', { placeholder: '¿Qué tal el día? Lo que has jugado, leído o visto, lo que te ha gustado, lo que no…', rows: '9' });
     const cuando = RV.entrada(RV.isoDia(nota ? num(nota.dia) : dia), { type: 'date', max: RV.isoDia(RV.hoy()) });
     const guardar = async (d) => {
@@ -150,6 +151,7 @@
       const nuevoDia = Number.isFinite(t) ? Math.min(Math.floor(t / RV.DIA), RV.hoy()) : dia;
       if (!x && !(nota && nota.foto)) { if (nota) await borrar(d); else d.cerrar(); return; }
       const item = { ...(nota || {}), id: nota ? num(nota.id) : Date.now(), dia: nuevoDia, x };
+      if (!nota && sobre && sobre.length) item.sobre = sobre;
       if (await RV.editar({ op: 'diarioPut', item }, nota ? 'Entrada guardada' : 'Guardado en tu diario')) d.cerrar();
     };
     const borrar = async (d) => { if (await RV.editar({ op: 'diarioDel', id: num(nota.id) }, 'Entrada borrada')) d.cerrar(); };

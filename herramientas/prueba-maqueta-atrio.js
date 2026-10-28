@@ -64,10 +64,17 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
   ];
   const filasCategoria = [{ s: 0.5, a: 0, c: [{ t: 'opinion' }, { t: 'datos' }] }];
   const data = {
-    games: [ficha(4242, 'Hades II'), ficha(4343, 'Otro juego'), ficha(4444, 'Un tercero')], plays: [], books: [], bplays: [], kinds: [], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {},
+    games: [ficha(4242, 'Hades II'), ficha(4343, 'Otro juego'), ficha(4444, 'Un tercero')],
+    plays: [{ id: 5151, name: 'Un juego en curso', cover: '', hero: '', logo: '', status: 1, entries: [], chapter: 0, every: 3, start: 19900, end: 0, creator: 'Estudio', platform: 'PC', pages: 0, minutes: 120, updated: Date.now(),
+      ttbMain: 600, ttbExtra: 900, ttbFull: 1500, parts: [{ n: 'Acto 1', d: 1 }, { n: 'Acto 2', d: 1 }, { n: 'Acto 3', d: 0 }, { n: 'Acto 4', d: 0 }], memos: [{ t: Date.now() - 5000, x: 'Idea suelta del móvil' }] }],
+    books: [], bplays: [{ id: 6161, name: 'Un libro en curso', cover: '', hero: '', logo: '', status: 1, entries: [{ time: Date.now() - 86400000, general: 80, gfx: 80, story: 80, music: 80, gameplay: 80, note: 'Va bien', chapter: 6 }], chapter: 12, every: 3, start: 19900, end: 0, creator: 'Autora', platform: 'Ebook', pages: 300, minutes: 0, updated: Date.now() }],
+    diario: [{ id: 111, dia: 20000, x: 'Hoy he jugado un buen rato.', sobre: ['0:5151'], updated: Date.now() }], kinds: [], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {},
     maquetas: [
       { id: 1, k: 'v:0:4242', j: JSON.stringify(filasPropia), updated: Date.now() },
       { id: 2, k: 'tpl:v:0', j: JSON.stringify(filasCategoria), updated: Date.now() - 1000 },
+      { id: 4, k: 'p:0:5151', j: JSON.stringify([
+        { s: 0.5, a: 0, c: [{ t: 'progreso' }, { t: 'partes' }] }, { s: 0.5, a: 0, c: [{ t: 'guias' }, { t: 'enlaces' }] }, { s: 0.5, a: 0, c: [{ t: 'diario' }, { t: 'critica' }] }]), updated: Date.now() },
+      { id: 5, k: 'p:1:6161', j: JSON.stringify([{ s: 0.5, a: 0, c: [{ t: 'capitulos' }, { t: 'estado' }] }, { s: 0.5, a: 0, c: [{ t: 'diario' }] }]), updated: Date.now() },
       { id: 3, k: 'v:0:4444', j: JSON.stringify([{ s: 0.5, a: 0, c: [{ t: 'imagen', i: foto('foto_1700000000009'), as: 1.3 }] }]), updated: Date.now() },
     ],
   };
@@ -91,7 +98,7 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
     await p.setViewportSize({ width: 1400, height: 1000 });
     const llega = await hasta(() => p.evaluate(() => !!(window.RV && window.RV.D && window.RV.D.buscar(window.RV.D.tipo(0), 'g', 4242))), 40000, 500);
     ok(!!llega, 'La ficha y su maqueta llegan de la cuenta');
-    const ir = async (id, k = 0) => { await p.evaluate(([i, kk]) => window.RV.ir({ v: 'ficha', k: kk, t: 'g', id: i }), [id, k]); await sleep(1200); };
+    const ir = async (id, k = 0, t = 'g') => { await p.evaluate(([i, kk, tt]) => window.RV.ir({ v: 'ficha', k: kk, t: tt, id: i }), [id, k, t]); await sleep(1200); };
 
     console.log('La ficha con su propia maqueta');
     await ir(4242);
@@ -105,8 +112,8 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
     ok(filas[0] && Math.abs(filas[0].cas[0].w / (filas[0].cas[0].w + filas[0].cas[1].w) - 0.45) < 0.03, `la línea de la fila 1 está donde la puso el móvil (${filas[0] ? (filas[0].cas[0].w / (filas[0].cas[0].w + filas[0].cas[1].w)).toFixed(2) : '-'} ≈ 0,45)`);
     ok(filas[1] && /Mi veredicto/i.test(filas[1].cas[0].texto), 'fila 2: el texto libre con su título');
     ok(filas[2] && /fija/.test(filas[2].cls) && Math.abs(filas[2].h - 200) <= 3, `fila 3: alto fijo de 200 (mide ${filas[2] ? Math.round(filas[2].h) : '-'})`);
-    ok(filas[3] && filas[3].cas.length === 1 && /Opini/i.test(filas[3].cas[0].texto), 'fila 4: sin «Guías» (el ordenador aún no la tiene) queda solo la opinión');
-    ok(await p.locator('.maq-nota').count() === 1 && /guías/i.test(await p.locator('.maq-nota').innerText()), 'y avisa de que falta «Guías»');
+    ok(filas[3] && filas[3].cas.length === 2 && /guías/i.test(filas[3].cas[0].texto) && /Opini/i.test(filas[3].cas[1].texto), 'fila 4: las Guías y la opinión');
+    ok(await p.locator('.maq-nota').count() === 0, 'no falta ninguna casilla, así que no avisa de nada');
 
     console.log('Las imágenes encuadradas: sin hueco, como en el móvil');
     const imgs = await p.evaluate(() => [...document.querySelectorAll('.maq-img')].map((c) => {
@@ -119,6 +126,26 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
     ok(Math.abs(imgs[0].caja.w / imgs[0].caja.h - 1.0) < 0.03, `la casilla de la foto tiene la forma que dejó el encuadre (${(imgs[0].caja.w / imgs[0].caja.h).toFixed(2)} ≈ 1,00)`);
     ok(Math.abs(imgs[0].img.t - imgs[0].caja.t) <= 1.5, 'foto pegada arriba (la de la franja roja): su borde de arriba está en el de la casilla, sin franja vacía');
     ok(Math.abs(imgs[1].caja.h - (filas[2].h - 14 - 28)) < 6 || imgs[1].caja.h > 100, `la foto de la fila de alto fijo llena la casilla (${Math.round(imgs[1].caja.h)} px)`);
+
+    console.log('Las casillas del móvil que el ordenador ya tiene (Progreso, Apuntes rápidos, Guías, Enlaces, En tu diario)');
+    await ir(5151, 0, 'p');
+    await p.screenshot({ path: path.join(OUT, 'ficha-en-curso.png') });
+    const txt = (await p.locator('.casillas').innerText()).replace(/\s+/g, ' ');
+    ok(/progreso/i.test(txt) && /2 de 4 completados/i.test(txt) && /50 %/.test(txt), 'Progreso: «2 de 4 completados» y el 50 %');
+    ok(/historia/i.test(txt) && /lleva 2 h de unas 10 h/i.test(txt), 'Progreso: lo que dura y lo que llevas');
+    ok(/apuntes rápidos/i.test(txt) && /Idea suelta del móvil/.test(txt), 'Apuntes rápidos con la idea del móvil');
+    ok(/guías/i.test(txt) && /buscar guías/i.test(txt), 'Guías con «Buscar guías»');
+    ok(/escribir en el diario/i.test(txt) && /banda sonora/i.test(txt) && /datos de la ficha/i.test(txt), 'Enlaces: diario, banda sonora y datos de la ficha');
+    ok(/en tu diario/i.test(txt) && /Hoy he jugado un buen rato\./.test(txt), 'En tu diario con lo que escribiste sobre esta ficha');
+    ok(/crítica/i.test(await p.locator('.maq-nota').innerText()) && !/guías|progreso|enlaces|diario/i.test(await p.locator('.maq-nota').innerText()), 'solo avisa de «Crítica» (lo único que falta)');
+    await ir(6161, 1, 'p');
+    await p.screenshot({ path: path.join(OUT, 'ficha-libro.png') });
+    const tl = (await p.locator('.casillas').innerText()).replace(/\s+/g, ' ');
+    ok(/capítulos/i.test(tl) && /12/.test(tl) && /capítulo actual/i.test(tl) && /llevas 6 capítulos sin apuntar/i.test(tl), 'Capítulos: el 12 y «Llevas 6 capítulos sin apuntar»');
+    await p.locator('.cap-botones button', { hasText: '+ 1' }).click();
+    const sube = await hasta(async () => (await p.locator('.cap-gigante').innerText()) === '13' ? true : null, 8000, 300);
+    ok(!!sube, 'pulsar «+ 1» pasa al capítulo 13 y se guarda');
+    ok(!/en tu diario/i.test(tl), 'sin entradas en el diario, esa casilla no sale (como en el móvil)');
 
     console.log('Una foto de la galería del móvil que aún no está aquí se puede pedir');
     await ir(4444);

@@ -168,10 +168,73 @@
   // ---------------------------------------------------------------- La maqueta de la ficha (la del móvil)
   // Lo que cada ficha tiene de maqueta (qué casilla va en cada fila, cuánto miden, sus textos y sus fotos) viaja con la
   // cuenta, y aquí se pinta igual. Las casillas que el ordenador todavía no tiene (Guías, Crítica…) no se pintan y se avisa.
-  const NO_HAY = {
-    guias: 'Guías', critica: 'Crítica', donde: 'Dónde verla', lectura: 'Lectura', subrayados: 'Subrayados y notas',
-    capitulos: 'Capítulos', progreso: 'Progreso', partes: 'Partes', diario: 'En tu diario', enlaces: 'Enlaces',
-  };
+  const NO_HAY = { critica: 'Crítica', donde: 'Dónde verla', lectura: 'Lectura', subrayados: 'Subrayados y notas' };
+
+  // «El nombre del viento (Crónica del asesino de reyes, #1)» → «El nombre del viento»
+  const titLimpio = (t) => String(t || '').replace(/\s*\([^()]*\)\s*$/, '').trim() || String(t || '');
+  const abreFuera = (url) => { try { RV.api.openExternal(url); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); } };
+  // Un enlace de la casilla Enlaces: texto, lo de abajo en versalitas y lo que hace
+  const enlaceMaq = (texto, sub, fn, acento) => h(`button.enlace-maq${acento ? '.acento' : ''}`, { type: 'button', onclick: fn }, h('span.tit', texto), sub ? h('span.versal', sub) : null);
+  const refDe = (kind, item) => `${kind.id}:${item.id}`;
+  const diarioDe = (kind, item) => (RV.diario ? RV.diario.notas() : []).filter((n) => (n.sobre || []).map(String).includes(refDe(kind, item)))
+    .sort((a, b) => (num(b.dia) - num(a.dia)) || (num(b.id) - num(a.id)));
+  const fmtDiario = (dia) => { const t = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(num(dia) * RV.DIA)); return t.charAt(0).toUpperCase() + t.slice(1); };
+
+  // Lo que ha escrito el diario de esta ficha (las 4 últimas; el resto, en el diario)
+  function diarioFicha(kind, item) {
+    const ns = diarioDe(kind, item);
+    const box = h('div.maq-diario', ns.slice(0, 4).map((n) => h('button.maq-nota-diario', { type: 'button', onclick: () => RV.diario.escribir(num(n.dia), n) },
+      h('span.versal', fmtDiario(n.dia)), n.x && n.x.trim() ? h('span.texto', n.x.trim().length > 320 ? `${n.x.trim().slice(0, 318).trimEnd()}…` : n.x.trim()) : h('span.cursiva', 'Una foto.'))));
+    if (ns.length > 4) box.append(h('span.versal', `y ${ns.length - 4} más en tu diario`));
+    return box;
+  }
+
+  // Capítulos (libros que se leen): el capítulo en el que vas y cuántos llevas sin apuntar
+  function capitulosFicha(kind, item) {
+    if (num(item.status) !== 1) {
+      return [RV.vacio(`Márcalo como «${kind.statuses[1]}» para llevar la cuenta.`), h('button.enlace.acento', { type: 'button', onclick: () => F.estado(kind, item, 1) }, `Marcar «${kind.statuses[1]}»`)];
+    }
+    const cap = num(item.chapter);
+    const pend = cap - (item.entries || []).reduce((m, e) => Math.max(m, num(e.chapter)), 0);
+    const vence = num(item.every) > 0 && pend >= num(item.every);
+    return [
+      h('div.cap-gigante', cap > 0 ? String(cap) : '—'), h('span.versal', 'Capítulo actual'),
+      h('div.cap-botones', h('button.enlace', { type: 'button', onclick: () => F.capitulo(kind, item, -1) }, '− 1'), h('button.enlace.acento', { type: 'button', onclick: () => F.capitulo(kind, item, 1) }, '+ 1')),
+      h(`p.texto${vence ? '.acento' : ''}`, vence ? `Llevas ${RV.plural(pend, 'capítulo', 'capítulos')} sin apuntar.` : `Apuntas cada ${num(item.every) || 3} cap.`),
+    ];
+  }
+
+  // Progreso (solo lectura, como en el móvil): partes hechas o, si no las hay, las horas frente a lo que dura
+  function progresoFicha(kind, item) {
+    const parts = item.parts || [];
+    const hechas = parts.filter((x) => x && (x.d || x.done)).length;
+    const pct = D.porcentaje(item);
+    const out = [h('div.versal', 'Progreso'),
+      h('div.maq-progreso', h('span.texto', parts.length ? `${hechas} de ${parts.length} completados` : pct !== null ? 'Por horas jugadas' : 'Sin capítulos'),
+        pct !== null ? h('span.cifra-prog', `${pct} %`) : null)];
+    if (pct !== null) out.push(h('div.maq-barra', h('i', { style: { width: `${pct}%` } })));
+    const ul = h('ul.datos');
+    if (num(item.ttbMain) > 0) ul.append(RV.dato('Historia', RV.horas(num(item.ttbMain))));
+    if (num(item.ttbExtra) > 0) ul.append(RV.dato('+ Extras', RV.horas(num(item.ttbExtra))));
+    if (num(item.ttbFull) > 0) ul.append(RV.dato('Completo', RV.horas(num(item.ttbFull))));
+    if (ul.children.length) out.push(ul);
+    if (num(item.minutes) > 0 && num(item.ttbMain) > 0) {
+      const queda = num(item.ttbMain) - num(item.minutes);
+      out.push(h('p.texto', `Lleva ${RV.horas(num(item.minutes))} de unas ${RV.horas(num(item.ttbMain))}${queda > 0 ? ` · le quedan ~${RV.horas(queda)}` : ' · ya debería estar acabando'}`));
+    }
+    return out;
+  }
+
+  // Guías (videojuegos): las del juego en la biblioteca de este PC, si está, y buscar guías en el navegador
+  function guiasFicha(kind, item, pcg) {
+    const links = pcg ? (pcg.links || []) : [];
+    const out = links.map((l) => enlaceMaq(l.n || l.u, (() => { try { return new URL(l.u).hostname.replace(/^www\./, ''); } catch { return ''; } })(), () => RV.guia(pcg.key, l.u)));
+    if (!out.length) out.push(RV.vacio('Ninguna todavía.'));
+    out.push(h('button.enlace.acento', { type: 'button', onclick: () => abreFuera(`https://duckduckgo.com/?q=${encodeURIComponent(`${titLimpio(item.name)} guía`)}`) }, 'Buscar guías →'));
+    if (!pcg) out.push(h('p.versal', 'Las guías que guardas en el móvil se ven en el móvil.'));
+    return out;
+  }
+
 
   // Una imagen encuadrada (zoom y posición, como en el móvil): se dibuja entera a su tamaño de «llenar» y la casilla la recorta
   function casillaImagen(c, fija) {
@@ -225,7 +288,24 @@
     const b = !g ? D.baremo(item) : null;
     const hayOpinion = !!(item.review && item.review.trim());
     const nAp = (item.entries || []).length;
+    const ref = refDe(kind, item);
+    const notasDiario = diarioDe(kind, item);
     const B = {
+      // (Enlaces) lo de siempre de la ficha: escribir en el diario, su saga, su banda sonora y editar los datos
+      enlaces: () => {
+        const sg = D.sagas ? D.sagas(kind.id).find((x) => (x.items || []).some((i) => Number(i) === Number(item.id))) : null;
+        const vivos = sg ? (sg.items || []).filter((i) => Number(i) === Number(item.id) || D.buscar(kind, 'g', i) || D.buscar(kind, 'p', i)) : [];
+        return casilla('Enlaces', null,
+          enlaceMaq('Escribir en el diario', null, () => RV.diario.escribir(RV.hoy(), null, [ref])),
+          sg ? enlaceMaq(`Saga · ${sg.name}`, `Nº ${vivos.findIndex((i) => Number(i) === Number(item.id)) + 1} de ${vivos.length}`, () => RV.ir({ v: 'saga', id: sg.id })) : null,
+          kind.isGame || kind.isMovie || kind.isTv ? enlaceMaq('Banda sonora', 'YouTube Music', () => abreFuera(`https://music.youtube.com/search?q=${encodeURIComponent(`${titLimpio(item.name)} soundtrack`)}`)) : null,
+          enlaceMaq('Datos de la ficha', null, () => F.datos(kind, item, t)));
+      },
+      diario: notasDiario.length ? () => casilla('En tu diario', { texto: 'Escribir', fn: () => RV.diario.escribir(RV.hoy(), null, [ref]) }, diarioFicha(kind, item)) : false,
+      capitulos: !g && kind.isBook && (() => casilla('Capítulos', null, capitulosFicha(kind, item))),
+      progreso: !g && !kind.isBook && (() => h('section.casilla', progresoFicha(kind, item))),
+      partes: !g && (() => casilla('Apuntes rápidos', { texto: '+ Añadir', fn: () => F.rapido(kind, item) }, rapidos(kind, item))),
+      guias: kind.isGame && (() => casilla('Guías', null, guiasFicha(kind, item, pcg))),
       nota: g && (() => casilla('Nota', { texto: 'Cambiar', fn: () => F.valorar(kind, item) }, bloqueNota(kind, item))),
       opinion: g && (() => casilla('Opinión', { texto: hayOpinion ? 'Editar' : 'Escribir', fn: () => F.opinion(kind, item) }, hayOpinion ? cuerpo(item.review) : RV.vacio('Aún no has escrito nada.'))),
       estado: !g && (() => casilla('Nota', { texto: 'Apuntar', fn: () => F.apuntar(kind, item) },
@@ -245,7 +325,8 @@
         }
         if (c.tipo === 'imagen') return c.imagen ? casillaImagen(c, f.alto > 0) : null;
         if (typeof B[c.tipo] === 'function') return B[c.tipo]();
-        if (NO_HAY[c.tipo]) faltan.add(NO_HAY[c.tipo]);
+        // (una casilla que el móvil tampoco enseña en esa ficha —un diario vacío, «Guías» fuera de los videojuegos…—, se oculta sin más)
+        if (!(c.tipo in B) && NO_HAY[c.tipo]) faltan.add(NO_HAY[c.tipo]);
         return null;
       });
       const r = fila(nodos, dos && nodos.filter(Boolean).length === 2 ? [f.split, 1 - f.split] : null, f.alto);
@@ -508,6 +589,10 @@
     RV.editar({ op: 'saveGame', kind: kind.id, item: D.completarJuego({ ...cur, fav: !cur.fav }) }, cur.fav ? 'Quitado de favoritos' : 'Favorito');
   };
 
+  F.capitulo = (kind, play, d) => {
+    const cur = fresca(kind, 'p', play);
+    RV.editar({ op: 'savePlay', kind: kind.id, item: D.completarFicha({ ...cur, chapter: Math.max(0, num(cur.chapter) + d) }) });
+  };
   F.estado = (kind, play, status) => {
     const cur = fresca(kind, 'p', play);
     const next = { ...cur, status };

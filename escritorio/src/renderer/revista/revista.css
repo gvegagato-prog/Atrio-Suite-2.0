@@ -1469,3 +1469,18 @@ body[data-plat="darwin"].ed-foco .ed-salir { top: 36px; }
 .e-ir-papelera + .e-ir-papelera { margin-top: 10px; }
 .e-copia-obras { display: grid; gap: 8px; margin-top: 10px; }
 .e-copia-obra { display: flex; align-items: center; gap: 14px; justify-content: space-between; border-top: 1px solid var(--linea); padding-top: 8px; }
+
+/* Casillas de la ficha que vienen de la maqueta del móvil: enlaces, diario, capítulos y progreso */
+.enlace-maq { display: block; width: 100%; text-align: left; padding: 8px 0; border: 0; background: none; color: var(--tinta); cursor: pointer; font: inherit; }
+.enlace-maq .tit { display: block; font-family: var(--serif); font-size: 19px; line-height: 1.2; }
+.enlace-maq.acento .tit { color: var(--acento); }
+.enlace-maq:hover .tit { text-decoration: underline; text-underline-offset: 4px; }
+.maq-diario { display: grid; gap: 8px; }
+.maq-nota-diario { display: block; text-align: left; border: 0; background: none; padding: 6px 0; color: var(--tinta); cursor: pointer; font: inherit; }
+.maq-nota-diario .texto { display: block; font-family: var(--serif); font-size: 17px; line-height: 1.5; margin-top: 2px; }
+.cap-gigante { font-family: var(--serif); font-weight: 700; font-size: 56px; line-height: 1; }
+.cap-botones { display: flex; gap: 18px; margin: 8px 0; }
+.maq-progreso { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 4px 0 8px; }
+.cifra-prog { font-family: var(--serif); font-size: 30px; }
+.maq-barra { height: 4px; background: var(--linea); margin-bottom: 12px; }
+.maq-barra i { display: block; height: 100%; background: var(--tinta); }
