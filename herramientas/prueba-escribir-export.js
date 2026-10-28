@@ -31,7 +31,13 @@ e.nuevo('e', o.id, { cid: c2.id, titulo: 'Fin', estado: 0, texto: '# Un título 
   const ep = X.epub(e, o.id);
   ok(ep.subarray(30, 38).toString() === 'mimetype', 'EPUB: «mimetype» primero');
   const nombres = (buf) => { const out = []; let p = buf.readUInt32LE(buf.length - 22 + 16); const n = buf.readUInt16LE(buf.length - 22 + 10); for (let k = 0; k < n; k++) { const nl = buf.readUInt16LE(p + 28); out.push(buf.toString('utf8', p + 46, p + 46 + nl)); p += 46 + nl + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32); } return out; };
-  ok(nombres(dx).join() === '[Content_Types].xml,_rels/.rels,word/_rels/document.xml.rels,word/document.xml,word/styles.xml', 'Word: sus cinco archivos');
+  ok(nombres(dx).join() === '[Content_Types].xml,_rels/.rels,word/_rels/document.xml.rels,word/document.xml,word/styles.xml,word/footer1.xml,docProps/core.xml', 'Word: sus archivos (con el pie con el número de página)');
+  const ms = X.docx(e, o.id, { estilo: 'manuscrito', interlineado: '2' });
+  const msDoc = X.leeZip(ms, 'word/document.xml').toString(); const msEst = X.leeZip(ms, 'word/styles.xml').toString();
+  ok(/palabras/.test(msDoc) && msDoc.includes('<w:titlePg/>') && msDoc.includes('>FIN<') && msEst.includes('Times New Roman') && msEst.includes('w:line="480"'), 'Word (manuscrito): portada con recuento, sin número en la portada, Times 12 a doble espacio y FIN');
+  ok(X.recuento(84700) === 'unas 85.000 palabras' && X.recuento(3200) === 'unas 3000 palabras' && X.recuento(812) === '812 palabras', 'recuento de palabras como el móvil');
+  const hp = X.htmlPdf(e, o.id, { estilo: 'libro' });
+  ok(/@page\{size:A5/.test(hp) && /@bottom-center\{content:counter\(page\)/.test(hp) && /class="capitulo"/.test(hp), 'PDF (libro): A5, numeración y capítulos en página nueva');
   ok(nombres(ep).includes('OEBPS/p3.xhtml'), 'EPUB: un archivo por capítulo');
 
   // Bien formados (el analizador XML de Chromium)
