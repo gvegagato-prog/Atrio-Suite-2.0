@@ -537,8 +537,7 @@ fun FrameEditor(c: MagCell, frameAspect: Float, onSave: (MagCell) -> Unit, onDis
     androidx.compose.ui.window.Dialog(onDismiss, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth().padding(16.dp).background(Paper).verticalScroll(rememberScrollState()).padding(18.dp)) {
             Text("Encuadrar", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-            Text("Pellizca para ampliar o reducir y arrastra para colocarla. Lo que queda dentro del marco, a todo color, es exactamente lo que se verá; lo apagado de alrededor queda fuera.",
-                color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
+            Text("Coloca la foto dentro del marco: es lo que se verá.", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
             val aspect = frameAspect.coerceIn(0.2f, 5f)
             // El escenario enseña la foto ENTERA (apagada) y el marco, con lo que se verá, encima y a todo color.
             // Así se ve siempre qué queda dentro y qué fuera, y se puede alejar o mover hasta donde haga falta.
