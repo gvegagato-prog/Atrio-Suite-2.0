@@ -9,6 +9,7 @@ const art = require('./art');
 const meta = require('./meta');
 const ronron = require('./ronron');
 const suite = require('./suite');
+const { SOLO_REVISTA } = require('./edicion');
 const nube = require('./nube');
 const web = require('./web');
 const os = require('os');
@@ -318,6 +319,8 @@ function rescanLigero() {
 }
 
 async function rescan() {
+  // (solo revista: no hay biblioteca de juegos del equipo que leer)
+  if (SOLO_REVISTA) return state();
   if (!scanning) scanning = scanAll().finally(() => { scanning = null; });
   await scanning;
   autoArt();
@@ -329,6 +332,7 @@ function state() {
   return {
     config: config.get(),
     games: [...library.values()].map(publicGame),
+    soloRevista: SOLO_REVISTA,
     scanInfo,
     home: HOME,
     play: playState(),
@@ -464,8 +468,8 @@ function setupSuiteIpc() {
   ipcMain.handle('suite:shotShow', (_e, id) => { const f = suite.shotFile(id); if (f) shell.showItemInFolder(f); return !!f; });
   ipcMain.handle('suite:methods', () => require('./capture').methods());
   // Streaming (Polaris)
-  ipcMain.handle('stream:info', () => require('./polaris').refresh());
-  ipcMain.handle('stream:start', () => require('./polaris').startService());
+  ipcMain.handle('stream:info', () => (SOLO_REVISTA ? {} : require('./polaris').refresh()));
+  ipcMain.handle('stream:start', () => { if (SOLO_REVISTA) throw new Error('Sin streaming en esta edición.'); return require('./polaris').startService(); });
   ipcMain.handle('stream:check', async () => {
     const sun = require('./polaris');
     await sun.refresh();
@@ -485,6 +489,7 @@ function setupSuiteIpc() {
 
 // ---------- Lanzar y energía (desde la interfaz o desde el móvil) ----------
 async function launchGame(key) {
+  if (SOLO_REVISTA) throw new Error('Esta edición de Atrio no abre juegos: es solo la revista.');
   const g = library.get(key);
   if (!g) throw new Error('Juego no encontrado');
   // KDE: que no salga la ventana de Steam «Preparando para iniciar…» por encima
@@ -508,6 +513,7 @@ async function launchGame(key) {
 
 // Apagar, reiniciar o suspender el equipo (systemd; con polkit no pide contraseña en tu sesión)
 async function doPower(action) {
+  if (SOLO_REVISTA) throw new Error('Esta edición de Atrio no controla el equipo.');
   const cmd = { apagar: 'poweroff', reiniciar: 'reboot', suspender: 'suspend' }[action];
   if (!cmd) throw new Error('Acción desconocida');
   log('energía', action);
@@ -616,6 +622,8 @@ function setupIpc() {
   ipcMain.handle('launch', (_e, key) => launchGame(key));
   // Cambiar de interfaz: se guarda la elección (salvo en las capturas automáticas) y se carga la otra página
   ipcMain.handle('ui:switch', (_e, mode) => {
+    // (solo revista: no hay otra interfaz a la que cambiar, y no se recarga la página)
+    if (SOLO_REVISTA) return 'revista';
     const m = mode === 'lanzador' ? 'lanzador' : 'revista';
     if (!process.env.ATRIO_SHOTS) config.patch({ ui: m });
     if (win && !win.isDestroyed()) {
@@ -854,6 +862,7 @@ async function ronronWatch() {
 // Se puede forzar con ATRIO_UI=revista|lanzador o con --revista / --lanzador. Las capturas automáticas
 // (ATRIO_SHOTS) usan el lanzador salvo que se pida otra cosa: su plan de pasos (window.__test) es de esa interfaz.
 function uiMode() {
+  if (SOLO_REVISTA) return 'revista';
   const env = process.env.ATRIO_UI;
   if (env === 'revista' || env === 'lanzador') return env;
   if (process.argv.includes('--lanzador')) return 'lanzador';
@@ -998,6 +1007,7 @@ function createWindow() {
   win.on('closed', () => { win = null; });
   const onFocus = () => {
     send('focus', null);
+    if (SOLO_REVISTA) return;
     try {
       const st = install.state();
       const via = steamVia();
@@ -1151,7 +1161,7 @@ app.whenReady().then(async () => {
   });
   setupIpc();
   createWindow();
-  suite.start({
+  if (!SOLO_REVISTA) suite.start({
     log, send, fetch: (...a) => net.fetch(...a), version: () => app.getVersion(), config: () => config.get(),
     current: currentGame, library: suiteLibrary,
     // Minutos jugados hoy en este PC (contando la partida en curso)
@@ -1186,7 +1196,8 @@ app.whenReady().then(async () => {
   }, ronron);
   // Si el equipo se suspende por otro lado (botón, tapa, inactividad), tampoco cuenta el rato dormido
   try { powerMonitor.on('suspend', () => { log('suspendido'); if (tracker) tracker.pause(); }); } catch { /* */ }
-  rescan().then(() => { send('library', state()); suite.libChanged(); tracker.start(); setTimeout(prefetchMeta, 8000); hoursSoon(4000); });
+  if (SOLO_REVISTA) log('edición solo revista: sin lanzador, sin juegos del equipo y sin control remoto');
+  else rescan().then(() => { send('library', state()); suite.libChanged(); tracker.start(); setTimeout(prefetchMeta, 8000); hoursSoon(4000); });
   // Horas de tus otros equipos
   setInterval(() => hoursSync().catch(() => {}), Number(process.env.ATRIO_HOURS_EVERY || 60000));
   setInterval(() => ronronWatch().catch(() => {}), 60 * 1000);

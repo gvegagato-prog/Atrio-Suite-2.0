@@ -44,8 +44,10 @@ mando) se abre desde Ajustes de la revista; para volver, Ajustes del lanzador �
 `Atrio.app` se construye en GitHub (acción «Atrio (macOS Apple Silicon)»: artefacto «Atrio-macOS-arm64», con un `.zip` y
 un `.dmg`). Sin cuenta de Apple Developer va firmada «ad-hoc», así que la primera vez (macOS 15: el clic derecho →
 Abrir ya no vale): Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente» tras intentar abrirla (o
-`xattr -dr com.apple.quarantine /Applications/Atrio.app`). Probarla desde Linux no es posible: `npm run dist:mac` genera el
-`.app` pero no se puede ejecutar ni firmar fuera de un Mac. Datos: `~/Library/Application Support/Atrio-datos`.
+`xattr -dr com.apple.quarantine /Applications/Atrio.app`). En el Mac solo está la revista (edición «solo revista»: sin
+lanzador, sin juegos, sin «Tu PC»; ver `src/main/edicion.js`; en Linux se prueba con `ATRIO_SOLO_REVISTA=1`). También se
+puede construir desde Linux (acción «macOS solo revista, construido desde Linux», con `rcodesign`), aunque no se puede
+abrir allí. Datos: `~/Library/Application Support/Atrio-datos`.
 Captura de pantalla con `screencapture` (pide permiso de Grabación de pantalla); apagar/reiniciar/suspender con
 `osascript` y `pmset`; arranque al iniciar sesión con los «Elementos de inicio de sesión» (`app.setLoginItemSettings`;
 «En segundo plano» lo hace Atrio al ver `wasOpenedAtLogin`, porque macOS ya no deja pedir «abrir oculto»; si el sistema

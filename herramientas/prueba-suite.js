@@ -83,7 +83,7 @@ async function until(fn, ms, every = 500) {
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY']) delete env[k];
   const electron = path.join(DESK, 'node_modules', 'electron', 'dist', 'electron');
   const CDP = 9700 + Math.floor(Math.random() * 200);
-  const atrio = spawn('xvfb-run', ['-a', '-s', '-screen 0 2560x1440x24', electron, '--no-sandbox', '--ventana', `--remote-debugging-port=${CDP}`, DESK], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const atrio = spawn('xvfb-run', ['-a', '-s', '-screen 0 2560x1440x24', electron, '--no-sandbox', '--ventana', `--remote-debugging-port=${CDP}`, DESK], { env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   const logs = [];
   atrio.stdout.on('data', (d) => logs.push(String(d)));
   atrio.stderr.on('data', (d) => logs.push(String(d)));
@@ -299,7 +299,8 @@ async function until(fn, ms, every = 500) {
     console.log('ERROR', e);
     failed++;
   } finally {
-    atrio.kill('SIGTERM');
+    // (todo el grupo: si solo se mata xvfb-run, Electron se queda abierto y la siguiente prueba no puede abrir otra copia de Atrio)
+    try { process.kill(-atrio.pid, 'SIGTERM'); } catch { atrio.kill('SIGTERM'); }
     spawn('pkill', ['-f', game]);
     await wait(1500);
     fake.kill();

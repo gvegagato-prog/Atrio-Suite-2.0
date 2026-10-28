@@ -11,6 +11,8 @@
   // Una ruta es { v: vista, …datos }. «Volver» desanda las rutas (y la posición en la página).
   // Dos modos: «juegos» (el lanzador: con lo que arranca Atrio) y «revista» (toda tu colección)
   RV.modo = 'juegos';
+  // La edición «solo revista» (la del Mac): sin Modo Juegos, sin «Tu PC», sin abrir juegos. La dice el proceso principal.
+  RV.soloRevista = false;
   const raiz = () => (RV.modo === 'juegos' ? { v: 'juegos' } : { v: 'portada' });
   let ruta = raiz();
   const pila = [];
@@ -30,7 +32,7 @@
   };
   // Cambiar de modo: cada uno empieza en su portada (y «volver» no cruza de uno a otro)
   RV.cambiarModo = (m) => {
-    const nuevo = m || (RV.modo === 'juegos' ? 'revista' : 'juegos');
+    const nuevo = RV.soloRevista ? 'revista' : (m || (RV.modo === 'juegos' ? 'revista' : 'juegos'));
     if (nuevo === RV.modo && igual(ruta, raiz())) return;
     RV.modo = nuevo;
     document.body.dataset.modo = nuevo;
@@ -143,10 +145,10 @@
       item('Escribir', { v: 'escribir' }, v === 'escribir' || v === 'obra' || v === 'editor'),
       item('Descubrir', { v: 'descubrir', dom: 0 }, v === 'descubrir'),
       item('Cifras', { v: 'cifras' }, v === 'cifras'),
-      item('Tu PC', { v: 'pc' }, v === 'pc'),
+      RV.soloRevista ? null : item('Tu PC', { v: 'pc' }, v === 'pc'),
       item('Ajustes', { v: 'ajustes' }, v === 'ajustes'));
     const folio = h('div.cab-folio',
-      h('button.enlace.acento', { type: 'button', onclick: () => RV.cambiarModo('juegos'), title: 'Botón Vista del mando (o C)' }, '⧉ Modo Juegos'),
+      RV.soloRevista ? null : h('button.enlace.acento', { type: 'button', onclick: () => RV.cambiarModo('juegos'), title: 'Botón Vista del mando (o C)' }, '⧉ Modo Juegos'),
       h('span.versal', `Nº ${RV.diaDelAno(hoy)} · ${RV.fmtLargo(hoy)}`),
       pila.length || v !== 'portada' ? h('button.enlace', { type: 'button', onclick: () => RV.volver(), title: 'Esc' }, '← Volver') : null,
       h('span.hueco'),
@@ -315,6 +317,7 @@
     try {
       const s = await api.state();
       D.setPc(s);
+      if (s.soloRevista) { RV.soloRevista = true; RV.modo = 'revista'; document.body.dataset.modo = 'revista'; document.body.classList.add('solo-revista'); ruta = raiz(); RV.escala(); }
       RV.aplicarTema((s.config || {}).revista);
       RV.mando.config((s.config || {}).behavior);
     } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }

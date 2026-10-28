@@ -201,6 +201,7 @@
 
   // ---------------------------------------------------------------- Juegos ocultos
   S.ocultos = () => {
+    if (RV.soloRevista) return [listaNegra()];
     const l = (D.pc().games || []).filter((g) => g.hidden).sort((a, b) => String(a.sortName || a.name).localeCompare(String(b.sortName || b.name), 'es'));
     return [bloque('Juegos ocultos', 'No salen en la biblioteca ni en la búsqueda. Desde aquí los abres o los devuelves a la biblioteca.',
       l.length ? l.map((g) => fila(g.name, g.sourceLabel || g.source,

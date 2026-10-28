@@ -76,12 +76,21 @@ Como no está firmada con un certificado de Apple ni notarizada, macOS no la abr
 Privacidad y seguridad → Seguridad → «Abrir igualmente» (sale durante una hora), con tu contraseña; o ejecuta
 `xattr -dr com.apple.quarantine /Applications/Atrio.app`. Después se abre normal. Para quitar el aviso para
 siempre hace falta una cuenta de Apple Developer (99 $ al año) con certificado y notarización.
-Datos en `~/Library/Application Support/Atrio-datos`. En el Mac funcionan la revista, Escribir, la cuenta, el móvil,
-las capturas (`screencapture`; pide el permiso de «Grabación de pantalla») y lo jugado en Steam o Heroic; no existen
-Lutris ni Polaris (streaming). Cosas propias del Mac: menú Edición en español (Deshacer y Rehacer también en el editor
-de Escribir), atajos con ⌘, juegos añadidos a mano como aplicación (`Juego.app`, con sus horas), abrirse al iniciar
-sesión (si macOS pide aprobarlo, Ajustes → Comportamiento lleva a «Elementos de inicio») y un icono con la retícula de
-macOS. **No lo he podido probar en un Mac físico**: solo en el Mac de GitHub (sin pantalla real ni permisos).
+Datos en `~/Library/Application Support/Atrio-datos`.
+
+**El Mac es solo la revista** (edición «solo revista», `escritorio/src/main/edicion.js`: se activa sola en macOS y, para
+probarla en Linux, con `ATRIO_SOLO_REVISTA=1`): lo mismo que verías en el móvil (Portada, Videojuegos, Libros, Diario,
+Escribir, Descubrir, Cifras y Ajustes con el tema, la cuenta y la lista negra). **No tiene** lanzador ni Modo Juegos, ni
+«Tu PC», ni escanea ni abre juegos del equipo, ni apagar/reiniciar/suspender, ni streaming, ni se registra como
+dispositivo que el móvil pueda controlar. Windows y Linux siguen igual que siempre. Cosas propias del Mac: menú Edición en
+español (Deshacer y Rehacer también en el editor de Escribir), atajos con ⌘ y un icono con la retícula de macOS.
+**No lo he podido probar en un Mac físico**: solo en el Mac de GitHub (cuando arranca) y en un Electron de Linux con la
+misma edición.
+
+Como GitHub a veces no arranca una máquina macOS, hay una segunda acción, «Atrio (PC, macOS solo revista, construido
+desde Linux)» (`escritorio-mac-linux.yml`): prueba esa edición en un Electron de Linux (Xvfb), construye `Atrio.app` en
+Linux y la firma «ad-hoc» con `rcodesign`. Deja **Atrio-mac-arm64-solo-revista.zip** (sin `.dmg`). No se puede abrir en
+macOS desde allí: solo se comprueba la estructura y la firma.
 
 ## Atrio en el escritorio (2.1): el lanzador y la revista
 

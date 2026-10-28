@@ -1,9 +1,12 @@
-name: Atrio (PC, macOS construido desde Linux)
-# Plan B cuando GitHub no consigue arrancar una máquina macOS (se queda en «waiting for a hosted runner to come online»):
-# construye Atrio.app para Apple Silicon en una máquina Linux y la firma «ad-hoc» con rcodesign (apple-codesign), que firma
-# sin un Mac. NO se puede abrir ni probar la app aquí (no hay macOS): solo se comprueba que el .app tiene sus binarios
-# arm64 y que la firma es válida. La buena es la de escritorio-mac.yml (prueba la app firmada de verdad).
+name: Atrio (PC, macOS solo revista, construido desde Linux)
+# El Mac, construido desde Linux (GitHub a veces no arranca una máquina macOS: se queda en «waiting for a hosted runner to come
+# online»). Es la edición «solo revista»: sin lanzador, sin abrir juegos, sin «Tu PC» (en macOS se activa sola; aquí se prueba
+# en un Electron de verdad bajo Xvfb con ATRIO_SOLO_REVISTA=1). Luego construye Atrio.app para Apple Silicon y la firma
+# «ad-hoc» con rcodesign (apple-codesign), que firma sin un Mac. Lo que NO se puede hacer aquí es abrir la app en macOS: solo se
+# comprueba la estructura y la firma. escritorio-mac.yml hace la prueba en un macOS de verdad (cuando GitHub da máquina).
 on:
+  push:
+    paths: ['escritorio/**', 'herramientas/**', '.github/workflows/escritorio-mac-linux.yml']
   workflow_dispatch:
 jobs:
   mac-desde-linux:
@@ -17,13 +20,24 @@ jobs:
         with:
           node-version: 22
       - name: Dependencias
-        run: npm ci
+        run: npm ci && node node_modules/electron/install.js
       - name: Pruebas de Escribir (guardado, sincronización, texto y exportar)
         working-directory: .
         run: |
           node herramientas/prueba-escritos.js
           node herramientas/prueba-escribir-texto.js
           node herramientas/prueba-escribir-export.js
+      - name: Prueba de Atrio de verdad, en la edición solo revista (Electron bajo Xvfb)
+        # Abre Atrio con una cuenta en un Firebase de mentira y comprueba, además de Escribir, que no hay lanzador: ni «Modo
+        # Juegos», ni «Tu PC», ni abrir juegos, ni apagar el equipo, y que el equipo no se registra como controlable.
+        working-directory: .
+        env:
+          ATRIO_SOLO_REVISTA: '1'
+          PW: ${{ github.workspace }}/escritorio/node_modules/playwright-core
+        run: |
+          sudo apt-get install -y xvfb >/dev/null 2>&1 || true
+          (cd escritorio && npm i --no-save playwright-core@1.56.1)
+          node herramientas/prueba-escribir-atrio.js "$RUNNER_TEMP/atrio-prueba"
       - name: Atrio.app (Apple Silicon, desde Linux)
         run: npx electron-builder --mac dir --arm64 --publish never
       - name: rcodesign
@@ -45,9 +59,16 @@ jobs:
       - name: Zip
         run: |
           mkdir -p salida
-          (cd dist/mac-arm64 && zip -ryq "$GITHUB_WORKSPACE/escritorio/salida/Atrio-mac-arm64-desde-Linux.zip" Atrio.app)
+          (cd dist/mac-arm64 && zip -ryq "$GITHUB_WORKSPACE/escritorio/salida/Atrio-mac-arm64-solo-revista.zip" Atrio.app)
           ls -la salida
       - uses: actions/upload-artifact@v4
         with:
-          name: Atrio-macOS-arm64-desde-Linux-SIN-PROBAR
+          name: Atrio-macOS-arm64-solo-revista-desde-Linux
           path: escritorio/salida/*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atrio-solo-revista-pruebas
+          path: |
+            ${{ runner.temp }}/atrio-prueba/*.png
+            ${{ runner.temp }}/atrio-prueba/atrio.log

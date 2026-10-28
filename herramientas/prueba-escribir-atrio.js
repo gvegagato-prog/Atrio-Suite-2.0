@@ -104,6 +104,32 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     await sleep(800);
     ok(await p.locator('.e-escena').count() === 2, 'el manuscrito enseña las dos escenas (la del PC y la del móvil)');
     await p.screenshot({ path: path.join(OUT, 'atrio-escribir-obra.png') });
+    // La edición «solo revista» (la del Mac; en Linux, con ATRIO_SOLO_REVISTA=1): nada del lanzador ni de abrir juegos
+    if (process.platform === 'darwin' || process.env.ATRIO_SOLO_REVISTA === '1') {
+      console.log('Edición solo revista (sin lanzador)');
+      const st = await p.evaluate(() => window.atrio.state());
+      ok(st.soloRevista === true && st.games.length === 0, 'el proceso principal dice «solo revista» y no hay juegos del equipo');
+      ok(await p.evaluate(() => document.body.classList.contains('solo-revista') && document.body.dataset.modo === 'revista' && window.RV.soloRevista === true), 'la página arranca en la revista');
+      await p.evaluate(() => window.RV.cambiarModo('juegos')); await sleep(200);
+      ok(await p.evaluate(() => window.RV.modo === 'revista'), 'pedir el Modo Juegos no hace nada');
+      const cab = await p.locator('#cabecera').innerText();
+      ok(!/modo juegos/i.test(cab) && !/tu pc/i.test(cab) && /escribir/i.test(cab) && /diario/i.test(cab), `la cabecera no trae «Modo Juegos» ni «Tu PC» (${cab.replace(/\s+/g, ' ').slice(0, 120)})`);
+      const falla = (f) => p.evaluate(async (c) => { try { await new Function('return ' + c)()(); return 'ABRIÓ'; } catch (e) { return String(e.message || e); } }, f);
+      ok(/no abre juegos/.test(await falla('() => window.atrio.launch("cualquiera")')), 'abrir un juego da error');
+      ok(/no controla el equipo/.test(await falla('() => window.atrio.power("apagar")')), 'apagar el equipo da error');
+      ok(await p.evaluate(async () => (await window.atrio.switchUi('lanzador')) === 'revista'), 'no se puede cambiar al lanzador');
+      await p.evaluate(() => window.RV.ir({ v: 'pc' })); await sleep(300);
+      ok(await p.evaluate(() => !document.querySelector('.pc') && !!document.querySelector('.hoja')), 'la página «Tu PC» no existe (sale la portada)');
+      await p.evaluate(() => window.RV.ir({ v: 'ajustes' })); await sleep(400);
+      const tabs = await p.locator('.ajustes .pestana').allInnerTexts();
+      ok(tabs.join('|').toLowerCase() === 'la revista|cuenta|lista negra', `Ajustes solo trae la revista, la cuenta y la lista negra (${tabs.join('|')})`);
+      await p.screenshot({ path: path.join(OUT, 'atrio-solo-revista-ajustes.png') });
+      await p.evaluate(() => window.RV.ir({ v: 'portada' })); await sleep(500);
+      await p.screenshot({ path: path.join(OUT, 'atrio-solo-revista-portada.png') });
+      const vivo = await db('GET', `/users/${uid}/suite/live`);
+      ok(!vivo || Object.keys(vivo).length === 0, 'el equipo no se registra como dispositivo que el móvil pueda controlar');
+      await p.evaluate((id) => window.RV.ir({ v: 'obra', id }), o.id); await sleep(500);
+    }
     { const b = await barrasSueltas(p); ok(!b.length, `la obra, sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
     await p.evaluate((id) => window.RV.ir({ v: 'editor', id }), 'm_escena');
     await sleep(700);

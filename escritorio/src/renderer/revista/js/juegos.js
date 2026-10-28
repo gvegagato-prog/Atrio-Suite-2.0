@@ -440,13 +440,15 @@
     const ul = h('ul.j-opciones');
     const op = (t, fn, extra) => ul.append(h('li', h('button.resultado', { type: 'button', style: { width: '100%', textAlign: 'left' }, onclick: () => { d.cerrar(); fn(); } },
       h('span.tit', t), extra ? h('span.versal', extra) : h('span'))));
-    op(RV.modo === 'juegos' ? 'La revista' : 'Modo Juegos', () => RV.cambiarModo(), 'Vista');
+    if (!RV.soloRevista) op(RV.modo === 'juegos' ? 'La revista' : 'Modo Juegos', () => RV.cambiarModo(), 'Vista');
     op('Ajustes', () => RV.ir({ v: 'ajustes' }));
     op('Buscar', () => (RV.modo === 'juegos' ? RV.buscarJuegos() : RV.buscarTodo()), 'X');
-    ul.append(h('li.j-op-sep', h('span.versal', 'Energía')));
-    op('Suspender', () => RV.energia('suspender'));
-    op('Reiniciar', () => RV.energia('reiniciar'));
-    op('Apagar', () => RV.energia('apagar'));
+    if (!RV.soloRevista) {
+      ul.append(h('li.j-op-sep', h('span.versal', 'Energía')));
+      op('Suspender', () => RV.energia('suspender'));
+      op('Reiniciar', () => RV.energia('reiniciar'));
+      op('Apagar', () => RV.energia('apagar'));
+    }
     ul.append(h('li.j-op-sep', h('span.versal', 'Atrio')));
     op('Minimizar Atrio', () => RV.api.minimize());
     op('Salir de Atrio', () => RV.api.quit());
@@ -459,7 +461,7 @@
   function pintarAyuda() {
     const juegos = RV.modo === 'juegos';
     ayuda.replaceChildren(pista('A', 'Elegir'), pista('B', 'Volver'), pista('Y', 'Opciones'), pista('X', 'Buscar'),
-      pista('LB · RB', 'Secciones'), pista('⧉', juegos ? 'Revista' : 'Juegos'), pista('☰', 'Menú'));
+      pista('LB · RB', 'Secciones'), RV.soloRevista ? null : pista('⧉', juegos ? 'Revista' : 'Juegos'), pista('☰', 'Menú'));
   }
   pintarAyuda();
   document.body.append(ayuda);

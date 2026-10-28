@@ -89,11 +89,12 @@
       h('p', 'Entra con tu cuenta de Atrio para ver aquí lo que estás jugando, leyendo o viendo, tus notas y tus opiniones. Lo mismo que en el móvil, al día.'),
       h('div', { style: { display: 'flex', gap: '22px', flexWrap: 'wrap' } },
         h('button.boton-tinta', { type: 'button', onclick: () => RV.ir({ v: 'ajustes' }) }, 'Entrar con mi cuenta →'),
-        h('button.enlace', { type: 'button', onclick: () => RV.ir({ v: 'pc' }) }, 'Ir a Tu PC →')));
+        RV.soloRevista ? null : h('button.enlace', { type: 'button', onclick: () => RV.ir({ v: 'pc' }) }, 'Ir a Tu PC →')));
   }
 
   // Últimos juegos del PC (en la columna de la derecha si no hay cuenta o no hay nada en curso)
   function ultimosPc() {
+    if (RV.soloRevista) return document.createTextNode('');
     const games = D.juegosPc().filter((g) => g.lastPlayed > 0).sort((a, b) => b.lastPlayed - a.lastPlayed).slice(0, 8);
     const box = h('section', RV.seccion('Últimos en tu PC', { texto: 'Todos →', fn: () => RV.ir({ v: 'pc' }) }));
     if (!games.length) { box.append(RV.vacio('Aún no has jugado a nada desde Atrio.')); return box; }
@@ -215,7 +216,7 @@
       ul.append(fila('Descubrir un libro', '→', () => RV.ir({ v: 'descubrir', dom: 1 })));
       ul.append(fila('Descubrir una peli o serie', '→', () => RV.ir({ v: 'descubrir', dom: 2 })));
     }
-    ul.append(fila('Tu PC', String(D.juegosPc().length), () => RV.ir({ v: 'pc' })));
+    if (!RV.soloRevista) ul.append(fila('Tu PC', String(D.juegosPc().length), () => RV.ir({ v: 'pc' })));
     ul.append(fila('Ajustes', '→', () => RV.ir({ v: 'ajustes' })));
     const box = h('section', RV.seccion('Sumario'), ul);
     if (enFila) return box;

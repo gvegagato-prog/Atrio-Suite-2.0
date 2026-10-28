@@ -42,7 +42,8 @@
     return p ? { t: 'p', item: p } : null;
   }
 
-  RV.vistas.pc = () => {
+  RV.vistas.pc = (ruta) => {
+    if (RV.soloRevista) return RV.vistas.portada(ruta);
     const root = h('div.hoja.pc');
     const todos = D.juegosPc();
     root.append(h('header.cabeza',

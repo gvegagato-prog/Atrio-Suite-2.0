@@ -154,11 +154,14 @@
     ['emuladores', 'Emuladores'], ['ocultos', 'Ocultos'], ['mando', 'Mando'], ['comportamiento', 'Comportamiento'],
     ['movil', 'Móvil'], ['streaming', 'Streaming'],
   ];
+  // (en la edición «solo revista» no hay nada del lanzador: solo la revista, la cuenta y la lista negra)
+  const secciones = () => (RV.soloRevista ? [['revista', 'La revista'], ['cuenta', 'Cuenta'], ['ocultos', 'Lista negra']] : SECCIONES);
   let seccion = 'revista';
   RV.seccionAjustes = (paso) => {
-    let i = SECCIONES.findIndex(([id]) => id === seccion);
-    i = (i + paso + SECCIONES.length) % SECCIONES.length;
-    seccion = SECCIONES[i][0];
+    const SECC = secciones();
+    let i = SECC.findIndex(([id]) => id === seccion);
+    i = (i + paso + SECC.length) % SECC.length;
+    seccion = SECC[i][0];
     RV.ir({ v: 'ajustes', sec: seccion }, { reemplazar: true });
     requestAnimationFrame(() => { const b = document.querySelector(`.ajustes .pestana[data-sec="${seccion}"]`); if (b) b.focus({ preventScroll: true }); });
   };
@@ -191,12 +194,13 @@
   }
 
   RV.vistas.ajustes = (ruta) => {
-    if (ruta && ruta.sec && SECCIONES.some(([id]) => id === ruta.sec)) seccion = ruta.sec;
+    if (ruta && ruta.sec && secciones().some(([id]) => id === ruta.sec)) seccion = ruta.sec;
+    if (!secciones().some(([id]) => id === seccion)) seccion = 'revista';
     const root = h('div.hoja.ajustes');
     root.append(h('header.cabeza',
       h('div.ante', 'Atrio, a tu gusto · LB y RB cambian de sección'),
       h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, 'Ajustes')),
-      h('div.pestanas', { role: 'tablist' }, SECCIONES.map(([id, n]) => h('button.pestana', {
+      h('div.pestanas', { role: 'tablist' }, secciones().map(([id, n]) => h('button.pestana', {
         type: 'button', role: 'tab', 'data-sec': id, 'aria-selected': String(seccion === id), 'data-autofocus': seccion === id ? true : null,
         onclick: () => { seccion = id; RV.ir({ v: 'ajustes', sec: id }, { reemplazar: true }); },
       }, n)))));
