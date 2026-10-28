@@ -238,6 +238,8 @@ fun MagPage(
     var msg by remember { mutableStateOf("") }
     var framing by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val cellSizes = remember { mutableStateMapOf<String, androidx.compose.ui.unit.IntSize>() }
+    // (la medida con la ficha en lectura: al editar, la línea del medio es más ancha y las casillas miden otra cosa)
+    val readSizes = remember { mutableStateMapOf<String, androidx.compose.ui.unit.IntSize>() }
     val cellOuter = remember { mutableStateMapOf<String, androidx.compose.ui.unit.IntSize>() }
 
     fun visible(c: MagCell) = c.type == "texto" || c.type == "imagen" || c.type == "vacio" || defs.containsKey(c.type)
@@ -267,7 +269,7 @@ fun MagPage(
                 Box(
                     Modifier.fillMaxWidth().then(shape)
                         .clipToBounds().background(if (c.image.isBlank()) Sand else androidx.compose.ui.graphics.Color.Transparent)
-                        .onSizeChanged { cellSizes[k] = it }
+                        .onSizeChanged { cellSizes[k] = it; if (!designing) readSizes[k] = it }
                 ) {
                     if (c.image.isNotBlank()) FramedImage(c, Modifier.matchParentSize())
                     else if (designing) Text("Imagen", color = Muted, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, modifier = Modifier.align(Alignment.Center))
@@ -441,7 +443,7 @@ fun MagPage(
         if (cur == null || cur.image.isBlank()) { framing = null } else {
             // El marco tiene la forma de la imagen en su casilla (y cambia si eliges otra forma)
             val k = "${p.first}:${p.second}"
-            val sz = cellSizes[k]
+            val sz = readSizes[k] ?: cellSizes[k]
             val medida = if (sz != null && sz.width > 0 && sz.height > 0) sz.width.toFloat() / sz.height else magAspect(cur, cellOuter[k])
             // Fila de alto fijo: la casilla mide lo que mide. Si no, la forma que ya tenía la imagen (o la que tiene ahora)
             val forma = if (rows.getOrNull(p.first)?.height ?: 0f > 0f || cur.asp <= 0f) medida else cur.asp
@@ -504,14 +506,32 @@ fun MagPage(
     }
 }
 
+/**
+ * Zoom y desplazamiento (en píxeles) con los que se dibuja una imagen en una casilla de [boxW]×[boxH]: la foto nunca deja
+ * un hueco dentro de la casilla (no se aleja de «llenar» ni se desplaza más allá de su borde). Las imágenes «enteras»
+ * (logos) se dejan como están. Es lo mismo en el editor y en la página, así lo que se ve al encuadrar es lo que sale.
+ */
+fun magPlace(c: MagCell, boxW: Float, boxH: Float): Triple<Float, Float, Float> {
+    val r = MagImages.ratios[c.image]
+    if (c.fit || r == null || boxW <= 0f || boxH <= 0f) return Triple(c.zoom, c.ox * boxW, c.oy * boxH)
+    val tall = r > boxW / boxH
+    val dw = if (tall) boxH * r else boxW
+    val dh = if (tall) boxH else boxW / r
+    val z = c.zoom.coerceAtLeast(1f)
+    val sx = (dw * z - boxW) / 2f
+    val sy = (dh * z - boxH) / 2f
+    return Triple(z, (c.ox * boxW).coerceIn(-sx, sx), (c.oy * boxH).coerceIn(-sy, sy))
+}
+
 /** Una imagen encuadrada: recortada a la casilla, con su zoom y su posición. */
 @Composable
 fun FramedImage(c: MagCell, modifier: Modifier) {
     AsyncImage(
         model = c.image, contentDescription = null,
         modifier = modifier.graphicsLayer {
-            scaleX = c.zoom; scaleY = c.zoom
-            translationX = c.ox * size.width; translationY = c.oy * size.height
+            val (z, tx, ty) = magPlace(c, size.width, size.height)
+            scaleX = z; scaleY = z
+            translationX = tx; translationY = ty
         },
         contentScale = if (c.fit) ContentScale.Fit else ContentScale.Crop,
         colorFilter = Ediciones.filtro,
@@ -534,6 +554,12 @@ fun FrameEditor(c: MagCell, frameAspect: Float, onSave: (MagCell) -> Unit, onDis
     var oy by remember { mutableStateOf(c.oy) }
     var box by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(1, 1)) }
     fun current() = c.copy(zoom = zoom, ox = ox, oy = oy, asp = frameAspect.coerceIn(0.2f, 5f))
+    // La foto siempre llena el marco (no se puede alejar ni mover hasta que se vea un hueco); los logos «enteros» no tienen esa regla
+    val minZoom = if (c.fit) 0.2f else 1f
+    fun ajusta() {
+        val (z, tx, ty) = magPlace(current(), box.width.toFloat(), box.height.toFloat())
+        zoom = z; ox = tx / box.width.coerceAtLeast(1); oy = ty / box.height.coerceAtLeast(1)
+    }
     androidx.compose.ui.window.Dialog(onDismiss, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxWidth().padding(16.dp).background(Paper).verticalScroll(rememberScrollState()).padding(18.dp)) {
             Text("Encuadrar", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp)
@@ -562,8 +588,9 @@ fun FrameEditor(c: MagCell, frameAspect: Float, onSave: (MagCell) -> Unit, onDis
                     AsyncImage(
                         model = req, contentDescription = null,
                         modifier = Modifier.requiredSize(imgW, imgH).graphicsLayer {
-                            scaleX = zoom; scaleY = zoom
-                            translationX = ox * frameW.toPx(); translationY = oy * frameH.toPx()
+                            val (z, tx, ty) = magPlace(current(), frameW.toPx(), frameH.toPx())
+                            scaleX = z; scaleY = z
+                            translationX = tx; translationY = ty
                             this.alpha = alpha
                         },
                         contentScale = ContentScale.FillBounds, colorFilter = Ediciones.filtro,
@@ -578,9 +605,10 @@ fun FrameEditor(c: MagCell, frameAspect: Float, onSave: (MagCell) -> Unit, onDis
                         .semantics { contentDescription = "Marco de la imagen" }
                         .pointerInput(Unit) {
                             detectTransformGestures { _, pan, z, _ ->
-                                zoom = (zoom * z).coerceIn(0.2f, 6f)
-                                ox = (ox + pan.x / box.width).coerceIn(-3f, 3f)
-                                oy = (oy + pan.y / box.height).coerceIn(-3f, 3f)
+                                zoom = (zoom * z).coerceIn(minZoom, 6f)
+                                ox += pan.x / box.width
+                                oy += pan.y / box.height
+                                ajusta()
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -590,8 +618,8 @@ fun FrameEditor(c: MagCell, frameAspect: Float, onSave: (MagCell) -> Unit, onDis
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
-                Tool("− REDUCIR") { zoom = (zoom / 1.15f).coerceIn(0.2f, 6f) }
-                Tool("+ AMPLIAR") { zoom = (zoom * 1.15f).coerceIn(0.2f, 6f) }
+                Tool("− REDUCIR") { zoom = (zoom / 1.15f).coerceIn(minZoom, 6f); ajusta() }
+                Tool("+ AMPLIAR") { zoom = (zoom * 1.15f).coerceIn(minZoom, 6f); ajusta() }
                 Tool("CENTRAR") { zoom = 1f; ox = 0f; oy = 0f }
             }
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(22.dp, Alignment.End)) {

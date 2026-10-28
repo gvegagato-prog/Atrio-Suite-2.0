@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.swipeLeft
@@ -66,6 +67,24 @@ open class Capturas6Test {
         c.drawRect(0f, 0f, 300f, 450f, p)
         val t = Paint().apply { color = 0x55FFFFFF; textSize = 120f; isAntiAlias = true; isFakeBoldText = true }
         c.drawText(name.take(1), 30f, 160f, t)
+        f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        return f.absolutePath
+    }
+
+    /** Imagen de cuadrícula numerada (para comprobar qué parte de la foto se ve en el encuadre y en la ficha). */
+    private fun grid(): String {
+        val f = File(ctx.cacheDir, "grid.png")
+        if (f.exists()) return f.absolutePath
+        val bmp = Bitmap.createBitmap(1000, 1250, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        c.drawColor(0xFFE6E6E6.toInt())
+        val line = Paint().apply { color = 0xFF000000.toInt(); strokeWidth = 3f }
+        val txt = Paint().apply { textSize = 48f; isAntiAlias = true; isFakeBoldText = true }
+        for (i in 0 until 10) for (j in 0 until 13) {
+            c.drawLine(i * 100f, 0f, i * 100f, 1250f, line); c.drawLine(0f, j * 100f, 1000f, j * 100f, line)
+            txt.color = if ((i + j) % 2 == 1) 0xFFC80000.toInt() else 0xFF0000C8.toInt()
+            c.drawText("$i${'A' + j}", i * 100f + 8f, j * 100f + 56f, txt)
+        }
         f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         return f.absolutePath
     }
@@ -252,6 +271,22 @@ open class Capturas6Test {
         rule.onAllNodesWithText("+ AMPLIAR")[0].performClick(); rule.onAllNodesWithText("+ AMPLIAR")[0].performClick()
         rule.onAllNodesWithText("GUARDAR")[0].performClick()
         rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r9k_auto_resultado")
+        // Con una imagen de cuadrícula: lo que se ve en el marco tiene que ser lo mismo que sale en la casilla
+        rule.runOnUiThread {
+            MagLayouts.save(ctx, "v:0:102", listOf(
+                MagRowSpec(listOf(MagCell("imagen", image = grid(), shape = "llenar"), MagCell("nota")), 0.45f),
+                MagRowSpec(listOf(MagCell("texto", "Mi veredicto", "El mejor roguelike que he jugado.")))
+            ))
+        }
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        rule.onAllNodesWithText("Hades II")[0].performClick(); shoot("r9l_grid_antes")
+        rule.onAllNodesWithText("EDITAR")[0].performClick()
+        rule.onNodeWithContentDescription("Casilla Imagen").performClick()
+        rule.onAllNodesWithText("Encuadrar la imagen")[0].performClick(); shoot("r9m_grid_encuadre0")
+        rule.onAllNodesWithText("+ AMPLIAR")[0].performClick()
+        rule.onNodeWithContentDescription("Marco de la imagen").performTouchInput { this.swipe(center, androidx.compose.ui.geometry.Offset(center.x, center.y + 400f)) }; shoot("r9n_grid_encuadre1")
+        rule.onAllNodesWithText("GUARDAR")[0].performClick()
+        rule.onAllNodesWithText("LISTO")[0].performClick(); shoot("r9o_grid_resultado")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.onAllNodesWithText("Jugando")[0].performClick()
         rule.onAllNodesWithText("Deadlock")[0].performClick(); shoot("r5_ficha_jugando")
