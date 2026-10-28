@@ -37,7 +37,8 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
   await db('PUT', '/config/webKey', 'prueba');
   fs.writeFileSync(path.join(HOME, '.config', 'atrio', 'ronron.json'), JSON.stringify({ db: FB, authBase: FB, webKey: 'prueba', uid, user: 'gonzalo', refresh: su.refreshToken, dev: 'atrio-prueba', seen: {} }));
   fs.writeFileSync(path.join(HOME, '.config', 'atrio', 'config.json'), JSON.stringify({ sources: { steam: false, heroic: false, lutris: false, emulators: false, custom: true }, customGames: [], behavior: { autostart: 'off', fullscreen: false, onLaunch: 'none' }, ui: 'revista' }));
-  const env = { ...process.env, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_SUITE_BEAT: '4000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
+  const EXPO = path.join(OUT, 'exportado'); fs.rmSync(EXPO, { recursive: true, force: true }); fs.mkdirSync(EXPO, { recursive: true });
+  const env = { ...process.env, ATRIO_PRUEBA_EXPORTA: EXPO, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_SUITE_BEAT: '4000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY']) delete env[k];
   const electron = path.join(DESK, 'node_modules', 'electron', 'dist', 'electron');
   const CDP = 9700 + Math.floor(Math.random() * 200);
@@ -114,6 +115,32 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     await p.keyboard.press('Control+z'); await sleep(300); await p.keyboard.press('Control+y'); await sleep(1200);
     ok((await todo()).docs.find((d) => d.id === 'm_escena').texto === tTip, 'Ctrl+Z y Ctrl+Y (deshacer y rehacer)');
     ok(/corrector (en es|el del sistema)/.test(logs.join('')), `el corrector está en español (${(logs.join('').match(/corrector[^\n]*/) || [''])[0]})`);
+
+    console.log('Exportar a PDF y Word');
+    for (let i = 2; i <= 4; i++) {
+      const ci = await A('nuevo', 'c', o.id, { titulo: `Capítulo ${i}` });
+      await A('nuevo', 'e', o.id, { cid: ci.id, titulo: 'Escena', texto: Array.from({ length: 14 }, (_, k) => `Párrafo ${k + 1} del capítulo ${i}: «Aldara subió la torre sin mirar atrás», dijo el narrador, y siguió contando cómo el viento del valle le arrancaba el capuchón y le llevaba las palabras de la hechicera.`).join('\n\n') });
+    }
+    const ex = (formato, op) => p.evaluate(([id, f, x]) => window.atrio.escritosExportar(id, f, x), [o.id, formato, op]);
+    const { execFileSync } = require('child_process');
+    const info = (f) => execFileSync('pdfinfo', [f]).toString();
+    const txt = (f) => execFileSync('pdftotext', ['-layout', f, '-']).toString();
+    const libro = await ex('pdf', { estilo: 'libro', titulosDeCapitulo: true });
+    ok(libro && fs.existsSync(libro) && fs.readFileSync(libro).subarray(0, 5).toString() === '%PDF-', `PDF (libro) guardado (${libro && path.basename(libro)})`);
+    const il = info(libro);
+    const paginas = Number((il.match(/Pages:\s+(\d+)/) || [])[1]);
+    ok(/\(A5\)/.test(il) && paginas >= 5, `A5 y ${paginas} páginas`);
+    const tl = txt(libro);
+    ok(/Desde Atrio/.test(tl) && /Capítulo 3/.test(tl) && /\n\s*3\s*\n/.test(tl), 'con portada, capítulos y páginas numeradas');
+    ok(/Fraunces|Libro/i.test(execFileSync('pdffonts', [libro]).toString()), 'con las letras de la revista');
+    execFileSync('pdftoppm', ['-png', '-r', '60', '-f', '1', '-l', '3', libro, path.join(OUT, 'pdf-libro')]);
+    const ms = await ex('pdf', { estilo: 'manuscrito', interlineado: '2' });
+    const im = info(ms);
+    ok(/\(A4\)/.test(im), 'PDF (manuscrito) en A4');
+    ok(/DESDE ATRIO/.test(txt(ms)) && /palabras/.test(txt(ms)) && /FIN/.test(txt(ms)), 'con portada, recuento de palabras y FIN');
+    execFileSync('pdftoppm', ['-png', '-r', '60', '-f', '1', '-l', '2', ms, path.join(OUT, 'pdf-manuscrito')]);
+    const wd = await ex('docx', { estilo: 'manuscrito' });
+    ok(wd && /\(manuscrito\)\.docx$/.test(wd) && fs.readFileSync(wd).subarray(0, 2).toString() === 'PK', 'Word (manuscrito)');
 
     console.log('Exportar y estado en la página');
     ok(!/Error|error/.test(logs.join('').split('\n').filter((l) => /escrib/i.test(l)).join('\n')), 'sin errores de Escribir en el registro');

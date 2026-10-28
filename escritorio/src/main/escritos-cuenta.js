@@ -35,13 +35,20 @@ function iniciar({ ronron, ipcMain, send, log, fetchImpl, dir, dialog, ventana =
   ipcMain.handle('escritos:exportar', async (_e, pid, formato, opciones) => {
     const obra = escr.get(pid);
     if (!obra) throw new Error('No encuentro esa obra.');
-    const ext = ['docx', 'epub', 'md', 'txt'].includes(formato) ? formato : 'docx';
-    const nombre = String(obra.titulo || 'obra').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'obra';
-    const r = await dialog.showSaveDialog(ventana(), { title: 'Exportar la obra', defaultPath: `${nombre}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
-    if (r.canceled || !r.filePath) return null;
-    const datos = ext === 'docx' ? X.docx(escr, pid, opciones) : ext === 'epub' ? X.epub(escr, pid, opciones) : Buffer.from(ext === 'md' ? X.markdown(escr, pid, opciones) : X.texto(escr, pid, opciones), 'utf8');
-    fs.writeFileSync(r.filePath, datos);
-    return r.filePath;
+    const ext = ['docx', 'pdf', 'epub', 'md', 'txt'].includes(formato) ? formato : 'docx';
+    const nombre = (String(obra.titulo || 'obra').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'obra') + (opciones && opciones.estilo === 'manuscrito' && (ext === 'docx' || ext === 'pdf') ? ' (manuscrito)' : '');
+    let destino;
+    // (las pruebas guardan sin preguntar en una carpeta)
+    if (process.env.ATRIO_PRUEBA_EXPORTA) destino = path.join(process.env.ATRIO_PRUEBA_EXPORTA, `${nombre}.${ext}`);
+    else {
+      const r = await dialog.showSaveDialog(ventana(), { title: 'Exportar la obra', defaultPath: `${nombre}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
+      if (r.canceled || !r.filePath) return null;
+      destino = r.filePath;
+    }
+    const datos = ext === 'docx' ? X.docx(escr, pid, opciones) : ext === 'pdf' ? await require('./escritos-pdf').pdf(escr, pid, opciones)
+      : ext === 'epub' ? X.epub(escr, pid, opciones) : Buffer.from(ext === 'md' ? X.markdown(escr, pid, opciones) : X.texto(escr, pid, opciones), 'utf8');
+    fs.writeFileSync(destino, datos);
+    return destino;
   });
   ipcMain.handle('escritos:importar', async () => {
     const r = await dialog.showOpenDialog(ventana(), { title: 'Importar un texto', properties: ['openFile'], filters: [{ name: 'Texto, Markdown o Word', extensions: ['txt', 'md', 'markdown', 'docx'] }] });

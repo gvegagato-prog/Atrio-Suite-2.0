@@ -14,6 +14,8 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.activity.compose.rememberLauncherForActivityResult
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -250,16 +252,56 @@ fun CifrasObra(e: Escritos, obra: Doc, ver: Int) {
 @Composable
 fun ExportarDialogo(e: Escritos, obra: Doc, onCerrar: () -> Unit) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var formato by remember { mutableStateOf("docx") }
+    var estilo by remember { mutableStateOf("libro") }
+    var interlineado by remember { mutableStateOf("1.5") }
     var capitulos by remember { mutableStateOf(true) }
     var escenasT by remember { mutableStateOf(false) }
     var minimo by remember { mutableIntStateOf(0) }
     var msg by remember { mutableStateOf("") }
-    val formatos = listOf("docx" to "Word (.docx)", "epub" to "Libro (.epub)", "md" to "Markdown (.md)", "txt" to "Texto (.txt)")
+    var ocupado by remember { mutableStateOf(false) }
+    val formatos = listOf("docx" to "Word (.docx)", "pdf" to "PDF", "epub" to "Libro (.epub)", "md" to "Markdown (.md)", "txt" to "Texto (.txt)")
+    fun mime(f: String) = when (f) { "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; "pdf" -> "application/pdf"; "epub" -> "application/epub+zip"; "md" -> "text/markdown"; else -> "text/plain" }
+    val conEstilo = formato == "docx" || formato == "pdf"
+    val nombre = obra.s("titulo").ifBlank { "obra" }.replace(Regex("[^\\p{L}\\p{N} _-]"), "").trim().ifBlank { "obra" } + if (conEstilo && estilo == "manuscrito") " (manuscrito)" else ""
+    suspend fun genera(): ByteArray = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+        val op = OpcionesExport(titulosDeCapitulo = capitulos, titulosDeEscena = escenasT, soloEstadoMinimo = minimo, estilo = estilo, interlineado = interlineado)
+        when (formato) {
+            "docx" -> EscribirExport.docx(e, obra.id, op); "pdf" -> EscribirPdf.pdf(ctx, e, obra.id, op); "epub" -> EscribirExport.epub(e, obra.id, op)
+            "md" -> EscribirExport.markdown(e, obra.id, op).toByteArray(); else -> EscribirExport.texto(e, obra.id, op).toByteArray()
+        }
+    }
+    // «Guardar en…»: eliges la carpeta (Descargas, Drive, una memoria…) con el selector de archivos de Android
+    val guardar = formatos.associate { (k, _) ->
+        k to rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument(mime(k))) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch {
+                ocupado = true; msg = "Guardando…"
+                msg = runCatching { val b = genera(); kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ctx.contentResolver.openOutputStream(uri, "w")!!.use { it.write(b) } } }
+                    .fold({ "Guardado." }, { "No se ha podido guardar (${it.message ?: "error"})." })
+                ocupado = false
+            }
+        }
+    }
     HojaEscribir("Exportar «${obra.s("titulo")}»", onCerrar) {
-        Text("Se hace en tu móvil: el texto no se envía a ningún sitio. Después eliges con qué app guardarlo o enviarlo.", color = Muted, fontSize = 13.sp)
+        Text("Se hace en tu móvil: el texto no se envía a ningún sitio. Lo guardas donde quieras o lo mandas con otra app.", color = Muted, fontSize = 13.sp)
         EtiquetaEscribir("Formato")
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { formatos.forEach { (k, n) -> SoftChip(n, formato == k) { formato = k } } }
+        if (conEstilo) {
+            EtiquetaEscribir("Estilo")
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SoftChip("Libro", estilo == "libro") { estilo = "libro" }
+                SoftChip("Manuscrito", estilo == "manuscrito") { estilo = "manuscrito" }
+            }
+            Text(if (estilo == "libro") "Como un libro: tus letras, justificado, capítulos en página nueva." else "Para enviar a editoriales y concursos: letra con serifa de 12, márgenes de 2,5 cm, páginas numeradas y una portada con el recuento de palabras. Si una editorial pide otra cosa, sus normas mandan.",
+                color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
+            if (estilo == "manuscrito") Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Interlineado", color = Muted, fontSize = 12.sp)
+                SoftChip("1,5", interlineado == "1.5") { interlineado = "1.5" }
+                SoftChip("Doble", interlineado == "2") { interlineado = "2" }
+            }
+        }
         EtiquetaEscribir("Qué incluir")
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SoftChip("Títulos de capítulo", capitulos) { capitulos = !capitulos }
@@ -270,18 +312,23 @@ fun ExportarDialogo(e: Escritos, obra: Doc, onCerrar: () -> Unit) {
             SoftChip("Revisión y finales", minimo == 1) { minimo = 1 }
             SoftChip("Solo finales", minimo == 2) { minimo = 2 }
         }
-        BotonEscribir("Exportar") {
-            val op = OpcionesExport(titulosDeCapitulo = capitulos, titulosDeEscena = escenasT, soloEstadoMinimo = minimo)
-            val r = runCatching {
-                val bytes = when (formato) { "docx" -> EscribirExport.docx(e, obra.id, op); "epub" -> EscribirExport.epub(e, obra.id, op); "md" -> EscribirExport.markdown(e, obra.id, op).toByteArray(); else -> EscribirExport.texto(e, obra.id, op).toByteArray() }
-                val dir = java.io.File(ctx.cacheDir, "compartir").apply { mkdirs() }
-                val nombre = obra.s("titulo").ifBlank { "obra" }.replace(Regex("[^\\p{L}\\p{N} _-]"), "").trim().ifBlank { "obra" }
-                val f = java.io.File(dir, "$nombre.$formato").apply { writeBytes(bytes) }
-                val uri = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".archivos", f)
-                val mime = when (formato) { "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"; "epub" -> "application/epub+zip"; "md" -> "text/markdown"; else -> "text/plain" }
-                ctx.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).setType(mime).putExtra(android.content.Intent.EXTRA_STREAM, uri).addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION), "Guardar o enviar").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BotonEscribir("Guardar en…") { if (!ocupado) guardar[formato]?.launch("$nombre.$formato") }
+            BotonEscribir("Compartir", suave = true) {
+                if (ocupado) return@BotonEscribir
+                scope.launch {
+                    ocupado = true; msg = if (formato == "pdf") "Preparando el PDF…" else ""
+                    val r = runCatching {
+                        val bytes = genera()
+                        val dir = java.io.File(ctx.cacheDir, "compartir").apply { mkdirs() }
+                        val f = java.io.File(dir, "$nombre.$formato").apply { writeBytes(bytes) }
+                        val uri = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".archivos", f)
+                        ctx.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).setType(mime(formato)).putExtra(android.content.Intent.EXTRA_STREAM, uri).addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION), "Enviar").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                    msg = r.fold({ "" }, { "No se ha podido exportar (${it.message ?: "error"})." })
+                    ocupado = false
+                }
             }
-            msg = r.fold({ "" }, { "No se ha podido exportar (${it.message ?: "error"})." })
         }
         if (msg.isNotEmpty()) Text(msg, color = ColGeneral, fontSize = 13.sp)
     }

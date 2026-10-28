@@ -18,7 +18,12 @@ class OpcionesExport(
     val titulosDeCapitulo: Boolean = true,
     val titulosDeEscena: Boolean = false,
     val soloEstadoMinimo: Int = 0,
-    val saltoEntreEscenas: Boolean = true
+    val saltoEntreEscenas: Boolean = true,
+    /** «libro» o «manuscrito» (el de enviar a editoriales), para Word y PDF. */
+    val estilo: String = "libro",
+    /** Interlineado del manuscrito: "1.5" o "2". */
+    val interlineado: String = "1.5",
+    val numerar: Boolean = true
 )
 
 /**
@@ -84,7 +89,7 @@ object EscribirExport {
         return out
     }
 
-    private fun plano(t: String) = trozos(t).joinToString("") { it.texto }
+    fun plano(t: String) = trozos(t).joinToString("") { it.texto }
 
     fun markdown(e: Escritos, pid: String, op: OpcionesExport = OpcionesExport()): String {
         val sb = StringBuilder()
@@ -132,35 +137,80 @@ object EscribirExport {
         "<w:r><w:rPr>$extra${if (r.negrita) "<w:b/>" else ""}${if (r.cursiva) "<w:i/>" else ""}</w:rPr><w:t xml:space=\"preserve\">${xml(r.texto)}</w:t></w:r>"
     }
 
+    private val PALABRA = Regex("[\\p{L}\\p{N}]+(?:['’\\-][\\p{L}\\p{N}]+)*")
+    /** Las palabras del texto que se exporta (párrafos y citas). */
+    fun palabrasDe(bs: List<Bloque>): Int = bs.filter { it.tipo == Bloque.Tipo.PARRAFO || it.tipo == Bloque.Tipo.CITA }.sumOf { PALABRA.findAll(plano(it.texto)).count() }
+    /** «unas 85.000 palabras» (redondeado, como se da en un manuscrito). */
+    fun recuento(n: Int): String {
+        if (n < 1000) return "$n palabras"
+        val r = Math.round(n / 1000.0) * 1000
+        return "unas " + (if (r < 10_000) r.toString() else java.text.NumberFormat.getIntegerInstance(java.util.Locale("es", "ES")).format(r)) + " palabras"
+    }
+
+    /**
+     * Word en dos estilos: «libro» (Georgia, justificado, capítulos centrados) y «manuscrito» (el de enviar a editoriales:
+     * Times New Roman 12, márgenes de 2,5 cm, interlineado 1,5 o doble, portada con el recuento de palabras y páginas
+     * numeradas). No hay un formato único para todas las editoriales: si una pide otra cosa, sus normas mandan.
+     * Igual que docx() de escritos-export.js en el PC.
+     */
     fun docx(e: Escritos, pid: String, op: OpcionesExport = OpcionesExport()): ByteArray {
+        val ms = op.estilo == "manuscrito"
+        val obra = e.get(pid)
+        val autor = obra?.s("autor").orEmpty()
+        val bs = manuscrito(e, pid, op)
         val body = StringBuilder()
-        var primeraDelCapitulo = true
-        for (b in manuscrito(e, pid, op)) when (b.tipo) {
-            Bloque.Tipo.TITULO -> body.append("<w:p><w:pPr><w:pStyle w:val=\"Title\"/></w:pPr>${runs(b.texto)}</w:p>")
-            Bloque.Tipo.PARTE -> body.append("<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/><w:pageBreakBefore/></w:pPr>${runs(b.texto)}</w:p>")
-            Bloque.Tipo.CAPITULO, Bloque.Tipo.H1 -> body.append("<w:p><w:pPr><w:pStyle w:val=\"Heading2\"/>${if (b.tipo == Bloque.Tipo.CAPITULO) "<w:pageBreakBefore/>" else ""}</w:pPr>${runs(b.texto)}</w:p>").also { primeraDelCapitulo = true }
-            Bloque.Tipo.ESCENA, Bloque.Tipo.H2, Bloque.Tipo.H3 -> body.append("<w:p><w:pPr><w:pStyle w:val=\"Heading3\"/></w:pPr>${runs(b.texto)}</w:p>")
-            Bloque.Tipo.CITA -> body.append("<w:p><w:pPr><w:pStyle w:val=\"Quote\"/></w:pPr>${runs(b.texto)}</w:p>")
-            Bloque.Tipo.SALTO -> body.append("<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>* * *</w:t></w:r></w:p>")
-            Bloque.Tipo.PARRAFO -> { body.append("<w:p><w:pPr><w:pStyle w:val=\"Normal\"/>${if (primeraDelCapitulo) "" else "<w:ind w:firstLine=\"567\"/>"}</w:pPr>${runs(b.texto)}</w:p>"); primeraDelCapitulo = false }
+        var primera = true
+        if (ms) {
+            body.append("<w:p><w:pPr><w:jc w:val=\"left\"/></w:pPr>${runs(autor)}</w:p><w:p><w:pPr><w:jc w:val=\"left\"/></w:pPr>${runs(recuento(palabrasDe(bs)))}</w:p>")
+            body.append("<w:p><w:pPr><w:pStyle w:val=\"Title\"/></w:pPr>${runs(obra?.s("titulo").orEmpty().ifBlank { "Sin título" }.uppercase(java.util.Locale("es")))}</w:p>")
+            if (autor.isNotBlank()) body.append("<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr>${runs("de $autor")}</w:p>")
+            obra?.s("genero")?.takeIf { it.isNotBlank() }?.let { body.append("<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr>${runs(it)}</w:p>") }
         }
-        val doc = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>$body" +
-            "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/></w:sectPr></w:body></w:document>"
-        val estilos = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">" +
-            "<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"Georgia\" w:hAnsi=\"Georgia\" w:cs=\"Georgia\"/><w:sz w:val=\"24\"/><w:lang w:val=\"es-ES\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"0\" w:line=\"360\" w:lineRule=\"auto\"/><w:jc w:val=\"both\"/></w:pPr></w:pPrDefault></w:docDefaults>" +
-            "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/></w:style>" +
-            "<w:style w:type=\"paragraph\" w:styleId=\"Title\"><w:name w:val=\"Title\"/><w:basedOn w:val=\"Normal\"/><w:pPr><w:spacing w:before=\"3000\" w:after=\"400\"/><w:jc w:val=\"center\"/></w:pPr><w:rPr><w:b/><w:sz w:val=\"56\"/></w:rPr></w:style>" +
-            "<w:style w:type=\"paragraph\" w:styleId=\"Heading1\"><w:name w:val=\"heading 1\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:pPr><w:keepNext/><w:spacing w:before=\"2400\" w:after=\"600\"/><w:jc w:val=\"center\"/><w:outlineLvl w:val=\"0\"/></w:pPr><w:rPr><w:b/><w:sz w:val=\"40\"/></w:rPr></w:style>" +
-            "<w:style w:type=\"paragraph\" w:styleId=\"Heading2\"><w:name w:val=\"heading 2\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:pPr><w:keepNext/><w:spacing w:before=\"1200\" w:after=\"480\"/><w:jc w:val=\"center\"/><w:outlineLvl w:val=\"1\"/></w:pPr><w:rPr><w:b/><w:sz w:val=\"32\"/></w:rPr></w:style>" +
-            "<w:style w:type=\"paragraph\" w:styleId=\"Heading3\"><w:name w:val=\"heading 3\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:pPr><w:keepNext/><w:spacing w:before=\"360\" w:after=\"240\"/><w:outlineLvl w:val=\"2\"/></w:pPr><w:rPr><w:b/><w:i/><w:sz w:val=\"26\"/></w:rPr></w:style>" +
-            "<w:style w:type=\"paragraph\" w:styleId=\"Quote\"><w:name w:val=\"Quote\"/><w:basedOn w:val=\"Normal\"/><w:pPr><w:spacing w:before=\"240\" w:after=\"240\"/><w:ind w:left=\"720\" w:right=\"720\"/></w:pPr><w:rPr><w:i/></w:rPr></w:style></w:styles>"
-        return zip(listOf(
-            Triple("[Content_Types].xml", ("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
-                "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/><Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/></Types>").toByteArray(), false),
-            Triple("_rels/.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>".toByteArray(), false),
-            Triple("word/_rels/document.xml.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/></Relationships>".toByteArray(), false),
+        for (b in if (ms) bs.drop(if (autor.isNotBlank()) 2 else 1) else bs) when (b.tipo) {
+            Bloque.Tipo.TITULO -> body.append("<w:p><w:pPr><w:pStyle w:val=\"Title\"/></w:pPr>${runs(b.texto)}</w:p>")
+            Bloque.Tipo.PARTE -> { body.append("<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/><w:pageBreakBefore/></w:pPr>${runs(b.texto)}</w:p>"); primera = true }
+            Bloque.Tipo.CAPITULO, Bloque.Tipo.H1 -> { body.append("<w:p><w:pPr><w:pStyle w:val=\"Heading2\"/>${if (b.tipo == Bloque.Tipo.CAPITULO) "<w:pageBreakBefore/>" else ""}</w:pPr>${runs(b.texto)}</w:p>"); primera = true }
+            Bloque.Tipo.ESCENA, Bloque.Tipo.H2, Bloque.Tipo.H3 -> { body.append("<w:p><w:pPr><w:pStyle w:val=\"Heading3\"/></w:pPr>${runs(b.texto)}</w:p>"); primera = true }
+            Bloque.Tipo.CITA -> body.append("<w:p><w:pPr><w:pStyle w:val=\"Quote\"/></w:pPr>${runs(b.texto)}</w:p>")
+            Bloque.Tipo.SALTO -> { body.append("<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>* * *</w:t></w:r></w:p>"); primera = true }
+            Bloque.Tipo.PARRAFO -> { body.append("<w:p><w:pPr><w:pStyle w:val=\"Normal\"/>${if (primera) "" else "<w:ind w:firstLine=\"${if (ms) 709 else 567}\"/>"}</w:pPr>${runs(b.texto)}</w:p>"); primera = false }
+        }
+        if (ms) body.append("<w:p><w:pPr><w:spacing w:before=\"480\"/><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>FIN</w:t></w:r></w:p>")
+        val W = "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\""
+        val m = if (ms) 1418 else 1440
+        val sect = "<w:sectPr>${if (op.numerar) "<w:footerReference w:type=\"default\" r:id=\"rId2\"/>" else ""}<w:pgSz w:w=\"11906\" w:h=\"16838\"/><w:pgMar w:top=\"$m\" w:right=\"$m\" w:bottom=\"$m\" w:left=\"$m\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/>${if (ms) "<w:titlePg/>" else ""}</w:sectPr>"
+        val hdr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+        val doc = "$hdr<w:document $W><w:body>$body$sect</w:body></w:document>"
+        val letra = if (ms) "Times New Roman" else "Georgia"
+        val linea = if (ms && op.interlineado == "2") 480 else 360
+        fun estilo(id: String, nombre: String, ppr: String, rpr: String) = "<w:style w:type=\"paragraph\" w:styleId=\"$id\"><w:name w:val=\"$nombre\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:pPr>$ppr</w:pPr><w:rPr>$rpr</w:rPr></w:style>"
+        val estilos = "$hdr<w:styles $W><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"$letra\" w:hAnsi=\"$letra\" w:cs=\"$letra\" w:eastAsia=\"$letra\"/><w:sz w:val=\"24\"/><w:szCs w:val=\"24\"/><w:lang w:val=\"es-ES\"/></w:rPr></w:rPrDefault>" +
+            "<w:pPrDefault><w:pPr><w:spacing w:after=\"0\" w:line=\"$linea\" w:lineRule=\"auto\"/><w:jc w:val=\"${if (ms) "left" else "both"}\"/></w:pPr></w:pPrDefault></w:docDefaults>" +
+            "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:pPr><w:widowControl/></w:pPr></w:style>" +
+            (if (ms) estilo("Title", "Title", "<w:spacing w:before=\"4800\" w:after=\"240\"/><w:jc w:val=\"center\"/>", "<w:b/>") +
+                estilo("Heading1", "heading 1", "<w:keepNext/><w:spacing w:before=\"3600\" w:after=\"480\"/><w:jc w:val=\"center\"/><w:outlineLvl w:val=\"0\"/>", "<w:b/><w:caps/>") +
+                estilo("Heading2", "heading 2", "<w:keepNext/><w:spacing w:before=\"2880\" w:after=\"480\"/><w:jc w:val=\"center\"/><w:outlineLvl w:val=\"1\"/>", "<w:b/>") +
+                estilo("Heading3", "heading 3", "<w:keepNext/><w:spacing w:before=\"240\" w:after=\"240\"/><w:jc w:val=\"center\"/><w:outlineLvl w:val=\"2\"/>", "<w:i/>")
+            else estilo("Title", "Title", "<w:spacing w:before=\"3000\" w:after=\"400\"/><w:jc w:val=\"center\"/>", "<w:b/><w:sz w:val=\"56\"/>") +
+                estilo("Heading1", "heading 1", "<w:keepNext/><w:spacing w:before=\"2400\" w:after=\"600\"/><w:jc w:val=\"center\"/><w:outlineLvl w:val=\"0\"/>", "<w:b/><w:sz w:val=\"40\"/>") +
+                estilo("Heading2", "heading 2", "<w:keepNext/><w:spacing w:before=\"1200\" w:after=\"480\"/><w:jc w:val=\"center\"/><w:outlineLvl w:val=\"1\"/>", "<w:b/><w:sz w:val=\"32\"/>") +
+                estilo("Heading3", "heading 3", "<w:keepNext/><w:spacing w:before=\"360\" w:after=\"240\"/><w:outlineLvl w:val=\"2\"/>", "<w:b/><w:i/><w:sz w:val=\"26\"/>")) +
+            estilo("Quote", "Quote", "<w:spacing w:before=\"240\" w:after=\"240\"/><w:ind w:left=\"720\" w:right=\"720\"/>", "<w:i/>") +
+            "<w:style w:type=\"paragraph\" w:styleId=\"Footer\"><w:name w:val=\"footer\"/><w:basedOn w:val=\"Normal\"/></w:style></w:styles>"
+        val pie = "$hdr<w:ftr $W><w:p><w:pPr><w:pStyle w:val=\"Footer\"/><w:jc w:val=\"${if (ms) "right" else "center"}\"/></w:pPr><w:fldSimple w:instr=\" PAGE \"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:ftr>"
+        val core = "$hdr<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><dc:title>${xml(obra?.s("titulo").orEmpty())}</dc:title><dc:creator>${xml(autor)}</dc:creator><dc:language>es-ES</dc:language></cp:coreProperties>"
+        return zip(listOfNotNull(
+            Triple("[Content_Types].xml", ("$hdr<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+                "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/><Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/>" +
+                (if (op.numerar) "<Override PartName=\"/word/footer1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml\"/>" else "") +
+                "<Override PartName=\"/docProps/core.xml\" ContentType=\"application/vnd.openxmlformats-package.core-properties+xml\"/></Types>").toByteArray(), false),
+            Triple("_rels/.rels", "$hdr<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties\" Target=\"docProps/core.xml\"/></Relationships>".toByteArray(), false),
+            Triple("word/_rels/document.xml.rels", ("$hdr<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>" +
+                (if (op.numerar) "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer\" Target=\"footer1.xml\"/>" else "") + "</Relationships>").toByteArray(), false),
             Triple("word/document.xml", doc.toByteArray(), false),
-            Triple("word/styles.xml", estilos.toByteArray(), false)
+            Triple("word/styles.xml", estilos.toByteArray(), false),
+            if (op.numerar) Triple("word/footer1.xml", pie.toByteArray(), false) else null,
+            Triple("docProps/core.xml", core.toByteArray(), false)
         ))
     }
 

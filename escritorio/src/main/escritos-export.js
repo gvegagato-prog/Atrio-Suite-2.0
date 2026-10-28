@@ -139,38 +139,101 @@ function leeZip(buf, nombre) {
 }
 
 // ---------------------------------------------------------------- Word
+// Dos estilos: «libro» (Georgia, justificado, capítulos centrados) y «manuscrito» (el de enviar a editoriales: Times New
+// Roman 12, márgenes de 2,5 cm, interlineado 1,5 o doble, portada con el recuento de palabras y páginas numeradas).
+// No hay un formato único para todas las editoriales: si una pide otra cosa, sus normas mandan.
 const runs = (t, extra = '') => trozos(t).map((r) => `<w:r><w:rPr>${extra}${r.neg ? '<w:b/>' : ''}${r.cur ? '<w:i/>' : ''}</w:rPr><w:t xml:space="preserve">${xml(r.texto)}</w:t></w:r>`).join('');
+const palabrasDe = (bs) => bs.filter((b) => b.tipo === B.PARRAFO || b.tipo === B.CITA).reduce((n, b) => n + (plano(b.texto).match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || []).length, 0);
+// «unas 85.000 palabras» (redondeado como se suele dar en un manuscrito)
+const recuento = (n) => (n < 1000 ? `${n} palabras` : `unas ${new Intl.NumberFormat('es-ES').format(Math.round(n / 1000) * 1000)} palabras`);
 
-function docx(e, pid, op) {
+function docx(e, pid, op = {}) {
+  const ms = op.estilo === 'manuscrito';
+  const obra = e.get(pid) || {};
+  const bs = manuscrito(e, pid, op);
   let body = ''; let primera = true;
-  for (const b of manuscrito(e, pid, op)) {
+  if (ms) {
+    // Portada: autor y recuento arriba; título en el centro
+    body += `<w:p><w:pPr><w:jc w:val="left"/></w:pPr>${runs(obra.autor || '')}</w:p><w:p><w:pPr><w:jc w:val="left"/></w:pPr>${runs(recuento(palabrasDe(bs)))}</w:p>`
+      + `<w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr>${runs((obra.titulo || 'Sin título').toLocaleUpperCase('es'))}</w:p>`
+      + (obra.autor ? `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${runs(`de ${obra.autor}`)}</w:p>` : '')
+      + (obra.genero ? `<w:p><w:pPr><w:jc w:val="center"/></w:pPr>${runs(obra.genero)}</w:p>` : '');
+  }
+  for (const b of (ms ? bs.slice(obra.autor ? 2 : 1) : bs)) {
     switch (b.tipo) {
       case B.TITULO: body += `<w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr>${runs(b.texto)}</w:p>`; break;
-      case B.PARTE: body += `<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:pageBreakBefore/></w:pPr>${runs(b.texto)}</w:p>`; break;
+      case B.PARTE: body += `<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:pageBreakBefore/></w:pPr>${runs(b.texto)}</w:p>`; primera = true; break;
       case B.CAPITULO: case B.H1: body += `<w:p><w:pPr><w:pStyle w:val="Heading2"/>${b.tipo === B.CAPITULO ? '<w:pageBreakBefore/>' : ''}</w:pPr>${runs(b.texto)}</w:p>`; primera = true; break;
-      case B.ESCENA: case B.H2: case B.H3: body += `<w:p><w:pPr><w:pStyle w:val="Heading3"/></w:pPr>${runs(b.texto)}</w:p>`; break;
+      case B.ESCENA: case B.H2: case B.H3: body += `<w:p><w:pPr><w:pStyle w:val="Heading3"/></w:pPr>${runs(b.texto)}</w:p>`; primera = true; break;
       case B.CITA: body += `<w:p><w:pPr><w:pStyle w:val="Quote"/></w:pPr>${runs(b.texto)}</w:p>`; break;
-      case B.SALTO: body += '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>* * *</w:t></w:r></w:p>'; break;
-      default: body += `<w:p><w:pPr><w:pStyle w:val="Normal"/>${primera ? '' : '<w:ind w:firstLine="567"/>'}</w:pPr>${runs(b.texto)}</w:p>`; primera = false;
+      case B.SALTO: body += '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>* * *</w:t></w:r></w:p>'; primera = true; break;
+      default: body += `<w:p><w:pPr><w:pStyle w:val="Normal"/>${primera ? '' : `<w:ind w:firstLine="${ms ? 709 : 567}"/>`}</w:pPr>${runs(b.texto)}</w:p>`; primera = false;
     }
   }
-  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
-  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`;
-  const estilos = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia" w:cs="Georgia"/><w:sz w:val="24"/><w:lang w:val="es-ES"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="360" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr></w:pPrDefault></w:docDefaults>`
-    + '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>'
-    + '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="3000" w:after="400"/><w:jc w:val="center"/></w:pPr><w:rPr><w:b/><w:sz w:val="56"/></w:rPr></w:style>'
-    + '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="2400" w:after="600"/><w:jc w:val="center"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style>'
-    + '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="1200" w:after="480"/><w:jc w:val="center"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>'
-    + '<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="360" w:after="240"/><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:i/><w:sz w:val="26"/></w:rPr></w:style>'
-    + '<w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="240" w:after="240"/><w:ind w:left="720" w:right="720"/></w:pPr><w:rPr><w:i/></w:rPr></w:style></w:styles>';
+  if (ms) body += '<w:p><w:pPr><w:spacing w:before="480"/><w:jc w:val="center"/></w:pPr><w:r><w:t>FIN</w:t></w:r></w:p>';
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const numerar = op.numerar !== false;
+  const margen = ms ? 1418 : 1440; // 2,5 cm
+  const sect = `<w:sectPr>${numerar ? '<w:footerReference w:type="default" r:id="rId2"/>' : ''}<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="${margen}" w:right="${margen}" w:bottom="${margen}" w:left="${margen}" w:header="708" w:footer="708" w:gutter="0"/>${ms ? '<w:titlePg/>' : ''}</w:sectPr>`;
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${body}${sect}</w:body></w:document>`;
+  const letra = ms ? 'Times New Roman' : 'Georgia';
+  const linea = ms ? (String(op.interlineado) === '2' ? 480 : 360) : 360;
+  const estilos = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="${letra}" w:hAnsi="${letra}" w:cs="${letra}" w:eastAsia="${letra}"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="es-ES"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="${linea}" w:lineRule="auto"/><w:jc w:val="${ms ? 'left' : 'both'}"/></w:pPr></w:pPrDefault></w:docDefaults>`
+    + '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:pPr><w:widowControl/></w:pPr></w:style>'
+    + (ms
+      ? '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="4800" w:after="240"/><w:jc w:val="center"/></w:pPr><w:rPr><w:b/></w:rPr></w:style>'
+        + '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="3600" w:after="480"/><w:jc w:val="center"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:caps/></w:rPr></w:style>'
+        + '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="2880" w:after="480"/><w:jc w:val="center"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/></w:rPr></w:style>'
+        + '<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="240"/><w:jc w:val="center"/><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:i/></w:rPr></w:style>'
+      : '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="3000" w:after="400"/><w:jc w:val="center"/></w:pPr><w:rPr><w:b/><w:sz w:val="56"/></w:rPr></w:style>'
+        + '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="2400" w:after="600"/><w:jc w:val="center"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="40"/></w:rPr></w:style>'
+        + '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="1200" w:after="480"/><w:jc w:val="center"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>'
+        + '<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="360" w:after="240"/><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:i/><w:sz w:val="26"/></w:rPr></w:style>')
+    + '<w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="240" w:after="240"/><w:ind w:left="720" w:right="720"/></w:pPr><w:rPr><w:i/></w:rPr></w:style>'
+    + '<w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="footer"/><w:basedOn w:val="Normal"/></w:style></w:styles>';
   const hdr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const pie = `${hdr}<w:ftr ${W}><w:p><w:pPr><w:pStyle w:val="Footer"/><w:jc w:val="${ms ? 'right' : 'center'}"/></w:pPr><w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:ftr>`;
   return zip([
-    { nombre: '[Content_Types].xml', datos: Buffer.from(`${hdr}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`) },
-    { nombre: '_rels/.rels', datos: Buffer.from(`${hdr}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`) },
-    { nombre: 'word/_rels/document.xml.rels', datos: Buffer.from(`${hdr}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`) },
+    { nombre: '[Content_Types].xml', datos: Buffer.from(`${hdr}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>${numerar ? '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' : ''}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`) },
+    { nombre: '_rels/.rels', datos: Buffer.from(`${hdr}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`) },
+    { nombre: 'word/_rels/document.xml.rels', datos: Buffer.from(`${hdr}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${numerar ? '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>' : ''}</Relationships>`) },
     { nombre: 'word/document.xml', datos: Buffer.from(doc) },
     { nombre: 'word/styles.xml', datos: Buffer.from(estilos) },
+    ...(numerar ? [{ nombre: 'word/footer1.xml', datos: Buffer.from(pie) }] : []),
+    { nombre: 'docProps/core.xml', datos: Buffer.from(`${hdr}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xml(obra.titulo || '')}</dc:title><dc:creator>${xml(obra.autor || '')}</dc:creator><dc:language>es-ES</dc:language></cp:coreProperties>`) },
   ]);
+}
+
+// ---------------------------------------------------------------- PDF (una página web que Electron imprime: escritos-pdf.js)
+// «libro»: A5, con las letras de la revista (Fraunces), justificado y con los capítulos en página nueva; «manuscrito»: A4,
+// Times New Roman 12 con interlineado 1,5 o doble, como el Word. Numeradas abajo (la portada, sin número).
+function htmlPdf(e, pid, op = {}, fuentes = '') {
+  const ms = op.estilo === 'manuscrito';
+  const obra = e.get(pid) || {};
+  const bs = manuscrito(e, pid, op);
+  const cuerpo = [];
+  const titulo = obra.titulo || 'Sin título';
+  if (ms) cuerpo.push(`<section class="portada"><p class="arriba">${xml(obra.autor || '')}<br>${xml(recuento(palabrasDe(bs)))}</p><h1>${xml(titulo.toLocaleUpperCase('es'))}</h1>${obra.autor ? `<p>de ${xml(obra.autor)}</p>` : ''}${obra.genero ? `<p>${xml(obra.genero)}</p>` : ''}</section>`);
+  else cuerpo.push(`<section class="portada"><h1>${xml(titulo)}</h1>${obra.autor ? `<p class="autor">${xml(obra.autor)}</p>` : ''}</section>`);
+  let primero = true;
+  for (const b of bs.slice(obra.autor ? 2 : 1)) {
+    if (b.tipo === B.PARTE) { cuerpo.push(`<h1 class="parte">${xml(b.texto)}</h1>`); primero = true; } else if (b.tipo === B.CAPITULO) { cuerpo.push(`<h2 class="capitulo">${xml(b.texto)}</h2>`); primero = true; } else if (b.tipo === B.H1) { cuerpo.push(`<h2>${xml(b.texto)}</h2>`); primero = true; } else if (b.tipo === B.ESCENA || b.tipo === B.H2 || b.tipo === B.H3) { cuerpo.push(`<h3>${xml(b.texto)}</h3>`); primero = true; } else if (b.tipo === B.CITA) cuerpo.push(`<blockquote>${html(b.texto)}</blockquote>`);
+    else if (b.tipo === B.SALTO) { cuerpo.push('<p class="salto">* * *</p>'); primero = true; } else { cuerpo.push(`<p${primero ? ' class="primero"' : ''}>${html(b.texto)}</p>`); primero = false; }
+  }
+  if (ms) cuerpo.push('<p class="salto fin">FIN</p>');
+  const linea = ms ? (String(op.interlineado) === '2' ? 2 : 1.5) : 1.42;
+  const css = ms
+    ? `@page{size:A4;margin:2.5cm;@bottom-right{content:counter(page);font:12pt 'Times New Roman','Liberation Serif','Tinos',serif}}@page:first{@bottom-right{content:none}}
+body{font:12pt/${linea} 'Times New Roman','Liberation Serif','Tinos',serif;margin:0;color:#000}p{margin:0;text-indent:1.25cm}p.primero{text-indent:0}
+.portada{break-after:page;text-align:center;padding-top:8cm;position:relative}.portada .arriba{position:absolute;top:0;left:0;text-align:left;text-indent:0}.portada h1{font-size:12pt;font-weight:bold;margin:0 0 1em}.portada p{text-indent:0}
+h1.parte{break-before:page;text-align:center;font-size:12pt;text-transform:uppercase;padding-top:6cm}h2{text-align:center;font-size:12pt;font-weight:bold;margin:0 0 2em}h2.capitulo{break-before:page;padding-top:5cm}
+h3{text-align:center;font-size:12pt;font-style:italic;font-weight:normal;margin:1em 0}p.salto{text-align:center;text-indent:0;margin:1em 0}blockquote{margin:1em 1.25cm;font-style:italic}`
+    : `${fuentes}@page{size:A5;margin:1.9cm 1.6cm 2.1cm;@bottom-center{content:counter(page);font:9pt 'Libro',Georgia,serif;color:#555}}@page:first{@bottom-center{content:none}}
+body{font:10.5pt/${linea} 'Libro',Georgia,serif;margin:0;color:#111;hyphens:auto;text-align:justify;font-variant-numeric:oldstyle-nums}p{margin:0;text-indent:1.3em;orphans:2;widows:2}p.primero{text-indent:0}
+.portada{break-after:page;text-align:center;padding-top:52mm}.portada h1{font-size:26pt;line-height:1.1;font-weight:600;margin:0 0 .6em}.portada .autor{text-indent:0;font-style:italic;font-size:12pt}
+h1.parte{break-before:page;text-align:center;font-size:16pt;font-weight:600;padding-top:60mm;letter-spacing:.08em;text-transform:uppercase}h2{text-align:center;font-weight:600;font-size:15pt;margin:0 0 1.6em}h2.capitulo{break-before:page;padding-top:38mm}
+h3{text-align:center;font-style:italic;font-weight:400;font-size:11pt;margin:1.2em 0 .8em}p.salto{text-align:center;text-indent:0;margin:.9em 0}blockquote{margin:.8em 1.4em;font-style:italic}h1,h2,h3{break-after:avoid;hyphens:none}`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${xml(titulo)}</title><style>${css}</style></head><body>${cuerpo.join('\n')}</body></html>`;
 }
 
 // ---------------------------------------------------------------- EPUB
@@ -241,4 +304,4 @@ function textoDeDocx(buf) {
   return sb;
 }
 
-module.exports = { bloques, trozos, manuscrito, markdown, texto, docx, epub, importaTexto, textoDeDocx, zip, leeZip };
+module.exports = { bloques, trozos, manuscrito, markdown, texto, docx, epub, htmlPdf, importaTexto, textoDeDocx, zip, leeZip, palabrasDe, recuento };

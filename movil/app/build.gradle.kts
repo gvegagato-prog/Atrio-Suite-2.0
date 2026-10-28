@@ -57,6 +57,7 @@ android {
                 it.forkEvery = 1
                 // Robolectric sin internet: su Android de prueba lo baja Gradle (ver robolectricDeps)
                 it.systemProperty("robolectric.offline", "true")
+                System.getProperty("escribir.salida")?.let { d -> it.systemProperty("escribir.salida", d) }
                 it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
                 it.systemProperty("robolectric.dependency.dir", layout.buildDirectory.dir("robolectric-deps").get().asFile.absolutePath)
                 it.dependsOn("copyRobolectricDeps")

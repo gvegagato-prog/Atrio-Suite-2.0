@@ -646,18 +646,30 @@
   }
 
   function exportar(obra) {
-    let formato = 'docx'; let caps = true; let escenas = false; let minimo = 0;
+    let formato = 'docx'; let caps = true; let escenas = false; let minimo = 0; let estilo = 'libro'; let interlineado = '1.5';
     const msg = h('p.mensaje');
+    const ESTILOS = { libro: 'Como un libro: tus letras, justificado, capítulos en página nueva.', manuscrito: 'Para enviar a editoriales y concursos: Times New Roman 12, márgenes de 2,5 cm, páginas numeradas y una portada con el recuento de palabras. Si una editorial pide otra cosa, sus normas mandan.' };
+    const ayudaEstilo = h('small', ESTILOS.libro);
+    const filaInter = h('div.campo', h('span', 'Interlineado'), chips([['1.5', '1,5'], ['2', 'Doble']], interlineado, (k) => { interlineado = k; }));
+    const filaEstilo = h('div.campo', h('span', 'Estilo'), chips([['libro', 'Libro'], ['manuscrito', 'Manuscrito']], estilo, (k) => { estilo = k; pintaOpc(); }), ayudaEstilo);
+    const pintaOpc = () => {
+      const conEstilo = formato === 'docx' || formato === 'pdf';
+      filaEstilo.hidden = !conEstilo; filaInter.hidden = !conEstilo || estilo !== 'manuscrito';
+      ayudaEstilo.textContent = ESTILOS[estilo];
+    };
     RV.dialogo({
       ante: 'Exportar', titulo: obra.titulo, ancho: true,
       cuerpo: [h('p.texto', 'Se hace en este PC: el texto no se envía a ningún sitio. Después eliges dónde guardarlo.'),
-        RV.campo('Formato', chips([['docx', 'Word (.docx)'], ['epub', 'Libro (.epub)'], ['md', 'Markdown (.md)'], ['txt', 'Texto (.txt)']], formato, (k) => { formato = k; })),
+        RV.campo('Formato', chips([['docx', 'Word (.docx)'], ['pdf', 'PDF'], ['epub', 'Libro (.epub)'], ['md', 'Markdown (.md)'], ['txt', 'Texto (.txt)']], formato, (k) => { formato = k; pintaOpc(); })),
+        filaEstilo, filaInter,
         RV.campo('Qué incluir', h('div', h('label.e-check', h('input', { type: 'checkbox', checked: '', onchange: (e) => { caps = e.target.checked; } }), ' Títulos de capítulo'), h('label.e-check', h('input', { type: 'checkbox', onchange: (e) => { escenas = e.target.checked; } }), ' Títulos de escena'))),
         RV.campo('Escenas', chips([['0', 'Todas'], ['1', 'Revisión y finales'], ['2', 'Solo finales']], '0', (k) => { minimo = Number(k); })), msg],
       acciones: ['hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: 'Exportar', principal: true, fn: async (d) => {
-        try { const r = await api.escritosExportar(obra.id, formato, { titulosDeCapitulo: caps, titulosDeEscena: escenas, soloEstadoMinimo: minimo }); if (r) { d.cerrar(); RV.aviso(`Guardado en ${r}`); } } catch (e) { msg.textContent = RV.limpiaError(e); }
+        msg.textContent = formato === 'pdf' ? 'Preparando el PDF…' : '';
+        try { const r = await api.escritosExportar(obra.id, formato, { titulosDeCapitulo: caps, titulosDeEscena: escenas, soloEstadoMinimo: minimo, estilo, interlineado }); if (r) { d.cerrar(); RV.aviso(`Guardado en ${r}`); } else msg.textContent = ''; } catch (e) { msg.textContent = RV.limpiaError(e); }
       } }],
     });
+    pintaOpc();
   }
 
   // ---------------------------------------------------------------- Datos en directo

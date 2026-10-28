@@ -14,6 +14,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 /** Sacar la obra a Markdown, texto, Word y EPUB (archivos bien formados) e importar de vuelta. */
 @RunWith(RobolectricTestRunner::class)
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class EscribirExportTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
@@ -48,7 +49,7 @@ class EscribirExportTest {
         assertTrue(txt, txt.contains("Se quedó mirando el valle.") && !txt.contains("*mirando*") && txt.startsWith("LA TORRE & EL <CUERVO>"))
         // Word: bien formado, con los estilos y las marcas
         val dx = entradas(EscribirExport.docx(e, pid))
-        assertEquals(setOf("[Content_Types].xml", "_rels/.rels", "word/_rels/document.xml.rels", "word/document.xml", "word/styles.xml"), dx.keys)
+        assertEquals(setOf("[Content_Types].xml", "_rels/.rels", "word/_rels/document.xml.rels", "word/document.xml", "word/styles.xml", "word/footer1.xml", "docProps/core.xml"), dx.keys)
         dx.values.forEach { bienFormado(it) }
         val doc = dx["word/document.xml"]!!.toString(Charsets.UTF_8)
         assertTrue(doc.contains("<w:b/>") && doc.contains("<w:i/>") && doc.contains("La torre &amp; el &lt;cuervo&gt;") && doc.contains("w:val=\"Heading2\""))
@@ -76,5 +77,50 @@ class EscribirExportTest {
         val texto = EscribirExport.textoDeDocx(EscribirExport.docx(e, pid))
         assertTrue(texto, texto.contains("# Uno") && texto.contains("Aldara subió la torre."))
         assertTrue(md.isNotBlank())
+    }
+
+    @Test fun manuscritoParaEditoriales() {
+        val e = Escritos(File(ctx.cacheDir, "exp_ms_${System.nanoTime()}")) { "movil" }
+        val pid = obra(e)
+        val b = EscribirExport.docx(e, pid, OpcionesExport(estilo = "manuscrito", interlineado = "2"))
+        val z = entradas(b)
+        z.values.forEach { if (it.isNotEmpty() && it[0] == '<'.code.toByte()) bienFormado(it) }
+        val doc = String(z["word/document.xml"]!!)
+        assertTrue("portada con el recuento", doc.contains("palabras") && doc.contains("LA TORRE &amp; EL &lt;CUERVO&gt;") && doc.contains("de Gonzalo"))
+        assertTrue("sin número en la portada y FIN al final", doc.contains("<w:titlePg/>") && doc.contains(">FIN<"))
+        assertTrue("páginas numeradas", z.containsKey("word/footer1.xml") && String(z["word/footer1.xml"]!!).contains("PAGE"))
+        val est = String(z["word/styles.xml"]!!)
+        assertTrue("Times New Roman 12 a doble espacio", est.contains("Times New Roman") && est.contains("w:sz w:val=\"24\"") && est.contains("w:line=\"480\""))
+        assertEquals("unas 85.000 palabras", EscribirExport.recuento(84_700))
+        assertEquals("unas 3000 palabras", EscribirExport.recuento(3_200))
+        assertEquals("812 palabras", EscribirExport.recuento(812))
+        val dir = System.getProperty("escribir.salida")?.let { File(it) }
+        dir?.let { it.mkdirs(); File(it, "movil-manuscrito.docx").writeBytes(b) }
+    }
+
+    @Test fun pdf() {
+        val e = Escritos(File(ctx.cacheDir, "exp_pdf_${System.nanoTime()}")) { "movil" }
+        val pid = obra(e)
+        // Bastante texto para que haga falta pasar de página
+        val c = e.nuevo(Escritos.T_CAP, pid) { put("titulo", "Tres") }
+        e.nuevo(Escritos.T_ESCENA, pid) { put("cid", c.id); put("texto", (1..40).joinToString("\n\n") { "Párrafo $it: Aldara subió la torre sin mirar atrás. El viento del valle le arrancaba el capuchón y le llevaba las palabras de la hechicera, aquellas que había repetido tantas veces." }) }
+        // (el PDF de verdad, PdfDocument, no funciona fuera de Android: se dibuja la misma maquetación en imágenes)
+        val salida = System.getProperty("escribir.salida")?.let { File(it).apply { mkdirs() } }
+        for ((estilo, esperado) in listOf("libro" to (420 to 595), "manuscrito" to (595 to 842))) {
+            val imgs = ArrayList<android.graphics.Bitmap>()
+            val n = EscribirPdf.dibuja(ctx, e, pid, OpcionesExport(estilo = estilo, interlineado = "2"), object : EscribirPdf.Papel {
+                override fun empieza(n: Int, ancho: Int, alto: Int): android.graphics.Canvas {
+                    assertEquals("tamaño de página ($estilo)", esperado, ancho to alto)
+                    val b = android.graphics.Bitmap.createBitmap(ancho * 2, alto * 2, android.graphics.Bitmap.Config.ARGB_8888).also { it.eraseColor(android.graphics.Color.WHITE) }
+                    imgs += b
+                    return android.graphics.Canvas(b).apply { scale(2f, 2f) }
+                }
+                override fun termina() {}
+            })
+            assertTrue("$estilo: varias páginas ($n)", n >= 5 && imgs.size == n)
+            // Cada página tiene algo dibujado (nada se queda en blanco)
+            imgs.forEachIndexed { i, b -> assertTrue("$estilo: la página ${i + 1} no está vacía", (0 until b.height step 6).any { y -> (0 until b.width step 6).any { x -> b.getPixel(x, y) != android.graphics.Color.WHITE } }) }
+            salida?.let { d -> imgs.take(4).forEachIndexed { i, b -> File(d, "movil-$estilo-${i + 1}.png").outputStream().use { b.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } } }
+        }
     }
 }
