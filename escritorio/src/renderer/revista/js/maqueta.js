@@ -57,6 +57,21 @@
     return { z, tx: clamp(ox * bw, -sx, sx), ty: clamp(oy * bh, -sy, sy), dw, dh };
   };
 
+  // Lo de España en la respuesta de «watch/providers» de TMDB (igual que Tmdb.proveedoresDe del móvil): en suscripción,
+  // alquiler, compra o gratis (con anuncios también), cada lista por prioridad, sin repetir plataformas.
+  M.proveedores = (o) => {
+    const r = o && o.results && o.results.ES;
+    const vacio = { link: '', suscripcion: [], alquiler: [], compra: [], gratis: [] };
+    if (!r) return vacio;
+    const lista = (k) => {
+      const vistos = new Set();
+      return (Array.isArray(r[k]) ? r[k] : []).slice().sort((a, b) => num(a.display_priority, 99) - num(b.display_priority, 99))
+        .map((p) => ({ nombre: String(p.provider_name || ''), logo: typeof p.logo_path === 'string' && p.logo_path.startsWith('/') ? `https://image.tmdb.org/t/p/w92${p.logo_path}` : '' }))
+        .filter((p) => p.nombre && !vistos.has(p.nombre) && vistos.add(p.nombre));
+    };
+    return { link: String(r.link || ''), suscripcion: lista('flatrate'), alquiler: lista('rent'), compra: lista('buy'), gratis: [...lista('free'), ...lista('ads')] };
+  };
+
   if (typeof module !== 'undefined' && module.exports) module.exports = M;
   else raiz.RV = Object.assign(raiz.RV || {}, { M });
 })(typeof window !== 'undefined' ? window : globalThis);

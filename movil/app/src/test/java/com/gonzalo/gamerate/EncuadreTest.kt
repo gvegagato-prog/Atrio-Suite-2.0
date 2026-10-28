@@ -128,4 +128,20 @@ class EncuadreTest {
             assertEquals("${c.getString("nombre")}: ty", e.getDouble("ty"), ty.toDouble(), 1e-3)
         }
     }
+
+    /** Los mismos casos que el PC: lo de España en la respuesta de «watch/providers» de TMDB. */
+    @Test fun proveedoresIgualQueElPc() {
+        val casos = org.json.JSONObject(File(raiz(), "herramientas/casos/maqueta.json").readText()).getJSONArray("proveedores")
+        for (i in 0 until casos.length()) {
+            val c = casos.getJSONObject(i); val e = c.getJSONObject("esperado")
+            val d = Tmdb.proveedoresDe(c.getJSONObject("entrada"))
+            fun plats(l: List<Plat>) = l.map { it.nombre + "|" + it.logo }
+            fun esperadas(k: String) = (0 until e.getJSONArray(k).length()).map { e.getJSONArray(k).getJSONObject(it) }.map { it.getString("nombre") + "|" + it.getString("logo") }
+            assertEquals("${c.getString("nombre")}: link", e.getString("link"), d.link)
+            assertEquals("${c.getString("nombre")}: suscripción", esperadas("suscripcion"), plats(d.suscripcion))
+            assertEquals("${c.getString("nombre")}: alquiler", esperadas("alquiler"), plats(d.alquiler))
+            assertEquals("${c.getString("nombre")}: compra", esperadas("compra"), plats(d.compra))
+            assertEquals("${c.getString("nombre")}: gratis", esperadas("gratis"), plats(d.gratis))
+        }
+    }
 }

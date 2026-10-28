@@ -33,5 +33,10 @@ for (const c of j.resolver.casos) {
 }
 const r0 = M.resolver(j.resolver.lista, 'g', 1, 7);
 ok(r0[0].celdas[0].asp === 1.2 && r0[1].celdas[0].titulo === 'Mi veredicto' && r0[1].celdas[0].texto === 'Genial', 'Lee el encuadre guardado («as»), el título y el texto de las casillas libres');
+console.log('Dónde verla (lo de España en la respuesta de TMDB)');
+for (const c of j.proveedores) {
+  const r = M.proveedores(c.entrada);
+  ok(JSON.stringify(r) === JSON.stringify(c.esperado), c.nombre);
+}
 console.log(fallos ? `\n${fallos} fallos` : '\nTodo bien');
 process.exit(fallos ? 1 : 0);

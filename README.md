@@ -96,8 +96,10 @@ Prueba: `SOLO=1 node herramientas/prueba-suite.js`.
 dónde está la línea, el alto de la fila, los textos libres y las fotos encuadradas) se pinta igual en la ficha del
 ordenador (`maqueta.js`, `ficha.js`). La foto se dibuja entera y la casilla la recorta después de moverla, sin huecos, con
 el mismo cálculo que el móvil (casos compartidos en `herramientas/casos/maqueta.json`). Las casillas que el ordenador aún
-no tiene (Guías, Crítica, Dónde verla, Lectura, Subrayados, Capítulos, Progreso, Partes, En tu diario, Enlaces) no se
-pintan y la página lo avisa. Por ahora **solo se leen**: la maqueta se cambia desde el móvil. Pruebas:
+no tiene (de momento solo Lectura y Subrayados y notas, del lector de libros) no se pintan y la página lo avisa. Ya se
+pintan Progreso, Apuntes rápidos, Guías, Enlaces, En tu diario, Capítulos, **Crítica** (notas de Rotten Tomatoes, que busca el
+proceso principal con el mismo método que el móvil: `rt.js`) y **Dónde verla** (TMDB y TVmaze, lo de España; con tu clave de TMDB,
+que se pone en el móvil y llega sola). Por ahora **solo se leen**: la maqueta se cambia desde el móvil. Pruebas:
 `node herramientas/prueba-maqueta.js` y `node herramientas/prueba-maqueta-atrio.js` (con `SOLO=1`, la edición del Mac).
 
 **No lo he podido probar en un Mac físico**: solo en el Mac de GitHub (cuando arranca) y en un Electron de Linux con la

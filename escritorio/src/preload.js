@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('atrio', {
   switchUi: (mode) => invoke('ui:switch', mode),
   // La revista: buscar en Open Library, TMDB, TVmaze y RAWG (lo hace el proceso principal)
   netJson: (url, token) => invoke('net:json', url, token),
+  rtNotas: (tv, id, nombre, clave) => invoke('rt:notas', tv, id, nombre, clave),
   sgdbSearch: (term) => invoke('sgdb:search', term),
   sgdbTest: (key) => invoke('sgdb:test', key),
   sgdbAssets: (key, type, id, page) => invoke('sgdb:assets', key, type, id, page),

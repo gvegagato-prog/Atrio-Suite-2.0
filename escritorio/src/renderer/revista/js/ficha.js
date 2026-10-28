@@ -168,7 +168,7 @@
   // ---------------------------------------------------------------- La maqueta de la ficha (la del móvil)
   // Lo que cada ficha tiene de maqueta (qué casilla va en cada fila, cuánto miden, sus textos y sus fotos) viaja con la
   // cuenta, y aquí se pinta igual. Las casillas que el ordenador todavía no tiene (Guías, Crítica…) no se pintan y se avisa.
-  const NO_HAY = { critica: 'Crítica', donde: 'Dónde verla', lectura: 'Lectura', subrayados: 'Subrayados y notas' };
+  const NO_HAY = { lectura: 'Lectura', subrayados: 'Subrayados y notas' };
 
   // «El nombre del viento (Crónica del asesino de reyes, #1)» → «El nombre del viento»
   const titLimpio = (t) => String(t || '').replace(/\s*\([^()]*\)\s*$/, '').trim() || String(t || '');
@@ -187,6 +187,69 @@
       h('span.versal', fmtDiario(n.dia)), n.x && n.x.trim() ? h('span.texto', n.x.trim().length > 320 ? `${n.x.trim().slice(0, 318).trimEnd()}…` : n.x.trim()) : h('span.cursiva', 'Una foto.'))));
     if (ns.length > 4) box.append(h('span.versal', `y ${ns.length - 4} más en tu diario`));
     return box;
+  }
+
+  // Crítica: las notas de Rotten Tomatoes (las busca el proceso principal; se guardan una semana)
+  const rtMem = new Map();
+  function criticaFicha(kind, item) {
+    const k = `${kind.isTv ? 't' : 'm'}:${item.id}`;
+    const caja = h('div.maq-critica');
+    const pinta = (r) => {
+      if (!r || (r.tm < 0 && r.pc < 0)) { caja.replaceChildren(RV.vacio('Sin notas en Rotten Tomatoes.')); return; }
+      const fila = (cls, n, que) => h('div.maq-rt', h(`span.rt-ico.${cls}`), h('span.rt-num', `${n} %`), h('span.versal', que));
+      caja.replaceChildren(h('button.enlace-maq', { type: 'button', disabled: !r.u, onclick: () => abreFuera(r.u) },
+        r.tm >= 0 ? fila(r.tm >= 60 ? 'tomate' : 'podrido', r.tm, 'Crítica') : null, r.pc >= 0 ? fila('palomita', r.pc, 'Público') : null));
+    };
+    if (rtMem.has(k)) { pinta(rtMem.get(k)); return caja; }
+    caja.append(h('span.cursiva', 'Buscando las notas…'));
+    (RV.api.rtNotas ? RV.api.rtNotas(!!kind.isTv, item.id, item.name, RV.red ? RV.red.tmdbClave() : '') : Promise.resolve(null))
+      .then((r) => { rtMem.set(k, r); pinta(r); })
+      .catch(() => caja.replaceChildren(RV.vacio('No se han podido mirar las notas (¿sin conexión?).')));
+    return caja;
+  }
+
+  // Dónde verla en España (TMDB y TVmaze): en suscripción, alquiler, compra o gratis, y en series dónde se emite.
+  const dondeMem = new Map(); // se guarda 6 horas
+  async function buscaDonde(kind, item) {
+    const N = RV.red; const web = Number(item.id) >= 1 && Number(item.id) < 100000000000; const enc = encodeURIComponent;
+    const clave = N.tmdbClave();
+    if (kind.isMovie) {
+      if (!clave) return { sinClave: true };
+      const mid = web ? Number(item.id) : (((await N.tmdb(`/search/movie?query=${enc(item.name)}&language=es-ES&include_adult=false`)).results || [])[0] || {}).id;
+      return mid ? RV.M.proveedores(await N.tmdb(`/movie/${mid}/watch/providers`)) : null;
+    }
+    const sid = web ? Number(item.id) : (((await N.json(`https://api.tvmaze.com/search/shows?q=${enc(item.name)}`))[0] || {}).show || {}).id;
+    if (!sid) return null;
+    const show = await N.json(`https://api.tvmaze.com/shows/${sid}`);
+    const emision = ((show.webChannel || show.network) || {}).name || '';
+    const base = { link: '', suscripcion: [], alquiler: [], compra: [], gratis: [], emision };
+    if (!clave) return { ...base, sinClave: true };
+    const imdb = (show.externals || {}).imdb;
+    if (!/^tt/.test(String(imdb || ''))) return base;
+    const tv = (((await N.tmdb(`/find/${enc(imdb)}?external_source=imdb_id`)).tv_results || [])[0] || {}).id;
+    return tv ? { ...RV.M.proveedores(await N.tmdb(`/tv/${tv}/watch/providers`)), emision } : base;
+  }
+  function dondeFicha(kind, item) {
+    const k = `${kind.id}:${item.id}`;
+    const caja = h('div.maq-donde');
+    const pinta = (d) => {
+      if (d === null) { caja.replaceChildren(RV.vacio('No se ha podido mirar dónde verla (¿sin conexión?).')); return; }
+      const hijos = [];
+      if (d.emision) hijos.push(h('p.maq-emision', `Se emite en ${d.emision}`));
+      const vacio = !(d.suscripcion || []).length && !(d.alquiler || []).length && !(d.compra || []).length && !(d.gratis || []).length;
+      if (vacio) hijos.push(d.sinClave ? h('p.versal', 'Con tu clave de TMDB (se pone en el móvil: Ajustes → Servicios y llega sola), también en qué plataformas está.') : RV.vacio('Ahora mismo no está en ninguna plataforma en España.'));
+      for (const [t, l] of [['En suscripción', d.suscripcion], ['Gratis', d.gratis], ['Alquiler', d.alquiler], ['Compra', d.compra]]) {
+        if (!l || !l.length) continue;
+        hijos.push(h('div.versal', t), h('div.maq-plats', l.slice(0, 8).map((p) => h('span.maq-plat', p.logo ? h('img', { src: p.logo, alt: '', width: '28', height: '28' }) : null, p.nombre))));
+      }
+      if (!vacio) hijos.push(h('button.enlace', { type: 'button', disabled: !d.link, onclick: () => abreFuera(d.link) }, 'Datos de JustWatch · ver más →'));
+      caja.replaceChildren(...hijos);
+    };
+    const m = dondeMem.get(k);
+    if (m && Date.now() - m.t < 6 * 3600000) { pinta(m.d); return caja; }
+    caja.append(h('span.cursiva', 'Buscando dónde verla…'));
+    buscaDonde(kind, item).then((d) => { dondeMem.set(k, { t: Date.now(), d }); pinta(d); }).catch(() => pinta(null));
+    return caja;
   }
 
   // Capítulos (libros que se leen): el capítulo en el que vas y cuántos llevas sin apuntar
@@ -306,6 +369,8 @@
       progreso: !g && !kind.isBook && (() => h('section.casilla', progresoFicha(kind, item))),
       partes: !g && (() => casilla('Apuntes rápidos', { texto: '+ Añadir', fn: () => F.rapido(kind, item) }, rapidos(kind, item))),
       guias: kind.isGame && (() => casilla('Guías', null, guiasFicha(kind, item, pcg))),
+      critica: (kind.isMovie || kind.isTv) && (() => casilla('Crítica', null, criticaFicha(kind, item))),
+      donde: (kind.isMovie || kind.isTv) && (() => casilla('Dónde verla', null, dondeFicha(kind, item))),
       nota: g && (() => casilla('Nota', { texto: 'Cambiar', fn: () => F.valorar(kind, item) }, bloqueNota(kind, item))),
       opinion: g && (() => casilla('Opinión', { texto: hayOpinion ? 'Editar' : 'Escribir', fn: () => F.opinion(kind, item) }, hayOpinion ? cuerpo(item.review) : RV.vacio('Aún no has escrito nada.'))),
       estado: !g && (() => casilla('Nota', { texto: 'Apuntar', fn: () => F.apuntar(kind, item) },

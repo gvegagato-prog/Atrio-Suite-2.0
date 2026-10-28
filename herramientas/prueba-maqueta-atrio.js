@@ -4,6 +4,7 @@
 // en Atrio de verdad (Electron bajo Xvfb), con la cuenta en el Firebase de mentira. Con SOLO=1, la edición del Mac.
 // Uso (desde la raíz): node herramientas/prueba-maqueta-atrio.js [carpeta]
 const { spawn } = require('child_process');
+const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -44,6 +45,13 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
     fs.writeFileSync(path.join(DATA, 'fotos', nombre), Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), trozo('IHDR', ihdr), trozo('IDAT', zlib.deflateSync(raw)), trozo('IEND', Buffer.alloc(0))]));
   };
   png('foto_1700000000001.png', 800, 1000); png('foto_1700000000002.png', 1000, 500);
+  // Rotten Tomatoes de mentira: la búsqueda y la página de «Inception» (trozos reales de la web, herramientas/casos/rt-*.html)
+  const rtSrv = http.createServer((q, r) => {
+    if (q.url.startsWith('/search')) r.end(fs.readFileSync(path.join(__dirname, 'casos', 'rt-busqueda.html')));
+    else if (q.url === '/m/inception') r.end(fs.readFileSync(path.join(__dirname, 'casos', 'rt-pagina.html')));
+    else { r.statusCode = 404; r.end('no'); }
+  });
+  await new Promise((res) => rtSrv.listen(0, '127.0.0.1', res));
   const fb = spawn(process.execPath, [path.join(__dirname, 'fakefirebase.js'), String(PORT)], { stdio: 'ignore' });
   await sleep(700);
   const su = await j('POST', `${FB}/v1/accounts:signUp?key=prueba`, { email: 'gonzalo@ronron.example.com', password: 'secreto1', returnSecureToken: true });
@@ -68,8 +76,13 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
     plays: [{ id: 5151, name: 'Un juego en curso', cover: '', hero: '', logo: '', status: 1, entries: [], chapter: 0, every: 3, start: 19900, end: 0, creator: 'Estudio', platform: 'PC', pages: 0, minutes: 120, updated: Date.now(),
       ttbMain: 600, ttbExtra: 900, ttbFull: 1500, parts: [{ n: 'Acto 1', d: 1 }, { n: 'Acto 2', d: 1 }, { n: 'Acto 3', d: 0 }, { n: 'Acto 4', d: 0 }], memos: [{ t: Date.now() - 5000, x: 'Idea suelta del móvil' }] }],
     books: [], bplays: [{ id: 6161, name: 'Un libro en curso', cover: '', hero: '', logo: '', status: 1, entries: [{ time: Date.now() - 86400000, general: 80, gfx: 80, story: 80, music: 80, gameplay: 80, note: 'Va bien', chapter: 6 }], chapter: 12, every: 3, start: 19900, end: 0, creator: 'Autora', platform: 'Ebook', pages: 300, minutes: 0, updated: Date.now() }],
-    diario: [{ id: 111, dia: 20000, x: 'Hoy he jugado un buen rato.', sobre: ['0:5151'], updated: Date.now() }], kinds: [], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {},
+    diario: [{ id: 111, dia: 20000, x: 'Hoy he jugado un buen rato.', sobre: ['0:5151'], updated: Date.now() }], tombs: {}, kindsAt: 0, recs: [], reacts: {}, keys: {}, goals: {}, likes: {},
+    // Una categoría de cine (con su id de TMDB, como en el móvil) con una película valorada y otra que Rotten Tomatoes no conoce
+    kinds: [{ id: 2, title: 'Cine', criteria: ['Guion', 'Dirección', 'Imagen', 'Música'], progress: 'Viendo', source: 'movie' }],
+    items_2: [{ ...ficha(27205, 'Inception'), creator: 'Christopher Nolan' }, { ...ficha(27206, 'Una película inventada'), creator: 'Nadie' }],
     maquetas: [
+      { id: 6, k: 'v:2:27205', j: JSON.stringify([{ s: 0.5, a: 0, c: [{ t: 'critica' }, { t: 'donde' }] }]), updated: Date.now() },
+      { id: 7, k: 'v:2:27206', j: JSON.stringify([{ s: 0.5, a: 0, c: [{ t: 'critica' }, { t: 'donde' }] }]), updated: Date.now() },
       { id: 1, k: 'v:0:4242', j: JSON.stringify(filasPropia), updated: Date.now() },
       { id: 2, k: 'tpl:v:0', j: JSON.stringify(filasCategoria), updated: Date.now() - 1000 },
       { id: 4, k: 'p:0:5151', j: JSON.stringify([
@@ -82,7 +95,7 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
   await db('PUT', `/users/${uid}/dev/mtest`, { name: 'gonzalo', user: 'gonzalo', device: 'android', updated: { '.sv': 'timestamp' }, data: JSON.stringify(data) });
   await db('PATCH', `/users/${uid}`, { 'stamps/mtest': await db('GET', `/users/${uid}/dev/mtest/updated`) });
 
-  const env = { ...process.env, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
+  const env = { ...process.env, ATRIO_RT_BASE: `http://127.0.0.1:${rtSrv.address().port}`, ATRIO_HOME: HOME, ATRIO_RONRON_DB: FB, ATRIO_RONRON_AUTH: FB, ATRIO_RONRON_EVERY: '3000', ATRIO_NO_SANDBOX: '1', ATRIO_POWER_DRY: '1' };
   if (SOLO) env.ATRIO_SOLO_REVISTA = '1';
   for (const k of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP', 'WAYLAND_DISPLAY']) delete env[k];
   const electron = path.join(DESK, 'node_modules', 'electron', 'dist', 'electron');
@@ -137,7 +150,7 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
     ok(/guías/i.test(txt) && /buscar guías/i.test(txt), 'Guías con «Buscar guías»');
     ok(/escribir en el diario/i.test(txt) && /banda sonora/i.test(txt) && /datos de la ficha/i.test(txt), 'Enlaces: diario, banda sonora y datos de la ficha');
     ok(/en tu diario/i.test(txt) && /Hoy he jugado un buen rato\./.test(txt), 'En tu diario con lo que escribiste sobre esta ficha');
-    ok(/crítica/i.test(await p.locator('.maq-nota').innerText()) && !/guías|progreso|enlaces|diario/i.test(await p.locator('.maq-nota').innerText()), 'solo avisa de «Crítica» (lo único que falta)');
+    ok(await p.locator('.maq-nota').count() === 0 && !/crítica/i.test(txt), 'la «Crítica» de la maqueta no sale en un videojuego (como en el móvil) y no hay avisos de casillas sin pintar');
     await ir(6161, 1, 'p');
     await p.screenshot({ path: path.join(OUT, 'ficha-libro.png') });
     const tl = (await p.locator('.casillas').innerText()).replace(/\s+/g, ' ');
@@ -146,6 +159,26 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
     const sube = await hasta(async () => (await p.locator('.cap-gigante').innerText()) === '13' ? true : null, 8000, 300);
     ok(!!sube, 'pulsar «+ 1» pasa al capítulo 13 y se guarda');
     ok(!/en tu diario/i.test(tl), 'sin entradas en el diario, esa casilla no sale (como en el móvil)');
+
+    console.log('Crítica (Rotten Tomatoes) y Dónde verla en el cine');
+    await p.evaluate(() => {
+      // (TMDB de mentira: con clave, lo de España para esta película)
+      window.RV.red.tmdbClave = () => 'clave-de-prueba';
+      window.RV.red.tmdb = async (ruta) => (/\/watch\/providers$/.test(ruta)
+        ? { results: { ES: { link: 'https://www.themoviedb.org/movie/27205/watch', flatrate: [{ provider_name: 'Netflix', display_priority: 1 }, { provider_name: 'Max', display_priority: 2 }], rent: [{ provider_name: 'Apple TV', display_priority: 1 }] } } } : {});
+    });
+    await ir(27205, 2, 'g');
+    const cr = await hasta(async () => { const x = (await p.locator('.casillas').innerText()).replace(/\s+/g, ' '); return /86 %/.test(x) && /Netflix/.test(x) ? x : null; }, 15000, 400);
+    await p.screenshot({ path: path.join(OUT, 'ficha-cine.png') });
+    ok(!!cr && /crítica/i.test(cr) && /86 %/.test(cr) && /público/i.test(cr) && /91 %/.test(cr), `Crítica: 86 % de la crítica y 91 % del público (la película «Inception»)`);
+    ok(await p.locator('.rt-ico.tomate').count() === 1, 'con el tomate fresco (86 ≥ 60)');
+    ok(!!cr && /en suscripción/i.test(cr) && /netflix/i.test(cr) && /max/i.test(cr) && /alquiler/i.test(cr) && /apple tv/i.test(cr) && /justwatch/i.test(cr), 'Dónde verla: suscripción (Netflix, Max), alquiler (Apple TV) y JustWatch');
+    ok(await p.locator('.maq-nota').count() === 0, 'ninguna casilla sin pintar');
+    await p.evaluate(() => { window.RV.red.tmdbClave = () => ''; });
+    await ir(27206, 2, 'g');
+    const sn = await hasta(async () => { const x = (await p.locator('.casillas').innerText()).replace(/\s+/g, ' '); return /sin notas en rotten tomatoes/i.test(x) ? x : null; }, 15000, 400);
+    ok(!!sn, 'una película que Rotten Tomatoes no conoce: «Sin notas en Rotten Tomatoes»');
+    ok(!!sn && /clave de tmdb/i.test(sn), 'y sin clave de TMDB, Dónde verla lo explica (la clave se pone en el móvil y llega sola)');
 
     console.log('Una foto de la galería del móvil que aún no está aquí se puede pedir');
     await ir(4444);
@@ -170,7 +203,7 @@ async function hasta(f, ms = 15000, paso = 250) { const fin = Date.now() + ms; w
   } catch (e) { console.log('ERROR', e); fallos++; } finally {
     try { await navegador.close(); } catch { /* */ }
     try { process.kill(-atrio.pid, 'SIGTERM'); } catch { atrio.kill('SIGTERM'); }
-    await sleep(1500); fb.kill();
+    await sleep(1500); fb.kill(); rtSrv.close();
     fs.writeFileSync(path.join(OUT, 'atrio.log'), logs.join(''));
     console.log(fallos ? `\n${fallos} comprobaciones fallidas (capturas y registro en ${OUT})` : `\nTodo bien (capturas en ${OUT})`);
     process.exit(fallos ? 1 : 0);

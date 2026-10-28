@@ -678,6 +678,9 @@ function setupIpc() {
       throw e;
     } finally { clearTimeout(t); }
   });
+  // Notas de Rotten Tomatoes de una película o serie (la página no puede salir a internet: lo hace este proceso; ver rt.js)
+  const rtNotas = require('./rt').crear({ fetchImpl: (...a) => net.fetch(...a), log });
+  ipcMain.handle('rt:notas', (_e, tv, id, nombre, clave) => rtNotas.puntuacion({ tv: !!tv, id: Number(id) || 0, nombre: String(nombre || '').slice(0, 200), claveTmdb: String(clave || '').slice(0, 400) }));
   setupSuiteIpc();
 
 

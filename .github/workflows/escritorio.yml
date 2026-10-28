@@ -20,6 +20,7 @@ jobs:
           node herramientas/prueba-escribir-texto.js
           node herramientas/prueba-escribir-export.js
           node herramientas/prueba-escribir-copias.js
+          node herramientas/prueba-rt.js
       - name: Tu nube (kDrive de mentira)
         run: node herramientas/prueba-nube.js
       - name: Prueba PC + móvil (Firebase de mentira + Atrio de verdad + móvil simulado)

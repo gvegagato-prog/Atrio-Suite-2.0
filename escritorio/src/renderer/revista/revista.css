@@ -1484,3 +1484,15 @@ body[data-plat="darwin"].ed-foco .ed-salir { top: 36px; }
 .cifra-prog { font-family: var(--serif); font-size: 30px; }
 .maq-barra { height: 4px; background: var(--linea); margin-bottom: 12px; }
 .maq-barra i { display: block; height: 100%; background: var(--tinta); }
+
+/* Crítica (Rotten Tomatoes) y Dónde verla */
+.maq-rt { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.rt-ico { display: inline-block; width: 18px; height: 18px; border-radius: 50%; flex: none; align-self: center; }
+.rt-ico.tomate { background: #FA320A; }
+.rt-ico.podrido { background: #0AC855; }
+.rt-ico.palomita { background: #F5C518; border-radius: 4px; }
+.rt-num { font-family: var(--serif); font-weight: 700; font-size: 30px; line-height: 1; }
+.maq-emision { font-family: var(--serif); font-weight: 600; font-size: 18px; margin: 0 0 8px; }
+.maq-plats { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 10px; }
+.maq-plat { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.maq-plat img { border-radius: 6px; }

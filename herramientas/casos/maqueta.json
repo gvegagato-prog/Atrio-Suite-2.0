@@ -327,5 +327,149 @@
     "filas": 0
    }
   ]
- }
+ },
+ "proveedores": [
+  {
+   "nombre": "España: ordenadas por prioridad, sin repetir y con su logo",
+   "entrada": {
+    "results": {
+     "ES": {
+      "link": "https://www.themoviedb.org/movie/27205/watch?locale=ES",
+      "flatrate": [
+       {
+        "provider_name": "Netflix",
+        "logo_path": "/n.jpg",
+        "display_priority": 3
+       },
+       {
+        "provider_name": "Max",
+        "logo_path": "/m.jpg",
+        "display_priority": 1
+       },
+       {
+        "provider_name": "Netflix",
+        "logo_path": "/n2.jpg",
+        "display_priority": 9
+       },
+       {
+        "provider_name": "Sin logo",
+        "display_priority": 5
+       },
+       {
+        "provider_name": "",
+        "logo_path": "/x.jpg",
+        "display_priority": 2
+       }
+      ],
+      "rent": [
+       {
+        "provider_name": "Apple TV",
+        "logo_path": "/a.jpg",
+        "display_priority": 2
+       }
+      ],
+      "buy": [
+       {
+        "provider_name": "Google Play",
+        "logo_path": "sin-barra",
+        "display_priority": 1
+       }
+      ],
+      "free": [
+       {
+        "provider_name": "RTVE Play",
+        "logo_path": "/r.jpg",
+        "display_priority": 1
+       }
+      ],
+      "ads": [
+       {
+        "provider_name": "Pluto TV",
+        "logo_path": "/p.jpg",
+        "display_priority": 1
+       }
+      ]
+     },
+     "US": {
+      "flatrate": [
+       {
+        "provider_name": "Hulu"
+       }
+      ]
+     }
+    }
+   },
+   "esperado": {
+    "link": "https://www.themoviedb.org/movie/27205/watch?locale=ES",
+    "suscripcion": [
+     {
+      "nombre": "Max",
+      "logo": "https://image.tmdb.org/t/p/w92/m.jpg"
+     },
+     {
+      "nombre": "Netflix",
+      "logo": "https://image.tmdb.org/t/p/w92/n.jpg"
+     },
+     {
+      "nombre": "Sin logo",
+      "logo": ""
+     }
+    ],
+    "alquiler": [
+     {
+      "nombre": "Apple TV",
+      "logo": "https://image.tmdb.org/t/p/w92/a.jpg"
+     }
+    ],
+    "compra": [
+     {
+      "nombre": "Google Play",
+      "logo": ""
+     }
+    ],
+    "gratis": [
+     {
+      "nombre": "RTVE Play",
+      "logo": "https://image.tmdb.org/t/p/w92/r.jpg"
+     },
+     {
+      "nombre": "Pluto TV",
+      "logo": "https://image.tmdb.org/t/p/w92/p.jpg"
+     }
+    ]
+   }
+  },
+  {
+   "nombre": "sin datos de España: todo vacío",
+   "entrada": {
+    "results": {
+     "US": {
+      "flatrate": [
+       {
+        "provider_name": "Hulu"
+       }
+      ]
+     }
+    }
+   },
+   "esperado": {
+    "link": "",
+    "suscripcion": [],
+    "alquiler": [],
+    "compra": [],
+    "gratis": []
+   }
+  },
+  {
+   "nombre": "respuesta vacía",
+   "entrada": {},
+   "esperado": {
+    "link": "",
+    "suscripcion": [],
+    "alquiler": [],
+    "compra": [],
+    "gratis": []
+   }
+  }
+ ]
 }
