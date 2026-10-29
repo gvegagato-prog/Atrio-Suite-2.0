@@ -53,6 +53,9 @@ class EscribirGuiaTest {
         assertEquals("los pasos", (0 until j.getJSONArray("pasos").length()).map { j.getJSONArray("pasos").getInt(it) }, GuiaNovela.PASOS.map { it.id })
         assertEquals("los títulos", (0 until j.getJSONArray("titulos").length()).map { j.getJSONArray("titulos").getString(it) }, GuiaNovela.PASOS.map { it.titulo })
         for (p in GuiaNovela.PASOS) assertTrue("el paso ${p.id} tiene todos sus textos", p.que.isNotBlank() && p.como.size >= 3 && p.accion.isNotBlank() && p.hecho.isNotBlank())
+        val esq = j.getJSONArray("esquema")
+        for (i in 0 until esq.length()) { val c = esq.getJSONObject(i); assertEquals("esquema: ${c.getString("nombre")}", c.getInt("esperado"), GuiaNovela.seccionesEsquema(c.getString("texto"))) }
+        assertEquals(0, GuiaNovela.seccionesEsquema(GuiaNovela.PLANTILLA_ESQUEMA))
         val casos = j.getJSONArray("casos")
         for (i in 0 until casos.length()) {
             val c = casos.getJSONObject(i); val d = c.getJSONObject("datos")
@@ -91,9 +94,13 @@ class EscribirGuiaTest {
         // Paso 3: los tres actos
         rule.onAllNodesWithText("Un esquema ligero")[0].performClick(); rule.waitForIdle()
         rule.onAllNodesWithText("CREAR LOS TRES ACTOS")[0].performScrollTo().performClick(); rule.waitForIdle()
-        assertEquals(listOf("Planteamiento", "Nudo", "Desenlace"), e.capitulos(obra.id).map { it.s("titulo") })
-        assertEquals(3, e.escenasDe(obra.id).size)
+        // (el esquema es una nota, fuera del manuscrito: los capítulos no se tocan)
+        val esq = e.notas(obra.id).firstOrNull { it.s("titulo") == GuiaNovela.TITULO_ESQUEMA }
+        assertTrue("la nota del esquema con sus tres apartados", esq != null && esq.s("texto").contains("Planteamiento:") && esq.s("texto").contains("Nudo:") && esq.s("texto").contains("Desenlace:"))
+        assertEquals(listOf("Capítulo 1"), e.capitulos(obra.id).map { it.s("titulo") })
+        rule.onNodeWithContentDescription("Cerrar").performClick(); rule.waitForIdle()
         // Y el manuscrito enseña el paso que toca (ahora el 2)
+        rule.onAllNodesWithText("Manuscrito")[0].performClick(); rule.waitForIdle()
         assertTrue("la tarjeta del manuscrito", rule.onAllNodesWithText("GUÍA · PASO 2 DE 11").fetchSemanticsNodes().isNotEmpty())
         shoot("guia3_tarjeta")
         // Paso 4 a mano

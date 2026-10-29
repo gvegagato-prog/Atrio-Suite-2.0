@@ -67,7 +67,8 @@
   // Lo que la guía de la novela necesita saber de la obra (escribir-guia.js)
   E.datosGuia = (pid) => {
     const o = E.get(pid) || {};
-    const res = E.capitulos(pid).filter((c) => String(c.resumen || '').trim()).length + E.escenasDe(pid).filter((e) => String(e.resumen || '').trim()).length + E.hitos(pid).length;
+    const res = E.capitulos(pid).filter((c) => String(c.resumen || '').trim()).length + E.escenasDe(pid).filter((e) => String(e.resumen || '').trim()).length + E.hitos(pid).length
+      + E.notas(pid).filter((n) => n.titulo === RV.G.TITULO_ESQUEMA).reduce((a, n) => a + RV.G.seccionesEsquema(n.texto), 0);
     return { obra: o, personajes: E.fichas(pid).filter((f) => f.tipo === 'personaje').length, resumenes: res, dias: E.diasEscritos(pid), palabras: E.palabrasObra(pid), ahora: Date.now() };
   };
   E.ordenEntre = (a, b) => (a == null && b == null ? 1000 : a == null ? b - 1000 : b == null ? a + 1000 : (a + b) / 2);
@@ -737,17 +738,12 @@
         acciones: ['hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() }, { texto: 'Guardar', principal: true, fn: async (d) => { if (!ta.value.trim()) { RV.aviso('Escribe tu frase.', 'error'); return; } await guardaGuia(obra, { idea: ta.value.trim() }); d.cerrar(); } }] });
     },
     2: (obra) => E.dlgFicha(obra.id, null, 'personaje', null, ['Quiere', 'Se lo impide', 'Si fracasa', 'Edad']),
-    3: async (obra) => {
-      const pid = obra.id; const caps = E.capitulos(pid);
-      if (caps.length >= 3) { RV.ir({ v: 'obra', id: pid, tab: 0 }); RV.aviso('Ya tienes capítulos: abre cada uno y escribe su resumen.'); return; }
-      try {
-        const vacio = caps.length === 1 && caps[0].titulo === 'Capítulo 1' && E.palabrasCapitulo(caps[0].id) === 0 && !String(caps[0].resumen || '').trim();
-        const nombres = ['Planteamiento', 'Nudo', 'Desenlace'];
-        if (vacio) await op('edita', caps[0].id, { titulo: nombres[0] });
-        for (let i = caps.length; i < 3; i++) { const c = await op('nuevo', 'c', pid, { titulo: nombres[i] }); await op('nuevo', 'e', pid, { cid: c.id, titulo: 'Escena 1' }); }
-        RV.ir({ v: 'obra', id: pid, tab: 0 });
-        RV.aviso('Tres capítulos: abre cada uno (su título) y escribe en «Resumen» qué pasa. Con tres resúmenes, este paso queda hecho.');
-      } catch (e) { E.err(e); }
+    // El esquema va en una nota (fuera del manuscrito), con un apartado por cada acto
+    3: (obra) => {
+      const ex = E.notas(obra.id).find((n) => n.titulo === RV.G.TITULO_ESQUEMA);
+      if (ex) { E.dlgNota(obra.id, ex); return; }
+      op('nuevo', 'n', obra.id, { tipo: 'idea', titulo: RV.G.TITULO_ESQUEMA, color: RV.COLORES[1], texto: RV.G.PLANTILLA_ESQUEMA })
+        .then((n) => E.dlgNota(obra.id, n)).catch(E.err);
     },
     4: (obra) => {
       const ex = E.notas(obra.id).find((n) => n.titulo === 'Promesas de la historia');

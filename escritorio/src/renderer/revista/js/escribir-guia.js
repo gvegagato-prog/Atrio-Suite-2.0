@@ -21,7 +21,7 @@
       hecho: 'Ya tienes al menos un personaje.' },
     { id: 3, titulo: 'Un esquema ligero', auto: true, accion: 'Crear los tres actos',
       que: 'Una lista corta de lo que pasa, no un guion detallado. Lo habitual son tres actos: planteamiento, nudo y desenlace.',
-      como: ['Resume en una o dos líneas qué pasa en cada parte.', 'Después divide cada parte en capítulos, cada uno con su resumen.', 'Si planificar te agobia, haz un esquema mínimo y sigue: se puede ampliar mientras escribes.'],
+      como: ['Atrio crea una nota «Esquema de la historia», fuera del manuscrito, con tres apartados: Planteamiento, Nudo y Desenlace.', 'Escribe bajo cada uno una o dos líneas: qué pasa.', 'Si planificar te agobia, haz un esquema mínimo y sigue: se puede ampliar mientras escribes.'],
       hecho: 'Tienes el esquema (al menos tres resúmenes).' },
     { id: 4, titulo: 'Promesa, progreso y recompensa', auto: false, accion: 'Anotar mis respuestas',
       que: 'Una idea de las clases de Brandon Sanderson: el principio promete (tono, género, conflicto), el medio avanza y el final cumple lo prometido.',
@@ -64,6 +64,18 @@
   //   resumen, más los hitos de la línea), dias (días distintos con palabras escritas), palabras (de toda la obra), ahora
   // Devuelve por paso: 'hecho', 'saltado', 'curso' (el reposo empezado) o 'pendiente'; y por qué (a mano o solo).
   const num = (x) => { const n = Number(x); return Number.isFinite(n) ? n : 0; };
+  // El esquema vive en una nota de la obra (no en el manuscrito): tres apartados con su etiqueta. Cuántos tienen algo escrito debajo.
+  G.TITULO_ESQUEMA = 'Esquema de la historia';
+  G.PLANTILLA_ESQUEMA = 'Planteamiento:\n\n\nNudo:\n\n\nDesenlace:\n';
+  G.seccionesEsquema = (texto) => {
+    const cuerpo = {};
+    let actual = null;
+    for (const l of String(texto || '').split('\n')) {
+      const m = /^\s*(Planteamiento|Nudo|Desenlace)\s*:\s*(.*)$/i.exec(l);
+      if (m) { actual = m[1].toLowerCase(); cuerpo[actual] = (cuerpo[actual] || '') + m[2]; } else if (actual) cuerpo[actual] += l;
+    }
+    return Object.values(cuerpo).filter((c) => c.trim() !== '').length;
+  };
   G.automatico = (id, d) => {
     const o = d.obra || {};
     if (id === 1) return String(o.idea || '').trim() !== '';

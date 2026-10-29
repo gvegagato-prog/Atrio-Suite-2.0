@@ -1,277 +1,309 @@
 {
-  "nota": "Casos de la guía de la novela (escribir-guia.js y EscribirGuia.kt): los datos de la obra y el estado que sale en cada paso. 'esperado' lista los pasos que NO están pendientes, como id:estado.",
-  "pasos": [
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11
-  ],
-  "titulos": [
-    "Una idea pequeña",
-    "Tus personajes",
-    "Un esquema ligero",
-    "Promesa, progreso y recompensa",
-    "Un hábito realista",
-    "El primer borrador",
-    "Dejarlo reposar",
-    "Revisar lo grande",
-    "Revisar lo pequeño",
-    "Lectores de prueba",
-    "Corrección final y publicar"
-  ],
-  "casos": [
-    {
-      "nombre": "obra recién empezada: todo pendiente, toca el 1",
-      "datos": {
-        "obra": {},
-        "personajes": 0,
-        "resumenes": 0,
-        "dias": 0,
-        "palabras": 0,
-        "ahora": 1000
-      },
-      "esperado": [],
-      "siguiente": 1
+ "nota": "Casos de la guía de la novela (escribir-guia.js y EscribirGuia.kt): los datos de la obra y el estado que sale en cada paso. 'esperado' lista los pasos que NO están pendientes, como id:estado.",
+ "pasos": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11
+ ],
+ "titulos": [
+  "Una idea pequeña",
+  "Tus personajes",
+  "Un esquema ligero",
+  "Promesa, progreso y recompensa",
+  "Un hábito realista",
+  "El primer borrador",
+  "Dejarlo reposar",
+  "Revisar lo grande",
+  "Revisar lo pequeño",
+  "Lectores de prueba",
+  "Corrección final y publicar"
+ ],
+ "casos": [
+  {
+   "nombre": "obra recién empezada: todo pendiente, toca el 1",
+   "datos": {
+    "obra": {},
+    "personajes": 0,
+    "resumenes": 0,
+    "dias": 0,
+    "palabras": 0,
+    "ahora": 1000
+   },
+   "esperado": [],
+   "siguiente": 1
+  },
+  {
+   "nombre": "la frase de la idea marca el 1",
+   "datos": {
+    "obra": {
+     "idea": "Una aprendiz sube a una torre."
     },
-    {
-      "nombre": "la frase de la idea marca el 1",
-      "datos": {
-        "obra": {
-          "idea": "Una aprendiz sube a una torre."
-        },
-        "ahora": 1000
-      },
-      "esperado": [
-        "1:hecho"
-      ],
-      "siguiente": 2
+    "ahora": 1000
+   },
+   "esperado": [
+    "1:hecho"
+   ],
+   "siguiente": 2
+  },
+  {
+   "nombre": "una frase en blanco no cuenta",
+   "datos": {
+    "obra": {
+     "idea": "   "
     },
-    {
-      "nombre": "una frase en blanco no cuenta",
-      "datos": {
-        "obra": {
-          "idea": "   "
-        },
-        "ahora": 1000
-      },
-      "esperado": [],
-      "siguiente": 1
+    "ahora": 1000
+   },
+   "esperado": [],
+   "siguiente": 1
+  },
+  {
+   "nombre": "un personaje marca el 2",
+   "datos": {
+    "obra": {},
+    "personajes": 1,
+    "ahora": 1000
+   },
+   "esperado": [
+    "2:hecho"
+   ],
+   "siguiente": 1
+  },
+  {
+   "nombre": "dos resúmenes no bastan para el esquema; tres sí",
+   "datos": {
+    "obra": {},
+    "resumenes": 2,
+    "ahora": 1000
+   },
+   "esperado": [],
+   "siguiente": 1
+  },
+  {
+   "nombre": "tres resúmenes marcan el 3",
+   "datos": {
+    "obra": {},
+    "resumenes": 3,
+    "ahora": 1000
+   },
+   "esperado": [
+    "3:hecho"
+   ],
+   "siguiente": 1
+  },
+  {
+   "nombre": "tres días escribiendo marcan el hábito (5)",
+   "datos": {
+    "obra": {},
+    "dias": 3,
+    "ahora": 1000
+   },
+   "esperado": [
+    "5:hecho"
+   ],
+   "siguiente": 1
+  },
+  {
+   "nombre": "dos días no bastan",
+   "datos": {
+    "obra": {},
+    "dias": 2,
+    "ahora": 1000
+   },
+   "esperado": [],
+   "siguiente": 1
+  },
+  {
+   "nombre": "el borrador acaba al llegar a la meta",
+   "datos": {
+    "obra": {
+     "meta": 80000
     },
-    {
-      "nombre": "un personaje marca el 2",
-      "datos": {
-        "obra": {},
-        "personajes": 1,
-        "ahora": 1000
-      },
-      "esperado": [
-        "2:hecho"
-      ],
-      "siguiente": 1
+    "palabras": 80000,
+    "ahora": 1000
+   },
+   "esperado": [
+    "6:hecho"
+   ],
+   "siguiente": 1
+  },
+  {
+   "nombre": "sin meta no se da el borrador por terminado",
+   "datos": {
+    "obra": {
+     "meta": 0
     },
-    {
-      "nombre": "dos resúmenes no bastan para el esquema; tres sí",
-      "datos": {
-        "obra": {},
-        "resumenes": 2,
-        "ahora": 1000
-      },
-      "esperado": [],
-      "siguiente": 1
+    "palabras": 500000,
+    "ahora": 1000
+   },
+   "esperado": [],
+   "siguiente": 1
+  },
+  {
+   "nombre": "a mano: hecho y saltado",
+   "datos": {
+    "obra": {
+     "g4": 1,
+     "g8": 2
     },
-    {
-      "nombre": "tres resúmenes marcan el 3",
-      "datos": {
-        "obra": {},
-        "resumenes": 3,
-        "ahora": 1000
-      },
-      "esperado": [
-        "3:hecho"
-      ],
-      "siguiente": 1
+    "ahora": 1000
+   },
+   "esperado": [
+    "4:hecho",
+    "8:saltado"
+   ],
+   "siguiente": 1
+  },
+  {
+   "nombre": "saltar un paso automático lo deja saltado aunque se cumpla",
+   "datos": {
+    "obra": {
+     "g2": 2
     },
-    {
-      "nombre": "tres días escribiendo marcan el hábito (5)",
-      "datos": {
-        "obra": {},
-        "dias": 3,
-        "ahora": 1000
-      },
-      "esperado": [
-        "5:hecho"
-      ],
-      "siguiente": 1
+    "personajes": 3,
+    "ahora": 1000
+   },
+   "esperado": [
+    "2:saltado"
+   ],
+   "siguiente": 1
+  },
+  {
+   "nombre": "el reposo empezado hace 3 días está en curso",
+   "datos": {
+    "obra": {
+     "g7t": 1000,
+     "g1": 1,
+     "g2": 1,
+     "g3": 1,
+     "g4": 1,
+     "g5": 1,
+     "g6": 1
     },
-    {
-      "nombre": "dos días no bastan",
-      "datos": {
-        "obra": {},
-        "dias": 2,
-        "ahora": 1000
-      },
-      "esperado": [],
-      "siguiente": 1
+    "ahora": 259201000
+   },
+   "esperado": [
+    "1:hecho",
+    "2:hecho",
+    "3:hecho",
+    "4:hecho",
+    "5:hecho",
+    "6:hecho",
+    "7:curso"
+   ],
+   "siguiente": 7,
+   "diasReposo": 3
+  },
+  {
+   "nombre": "el reposo marcado a mano pasa al 8",
+   "datos": {
+    "obra": {
+     "g1": 1,
+     "g2": 1,
+     "g3": 1,
+     "g4": 1,
+     "g5": 1,
+     "g6": 1,
+     "g7": 1,
+     "g7t": 1000
     },
-    {
-      "nombre": "el borrador acaba al llegar a la meta",
-      "datos": {
-        "obra": {
-          "meta": 80000
-        },
-        "palabras": 80000,
-        "ahora": 1000
-      },
-      "esperado": [
-        "6:hecho"
-      ],
-      "siguiente": 1
+    "ahora": 99999999
+   },
+   "esperado": [
+    "1:hecho",
+    "2:hecho",
+    "3:hecho",
+    "4:hecho",
+    "5:hecho",
+    "6:hecho",
+    "7:hecho"
+   ],
+   "siguiente": 8
+  },
+  {
+   "nombre": "todo hecho: ya no hay siguiente",
+   "datos": {
+    "obra": {
+     "g1": 1,
+     "g2": 1,
+     "g3": 1,
+     "g4": 1,
+     "g5": 1,
+     "g6": 1,
+     "g7": 1,
+     "g8": 1,
+     "g9": 1,
+     "g10": 1,
+     "g11": 1
     },
-    {
-      "nombre": "sin meta no se da el borrador por terminado",
-      "datos": {
-        "obra": {
-          "meta": 0
-        },
-        "palabras": 500000,
-        "ahora": 1000
-      },
-      "esperado": [],
-      "siguiente": 1
+    "ahora": 1000
+   },
+   "esperado": [
+    "1:hecho",
+    "2:hecho",
+    "3:hecho",
+    "4:hecho",
+    "5:hecho",
+    "6:hecho",
+    "7:hecho",
+    "8:hecho",
+    "9:hecho",
+    "10:hecho",
+    "11:hecho"
+   ],
+   "siguiente": null
+  },
+  {
+   "nombre": "los campos pueden llegar como texto (el móvil guarda números)",
+   "datos": {
+    "obra": {
+     "g4": "1"
     },
-    {
-      "nombre": "a mano: hecho y saltado",
-      "datos": {
-        "obra": {
-          "g4": 1,
-          "g8": 2
-        },
-        "ahora": 1000
-      },
-      "esperado": [
-        "4:hecho",
-        "8:saltado"
-      ],
-      "siguiente": 1
-    },
-    {
-      "nombre": "saltar un paso automático lo deja saltado aunque se cumpla",
-      "datos": {
-        "obra": {
-          "g2": 2
-        },
-        "personajes": 3,
-        "ahora": 1000
-      },
-      "esperado": [
-        "2:saltado"
-      ],
-      "siguiente": 1
-    },
-    {
-      "nombre": "el reposo empezado hace 3 días está en curso",
-      "datos": {
-        "obra": {
-          "g7t": 1000,
-          "g1": 1,
-          "g2": 1,
-          "g3": 1,
-          "g4": 1,
-          "g5": 1,
-          "g6": 1
-        },
-        "ahora": 259201000
-      },
-      "esperado": [
-        "1:hecho",
-        "2:hecho",
-        "3:hecho",
-        "4:hecho",
-        "5:hecho",
-        "6:hecho",
-        "7:curso"
-      ],
-      "siguiente": 7,
-      "diasReposo": 3
-    },
-    {
-      "nombre": "el reposo marcado a mano pasa al 8",
-      "datos": {
-        "obra": {
-          "g1": 1,
-          "g2": 1,
-          "g3": 1,
-          "g4": 1,
-          "g5": 1,
-          "g6": 1,
-          "g7": 1,
-          "g7t": 1000
-        },
-        "ahora": 99999999
-      },
-      "esperado": [
-        "1:hecho",
-        "2:hecho",
-        "3:hecho",
-        "4:hecho",
-        "5:hecho",
-        "6:hecho",
-        "7:hecho"
-      ],
-      "siguiente": 8
-    },
-    {
-      "nombre": "todo hecho: ya no hay siguiente",
-      "datos": {
-        "obra": {
-          "g1": 1,
-          "g2": 1,
-          "g3": 1,
-          "g4": 1,
-          "g5": 1,
-          "g6": 1,
-          "g7": 1,
-          "g8": 1,
-          "g9": 1,
-          "g10": 1,
-          "g11": 1
-        },
-        "ahora": 1000
-      },
-      "esperado": [
-        "1:hecho",
-        "2:hecho",
-        "3:hecho",
-        "4:hecho",
-        "5:hecho",
-        "6:hecho",
-        "7:hecho",
-        "8:hecho",
-        "9:hecho",
-        "10:hecho",
-        "11:hecho"
-      ],
-      "siguiente": null
-    },
-    {
-      "nombre": "los campos pueden llegar como texto (el móvil guarda números)",
-      "datos": {
-        "obra": {
-          "g4": "1"
-        },
-        "ahora": 1000
-      },
-      "esperado": [
-        "4:hecho"
-      ],
-      "siguiente": 1
-    }
-  ]
+    "ahora": 1000
+   },
+   "esperado": [
+    "4:hecho"
+   ],
+   "siguiente": 1
+  }
+ ],
+ "esquema": [
+  {
+   "nombre": "la plantilla recién creada: ninguno",
+   "texto": "Planteamiento:\n\n\nNudo:\n\n\nDesenlace:\n",
+   "esperado": 0
+  },
+  {
+   "nombre": "uno escrito bajo su etiqueta",
+   "texto": "Planteamiento:\nUna aprendiz sube a la torre.\n\nNudo:\n\n\nDesenlace:\n",
+   "esperado": 1
+  },
+  {
+   "nombre": "escrito en la misma línea de la etiqueta",
+   "texto": "Planteamiento: Una aprendiz sube.\nNudo: La torre la cambia.\nDesenlace: Se encuentra a sí misma.",
+   "esperado": 3
+  },
+  {
+   "nombre": "mayúsculas y minúsculas da igual, y el texto de más arriba no cuenta",
+   "texto": "Mis ideas sueltas\n\nPLANTEAMIENTO :\nAlgo\n\nnudo:\nOtro algo\n",
+   "esperado": 2
+  },
+  {
+   "nombre": "un texto cualquiera sin etiquetas: ninguno",
+   "texto": "Una historia sin apartados.",
+   "esperado": 0
+  },
+  {
+   "nombre": "etiquetas con solo espacios debajo: no cuentan",
+   "texto": "Planteamiento:\n   \nNudo:\n \nDesenlace:\n\t",
+   "esperado": 0
+  }
+ ]
 }

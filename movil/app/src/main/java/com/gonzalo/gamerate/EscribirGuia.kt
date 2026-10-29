@@ -54,8 +54,8 @@ object GuiaNovela {
             "Ya tienes al menos un personaje."),
         Paso(3, "Un esquema ligero", true, "Crear los tres actos",
             "Una lista corta de lo que pasa, no un guion detallado. Lo habitual son tres actos: planteamiento, nudo y desenlace.",
-            listOf("Resume en una o dos líneas qué pasa en cada parte.",
-                "Después divide cada parte en capítulos, cada uno con su resumen.",
+            listOf("Atrio crea una nota «Esquema de la historia», fuera del manuscrito, con tres apartados: Planteamiento, Nudo y Desenlace.",
+                "Escribe bajo cada uno una o dos líneas: qué pasa.",
                 "Si planificar te agobia, haz un esquema mínimo y sigue: se puede ampliar mientras escribes."),
             "Tienes el esquema (al menos tres resúmenes)."),
         Paso(4, "Promesa, progreso y recompensa", false, "Anotar mis respuestas",
@@ -111,6 +111,23 @@ object GuiaNovela {
     )
 
     private fun num(o: JSONObject, k: String): Double = o.opt(k)?.toString()?.toDoubleOrNull() ?: 0.0
+
+    /** El esquema vive en una nota de la obra (no en el manuscrito): tres apartados con su etiqueta. */
+    const val TITULO_ESQUEMA = "Esquema de la historia"
+    const val PLANTILLA_ESQUEMA = "Planteamiento:\n\n\nNudo:\n\n\nDesenlace:\n"
+    private val ETIQUETA_ESQUEMA = Regex("^\\s*(Planteamiento|Nudo|Desenlace)\\s*:\\s*(.*)$", RegexOption.IGNORE_CASE)
+
+    /** Cuántos de los tres apartados tienen algo escrito debajo. */
+    fun seccionesEsquema(texto: String): Int {
+        val cuerpo = LinkedHashMap<String, String>()
+        var actual: String? = null
+        for (l in texto.split("\n")) {
+            val m = ETIQUETA_ESQUEMA.matchEntire(l)
+            if (m != null) { actual = m.groupValues[1].lowercase(); cuerpo[actual] = (cuerpo[actual] ?: "") + m.groupValues[2] }
+            else if (actual != null) cuerpo[actual] = cuerpo[actual] + l
+        }
+        return cuerpo.values.count { it.isNotBlank() }
+    }
 
     fun automatico(id: Int, d: DatosGuia): Boolean = when (id) {
         1 -> d.obra.optString("idea").trim().isNotEmpty()
@@ -169,6 +186,15 @@ fun AccionGuia(id: Int, e: Escritos, obra: Doc, abrir: (String) -> Unit, irManus
             }
             nota?.let { NotaDialogo(e, pid, e.get(it.id), onCerrar = onCerrar) }
         }
+        3 -> {
+            var nota by remember { mutableStateOf<Doc?>(null) }
+            LaunchedEffect(Unit) {
+                nota = e.notas(pid).firstOrNull { it.s("titulo") == GuiaNovela.TITULO_ESQUEMA } ?: e.nuevo(Escritos.T_NOTA, pid) {
+                    put("tipo", "idea"); put("titulo", GuiaNovela.TITULO_ESQUEMA); put("color", COLORES_ESCRITO[1]); put("texto", GuiaNovela.PLANTILLA_ESQUEMA)
+                }
+            }
+            nota?.let { NotaDialogo(e, pid, e.get(it.id), onCerrar = onCerrar) }
+        }
         5 -> {
             var dia by remember { mutableStateOf(obra.i("diaria").takeIf { it > 0 }?.toString() ?: "300") }
             HojaEscribir("Tu meta de cada día", onCerrar) {
@@ -181,18 +207,6 @@ fun AccionGuia(id: Int, e: Escritos, obra: Doc, abrir: (String) -> Unit, irManus
         }
         else -> LaunchedEffect(id) {
             when (id) {
-                3 -> {
-                    val caps = e.capitulos(pid)
-                    if (caps.size >= 3) { irManuscrito(); Toast.makeText(ctx, "Ya tienes capítulos: abre cada uno y escribe su resumen.", Toast.LENGTH_LONG).show() }
-                    else {
-                        val nombres = listOf("Planteamiento", "Nudo", "Desenlace")
-                        val vacio = caps.size == 1 && caps[0].s("titulo") == "Capítulo 1" && e.escenas(caps[0].id).sumOf { it.i("palabras") } == 0 && caps[0].s("resumen").isBlank()
-                        if (vacio) e.edita(caps[0].id) { put("titulo", nombres[0]) }
-                        for (i in caps.size until 3) { val c = e.nuevo(Escritos.T_CAP, pid) { put("titulo", nombres[i]) }; e.nuevo(Escritos.T_ESCENA, pid) { put("cid", c.id); put("titulo", "Escena 1") } }
-                        irManuscrito()
-                        Toast.makeText(ctx, "Tres capítulos: abre cada uno y escribe en «Resumen» qué pasa. Con tres resúmenes, este paso queda hecho.", Toast.LENGTH_LONG).show()
-                    }
-                }
                 6 -> { val s = e.escenasDe(pid).maxByOrNull { it.u }; if (s != null) abrir(s.id) else irManuscrito() }
                 7 -> e.edita(pid) { put("g7t", System.currentTimeMillis()) }
                 8, 9 -> irManuscrito()
@@ -207,7 +221,8 @@ fun AccionGuia(id: Int, e: Escritos, obra: Doc, abrir: (String) -> Unit, irManus
 
 fun datosGuia(e: Escritos, pid: String): DatosGuia {
     val o = e.get(pid)?.o ?: JSONObject()
-    val res = e.capitulos(pid).count { it.s("resumen").isNotBlank() } + e.escenasDe(pid).count { it.s("resumen").isNotBlank() } + e.hitos(pid).size
+    val res = e.capitulos(pid).count { it.s("resumen").isNotBlank() } + e.escenasDe(pid).count { it.s("resumen").isNotBlank() } + e.hitos(pid).size +
+        e.notas(pid).filter { it.s("titulo") == GuiaNovela.TITULO_ESQUEMA }.sumOf { GuiaNovela.seccionesEsquema(it.s("texto")) }
     return DatosGuia(o, e.fichas(pid).count { it.s("tipo") == "personaje" }, res, e.diasEscritos(pid), e.palabrasObra(pid), System.currentTimeMillis())
 }
 

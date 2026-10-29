@@ -34,6 +34,7 @@ const barrasSueltas = (p) => p.evaluate(() => {
 const num4 = (x) => Number(x) || 0;
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.png': 'image/png' };
 
+const RV_hecho3 = (escr_, pid) => escr_.notas(pid).filter((n) => n.titulo === 'Esquema de la historia').some((n) => /Planteamiento:\s*\S[\s\S]*Nudo:\s*\S[\s\S]*Desenlace:\s*\S/.test(n.texto));
 const escr = crear({ dir: fs.mkdtempSync(path.join(os.tmpdir(), 'esc-ui-')), dev: 'pc', net: { uid: () => null } });
 
 function siembra() {
@@ -288,8 +289,8 @@ function siembra() {
   const c2 = escr.capitulos(o.id)[1];
   await p.evaluate((id) => window.RV.E.aPapelera(window.RV.E.get(id)), c2.id); await sleep(300);
   await p.evaluate(() => window.RV.ir({ v: 'escribir' })); await sleep(500);
-  ok(/papelera · 1/i.test(await p.locator('.e-ir-papelera').innerText()), 'la biblioteca enseña cuánto hay en la papelera');
-  await p.locator('.e-ir-papelera').click(); await sleep(500);
+  ok(/papelera · 1/i.test(await p.locator('.e-ir-papelera', { hasText: 'Papelera' }).innerText()), 'la biblioteca enseña cuánto hay en la papelera');
+  await p.locator('.e-ir-papelera', { hasText: 'Papelera' }).click(); await sleep(500);
   ok(await p.locator('.dialogo .e-pap').count() === 1 && /con 1 escena/i.test(await p.locator('.dialogo .e-pap').innerText()), 'en la papelera, el capítulo con su escena dentro');
   await p.screenshot({ path: path.join(OUT, 'pc-e16-papelera.png') });
   await p.locator('.dialogo .e-pap button', { hasText: 'Recuperar' }).click(); await sleep(500);
@@ -313,19 +314,25 @@ function siembra() {
   ok(/Una aprendiz/.test(await p.locator('.e-idea').innerText()) && await p.locator('.e-paso.ahora .e-paso-cuerpo').count() === 1, 'enseña tu frase y el paso de ahora abierto');
   await p.screenshot({ path: path.join(OUT, 'pc-e21-guia.png') });
   { const b = await barrasSueltas(p); ok(!b.length, `la guía, sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
-  // El paso 3 crea los tres actos
+  // El paso 3 crea una nota «Esquema de la historia» (fuera del manuscrito) con un apartado por acto
+  const antesCaps = escr.capitulos(g.id).length;
   await p.locator('.e-paso-cab', { hasText: 'Un esquema ligero' }).click(); await sleep(300);
   await p.locator('.e-paso-cuerpo button', { hasText: 'Crear los tres actos' }).click(); await sleep(700);
-  ok(escr.capitulos(g.id).map((c) => c.titulo).join() === 'Planteamiento,Nudo,Desenlace' && escr.escenasDe(g.id).length === 3, 'crear los tres actos: tres capítulos, el vacío renombrado');
+  const esq = escr.notas(g.id).find((n) => n.titulo === 'Esquema de la historia');
+  ok(!!esq && /Planteamiento:[\s\S]*Nudo:[\s\S]*Desenlace:/.test(esq.texto) && escr.capitulos(g.id).length === antesCaps, 'el esquema es una nota con Planteamiento, Nudo y Desenlace, y no toca el manuscrito');
+  ok(await p.locator('.dialogo textarea').count() >= 1, 'y se abre para escribir en ella');
+  await p.locator('.dialogo textarea').last().fill('Planteamiento:\nUna aprendiz sube a la torre.\n\nNudo:\nLa torre la cambia.\n\nDesenlace:\nSe encuentra a sí misma.\n');
+  await p.locator('.dialogo button', { hasText: 'Guardar' }).click(); await sleep(600);
+  ok(RV_hecho3(escr, g.id), 'con los tres apartados escritos, el paso 3 queda hecho');
   // Un paso a mano: marcar, saltar y quitar la marca
   await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 5 }), g.id); await sleep(400);
   await p.locator('.e-paso-cab', { hasText: 'Promesa, progreso y recompensa' }).click(); await sleep(300);
   await p.locator('.e-paso-cuerpo button', { hasText: 'Ya lo tengo' }).click(); await sleep(500);
-  ok(num4(escr.get(g.id).g4) === 1 && await p.locator('.e-paso.hecho').count() === 2, '«Ya lo tengo» marca un paso a mano');
+  ok(num4(escr.get(g.id).g4) === 1 && await p.locator('.e-paso.hecho').count() === 3, '«Ya lo tengo» marca un paso a mano');
   ok(/Un hábito realista/.test(await p.locator('.e-paso.abierto, .e-paso:has(.e-paso-cuerpo)').first().innerText()), 'y abre el paso siguiente');
   await p.locator('.e-paso-cab', { hasText: 'Promesa, progreso y recompensa' }).click(); await sleep(300);
   await p.locator('.e-paso-cuerpo button', { hasText: 'Quitar la marca' }).click(); await sleep(500);
-  ok(await p.locator('.e-paso.hecho').count() === 1, '«Quitar la marca» lo deja como estaba');
+  ok(await p.locator('.e-paso.hecho').count() === 2, '«Quitar la marca» lo deja como estaba');
   // El reposo: empezar y que cuente días
   await p.locator('.e-paso-cab', { hasText: 'Dejarlo reposar' }).click(); await sleep(300);
   await p.locator('.e-paso-cuerpo button', { hasText: 'Empezar el reposo' }).click(); await sleep(500);

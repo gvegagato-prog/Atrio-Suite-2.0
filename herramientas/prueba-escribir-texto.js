@@ -113,6 +113,8 @@ t('guía de la novela (casos de herramientas/casos/guia.json, los mismos que el 
   assert.deepStrictEqual(G.PASOS.map((p) => p.id), j.pasos, 'los pasos');
   assert.deepStrictEqual(G.PASOS.map((p) => p.titulo), j.titulos, 'los títulos');
   for (const p of G.PASOS) assert.ok(p.titulo && p.que && p.como.length >= 3 && p.accion && p.hecho, `el paso ${p.id} tiene todos sus textos`);
+  for (const c of j.esquema) assert.strictEqual(G.seccionesEsquema(c.texto), c.esperado, `esquema: ${c.nombre}`);
+  assert.strictEqual(G.seccionesEsquema(G.PLANTILLA_ESQUEMA), 0, 'la plantilla está vacía');
   for (const c of j.casos) {
     const est = G.estados(c.datos);
     assert.deepStrictEqual(est.filter((e) => e.estado !== 'pendiente').map((e) => `${e.id}:${e.estado}`), c.esperado, c.nombre);
