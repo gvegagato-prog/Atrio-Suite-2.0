@@ -272,4 +272,4 @@ async function fotos() {
 function start(c) { ctx = c; }
 function setApi(u, share) { API = u; SHARE = share || u; homes.clear(); }
 
-module.exports = { start, on, test, shot, pcArt, foto, fotoDeLaNube, explorar, miniatura, download, fotos, nubeId, setApi, Fail };
+module.exports = { start, on, test, shot, pcArt, foto, fotoDeLaNube, explorar, miniatura, download, bajar, fotos, nubeId, setApi, Fail };

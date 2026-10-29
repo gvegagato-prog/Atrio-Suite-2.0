@@ -30,6 +30,8 @@ jobs:
           node herramientas/prueba-maqueta.js
           node herramientas/prueba-escribir-copias.js
           node herramientas/prueba-rt.js
+          node herramientas/prueba-lector.js
+          node herramientas/prueba-diccionario.js
       - name: Prueba de Atrio de verdad, en la edición solo revista (Electron bajo Xvfb)
         # Abre Atrio con una cuenta en un Firebase de mentira y comprueba, además de Escribir, que no hay lanzador: ni «Modo
         # Juegos», ni «Tu PC», ni abrir juegos, ni apagar el equipo, y que el equipo no se registra como controlable.
@@ -43,7 +45,9 @@ jobs:
           node herramientas/prueba-escribir-atrio.js "$RUNNER_TEMP/atrio-prueba"
           # La maqueta de las fichas del móvil, pintada en Atrio, y la suite sin ofrecerse como PC (ve el móvil, pide sus fotos, sincroniza al momento)
           node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-mac"
-          node herramientas/prueba-suite.js
+          # El lector de libros (la página del móvil): abrir un EPUB, pasar página, guardar lo leído y que viaje a la cuenta
+          SOLO=1 node herramientas/prueba-lector-atrio.js "$RUNNER_TEMP/lector-mac"
+          SOLO=1 node herramientas/prueba-suite.js
           # Escribir: lo último que se teclea queda guardado al cerrar (⌘W y ⌘Q) y al cerrar queda una copia de seguridad
           SOLO=1 node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-mac"
           COMO=salir SOLO=1 node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-mac-q"

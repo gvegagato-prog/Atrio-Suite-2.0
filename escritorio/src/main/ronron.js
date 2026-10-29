@@ -480,6 +480,10 @@ function edit(op) {
       const memos = [...(p.memos || [])].filter((m) => m && m.t !== op.memo.t);
       memos.push(op.remove ? { t: op.memo.t, del: 1, u: Date.now() } : { ...op.memo, u: Date.now() });
       put(d, pk(kind), { ...p, memos: memos.sort((a, b) => a.t - b.t).slice(-500) });
+    } else if (op.op === 'lecturaPut') {
+      // Lo leído de un libro con el lector (la misma lista que el móvil: { id, s, updated }); s no lleva el archivo de este equipo
+      if (!Number(op.id) || !op.s || typeof op.s !== 'object') throw new Fail('Esa lectura no está bien.');
+      put(d, 'lectura', { id: Number(op.id), s: op.s });
     } else if (op.op === 'diarioPut') {
       // Una entrada del diario (la misma lista que el móvil: { id, dia, x, sobre?, foto?, comp?, updated })
       const n = op.item || {};

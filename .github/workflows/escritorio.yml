@@ -21,6 +21,8 @@ jobs:
           node herramientas/prueba-escribir-export.js
           node herramientas/prueba-escribir-copias.js
           node herramientas/prueba-rt.js
+          node herramientas/prueba-lector.js
+          node herramientas/prueba-diccionario.js
       - name: Tu nube (kDrive de mentira)
         run: node herramientas/prueba-nube.js
       - name: Prueba PC + móvil (Firebase de mentira + Atrio de verdad + móvil simulado)
@@ -40,6 +42,8 @@ jobs:
           (cd escritorio && npm i --no-save playwright-core@1.56.1)
           node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-pc"
           SOLO=1 node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-mac"
+          node herramientas/prueba-lector-atrio.js "$RUNNER_TEMP/lector-pc"
+          SOLO=1 node herramientas/prueba-lector-atrio.js "$RUNNER_TEMP/lector-mac"
           node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-pc"
           COMO=salir SOLO=1 node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-mac"
       - name: Capturas de la interfaz

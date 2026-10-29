@@ -168,7 +168,7 @@
   // ---------------------------------------------------------------- La maqueta de la ficha (la del móvil)
   // Lo que cada ficha tiene de maqueta (qué casilla va en cada fila, cuánto miden, sus textos y sus fotos) viaja con la
   // cuenta, y aquí se pinta igual. Las casillas que el ordenador todavía no tiene (Guías, Crítica…) no se pintan y se avisa.
-  const NO_HAY = { lectura: 'Lectura', subrayados: 'Subrayados y notas' };
+  const NO_HAY = {};
 
   // «El nombre del viento (Crónica del asesino de reyes, #1)» → «El nombre del viento»
   const titLimpio = (t) => String(t || '').replace(/\s*\([^()]*\)\s*$/, '').trim() || String(t || '');
@@ -346,6 +346,79 @@
     return sec;
   }
 
+
+  // ---- Lectura y Subrayados y notas (libros): el lector es la misma página que la del móvil, en su ventana ----
+  const lecMem = new Map(); // id del libro → estado del lector (lo de main), hasta que cambia
+  F.lectorInvalida = (id) => { if (id == null) lecMem.clear(); else lecMem.delete(Number(id)); };
+  const lecturaDe = async (id) => { const k = Number(id); if (!lecMem.has(k)) lecMem.set(k, await RV.api.lectorEstado(k)); return lecMem.get(k); };
+  const MIN = 60000;
+  const tiempoLeido = (min) => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}`);
+
+  // «hoy», «mañana», «el 12 de noviembre» (fmtFin del móvil)
+  const fechaFin = (iso, hoy) => {
+    const t = (x) => Date.parse(`${x}T00:00:00Z`);
+    const n = Math.round((t(iso) - t(hoy)) / 86400000);
+    if (n === 0) return 'hoy';
+    if (n === 1) return 'mañana';
+    const d = new Date(t(iso));
+    return `el ${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', ...(iso.slice(0, 4) === hoy.slice(0, 4) ? {} : { year: 'numeric' }), timeZone: 'UTC' }).replace(/ de (\d{4})$/, ' de $1')}`;
+  };
+
+  function lecturaFicha(kind, item) {
+    const caja = h('div.maq-lectura');
+    const abre = (goto) => RV.api.lectorAbrir(item.id, item.name, goto || null).catch((e) => RV.aviso(RV.limpiaError(e), 'error'));
+    const cambia = async (fn, ok) => {
+      try { await fn(); F.lectorInvalida(item.id); RV.refrescar(); if (ok) ok(); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); }
+    };
+    const pinta = (st) => {
+      if (!st.archivo) {
+        caja.replaceChildren(...[
+          h('p.texto', st.enNube ? 'Este libro está en tu nube: bájalo para leerlo aquí.' : 'Adjunta su EPUB o PDF para leerlo aquí: se queda en este equipo.'),
+          st.enNube ? h('button.enlace-maq.acento', { type: 'button', onclick: (e) => { e.currentTarget.textContent = 'Bajando…'; cambia(() => RV.api.lectorBajar(item.id), () => abre()); } }, h('span.tit', 'Bajar de tu nube')) : null,
+          h('button.enlace-maq', { type: 'button', onclick: () => cambia(async () => { const r = await RV.api.lectorAdjuntar(item.id); if (r) abre(); }) }, h('span.tit', 'Elegir archivo'))].filter(Boolean));
+        return;
+      }
+      const fr = Number(st.fraction) || 0;
+      const min = Math.floor((Number((st.stats || {}).total) || 0) / MIN);
+      const notas = (st.notes || []).length;
+      const tiempo = min < 1 ? null : fr >= 0.99 ? `leído en ${tiempoLeido(min)}` : `${tiempoLeido(min)} leyendo`;
+      caja.replaceChildren(...[
+        h('button.enlace-maq.acento', { type: 'button', onclick: () => abre() }, h('span.tit', fr > 0.005 ? 'Seguir leyendo' : 'Empezar a leer')),
+        h('div.maq-barra', h('i', { style: { width: `${Math.round(Math.min(1, Math.max(0, fr)) * 100)}%` } })),
+        h('p.versal', [`${Math.floor(fr * 100)} % leído`, tiempo, st.label || null, notas ? `${notas} subrayados` : null, st.name].filter(Boolean).join(' · ')),
+        st.queda ? h('p.texto.acento', `Te quedan unas ${tiempoLeido(st.queda.min)} a tu ritmo${st.queda.fin ? ` · al paso de estas semanas, lo acabas ${fechaFin(st.queda.fin, st.hoy)}` : ''}`) : null,
+        h('div.maq-lectura-op',
+          h('button.enlace', { type: 'button', onclick: () => cambia(async () => { await RV.api.lectorAdjuntar(item.id); }) }, 'Cambiar de archivo'),
+          h('button.enlace', { type: 'button', onclick: () => cambia(() => RV.api.lectorQuitar(item.id)) }, 'Quitar el archivo'))].filter(Boolean));
+    };
+    lecturaDe(item.id).then(pinta).catch(() => caja.replaceChildren(RV.vacio('No se ha podido mirar el libro.')));
+    return caja;
+  }
+
+  function subrayadosFicha(kind, item) {
+    const caja = h('div.maq-subrayados');
+    const pinta = (st) => {
+      const lista = (st.notes || []).filter((n) => n && n.text).slice()
+        .sort((a, b) => (num(a.index) - num(b.index)) || ((a.frac >= 0 ? a.frac : 9) - (b.frac >= 0 ? b.frac : 9)) || (num(a.created) - num(b.created)));
+      if (!st.archivo) { caja.replaceChildren(h('p.cursiva', 'Adjunta el libro (casilla Lectura) para leerlo aquí; lo que subrayes y anotes aparecerá en esta casilla.')); return; }
+      if (!lista.length) { caja.replaceChildren(h('p.cursiva', 'Aún no has subrayado nada. En el lector, selecciona una palabra o un pasaje y toca Subrayar o Nota.')); return; }
+      const con = lista.filter((n) => (n.note || '').trim()).length;
+      let todos = false;
+      const dibuja = () => {
+        const vistos = todos ? lista : lista.slice(0, 4);
+        caja.replaceChildren(...[
+          h('span.versal', [`${lista.length} subrayado${lista.length === 1 ? '' : 's'}`, con ? `${con} con nota` : null].filter(Boolean).join(' · ')),
+          ...vistos.map((n) => h('button.maq-subrayado', { type: 'button', onclick: () => RV.api.lectorAbrir(item.id, item.name, n.value).catch((e) => RV.aviso(RV.limpiaError(e), 'error')) },
+            h('span.cita', `«${n.text}»`), (n.note || '').trim() ? h('span.nota', n.note) : null,
+            h('span.versal', [n.label || null, num(n.created) > 0 ? RV.fmtDia(Math.floor(num(n.created) / 86400000)) : null].filter(Boolean).join(' · ')))),
+          lista.length > 4 ? h('button.enlace.acento', { type: 'button', onclick: () => { todos = !todos; dibuja(); } }, todos ? 'Ver menos' : `Ver los ${lista.length} →`) : null].filter(Boolean));
+      };
+      dibuja();
+    };
+    lecturaDe(item.id).then(pinta).catch(() => caja.replaceChildren(RV.vacio('No se ha podido mirar el libro.')));
+    return caja;
+  }
+
   function pintaMaqueta(cas, filas, kind, item, t, pcg) {
     const g = t === 'g';
     const b = !g ? D.baremo(item) : null;
@@ -370,6 +443,8 @@
       partes: !g && (() => casilla('Apuntes rápidos', { texto: '+ Añadir', fn: () => F.rapido(kind, item) }, rapidos(kind, item))),
       guias: kind.isGame && (() => casilla('Guías', null, guiasFicha(kind, item, pcg))),
       critica: (kind.isMovie || kind.isTv) && (() => casilla('Crítica', null, criticaFicha(kind, item))),
+      lectura: kind.isBook && (() => casilla('Lectura', null, lecturaFicha(kind, item))),
+      subrayados: kind.isBook && (() => casilla('Subrayados y notas', null, subrayadosFicha(kind, item))),
       donde: (kind.isMovie || kind.isTv) && (() => casilla('Dónde verla', null, dondeFicha(kind, item))),
       nota: g && (() => casilla('Nota', { texto: 'Cambiar', fn: () => F.valorar(kind, item) }, bloqueNota(kind, item))),
       opinion: g && (() => casilla('Opinión', { texto: hayOpinion ? 'Editar' : 'Escribir', fn: () => F.opinion(kind, item) }, hayOpinion ? cuerpo(item.review) : RV.vacio('Aún no has escrito nada.'))),

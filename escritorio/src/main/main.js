@@ -23,6 +23,8 @@ const { HOME, XDG_CONFIG, XDG_DATA, exists, mkdirp } = require('./paths');
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'atrio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
+  // El lector de libros (la página del móvil, con el libro): atrio-lector://l<id>/
+  { scheme: 'atrio-lector', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ]);
 
 // Sandbox de Chromium: se mantiene activo (usa espacios de nombres de usuario, que Arch y
@@ -71,6 +73,7 @@ let scanning = null;
 let lastScan = 0;
 let tracker = null;
 let quitting = false;
+let lector = null; // El lector de libros (lector-ventana.js)
 let escribir = null; // Escribir (escritos-cuenta.js)
 
 // Antes de cerrar la ventana o salir (⌘Q, ⌘W): lo que se esté escribiendo se guarda ya y se ESPERA a que esté guardado (el
@@ -1137,8 +1140,14 @@ app.whenReady().then(async () => {
   art.setFetch((...a) => net.fetch(...a));
   meta.setFetch((...a) => net.fetch(...a));
   ronron.setFetch((...a) => net.fetch(...a));
+  // El lector de libros (lo leído viaja con la cuenta: lista «lectura»)
+  try {
+    lector = require('./lector-ventana').iniciar({ electron: require('electron'), dir: path.join(XDG_DATA, 'atrio'), ronron, nube, log, send, ventana: () => win, fetchImpl: (...a) => net.fetch(...a) });
+    if (lector) lector.recibe((ronron.data() || {}).lectura);
+  } catch (e) { log('lector', e.message); }
   ronron.start(() => {
     send('ronron', { status: ronron.status(), data: ronron.data() }); nube.fotos().catch(() => {});
+    if (lector) lector.recibe((ronron.data() || {}).lectura);
     // Si llega un juego nuevo a la lista negra (desde el móvil), sale de la biblioteca al momento
     rescanLigero();
   });
@@ -1271,7 +1280,7 @@ app.on('before-quit', (e) => {
   if (!suiteStopped) {
     suiteStopped = true;
     e.preventDefault();
-    Promise.race([vaciaEscribir().then(() => suite.stop()), new Promise((r) => setTimeout(r, 4500))]).finally(() => app.quit());
+    Promise.race([Promise.all([vaciaEscribir(), lector ? lector.parar() : null]).then(() => suite.stop()), new Promise((r) => setTimeout(r, 4500))]).finally(() => app.quit());
   }
 });
 app.on('window-all-closed', () => app.quit());

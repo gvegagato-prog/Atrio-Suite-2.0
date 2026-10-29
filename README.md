@@ -96,11 +96,23 @@ Prueba: `SOLO=1 node herramientas/prueba-suite.js`.
 dónde está la línea, el alto de la fila, los textos libres y las fotos encuadradas) se pinta igual en la ficha del
 ordenador (`maqueta.js`, `ficha.js`). La foto se dibuja entera y la casilla la recorta después de moverla, sin huecos, con
 el mismo cálculo que el móvil (casos compartidos en `herramientas/casos/maqueta.json`). Las casillas que el ordenador aún
-no tiene (de momento solo Lectura y Subrayados y notas, del lector de libros) no se pintan y la página lo avisa. Ya se
+no tiene no se pintan y la página lo avisa (desde la 3.2.8 las tiene todas). Ya se
 pintan Progreso, Apuntes rápidos, Guías, Enlaces, En tu diario, Capítulos, **Crítica** (notas de Rotten Tomatoes, que busca el
 proceso principal con el mismo método que el móvil: `rt.js`) y **Dónde verla** (TMDB y TVmaze, lo de España; con tu clave de TMDB,
 que se pone en el móvil y llega sola). Por ahora **solo se leen**: la maqueta se cambia desde el móvil. Pruebas:
 `node herramientas/prueba-maqueta.js` y `node herramientas/prueba-maqueta-atrio.js` (con `SOLO=1`, la edición del Mac).
+
+**El lector de libros** (3.2.8, en todos los sistemas; Lectura y Subrayados y notas en la ficha): es la **misma página** que usa el
+móvil (`movil/app/src/main/assets/lector`: foliate-js y pdf.js; EPUB, PDF, MOBI/AZW3, FB2 y CBZ) dentro de una ventana
+(`lector-ventana.js`, `lector.js`), con el mismo puente `window.Atrio` (`lector-preload.js`). Lo leído viaja con la cuenta (lista
+«lectura») con la misma lógica que el móvil (`lector-estado.js`, casos compartidos en `herramientas/casos/lectura.json`): por
+dónde vas (se abre donde más lejos llegaste en cualquier dispositivo), subrayados y notas, marcadores, ajustes y tiempo leído
+(por dispositivo). El archivo del libro es de cada equipo: se elige con «Elegir archivo» o se baja de tu nube («Bajar de tu nube»).
+Teclado: ← → / AvPág RePág / espacio pasan página; Esc cierra lo abierto. Ratón: mantener pulsado sobre una palabra = su
+significado (Wikcionario); arrastrar de una palabra a otra = subrayar. Lo que NO hay en el ordenador: traducir (usa el traductor
+sin conexión de Android), el brillo (es el de la pantalla), subir a tu nube un libro desde el ordenador y el cálculo de «te quedan…».
+Pruebas: `node herramientas/prueba-lector.js`, `prueba-diccionario.js` y `prueba-lector-atrio.js` (Electron de verdad: abre un EPUB
+y un PDF, pasa página, subraya con el ratón, y comprueba que todo llega a la cuenta; con `SOLO=1`, la edición del Mac).
 
 **No lo he podido probar en un Mac físico**: solo en el Mac de GitHub (cuando arranca) y en un Electron de Linux con la
 misma edición.

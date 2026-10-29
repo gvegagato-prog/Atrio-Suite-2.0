@@ -14,6 +14,14 @@ contextBridge.exposeInMainWorld('atrio', {
   switchUi: (mode) => invoke('ui:switch', mode),
   // La revista: buscar en Open Library, TMDB, TVmaze y RAWG (lo hace el proceso principal)
   netJson: (url, token) => invoke('net:json', url, token),
+  // El lector de libros (la página del móvil, en su ventana): el estado de un libro, abrirlo, adjuntar su archivo, bajarlo de tu nube
+  lectorEstado: (id) => invoke('lector:estado', id),
+  lectorAbrir: (id, titulo, goto) => invoke('lector:abrir', id, titulo, goto),
+  lectorAdjuntar: (id) => invoke('lector:adjuntar', id),
+  lectorAdjuntarRuta: (id, ruta) => invoke('lector:adjuntar-ruta', id, ruta),
+  lectorPruebaTecla: (id, tecla, shift) => invoke('lector:prueba-tecla', id, tecla, shift),
+  lectorQuitar: (id) => invoke('lector:quitar', id),
+  lectorBajar: (id) => invoke('lector:bajar', id),
   rtNotas: (tv, id, nombre, clave) => invoke('rt:notas', tv, id, nombre, clave),
   sgdbSearch: (term) => invoke('sgdb:search', term),
   sgdbTest: (key) => invoke('sgdb:test', key),
@@ -80,7 +88,7 @@ contextBridge.exposeInMainWorld('atrio', {
   webState: () => invoke('web:state'),
   on: (channel, cb) => {
     const allowed = ['art', 'art-idle', 'library', 'focus', 'game-ended', 'play', 'winfocus', 'notice', 'ronron',
-      'suite', 'escritos', 'shot-start', 'shot-taken', 'remote', 'web', 'web-key', 'web-error', 'stream', 'fotos'];
+      'suite', 'escritos', 'shot-start', 'shot-taken', 'remote', 'web', 'web-key', 'web-error', 'stream', 'fotos', 'lector'];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, payload) => cb(payload));
   },

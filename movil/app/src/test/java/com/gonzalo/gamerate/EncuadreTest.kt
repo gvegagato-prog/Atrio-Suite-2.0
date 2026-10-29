@@ -144,4 +144,41 @@ class EncuadreTest {
             assertEquals("${c.getString("nombre")}: gratis", esperadas("gratis"), plats(d.gratis))
         }
     }
+
+    /** Un JSON en forma canónica (claves ordenadas, números como números): para comparar lo que da el móvil con lo del PC. */
+    private fun canon(o: Any?): String = when (o) {
+        null, org.json.JSONObject.NULL -> "null"
+        is org.json.JSONObject -> o.keys().asSequence().toList().sorted().joinToString(",", "{", "}") { "\"$it\":" + canon(o.get(it)) }
+        is org.json.JSONArray -> (0 until o.length()).joinToString(",", "[", "]") { canon(o.get(it)) }
+        is Number -> o.toDouble().let { if (it == Math.floor(it)) it.toLong().toString() else it.toString() }
+        else -> "\"$o\""
+    }
+
+    /** Los mismos casos que el PC (herramientas/casos/lectura.json): el tiempo leído por dispositivo y qué días cuentan. */
+    @Test fun lecturaIgualQueElPc() {
+        val j = org.json.JSONObject(File(raiz(), "herramientas/casos/lectura.json").readText())
+        val mezcla = j.getJSONArray("mezcla")
+        for (i in 0 until mezcla.length()) {
+            val c = mezcla.getJSONObject(i)
+            val a = c.optJSONObject("a"); val b = c.optJSONObject("b")
+            val r = ReadStats.merge(a, b, c.getString("aKey"), c.getString("bKey"))
+            assertEquals("${c.getString("nombre")}", canon(c.getJSONObject("esperado")), canon(r))
+        }
+        val cuenta = j.getJSONArray("cuenta")
+        for (i in 0 until cuenta.length()) {
+            val c = cuenta.getJSONObject(i)
+            assertEquals("${c.getString("nombre")}", c.getBoolean("esperado"), ReadStats.cuenta(c.optJSONObject("st"), c.getString("dia")))
+        }
+        // Lo que queda por leer a tu ritmo
+        val queda = j.getJSONArray("queda")
+        for (i in 0 until queda.length()) {
+            val c = queda.getJSONObject(i)
+            val r = quedaPorLeer(c.getJSONObject("st"), java.time.LocalDate.parse(c.getString("hoy")))
+            val e = c.opt("esperado")
+            if (e == null || e === org.json.JSONObject.NULL) { assertEquals("${c.getString("nombre")}", null, r); continue }
+            e as org.json.JSONObject
+            assertEquals("${c.getString("nombre")}: min", e.getLong("min"), r!!.first)
+            assertEquals("${c.getString("nombre")}: fin", if (e.isNull("fin")) null else e.getString("fin"), r.second?.toString())
+        }
+    }
 }

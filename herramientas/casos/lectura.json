@@ -1,0 +1,408 @@
+{
+ "_": "Casos compartidos: el PC (lector-estado.js, prueba-lector.js) y el móvil (ReadStats, EncuadreTest.kt) tienen que dar lo mismo.",
+ "mezcla": [
+  {
+   "nombre": "dos tiempos antiguos sin repartir: el de aquí y el «legacy» se suman",
+   "a": {
+    "total": 600000,
+    "days": {
+     "2026-10-01": 600000
+    }
+   },
+   "b": {
+    "total": 900000,
+    "days": {
+     "2026-10-01": 900000
+    }
+   },
+   "aKey": "mac",
+   "bKey": "legacy",
+   "esperado": {
+    "dev": {
+     "mac": {
+      "total": 600000,
+      "days": {
+       "2026-10-01": 600000
+      }
+     },
+     "legacy": {
+      "total": 900000,
+      "days": {
+       "2026-10-01": 900000
+      }
+     }
+    },
+    "total": 1500000,
+    "days": {
+     "2026-10-01": 1500000
+    }
+   }
+  },
+  {
+   "nombre": "dos estados por dispositivo: de cada dispositivo el mayor, y el total es la suma",
+   "a": {
+    "dev": {
+     "mac": {
+      "total": 1000,
+      "days": {
+       "d1": 1000
+      }
+     }
+    }
+   },
+   "b": {
+    "dev": {
+     "mac": {
+      "total": 2000,
+      "days": {
+       "d1": 2000,
+       "d2": 500
+      }
+     },
+     "movil": {
+      "total": 300,
+      "days": {
+       "d1": 300
+      }
+     }
+    }
+   },
+   "aKey": "mac",
+   "bKey": "legacy",
+   "esperado": {
+    "dev": {
+     "mac": {
+      "total": 2000,
+      "days": {
+       "d1": 2000,
+       "d2": 500
+      }
+     },
+     "movil": {
+      "total": 300,
+      "days": {
+       "d1": 300
+      }
+     }
+    },
+    "total": 2300,
+    "days": {
+     "d1": 2300,
+     "d2": 500
+    }
+   }
+  },
+  {
+   "nombre": "si hay reparto por dispositivo, lo «legacy» se descarta (ya está en su dispositivo)",
+   "a": {
+    "dev": {
+     "mac": {
+      "total": 1000,
+      "days": {
+       "d1": 1000
+      }
+     }
+    }
+   },
+   "b": {
+    "total": 5000,
+    "days": {
+     "d1": 5000
+    }
+   },
+   "aKey": "mac",
+   "bKey": "legacy",
+   "esperado": {
+    "dev": {
+     "mac": {
+      "total": 1000,
+      "days": {
+       "d1": 1000
+      }
+     }
+    },
+    "total": 1000,
+    "days": {
+     "d1": 1000
+    }
+   }
+  },
+  {
+   "nombre": "la racha más larga de un día es la mejor, no la suma",
+   "a": {
+    "dev": {
+     "mac": {
+      "total": 900000,
+      "days": {
+       "d1": 900000
+      },
+      "best": {
+       "d1": 400000
+      }
+     }
+    }
+   },
+   "b": {
+    "dev": {
+     "movil": {
+      "total": 900000,
+      "days": {
+       "d1": 900000
+      },
+      "best": {
+       "d1": 700000
+      }
+     },
+     "mac": {
+      "total": 100,
+      "days": {
+       "d1": 100
+      },
+      "best": {
+       "d1": 50
+      }
+     }
+    }
+   },
+   "aKey": "mac",
+   "bKey": "legacy",
+   "esperado": {
+    "dev": {
+     "mac": {
+      "total": 900000,
+      "days": {
+       "d1": 900000
+      },
+      "best": {
+       "d1": 400000
+      }
+     },
+     "movil": {
+      "total": 900000,
+      "days": {
+       "d1": 900000
+      },
+      "best": {
+       "d1": 700000
+      }
+     }
+    },
+    "total": 1800000,
+    "days": {
+     "d1": 1800000
+    },
+    "best": {
+     "d1": 700000
+    }
+   }
+  },
+  {
+   "nombre": "sin nada",
+   "a": null,
+   "b": {
+    "dev": {
+     "movil": {
+      "total": 10,
+      "days": {
+       "d1": 10
+      }
+     }
+    }
+   },
+   "aKey": "mac",
+   "bKey": "legacy",
+   "esperado": {
+    "dev": {
+     "movil": {
+      "total": 10,
+      "days": {
+       "d1": 10
+      }
+     }
+    },
+    "total": 10,
+    "days": {
+     "d1": 10
+    }
+   }
+  },
+  {
+   "nombre": "los dos vacíos",
+   "a": null,
+   "b": null,
+   "aKey": "mac",
+   "bKey": "legacy",
+   "esperado": {
+    "dev": {},
+    "total": 0,
+    "days": {}
+   }
+  }
+ ],
+ "cuenta": [
+  {
+   "nombre": "con racha guardada: vale la racha (5 min)",
+   "st": {
+    "days": {
+     "d1": 900000
+    },
+    "best": {
+     "d1": 300000
+    }
+   },
+   "dia": "d1",
+   "esperado": true
+  },
+  {
+   "nombre": "con racha guardada menor de 5 min: no cuenta aunque sume más",
+   "st": {
+    "days": {
+     "d1": 900000
+    },
+    "best": {
+     "d1": 299999
+    }
+   },
+   "dia": "d1",
+   "esperado": false
+  },
+  {
+   "nombre": "sin racha (días antiguos): vale el total",
+   "st": {
+    "days": {
+     "d1": 300000
+    }
+   },
+   "dia": "d1",
+   "esperado": true
+  },
+  {
+   "nombre": "sin racha y poco tiempo: no cuenta",
+   "st": {
+    "days": {
+     "d1": 299999
+    }
+   },
+   "dia": "d1",
+   "esperado": false
+  },
+  {
+   "nombre": "ese día no se leyó",
+   "st": {
+    "days": {
+     "d2": 900000
+    }
+   },
+   "dia": "d1",
+   "esperado": false
+  },
+  {
+   "nombre": "sin estado",
+   "st": null,
+   "dia": "d1",
+   "esperado": false
+  }
+ ],
+ "queda": [
+  {
+   "nombre": "sin tiempo suficiente leído (menos de 10 min): no se sabe",
+   "hoy": "2026-10-29",
+   "st": {
+    "fraction": 0.5,
+    "stats": {
+     "total": 300000,
+     "days": {}
+    }
+   },
+   "esperado": null
+  },
+  {
+   "nombre": "antes del 3 %: no se sabe",
+   "hoy": "2026-10-29",
+   "st": {
+    "fraction": 0.02,
+    "stats": {
+     "total": 3600000,
+     "days": {}
+    }
+   },
+   "esperado": null
+  },
+  {
+   "nombre": "acabado: nada",
+   "hoy": "2026-10-29",
+   "st": {
+    "fraction": 0.995,
+    "stats": {
+     "total": 3600000,
+     "days": {}
+    }
+   },
+   "esperado": null
+  },
+  {
+   "nombre": "a mitad, sin leer estas semanas: queda lo mismo que llevas y sin fecha",
+   "hoy": "2026-10-29",
+   "st": {
+    "fraction": 0.5,
+    "stats": {
+     "total": 3600000,
+     "days": {
+      "2026-09-01": 3600000
+     }
+    }
+   },
+   "esperado": {
+    "min": 60,
+    "fin": null
+   }
+  },
+  {
+   "nombre": "leyendo cada día 30 min: acaba en 2 días",
+   "hoy": "2026-10-29",
+   "st": {
+    "fraction": 0.5,
+    "stats": {
+     "total": 3600000,
+     "days": {
+      "2026-10-29": 1800000,
+      "2026-10-28": 1800000,
+      "2026-10-27": 1800000,
+      "2026-10-26": 1800000,
+      "2026-10-25": 1800000,
+      "2026-10-24": 1800000,
+      "2026-10-23": 1800000,
+      "2026-10-22": 1800000,
+      "2026-10-21": 1800000,
+      "2026-10-20": 1800000,
+      "2026-10-19": 1800000,
+      "2026-10-18": 1800000,
+      "2026-10-17": 1800000,
+      "2026-10-16": 1800000
+     }
+    }
+   },
+   "esperado": {
+    "min": 60,
+    "fin": "2026-10-31"
+   }
+  },
+  {
+   "nombre": "un solo día de 28 min en dos semanas (2 min al día): 45 días hasta acabar",
+   "hoy": "2026-10-29",
+   "st": {
+    "fraction": 0.25,
+    "stats": {
+     "total": 1800000,
+     "days": {
+      "2026-10-28": 1680000
+     }
+    }
+   },
+   "esperado": {
+    "min": 90,
+    "fin": "2026-12-13"
+   }
+  }
+ ]
+}

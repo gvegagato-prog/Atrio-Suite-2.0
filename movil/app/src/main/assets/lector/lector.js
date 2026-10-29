@@ -698,6 +698,29 @@ function onLoad({ detail: { doc, index } }) {
     }, { capture: true, passive: true })
     // El menú contextual del navegador (mantener pulsado), fuera
     doc.addEventListener('contextmenu', e => e.preventDefault())
+    // Ratón (el ordenador): mantener pulsado el botón sin mover = lo mismo que mantener el dedo (la palabra); arrastrar de una
+    // palabra a otra = subrayar el tramo. (Los «ratones» que Android inventa tras un toque no cuentan: ya los lleva el dedo.)
+    let mDown = null
+    doc.addEventListener('mousedown', e => {
+        if (e.button !== 0 || e.sourceCapabilities?.firesTouchEvents) return
+        mDown = { x: e.clientX, y: e.clientY, moved: false }
+        clearTimeout(holdTimer)
+        holdTimer = setTimeout(() => { if (mDown && !mDown.moved) { held = true; onHold(doc, index, mDown.x, mDown.y) } }, 450)
+    }, true)
+    doc.addEventListener('mousemove', e => {
+        if (mDown && !mDown.moved && Math.hypot(e.clientX - mDown.x, e.clientY - mDown.y) > 6) { mDown.moved = true; clearTimeout(holdTimer) }
+    }, true)
+    doc.addEventListener('mouseup', e => {
+        clearTimeout(holdTimer)
+        const d = mDown; mDown = null
+        if (!d || !d.moved || e.button !== 0) return
+        swiped = true   // (el clic que sigue a soltar no es un toque)
+        const a = wordAt(doc, d.x, d.y), b = wordAt(doc, e.clientX, e.clientY)
+        if (!a || !b) return
+        hideWord(); hideSel(); closePanel(); showChrome(false)
+        pend = { doc, index, start: a }
+        finishRange(doc, index, b)
+    }, true)
 
     // Los subrayados de este capítulo (o página). En PDF la página se dibuja después: se repinta cuando aparece.
     paint(index)

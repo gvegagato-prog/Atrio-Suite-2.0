@@ -1496,3 +1496,12 @@ body[data-plat="darwin"].ed-foco .ed-salir { top: 36px; }
 .maq-plats { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 10px; }
 .maq-plat { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
 .maq-plat img { border-radius: 6px; }
+
+/* La casilla Lectura y la de Subrayados y notas de la ficha de un libro */
+.maq-lectura .enlace-maq { margin-bottom: 8px; }
+.maq-lectura-op { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.maq-subrayados { display: flex; flex-direction: column; }
+.maq-subrayado { display: flex; flex-direction: column; gap: 4px; text-align: left; background: none; border: 0; border-top: 1px solid var(--linea); padding: 10px 0; cursor: pointer; color: inherit; font: inherit; }
+.maq-subrayado:first-of-type { border-top: 0; }
+.maq-subrayado .cita { font-family: var(--serif, inherit); font-size: 17px; line-height: 1.35; }
+.maq-subrayado .nota { font-style: italic; color: var(--acento, inherit); font-size: 14px; }
