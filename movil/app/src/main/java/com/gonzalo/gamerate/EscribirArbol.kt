@@ -281,11 +281,13 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
             }
         } else Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = dockSpace(8.dp)).clipToBounds().background(Crudo).border(1.dp, Line).onSizeChanged { lienzo = it }
             .semantics { contentDescription = "Árbol de relaciones" }
-            // (una sola vez: si se reiniciara cuando cambian las fichas —una sincronización, un guardado—, cortaría el
-            // arrastre a medias; lo que cambia lo lee de «ahora» y «pulsaAhora»)
-            .pointerInput(Unit) {
+            // (no se reinicia cuando cambian las fichas —una sincronización, un guardado—: cortaría el arrastre a medias; lo que
+            // cambia lo lee de «ahora» y «pulsaAhora». Sí se reinicia al activar o quitar «Unir», y cada gesto está protegido:
+            // si uno muriera o se quedara a medias, el árbol dejaría de responder hasta cambiar de pestaña)
+            .pointerInput(uniendo) {
                 // Un dedo: arrastrar una ficha (la mueve y se guarda) o el lienzo; dos: acercar; pulsar sin moverse: abrir
                 awaitEachGesture {
+                  try {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val nodo = ahora.second(down.position)?.takeIf { ahora.third(down.position) == null }
                     var arrastre = Offset.Zero
@@ -323,6 +325,8 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                     if (!movido) pulsaAhora(down.position)
                     else if (nodo != null && !dos) ahora.first[nodo.id]?.let { p -> e.edita(nodo.id) { put("ax", p.x.roundToInt()); put("ay", p.y.roundToInt()) } }
                     cogida[0] = null
+                  } catch (x: kotlinx.coroutines.CancellationException) { tocada = null; cogida[0] = null; throw x
+                  } catch (x: Exception) { tocada = null; cogida[0] = null }
                 }
             }
         ) {

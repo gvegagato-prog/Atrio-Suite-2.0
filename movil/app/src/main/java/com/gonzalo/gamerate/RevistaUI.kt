@@ -66,8 +66,8 @@ fun FiltrosRevista(opciones: List<String>, sel: Int, modifier: Modifier = Modifi
 @Composable
 fun FiltroRevista(texto: String, on: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(texto.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, maxLines = 1,
-        modifier = modifier.semantics { selected = on }.press(haptic = false, onClick = onClick).padding(vertical = 9.dp)
-            .drawBehind { if (on) drawRect(ColGeneral, topLeft = Offset(0f, size.height - 5.dp.toPx()), size = Size(size.width, 1.5.dp.toPx())) })
+        modifier = modifier.semantics { selected = on }.press(haptic = false, onClick = onClick).padding(top = 8.dp, bottom = 13.dp)
+            .drawBehind { if (on) drawRect(ColGeneral, topLeft = Offset(0f, size.height - 4.dp.toPx()), size = Size(size.width, 1.5.dp.toPx())) })
 }
 
 /** Las dos pestañas de Ajustes en el móvil (una sola pantalla con dos partes, como las pestañas de Ajustes del PC). */

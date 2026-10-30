@@ -12,6 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import org.junit.Assert.assertTrue
@@ -118,5 +122,37 @@ class ArbolGestosTest {
         // Al soltar se guarda donde quedó y «Solo» deja de estar apagado
         val guardada = e.get(a.id)!!
         assertTrue("se guarda donde quedó: ${guardada.i("ax")}, ${guardada.i("ay")}", guardada.i("ay") > 50 && guardada.i("ax") > -150)
+    }
+
+    /** «Unir dos fichas»: pulsar el botón y luego dos fichas funciona; también tras arrastrar, tras un cambio de Escribir y tras un toque cancelado. */
+    @Test fun unirDosFichasSigueFuncionando() {
+        Mode.dark = false
+        val e = Escritos.get(ctx)
+        val o = e.nuevo(Escritos.T_OBRA, "") { put("titulo", "Prueba") }
+        val a = e.nuevo(Escritos.T_FICHA, o.id) { put("tipo", "personaje"); put("nombre", "Aldara"); put("color", "#B0102F"); put("ax", -150); put("ay", 0) }
+        val b = e.nuevo(Escritos.T_FICHA, o.id) { put("tipo", "personaje"); put("nombre", "Cuervo"); put("color", "#4A6FA5"); put("ax", 150); put("ay", 0) }
+        var ver by mutableIntStateOf(0)
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { ArbolObra(e, o, ver, AbreEscribir(), null) } } }
+        rule.waitForIdle()
+        val nodo = rule.onNodeWithContentDescription("Árbol de relaciones").fetchSemanticsNode()
+        val w = nodo.size.width.toFloat(); val h = nodo.size.height.toFloat(); val dens = ctx.resources.displayMetrics.density
+        val k = min(1.4f, max(0.3f, min(w / dens / 360f, h / dens / 160f)))
+        fun en(x: Float, y: Float) = Offset(w / 2f + x * dens * k, h / 2f + y * dens * k)
+        val arbol = { rule.onNodeWithContentDescription("Árbol de relaciones") }
+        fun toca(p: Offset) { arbol().performTouchInput { down(p); up() }; rule.waitForIdle() }
+        // Un arrastre, un cambio de Escribir y un toque que el sistema cancela (como un gesto de borde de pantalla)
+        arbol().performTouchInput { down(en(-150f, 0f)); moveBy(Offset(0f, 60f)); moveBy(Offset(0f, 60f)) }
+        rule.runOnUiThread { e.edita(b.id) { put("resumen", "x") }; ver++ }
+        rule.waitForIdle()
+        arbol().performTouchInput { up() }
+        rule.waitForIdle()
+        arbol().performTouchInput { down(en(0f, 120f)); cancel() }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Unir dos fichas", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Pulsa la primera ficha", substring = true, ignoreCase = true)[0].assertIsDisplayed()
+        toca(en(-150f, 60f / dens / k))  // Aldara, que se movió 60 px al arrastrarla (los primeros 60 son el margen del toque)
+        rule.onAllNodesWithText("Ahora pulsa la ficha con la que unir a Aldara", substring = true, ignoreCase = true)[0].assertIsDisplayed()
+        toca(en(150f, 0f))
+        rule.onAllNodesWithText("Pulsa la primera ficha", substring = true, ignoreCase = true).assertCountEquals(0)
     }
 }
