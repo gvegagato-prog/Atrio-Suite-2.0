@@ -10,6 +10,14 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Streaming con Steam Link (móvil 6.91 y PC 3.5)
+
+- **Fuera Polaris y Nova; ahora es Steam Link.** «Streaming» abre Steam en el PC (si estaba cerrado) y el juego, y en
+  el móvil abre Steam Link. Atrio del PC ya no instala ni arranca ningún servidor, ni guarda usuario ni contraseña: lo
+  que había guardado de Polaris se borra al abrir esta versión. También se va Tailscale (solo servía para Nova).
+- Emparejar es lo de Steam Link (una vez): eliges el PC y escribes en Steam del PC el PIN que te enseña.
+- Encender el PC desde el móvil (Wake-on-LAN y enchufe de Tuya) sigue igual.
+
 ## Una sola Atrio, coherente (móvil 6.90 y PC 3.4)
 
 - **Una sola interfaz en el móvil: la revista.** La antigua (con dock abajo) ya no existe. Lo que solo estaba allí pasa a
@@ -313,17 +321,17 @@ capturas, calendario, modo pareja, sincronización).
 46. Las guías **siguen abiertas** aunque salgas de la app o cierres la ventana: vuelves y están donde las dejaste.
     Si el móvil cerró la app del todo, se reabren en la última página vista («Seguías en…»; o «Empezar desde el inicio»).
 
-**Streaming: jugar en el móvil a los juegos del PC** (Polaris en el PC + Nova en el móvil)
-47. Cada juego del PC tiene dos botones grandes: **Jugar en el PC** y **Streaming**. Streaming arranca Polaris,
-    lanza el juego en el PC y abre Nova directamente en ese PC (sin elegir nada en Nova).
+**Streaming: jugar en el móvil a los juegos del PC** (Steam en el PC + Steam Link en el móvil)
+47. Cada juego del PC tiene **Jugar en el PC** y **Streaming**. Streaming abre Steam en el PC (en segundo plano, si
+    estaba cerrado: Steam Link no conecta con un PC sin Steam), lanza el juego y abre **Steam Link** (la app gratuita
+    de Valve, en Google Play) en el móvil. Steam Link se abre en su pantalla de inicio: Valve no documenta cómo
+    decirle desde otra app a qué PC o a qué juego ir.
 48. En la tarjeta en directo, **Streaming** para seguir en el móvil la partida que ya está en marcha.
-49. **Emparejar con un toque**: Atrio pide a Polaris un código de un solo uso y se lo pasa a Nova en un enlace
-    (`art://…`); en Nova solo confirmas. También vale el PIN de 4 números que enseña Nova.
-50. Fuera de casa: Atrio detecta **Tailscale** en el PC y «Emparejar por Tailscale» añade el PC a Nova con esa dirección.
+49. **Emparejar** (una vez): en Steam Link eliges el PC y te enseña un PIN, que se escribe en Steam del PC.
+50. Fuera de casa: Steam Link también puede conectarse por internet; Atrio no necesita nada más.
 51. **Encender el PC** desde el móvil (Wake-on-LAN, en la wifi de casa).
-52. En Atrio del PC → Ajustes → Streaming: estado de Polaris, instalarlo (AUR `polaris-gamestream-bin` o paquetes
-    oficiales), arrancarlo, tu usuario de Polaris (o su clave de API), puertos del cortafuegos y qué aplicación abre
-    Nova («Desktop»). Polaris solo existe para Linux.
+52. En Atrio del PC → Ajustes → Streaming: si Steam está instalado y abierto, «Abrir Steam» y cómo emparejar.
+    En Linux, Windows y macOS (la edición «solo revista» del Mac no tiene streaming).
 
 **Estilo** (móvil: Ajustes → Apariencia → Estilo · PC: Ajustes → Apariencia)
 53. **30 combinaciones** listas (Arcade, Cyberpunk, Revista, Fantasía, Terminal, Dracula, Tokyo Night…).
@@ -358,9 +366,6 @@ capturas, calendario, modo pareja, sincronización).
 64. **Camaleón** (Estilo → Fondo, encendido por defecto): al abrir una ficha, la app se tiñe con el color de su
     portada (fondo, tarjetas y el color de la nota general) y el cambio se abre en círculo desde donde tocaste.
     Al salir vuelve tu paleta.
-65. **Streaming sin «error parsing applist cache»**: Atrio del PC lee el UUID de la app de Polaris (su apps.json, o
-    su API) y el móvil se lo pasa a Nova, que así abre la app directamente sin depender de su lista guardada. Si no
-    se conoce, Nova abre la lista de apps de ese PC en vez de dar error.
 66. **Encender el PC con un enchufe de Tuya** (móvil → PC → Streaming → «Enchufe del PC»): con la BIOS en «Restore on
     AC power loss → Power On», Atrio corta la corriente unos segundos y la vuelve a dar, y el PC arranca. Va por la API
     en la nube de Tuya (proyecto gratuito en iot.tuya.com con tu cuenta de Smart Life enlazada), así que funciona
@@ -368,8 +373,6 @@ capturas, calendario, modo pareja, sincronización).
 67. **Streaming sin que Atrio robe el foco**: al jugar en streaming desde el móvil, Atrio se minimiza y no vuelve a
     ponerse delante al cerrar el juego; con un juego abierto, las órdenes del móvil no le quitan el foco; y al cerrar
     un juego, Atrio espera 15 s por si vuelve (Deadlock y los que se reinician o pasan por un lanzador).
-68. **Calidad en casa y con datos** (móvil → Streaming): qué poner en Nova con la pantalla de tu móvil (nativa y
-    90 FPS en wifi; bitrate de datos que Nova aplica sola; perfil «Datos» para 60 FPS).
 
 **Control y privacidad** (Atrio en el PC → Ajustes → Móvil)
 33. Permitir o no capturas, lanzar juegos y energía desde el móvil.
@@ -399,9 +402,10 @@ herramientas/  Firebase de mentira (con streaming), pruebas de punta a punta y p
 
 - `node herramientas/prueba-suite.js`: Firebase de mentira + Atrio de verdad (Xvfb) + un móvil simulado:
   directo, órdenes, captura a resolución real bajada byte a byte, lanzar juego, parte jugada, mezcla al instante,
-  streaming con un Polaris de mentira (`herramientas/fakepolaris.js`: detectar, preparar, entrar con usuario y CSRF,
-  código de un solo uso, PIN bueno y malo) y apagar.
-- `cd movil && gradle testDebugUnitTest`: streaming y mezcla del móvil contra el Firebase de mentira.
+  streaming con un Steam de mentira (verlo instalado y cerrado, abrirlo desde el móvil, borrar lo que se guardaba
+  de Polaris) y apagar.
+- `cd movil && gradle testDebugUnitTest`: streaming y mezcla del móvil contra el Firebase de mentira, y Steam Link
+  (detectarlo, abrirlo y el aviso de «Falta Steam Link»).
 - `node herramientas/capturas-atrio.js`: capturas de la interfaz de Atrio con el móvil conectado.
 - Actions → «Prueba en emulador»: Atrio en un emulador Android con Atrio de verdad al lado, de principio a fin.
 

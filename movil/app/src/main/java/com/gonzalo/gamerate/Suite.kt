@@ -45,7 +45,7 @@ data class LiveDev(
     val game: LiveGame?, val canShot: Boolean,
     /** Minutos jugados hoy en ese PC. */
     val today: Int = 0,
-    /** Su Polaris (streaming), si lo tiene instalado. */
+    /** Su Steam (para jugar en streaming con Steam Link). */
     val st: StreamHost? = null
 )
 

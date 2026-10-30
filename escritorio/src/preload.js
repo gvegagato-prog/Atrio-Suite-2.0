@@ -77,8 +77,6 @@ contextBridge.exposeInMainWorld('atrio', {
   suiteMethods: () => invoke('suite:methods'),
   streamInfo: () => invoke('stream:info'),
   streamStart: () => invoke('stream:start'),
-  streamCheck: () => invoke('stream:check'),
-  streamWeb: () => invoke('stream:web'),
   webOpen: (url, bounds) => invoke('web:open', url, bounds),
   webBounds: (bounds) => invoke('web:bounds', bounds),
   webHide: () => invoke('web:hide'),

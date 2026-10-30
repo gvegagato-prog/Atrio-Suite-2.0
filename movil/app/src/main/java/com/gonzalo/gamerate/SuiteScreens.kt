@@ -198,17 +198,17 @@ fun LiveCard(
                     val ctx = LocalContext.current
                     val scope = rememberCoroutineScope()
                     var busy by remember { mutableStateOf(false) }
-                    var need by remember { mutableStateOf(false) }
-                    // Seguir la partida en el móvil: Nova directo a ese PC
+                    var falta by remember { mutableStateOf(false) }
+                    // Seguir la partida en el móvil, con Steam Link
                     RemoteButton(Icons.Rounded.Cast, "Streaming", light = true, busy = busy) {
                         busy = true
                         scope.launch {
                             val err = Stream.play(ctx, null)
                             busy = false
-                            if (err == "NOVA") need = true else if (err != null) android.widget.Toast.makeText(ctx, err, android.widget.Toast.LENGTH_LONG).show()
+                            if (err == Stream.FALTA) falta = true else if (err != null) android.widget.Toast.makeText(ctx, err, android.widget.Toast.LENGTH_LONG).show()
                         }
                     }
-                    if (need) NovaDialog { need = false }
+                    if (falta) SteamLinkDialog { falta = false }
                 } else RemoteButton(Icons.Rounded.SportsEsports, "Mando", light = true) { onRemote() }
             }
         }

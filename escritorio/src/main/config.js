@@ -51,13 +51,9 @@ const DEFAULTS = {
   },
   // Tu nube (kDrive de Infomaniak): token y número de tu kDrive (solo en este PC), y si se suben las capturas
   nube: { token: '', drive: '', shots: true },
-  // Streaming al móvil (Polaris en este PC + Nova en el móvil)
+  // Streaming al móvil (Steam de este PC + Steam Link en el móvil)
   stream: {
-    user: '',              // usuario y contraseña del panel de Polaris (para emparejar el móvil desde la app)
-    pass: '',
-    apiKey: '',            // o la clave de API de Polaris (api_key en polaris.conf), en lugar del usuario
-    app: 'Desktop',        // la aplicación de Polaris que abre Nova (el escritorio: el juego lo lanza Atrio)
-    remote: true,          // dejar que el móvil prepare el streaming (arrancar Polaris, lanzar el juego, emparejar)
+    remote: true,          // dejar que el móvil prepare el streaming (abrir Steam y lanzar el juego)
   },
   behavior: {
     onLaunch: 'minimize',   // minimize | none | quit
@@ -93,6 +89,12 @@ let current = null;
 function load() {
   const stored = readJson(CONFIG_PATH, {});
   current = deepMerge(DEFAULTS, stored || {});
+  // Lo que se guardaba para Polaris (usuario, contraseña, clave de API): ya no se usa y no se deja en el disco
+  if (current.stream && ['user', 'pass', 'apiKey', 'app'].some((k) => k in current.stream)) {
+    const { user, pass, apiKey, app, ...resto } = current.stream;
+    current.stream = resto;
+    try { save(current); } catch { /* se limpia la próxima vez */ }
+  }
   return current;
 }
 

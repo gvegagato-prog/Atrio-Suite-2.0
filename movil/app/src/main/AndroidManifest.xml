@@ -12,19 +12,9 @@
     <!-- Subidas largas a tu nube (un libro de cientos de MB): WorkManager las hace en primer plano, con su aviso -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <!-- Streaming: ver si Nova está instalado (y abrirlo directo en el PC o emparejarlo con un enlace art://) -->
+    <!-- Streaming: ver si Steam Link está instalado (y abrirlo) -->
     <queries>
-        <package android:name="com.papi.nova" />
-        <package android:name="com.papi.nova.root" />
-        <package android:name="com.papi.nova.pre" />
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="art" />
-        </intent>
+        <package android:name="com.valvesoftware.steamlink" />
         <!-- Leer en voz alta en el lector: desde Android 11, sin esto no se ve el motor de voz (TextToSpeech no arranca) -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />

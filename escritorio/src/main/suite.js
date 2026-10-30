@@ -2,7 +2,7 @@
 // La suite: Atrio y Ronrón conectados en tiempo real a través de tu cuenta (Firebase Realtime Database).
 //
 //   /users/<uid>/suite/live/<disp>        quién está conectado y a qué se juega ahora mismo (cada dispositivo el suyo;
-//                                         el PC añade «st»: su Polaris para el streaming)
+//                                         el PC añade «st»: su Steam para jugar en streaming con Steam Link)
 //   /users/<uid>/suite/lib/<disp>         la biblioteca de cada PC (para lanzar juegos desde el móvil)
 //   /users/<uid>/suite/cmd/<disp>/<id>    órdenes para un dispositivo: { op, a, t, by } → él responde en «res»
 //   /users/<uid>/suite/shots/<id>         capturas: datos de la foto (los trozos van en /users/<uid>/shotdata/<id>)
@@ -14,7 +14,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { watch } = require('./stream');
-const host = require('./polaris');
+const host = require('./steamlink');
 const { XDG_DATA, readJson, mkdirp } = require('./paths');
 
 const CHUNK = 512 * 1024;           // caracteres de base64 por trozo (Firebase admite hasta 10 MB por texto)
@@ -79,15 +79,12 @@ function livePayload() {
   };
 }
 
-// Streaming: lo que necesita el móvil para abrir Nova en este PC (y encenderlo por red)
+// Streaming: si este PC tiene Steam (y si está abierto) para jugar con Steam Link, y cómo encenderlo por red
 function streamPayload() {
   const i = host.info();
-  if (!i.installed) return { on: false, linux: !!i.linux };
-  const ts = i.ts || {};
   return {
-    on: true, run: !!i.running, name: i.name || os.hostname(), uuid: i.uuid || '', app: i.app || 'Desktop', appUuid: i.appUuid || '',
-    lan: i.ips || [], mac: i.macs || [], ts: ts.up ? ts.ip : '', tsn: ts.up ? (ts.dns || '') : '', tsi: !!ts.installed,
-    creds: !!i.creds, ok: (ctx.config().stream || {}).remote !== false, host: 'polaris',
+    on: !!i.installed, run: !!i.running, name: i.name || os.hostname(), lan: i.ips || [], mac: i.macs || [],
+    ok: (ctx.config().stream || {}).remote !== false, host: 'steamlink',
   };
 }
 async function pushLive(force) {
@@ -159,11 +156,11 @@ const HANDLERS = {
     ctx.send('remote', { op: 'guide', key: a && a.key, url: a && a.url });
     return { ok: true, msg: 'Abierta en el PC' };
   },
-  // Jugar en streaming: Polaris en marcha y (si viene) el juego lanzado; el móvil abre Nova con lo que devuelve
+  // Jugar en streaming: Steam abierto y (si viene) el juego lanzado; después el móvil abre Steam Link
   async stream(a) {
     if ((ctx.config().stream || {}).remote === false) throw new Error('En Atrio no está permitido preparar el streaming desde el móvil.');
-    const i = await host.startService();
-    let msg = 'Polaris listo';
+    await host.startSteam();
+    let msg = 'Steam listo';
     if (a && a.key) {
       const cur = ctx.current();
       if (cur && cur.key === a.key) msg = `${cur.name} ya está en marcha`;
@@ -174,23 +171,7 @@ const HANDLERS = {
       }
     }
     if (ctx.streaming) ctx.streaming(a && a.key);
-    const appUuid = i.appUuid || (await host.appUuid());
-    return { ok: true, msg, name: i.name, uuid: i.uuid || '', app: i.app || 'Desktop', appUuid };
-  },
-  // Emparejar con Nova: con un código de un solo uso (auto: el móvil se lo pasa a Nova) o con el PIN que enseña Nova
-  async pair(a, by) {
-    if ((ctx.config().stream || {}).remote === false) throw new Error('En Atrio no está permitido emparejar desde el móvil.');
-    const name = (a && a.name) || by || 'Móvil';
-    if (a && a.auto) {
-      const o = await host.otp(name);
-      return { ok: true, msg: 'Código listo: Nova lo usa para emparejarse', ...o };
-    }
-    await host.pin(a && a.pin, name);
-    return { ok: true, msg: 'Emparejado: ya puedes jugar en streaming' };
-  },
-  async polaris() {
-    const i = await host.startService();
-    return { ok: true, msg: `Polaris en marcha en ${i.name}` };
+    return { ok: true, msg };
   },
   async ping() { return { ok: true, msg: `Atrio ${ctx.version()} en ${os.hostname()}` }; },
 };
@@ -411,7 +392,7 @@ function start(c, ronron, opts) {
   ctx = c;
   rr = ronron;
   solo = !!(opts && opts.soloRevista);
-  if (!solo) host.init({ config: () => ctx.config().stream || {}, log, onChange: (i) => { pushLive(false); try { ctx.send('stream', i); } catch { /* */ } } });
+  if (!solo) host.init({ onChange: (i) => { pushLive(false); try { ctx.send('stream', i); } catch { /* */ } } });
   check();
   clearInterval(heart);
   heart = setInterval(() => {

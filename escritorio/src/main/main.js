@@ -491,16 +491,9 @@ function setupSuiteIpc() {
   });
   ipcMain.handle('suite:shotShow', (_e, id) => { const f = suite.shotFile(id); if (f) shell.showItemInFolder(f); return !!f; });
   ipcMain.handle('suite:methods', () => require('./capture').methods());
-  // Streaming (Polaris)
-  ipcMain.handle('stream:info', () => (SOLO_REVISTA ? {} : require('./polaris').refresh()));
-  ipcMain.handle('stream:start', () => { if (SOLO_REVISTA) throw new Error('Sin streaming en esta edición.'); return require('./polaris').startService(); });
-  ipcMain.handle('stream:check', async () => {
-    const sun = require('./polaris');
-    await sun.refresh();
-    if (!sun.info().running) return { ok: false, msg: 'Polaris no está en marcha.' };
-    try { const c = await sun.clients(); return { ok: true, msg: `Usuario correcto · ${c.length} ${c.length === 1 ? 'dispositivo emparejado' : 'dispositivos emparejados'}` }; } catch (e) { return { ok: false, msg: e.message }; }
-  });
-  ipcMain.handle('stream:web', () => shell.openExternal(`https://localhost:${(require('./polaris').info().port || 47989) + 1}`));
+  // Streaming (Steam Link): si Steam está instalado y abierto, y abrirlo
+  ipcMain.handle('stream:info', () => (SOLO_REVISTA ? {} : require('./steamlink').refresh()));
+  ipcMain.handle('stream:start', () => { if (SOLO_REVISTA) throw new Error('Sin streaming en esta edición.'); return require('./steamlink').startSteam(); });
   // Webs dentro de la página del juego
   ipcMain.handle('web:open', (_e, url, bounds) => web.open(url, bounds));
   ipcMain.handle('web:bounds', (_e, bounds) => { web.setBounds(bounds); return true; });

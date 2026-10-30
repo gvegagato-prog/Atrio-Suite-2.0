@@ -382,44 +382,28 @@
   let info = null;
   S.streaming = () => {
     const c = cfg().stream || {};
-    const estado = h('div', nota('Mirando Polaris…'));
+    const estado = h('div', nota('Mirando Steam…'));
     const pintarEstado = (i) => {
       if (!i) return;
-      if (i.linux === false) { estado.replaceChildren(h('p.mensaje', 'Polaris solo existe para Linux: en este PC no se puede preparar el streaming.')); return; }
       const punto = (on, t) => h('p.estado-punto', { 'data-on': String(!!on) }, t);
       estado.replaceChildren(
-        punto(i.installed, i.installed ? 'Polaris instalado' : 'Polaris no está instalado'),
-        punto(i.running, i.running ? `En marcha · se anuncia como «${i.name}»` : 'Parado'),
-        punto(i.creds, i.creds ? 'Atrio puede hablar con Polaris: el móvil se empareja solo' : 'Falta tu usuario de Polaris (abajo) para emparejar desde el móvil'),
-        punto(i.ts && i.ts.up, i.ts && i.ts.up ? `Tailscale activo: ${i.ts.ip}${i.ts.dns ? ` · ${i.ts.dns}` : ''}` : i.ts && i.ts.installed ? 'Tailscale instalado pero desconectado' : 'Tailscale no está instalado (solo hace falta para jugar fuera de casa)'),
+        punto(i.installed, i.installed ? 'Steam instalado' : 'Steam no está instalado en este PC'),
+        punto(i.running, i.running ? `Steam abierto en «${i.name}»` : 'Steam cerrado (Atrio lo abre al jugar desde el móvil)'),
         i.ips && i.ips.length ? punto(true, `En casa: ${i.ips.join(', ')}`) : null);
     };
     if (info) pintarEstado(info);
     api.streamInfo().then((i) => { info = i; pintarEstado(i); }).catch(() => {});
-    const usuario = RV.entrada(c.user || '', { placeholder: 'Usuario del panel de Polaris', autocomplete: 'off' });
-    const clave = RV.entrada(c.pass || '', { type: 'password', placeholder: 'Contraseña', autocomplete: 'off' });
-    const apiKey = RV.entrada(c.apiKey || '', { type: 'password', placeholder: 'Opcional: api_key de polaris.conf', autocomplete: 'off' });
-    const app = RV.entrada(c.app || 'Desktop', { placeholder: 'Desktop' });
-    const salida = h('p.mensaje');
-    const copiar = (t) => h('button.enlace', { type: 'button', onclick: () => navigator.clipboard.writeText(t).then(() => RV.aviso('Copiado')).catch(() => {}) }, 'Copiar');
     return [
-      bloque('Streaming', 'Juega desde el móvil a los juegos de este PC, en casa o con datos fuera. Atrio prepara Polaris (el servidor de streaming) y en el móvil cada juego tiene «Streaming», que abre Nova en este PC con el juego ya lanzado.',
+      bloque('Streaming', 'Juega desde el móvil a los juegos de este PC con Steam Link, la app gratuita de Valve. En el móvil, cada juego tiene «Streaming»: Atrio abre Steam y el juego en este PC, y el móvil abre Steam Link.',
         estado,
         h('div.fila-botones',
-          h('button.boton-tinta', { type: 'button', onclick: async () => { try { RV.aviso('Arrancando Polaris…'); info = await api.streamStart(); pintarEstado(info); RV.aviso('Polaris en marcha'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); } } }, 'Arrancar Polaris'),
-          h('button.enlace', { type: 'button', onclick: () => api.streamWeb() }, 'Abrir el panel de Polaris'),
-          h('button.enlace.apagado', { type: 'button', onclick: () => { api.streamInfo().then((i) => { info = i; pintarEstado(i); }); } }, 'Volver a mirar'))),
-      bloque('1 · Instalar Polaris', WIN ? 'Polaris solo funciona en Linux.' : 'Después ábrelo (o «Arrancar Polaris»), entra en su panel (https://localhost:47990) y crea tu usuario. Con cortafuegos, abre TCP 47984, 47989, 47990, 48010 y UDP 47998–48000.',
-        WIN ? null : [['Arch / CachyOS (AUR)', 'paru -S polaris-gamestream-bin'], ['Preparar el equipo (una vez)', 'sudo -H polaris --setup-host']]
-          .map(([q, cmd]) => fila(q, cmd, copiar(cmd)))),
-      bloque('2 · Tu usuario de Polaris', 'Con él, el móvil se empareja con un toque, sin teclear PIN. Se guarda solo en este PC.',
-        h('div.formulario', RV.campo('Usuario', usuario), RV.campo('Contraseña', clave), RV.campo('Clave de API (opcional)', apiKey, 'Si pones «api_key = …» en ~/.config/polaris/polaris.conf, puedes usarla en lugar del usuario.'), RV.campo('Aplicación de Polaris', app, '«Desktop» (el escritorio) es la que viene con Polaris: Atrio lanza el juego y Nova enseña la pantalla.')),
-        h('div.fila-botones',
-          h('button.boton-tinta', { type: 'button', onclick: () => guardar({ stream: { user: usuario.value.trim(), pass: clave.value, apiKey: apiKey.value.trim(), app: app.value.trim() || 'Desktop' } }, 'Guardado') }, 'Guardar'),
-          h('button.enlace', { type: 'button', onclick: async () => { await api.patchConfig({ stream: { user: usuario.value.trim(), pass: clave.value, apiKey: apiKey.value.trim() } }); const r = await api.streamCheck(); salida.textContent = r.msg; salida.classList.toggle('bien', !!r.ok); } }, 'Comprobar')),
-        salida,
-        interruptor('El móvil puede preparar el streaming', c.remote !== false, (v) => guardar({ stream: { remote: v } }), 'Arrancar Polaris, lanzar el juego y emparejar')),
-      bloque('3 · En el móvil', 'Instala Nova (github.com/papi-ux/nova). En Atrio del móvil: PC → Streaming → «Emparejar con Nova». Fuera de casa, lo más fácil es Tailscale en este PC y en el móvil con la misma cuenta.'),
+          h('button.boton-tinta', { type: 'button', onclick: async () => { try { RV.aviso('Abriendo Steam…'); info = await api.streamStart(); pintarEstado(info); RV.aviso('Steam abierto'); } catch (e) { RV.aviso(RV.limpiaError(e), 'error'); } } }, 'Abrir Steam'),
+          h('button.enlace.apagado', { type: 'button', onclick: () => { api.streamInfo().then((i) => { info = i; pintarEstado(i); }); } }, 'Volver a mirar')),
+        interruptor('El móvil puede preparar el streaming', c.remote !== false, (v) => guardar({ stream: { remote: v } }), 'Abrir Steam y lanzar el juego')),
+      bloque('En el móvil', null,
+        fila('1 · Instala Steam Link', 'Está en Google Play: la app gratuita de Valve.'),
+        fila('2 · Empareja (una vez)', 'Ábrelo y elige este PC: te enseña un PIN. Escríbelo en Steam de este PC, en la ventana que sale (o en Ajustes → Remote Play → Emparejar Steam Link).'),
+        fila('3 · A jugar', '«Streaming» en cualquier juego. Fuera de casa, Steam Link también puede conectarse por internet.')),
     ];
   };
 })(window.RV);

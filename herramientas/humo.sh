@@ -300,12 +300,12 @@ must seek "Juego de Prueba"; tap "Juego de Prueba"; sleep 3
 must see "Guías" 10
 must seek "example.com"
 shot 45_ficha_guias 1; alive "ficha guias"
-# Los dos botones grandes: jugar en el PC y en streaming (sin Nova instalado, ofrece descargarlo)
+# Los dos botones: jugar en el PC y en streaming (sin Steam Link instalado, ofrece instalarlo)
 must seek "Jugar en el PC"
 must see "Streaming" 5
 tap "Streaming"; sleep 2
-must see "Falta Nova" 8
-shot 46_falta_nova 1
+must see "Falta Steam Link" 8
+shot 46_falta_steam_link 1
 tap "Ahora no"; sleep 1
 echo "   botones de jugar y de streaming en la ficha" | tee -a "$LOG"
 must seek "example.com"; tap "example.com"; sleep 10
