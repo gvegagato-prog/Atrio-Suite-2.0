@@ -21,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
@@ -74,7 +76,8 @@ fun HojaEscribir(titulo: String, onCerrar: () -> Unit, acciones: @Composable Row
             Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 10.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(titulo, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 31.sp, color = Charcoal, modifier = Modifier.weight(1f), maxLines = 2)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically, content = acciones)
-                IconPill(Icons.Rounded.Close, "Cerrar", onClick = onCerrar)
+                // (cerrar con texto, como el resto de la revista y los diálogos del PC)
+                EnlaceRevista("Cerrar", Modifier.padding(start = 12.dp).semantics { contentDescription = "Cerrar" }, onClick = onCerrar)
             }
             Box(Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(if (Skin.revista) 3.dp else 1.dp).background(if (Skin.revista) Charcoal else Line))
             Column(Modifier.weight(1f).fillMaxWidth().widthIn(max = 720.dp).align(Alignment.CenterHorizontally).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 14.dp),
