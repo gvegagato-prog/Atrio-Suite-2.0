@@ -10,6 +10,16 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio 1.0
+
+- **Es la versión 1.0** (móvil y PC/Mac: antes móvil 6.93 y PC 3.6). La numeración empieza de nuevo. Las instalaciones
+  que ya tienen la 6.93 se actualizan solas a la 1.0 (el archivo del kDrive se llama «Atrio-6.94.apk» para que la 6.93
+  lo vea como más nuevo; también está como «Atrio-1.0.apk»). Desde la 1.0, el actualizador ignora los «Atrio-6.x.apk»
+  que queden en la carpeta.
+- **El árbol de Escribir ya no tiene botones de acercar, alejar ni «verlo todo»**, en el móvil, el PC y el Mac. Se acerca
+  con el pellizco (móvil), con la rueda del ratón (PC) y con el pellizco del trackpad (Mac, de forma continua); dos dedos
+  en paralelo en el trackpad mueven el lienzo. «Ordenar» sigue colocándolo todo a la vista.
+
 ## Menú más limpio y árbol que sigue al dedo (móvil 6.92 y PC 3.6)
 
 - **El menú de arriba son solo las secciones:** tus categorías, Diario, Escribir y Cifras. Fuera Descubrir, Tu PC y

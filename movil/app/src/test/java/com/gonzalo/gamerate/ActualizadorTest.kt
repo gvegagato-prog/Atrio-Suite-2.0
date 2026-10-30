@@ -34,6 +34,11 @@ class ActualizadorTest {
         val u = Actualizador.ultima(listOf("Atrio-6.9.apk" to 1L, "Atrio-6.10.apk" to 2L, "léeme.txt" to 3L, "Atrio-6.67.apk" to 4L, "Atrio-6.8.apk" to 5L))
         assertEquals("Atrio-6.67.apk", u?.first); assertEquals(4L, u?.second)
         assertNull(Actualizador.ultima(emptyList()))
+        // Con la 1.0 empezó una numeración nueva: lo de la serie 6.x que queda en la carpeta no cuenta
+        val carpeta = listOf("Atrio-6.93.apk" to 1L, "Atrio-1.0.apk" to 2L, "Atrio-6.94.apk" to 3L, "léeme.txt" to 4L, "Atrio-1.0.1.apk" to 5L)
+        assertEquals("Atrio-1.0.1.apk", Actualizador.ultima(Actualizador.deLaSerieNueva(carpeta))!!.first)
+        assertTrue("una 6.93 antigua sigue viendo el 6.94 como más nuevo", Actualizador.mayor(Actualizador.ultima(carpeta)!!.third, listOf(6, 93)))
+        assertNull("solo archivos antiguos: nada que bajar", Actualizador.ultima(Actualizador.deLaSerieNueva(listOf("Atrio-6.93.apk" to 1L))))
     }
 
     /** Sin preguntar: la app se actualiza a sí misma; vale aunque la primera vez la instalara otra app (un explorador de archivos). */

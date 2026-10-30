@@ -64,6 +64,15 @@ object Actualizador {
         return false
     }
 
+    /**
+     * Con la 1.0 la numeración empezó de nuevo. Los archivos «Atrio-6.x.apk» que siguen en la carpeta son de antes: si no se
+     * ignoran, el 6.93 parecería más nuevo que el 1.0.1 y se bajaría una y otra vez. (Una 6.93 instalada ve un «Atrio-6.94.apk»
+     * como más nuevo: esa es la 1.0 con nombre de la serie antigua, para que las que ya estaban instaladas den el salto solas.)
+     */
+    fun deLaSerieNueva(archivos: List<Pair<String, Long>>): List<Pair<String, Long>> =
+        archivos.filter { (versionDe(it.first)?.firstOrNull() ?: 0) < SERIE_ANTIGUA }
+    private const val SERIE_ANTIGUA = 6
+
     /** La más nueva de los archivos de la carpeta. */
     fun ultima(archivos: List<Pair<String, Long>>): Triple<String, Long, List<Int>>? =
         archivos.mapNotNull { (n, id) -> versionDe(n)?.let { Triple(n, id, it) } }.fold(null as Triple<String, Long, List<Int>>?) { m, x -> if (m == null || mayor(x.third, m.third)) x else m }
@@ -173,7 +182,7 @@ object Actualizador {
     }
 
     private fun compruebaYa(ctx: Context) {
-        val lista = KDrive.versiones(ctx)
+        val lista = deLaSerieNueva(KDrive.versiones(ctx))
         val ult = ultima(lista) ?: run { anota(ctx, if (lista.isEmpty()) "no encuentro la carpeta «versiones» (o está vacía) en tu kDrive" else "en «versiones» no hay ningún Atrio-<versión>.apk"); return }
         val actual = instalada(ctx).versionName?.split('.')?.mapNotNull { it.toIntOrNull() } ?: return
         val dir = File(ctx.cacheDir, "actualizaciones").apply { mkdirs() }

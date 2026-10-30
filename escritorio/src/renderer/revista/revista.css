@@ -1615,12 +1615,6 @@ button.e-parte { background: none; border: 0; text-align: left; cursor: pointer;
 .con-foco .e-nodo:not(.vecino), .con-foco .e-rel-etq:not(.vecino) { opacity: .28; }
 .con-foco .e-linea-rel:not(.vecino) { opacity: .12; }
 .con-foco .e-linea-rel.vecino { opacity: 1; stroke-width: 2.4; }
-/* Acercar, alejar y verlo todo: sobre el lienzo, abajo a la derecha */
-.e-arbol-zoom { position: absolute; right: 14px; bottom: 14px; display: flex; border: 1px solid var(--tinta); background: var(--papel); }
-.e-arbol-zoom button { min-width: 34px; height: 32px; padding: 0 10px; font-size: 16px; font-weight: 700; border-left: 1px solid var(--linea); }
-.e-arbol-zoom button:first-child { border-left: 0; }
-.e-arbol-zoom .e-arbol-todo { font-size: 11px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; }
-.e-arbol-zoom button:hover { background: var(--arena); }
 
 /* Vista previa de una ficha al pasar el ratón por su nombre en el editor */
 .ed-previa { position: fixed; z-index: 80; width: 300px; display: grid; gap: 4px; padding: 14px 16px; background: var(--crudo); border: 1px solid var(--linea); border-top: 5px solid var(--c);

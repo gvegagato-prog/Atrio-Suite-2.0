@@ -407,14 +407,6 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                     scale(v.k, v.k, pivot = centro) { drawText(res, topLeft = Offset(centro.x - res.size.width / 2f, centro.y - res.size.height / 2f), alpha = alfa) }
                 }
             }
-            // Acercar, alejar y verlo todo: sobre el lienzo, abajo a la derecha (como en un mapa)
-            Row(Modifier.align(Alignment.BottomEnd).padding(12.dp).background(Paper).border(1.dp, Charcoal), verticalAlignment = Alignment.CenterVertically) {
-                Text("+", color = Charcoal, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { contentDescription = "Acercar" }.press(haptic = false) { zoom(1.25f) }.padding(horizontal = 14.dp, vertical = 6.dp))
-                Box(Modifier.width(1.dp).height(30.dp).background(Line))
-                Text("−", color = Charcoal, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { contentDescription = "Alejar" }.press(haptic = false) { zoom(0.8f) }.padding(horizontal = 14.dp, vertical = 6.dp))
-                Box(Modifier.width(1.dp).height(30.dp).background(Line))
-                Text("VERLO TODO", color = Charcoal, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.press(haptic = false) { centra() }.padding(horizontal = 12.dp, vertical = 10.dp))
-            }
         }
     }
     if (nueva) FichaDialogo(e, pid, null, onCerrar = { nueva = false }, onCreada = { f ->

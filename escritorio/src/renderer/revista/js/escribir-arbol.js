@@ -151,7 +151,7 @@
     const pintaModo = () => {
       btnUnir.textContent = uniendo ? 'Dejar de unir' : 'Unir dos fichas';
       btnUnir.setAttribute('aria-pressed', uniendo ? 'true' : 'false');
-      ayuda.textContent = uniendo ? (uniendo.a ? `Ahora pulsa la ficha con la que unir a ${(E.get(uniendo.a) || {}).nombre || ''}.` : 'Pulsa la primera ficha.') : 'Arrastra las fichas para colocarlas y el fondo para moverte; la rueda acerca. Pulsa una ficha para verla y la palabra de una línea para leer la unión.';
+      ayuda.textContent = uniendo ? (uniendo.a ? `Ahora pulsa la ficha con la que unir a ${(E.get(uniendo.a) || {}).nombre || ''}.` : 'Pulsa la primera ficha.') : 'Arrastra las fichas para colocarlas y el fondo para moverte; la rueda o el pellizco del trackpad acercan. Pulsa una ficha para verla y la palabra de una línea para leer la unión.';
       for (const n of svg.querySelectorAll('.e-nodo')) n.classList.toggle('elegido', !!(uniendo && uniendo.a === n.dataset.id));
       svg.classList.toggle('uniendo', !!uniendo);
     };
@@ -311,7 +311,16 @@
       v.x = px - ((px - v.x) * k) / v.k; v.y = py - ((py - v.y) * k) / v.k; v.k = k;
       aplicaVista();
     };
-    svg.addEventListener('wheel', (ev) => { ev.preventDefault(); zoom(ev.deltaY < 0 ? 1.12 : 1 / 1.12, ev.clientX, ev.clientY); }, { passive: false });
+    // Rueda del ratón: acerca y aleja hacia donde está el puntero. Trackpad del Mac (Chromium manda el pellizco como una
+    // rueda con Ctrl): acerca de forma continua, según cuánto pellizcas; y dos dedos en paralelo mueven el lienzo.
+    svg.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const px = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? 400 : 1; // líneas o páginas → píxeles
+      const dy = ev.deltaY * px; const dx = ev.deltaX * px;
+      if (ev.ctrlKey) zoom(Math.exp(-dy * 0.01), ev.clientX, ev.clientY);               // pellizco del trackpad
+      else if (ev.deltaMode !== 0 || (Math.abs(dy) >= 50 && dx === 0)) zoom(dy < 0 ? 1.12 : 1 / 1.12, ev.clientX, ev.clientY); // rueda del ratón
+      else { v.x -= dx; v.y -= dy; aplicaVista(); }                                          // dos dedos en el trackpad: mover
+    }, { passive: false });
     // Centrar: que se vea todo (o la ficha pedida, si se viene de «Ver en el árbol»)
     const centra = (soloId = null) => {
       const r = svg.getBoundingClientRect();
@@ -350,11 +359,6 @@
       centra();
       try { for (const f of fs) await op('edita', f.id, { ax: destino.get(f.id).x, ay: destino.get(f.id).y }); } catch (e) { E.err(e); }
     };
-    // Los mandos del zoom, sobre el lienzo (abajo a la derecha, como en un mapa)
-    const mandos = h('div.e-arbol-zoom',
-      h('button', { type: 'button', title: 'Acercar', 'aria-label': 'Acercar', onclick: () => zoom(1.25) }, '+'),
-      h('button', { type: 'button', title: 'Alejar', 'aria-label': 'Alejar', onclick: () => zoom(0.8) }, '−'),
-      h('button.e-arbol-todo', { type: 'button', title: 'Verlo todo', onclick: () => centra() }, 'Verlo todo'));
     raiz.append(
       h('div.fila-botones.e-arbol-barra',
         h('button.boton-tinta', { type: 'button', onclick: () => { E.alCrearFicha = (f) => { const r = svg.getBoundingClientRect(); op('edita', f.id, { ax: Math.round((r.width / 2 - v.x) / v.k), ay: Math.round((r.height / 2 - v.y) / v.k) }).catch(E.err); }; E.dlgFicha(pid, null); } }, 'Nueva ficha'),
@@ -362,7 +366,7 @@
         fs.length >= 2 ? h('button.enlace', { type: 'button', onclick: () => RV.confirmar('¿Ordenar el árbol?', 'Atrio colocará todas las fichas solas (lo unido, cerca). Después puedes moverlas a mano.', 'Ordenar', ordenar) }, 'Ordenar') : null),
       fs.length ? ayuda : null);
     if (!fs.length) raiz.append(h('div.e-vacio', h('h2.titular', 'El árbol de tu historia'), h('p', 'Crea fichas (personajes, lugares, objetos…) y únelas: «enemigos», «amantes», «hogar», «pertenencia»… Con todo lo que quieras contar de cada unión.')));
-    else raiz.append(h('div.e-arbol-marco', svg, mandos));
+    else raiz.append(h('div.e-arbol-marco', svg));
     pintaModo();
     return raiz;
   };
