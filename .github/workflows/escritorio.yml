@@ -43,6 +43,8 @@ jobs:
           node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-pc"
           SOLO=1 node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-mac"
           node herramientas/prueba-lector-atrio.js "$RUNNER_TEMP/lector-pc"
+          # El editor de Escribir en un Chromium de verdad (incluye que un aviso atrasado no cambie lo que escribes)
+          node herramientas/prueba-escribir-ui.js "$RUNNER_TEMP/escribir-ui"
           SOLO=1 node herramientas/prueba-lector-atrio.js "$RUNNER_TEMP/lector-mac"
           node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-pc"
           COMO=salir SOLO=1 node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-mac"

@@ -32,6 +32,12 @@
     const p = { tam: 20, fuente: 0, maquina: false, tipografia: true, ...prefs() };
     let texto = escena0.texto || '';
     let guardado = texto;
+    // Los textos que este editor ha mandado guardar (los últimos) y cuántos guardados hay en marcha. Un aviso de cambios que
+    // llega con uno de ellos es lo mío de hace un momento, no otro dispositivo: no se toca lo que estás escribiendo.
+    // (Antes un aviso atrasado devolvía el texto de hace un segundo y se perdían las últimas letras.)
+    const propios = [texto];
+    let enVuelo = 0;
+    const apuntaPropio = (t) => { propios.push(t); if (propios.length > 60) propios.shift(); };
     const inicio = E.palabras(texto);
     const hist = new ET.Historial({ text: texto, a: texto.length, b: texto.length });
     let timerGuarda = null; let timerPinta = null; let timerSnap = null;
@@ -90,8 +96,8 @@
     const guarda = async () => {
       clearTimeout(timerGuarda); timerGuarda = null;
       if (texto === guardado) return;
-      const t = texto; guardado = t;
-      try { await api.escritos('escribe', id, t); } catch (e) { E.err(e); guardado = ''; }
+      const t = texto; guardado = t; apuntaPropio(t); enVuelo++;
+      try { await api.escritos('escribe', id, t); } catch (e) { E.err(e); guardado = ''; } finally { enVuelo--; }
     };
     const aviso = () => { clearTimeout(timerGuarda); timerGuarda = setTimeout(guarda, 600); };
     const snap = () => api.escritos('instantanea', id, texto, {}).catch(() => {});
@@ -305,14 +311,14 @@
       async vaciar() {
         clearTimeout(timerGuarda); timerGuarda = null;
         if (texto === guardado) return;
-        const t = texto; guardado = t;
-        try { await api.escritos('escribe', id, t); } catch (e) { guardado = ''; E.err(e); }
+        const t = texto; guardado = t; apuntaPropio(t); enVuelo++;
+        try { await api.escritos('escribe', id, t); } catch (e) { guardado = ''; E.err(e); } finally { enVuelo--; }
       },
       cerrar() {
         clearTimeout(timerGuarda); clearTimeout(timerPinta); clearInterval(timerSnap); clearInterval(timerSprint);
         document.removeEventListener('selectionchange', selCambia);
         window.removeEventListener('resize', ajustaAlto);
-        if (texto !== guardado) { api.escritos('escribe', id, texto).catch(() => {}); guardado = texto; }
+        if (texto !== guardado) { apuntaPropio(texto); api.escritos('escribe', id, texto).catch(() => {}); guardado = texto; }
         api.escritos('instantanea', id, texto, {}).catch(() => {});
         document.body.classList.remove('ed-foco');
         if (RV.editorActivo === inst) RV.editorActivo = null;
@@ -321,8 +327,9 @@
       refresca() {
         const e = E.get(id);
         if (!e) { RV.ir({ v: 'obra', id: pid, tab: 0 }, { reemplazar: true }); return; }
-        if ((e.texto || '') !== guardado && texto === guardado) {
-          const s = offsets(); texto = e.texto || ''; guardado = texto; hist.apunta({ text: texto, a: texto.length, b: texto.length }); pinta(); if (s) ponSel(s.a, s.b); pie();
+        const fuera = e.texto || '';
+        if (fuera !== guardado && texto === guardado && !enVuelo && !propios.includes(fuera)) {
+          const s = offsets(); texto = fuera; guardado = texto; apuntaPropio(texto); hist.apunta({ text: texto, a: texto.length, b: texto.length }); pinta(); if (s) ponSel(s.a, s.b); pie();
           RV.aviso('Esta escena ha cambiado en otro dispositivo: ya la ves al día.');
         }
         if (document.activeElement !== titulo && titulo.value !== (e.titulo || '')) titulo.value = e.titulo || '';

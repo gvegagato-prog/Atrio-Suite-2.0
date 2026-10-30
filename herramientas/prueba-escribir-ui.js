@@ -68,7 +68,8 @@ function siembra() {
     r.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); r.end(fs.readFileSync(f));
   }).listen(0);
   const url = `http://127.0.0.1:${srv.address().port}/index.html`;
-  const b = await chromium.launch();
+  // (en GitHub, con playwright-core sin navegadores propios, se usa el Chrome que trae la máquina)
+  const b = await chromium.launch().catch(() => chromium.launch({ channel: 'chrome' }));
   const ctx = await b.newContext({ viewport: { width: 1500, height: 950 }, locale: 'es-ES' });
   const p = await ctx.newPage();
   const errores = [];
@@ -189,6 +190,25 @@ function siembra() {
   await p.screenshot({ path: path.join(OUT, 'pc-e08d-sprint-fin.png') });
   await p.keyboard.press('Escape'); await sleep(200);
 
+  console.log('Un aviso de cambios atrasado no toca lo que escribes (el fallo de las últimas letras)');
+  {
+    const textoEditor = () => p.locator('.ed-texto').evaluate((n) => n.textContent.replace(/​/g, ''));
+    await p.locator('.ed-texto').click(); await p.keyboard.press('Control+End');
+    const viejo = { docs: escr.todos().map((x) => ({ ...x })), estado: { ...escr.estado(), signed: false } };
+    await p.keyboard.type(' Palabras nuevas al final.'); await sleep(1300);
+    ok(texto0().endsWith('Palabras nuevas al final.'), 'lo escrito se guarda');
+    // Lo que pasaba en el Mac: llega tarde el aviso con lo de hace un momento (preparado antes de este guardado)
+    await p.evaluate((x) => window.__emit('escritos', x), viejo); await sleep(500);
+    const ve = await textoEditor();
+    ok(ve.endsWith('Palabras nuevas al final.'), `el editor no vuelve al texto de antes (${JSON.stringify(ve.slice(-30))})`);
+    ok(!/ha cambiado en otro dispositivo/i.test(await p.locator('#aviso').innerText().catch(() => '')), 'y no dice que ha cambiado en otro dispositivo');
+    await p.keyboard.type(' Y sigo.'); await sleep(1300);
+    ok(texto0().endsWith('Palabras nuevas al final. Y sigo.'), `seguir escribiendo no deja palabras cortadas (${JSON.stringify(texto0().slice(-40))})`);
+    // Un cambio de verdad desde otro dispositivo sí se ve
+    escr.escribe(e1.id, `${texto0()} Desde el móvil.`); await sleep(700);
+    ok((await textoEditor()).endsWith('Desde el móvil.'), 'un cambio de verdad de otro dispositivo sí llega al editor');
+    await sleep(2600);
+  }
   console.log('Menú Edición de macOS');
   await p.locator('.ed-texto').click(); await p.keyboard.press('Control+End');
   await p.keyboard.type(' Frase del menú.'); await sleep(1000);

@@ -47,6 +47,7 @@ jobs:
           node herramientas/prueba-maqueta-atrio.js "$RUNNER_TEMP/maqueta-mac"
           # El lector de libros (la página del móvil): abrir un EPUB, pasar página, guardar lo leído y que viaje a la cuenta
           SOLO=1 node herramientas/prueba-lector-atrio.js "$RUNNER_TEMP/lector-mac"
+          node herramientas/prueba-escribir-ui.js "$RUNNER_TEMP/escribir-ui"
           SOLO=1 node herramientas/prueba-suite.js
           # Escribir: lo último que se teclea queda guardado al cerrar (⌘W y ⌘Q) y al cerrar queda una copia de seguridad
           SOLO=1 node herramientas/prueba-escribir-cierre.js "$RUNNER_TEMP/cierre-mac"
