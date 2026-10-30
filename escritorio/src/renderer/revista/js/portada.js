@@ -202,16 +202,13 @@
     return root;
   };
 
-  // «También en Atrio»: lo que no está en el menú de la cabecera (el número especial y Descubrir directo a cada cosa), con
+  // «También en Atrio»: lo que no está en el menú de la cabecera (el número especial; Descubrir está en cada sección), con
   // puntos guía. Antes era un sumario que repetía el menú entero.
   function sumario(enFila) {
     const fila = (t, pag, fn) => h('li', h('button', { type: 'button', onclick: fn }, h('span.tit', t), h('span.guia'), h('span.pag', pag)));
     const ul = h('ul.sumario');
     if (D.conCuenta()) {
       if (RV.vistas.especial) ul.append(fila(`Tu ${new Date().getFullYear()}, número especial`, '★', () => RV.ir({ v: 'especial' })));
-      ul.append(fila('Descubrir un juego', '→', () => RV.ir({ v: 'descubrir', dom: 0 })));
-      ul.append(fila('Descubrir un libro', '→', () => RV.ir({ v: 'descubrir', dom: 1 })));
-      ul.append(fila('Descubrir una peli o serie', '→', () => RV.ir({ v: 'descubrir', dom: 2 })));
     }
     if (!ul.children.length) return null;
     const box = h('section', RV.seccion('También en Atrio'), ul);

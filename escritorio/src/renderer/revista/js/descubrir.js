@@ -450,12 +450,6 @@
   }
 
   // ---------------------------------------------------------------- Piezas
-  function pestanas(dom) {
-    return h('div.pestanas', { role: 'tablist' }, [0, 1, 2].map((d) => h('button.pestana', {
-      type: 'button', role: 'tab', 'aria-selected': String(d === dom), onclick: () => RV.ir({ v: 'descubrir', dom: d }, { reemplazar: true }),
-    }, d === 0 ? 'Juegos' : d === 1 ? 'Libros' : 'Pelis y series')));
-  }
-
   // Filtros de juegos: años (de 1980 a hoy) y plataformas (ninguna = todas)
   function bloqueFiltros(alCambiar) {
     const hoy = new Date().getFullYear();
@@ -498,7 +492,7 @@
     if (s.fase === 'intro') {
       root.append(h('header.cabeza',
         h('div.ante', `Descubrir · ${QUE[dom]}`),
-        h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, TITULO[dom]), h('div.herramientas', pestanas(dom))),
+        h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, TITULO[dom])),
         h('div.filete'),
         h('p.entradilla', `Unas pocas preguntas, de más de trescientas y nunca las mismas, y una lista de ${dom === 0 ? 'juegos' : dom === 1 ? 'libros' : 'películas y series'} hecha a tu medida.`)));
       if (dom === 0) root.append(h('section.desc-bloque', RV.seccion('Antes de empezar, si quieres'), bloqueFiltros(() => RV.refrescar())));

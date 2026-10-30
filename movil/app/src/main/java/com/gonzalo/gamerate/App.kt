@@ -1235,8 +1235,8 @@ private fun AppContenido(
                         .flatMap { k -> gamesOf(k).map { it.name } + playsOf(k).map { it.name } }.toSet(),
                     partner = partner,
                     onAdd = { item -> quizAdd(item) },
-                    onBack = { screen = Screen.Home },
-                    onDomain = { d -> section = when (d) { 0 -> 0; 1 -> 1; else -> cineKindId() }; screen = Screen.Quiz(d) }
+                    // Cada categoría tiene su Descubrir (en su página): sin pestañas para saltar a las de otras
+                    onBack = { screen = Screen.Home }
                 ) }
 
                 Screen.Profile -> ProfileScreen(

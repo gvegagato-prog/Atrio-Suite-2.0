@@ -89,6 +89,7 @@
     return h('div.item-fila', fila, h('button.enlace.acento.grande', { type: 'button', onclick: () => RV.jugar(pcg), title: `Jugar a ${pcg.name}` }, 'Jugar →'));
   }
 
+  const domDescubrir = (k) => (k.isGame ? 0 : k.isBook && !k.custom ? 1 : k.isMovie || k.isTv ? 2 : null);
   RV.vistas.seccion = (ruta) => {
     const k = D.tipo(ruta.k);
     if (!k) return h('div.hoja', RV.vacio('Esta categoría ya no existe.', true));
@@ -102,6 +103,8 @@
       h('div.cabeza-fila',
         h('h1.titular.ajusta', { 'data-min': '36' }, k.title),
         D.conCuenta() ? h('div.herramientas',
+          // Cada categoría tiene su Descubrir (juegos, libros, pelis y series; las tuyas no tienen)
+          domDescubrir(k) != null ? h('button.enlace.acento', { type: 'button', onclick: () => RV.ir({ v: 'descubrir', dom: domDescubrir(k) }) }, 'Descubrir →') : null,
           h('button.enlace', { type: 'button', onclick: () => RV.ir({ v: 'cifras', k: k.id }) }, 'Cifras'),
           h('button.enlace.acento.grande', { type: 'button', onclick: () => anadir(k, s.tab) }, '+ Añadir')) : null),
       h('div.filete')));

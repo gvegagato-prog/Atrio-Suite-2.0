@@ -23,7 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -142,7 +142,9 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
     val medidor = rememberTextMeasurer()
     val tinta = Charcoal; val papel = Paper; val acento = ColGeneral
     val porId = fs.associateBy { it.id }
-    val elegida = primera ?: foco
+    // La ficha bajo el dedo (mientras la tocas o la arrastras): como el ratón encima en el PC, apaga lo que no está unido a ella
+    var tocada by remember { mutableStateOf<String?>(null) }
+    val elegida = primera ?: tocada ?: foco
 
     // Del mundo (dp, centrado en 0) a la pantalla (px) y al revés
     fun aPantalla(p: Offset) = Offset(v.x + p.x * dens * v.k, v.y + p.y * dens * v.k)
@@ -173,7 +175,18 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
     // palabras; la normal es siempre la del par ordenado, así «a→b» y «b→a» no se anulan) y dónde va su palabra
     val estiloEtq = TextStyle(fontSize = 10.5.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp)
     val ALTO = 22f
-    fun anchoEtq(r: Doc) = max(34f, medidor.measure(r.s("titulo").ifBlank { "unión" }.uppercase(), estiloEtq).size.width / dens + 22f)
+    // Los textos se miden una sola vez (no en cada fotograma: al arrastrar con muchas fichas no daba tiempo y la ficha no
+    // seguía al dedo); al acercar o alejar se dibujan escalados
+    val etqs = remember(rels, tinta) { rels.associate { r -> val c = colorEscrito(r.s("color"), tinta); r.id to medidor.measure(r.s("titulo").ifBlank { "unión" }.uppercase(), estiloEtq.copy(color = c)) } }
+    fun anchoEtq(r: Doc) = max(34f, (etqs[r.id]?.size?.width ?: 0) / dens + 22f)
+    val textosNodo = remember(fs, tinta) {
+        fs.associate { f ->
+            val t = ArbolEscribir.tam(f); val fz = ArbolEscribir.TAM.getValue(t).third; val base = colorEscrito(f.s("color"))
+            val ls2 = ArbolEscribir.lineasNombre(f.s("nombre"), ArbolEscribir.letras(t))
+            val estilo = TextStyle(fontSize = fz.sp, fontWeight = FontWeight.Bold, color = tinta, fontFamily = Display, lineHeight = (fz * 1.08f).sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            f.id to (medidor.measure(ls2.joinToString("\n"), estilo) to medidor.measure(singularFicha(f.s("tipo")).uppercase(), TextStyle(fontSize = 8.5.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, color = androidx.compose.ui.graphics.lerp(base, tinta, 0.35f))))
+        }
+    }
     class Linea(val r: Doc, val a: Offset, val b: Offset, val ctrl: Offset, val etq: Offset, val ancho: Float)
     fun lineas(): List<Linea> {
         val pares = rels.groupBy { listOf(it.s("a"), it.s("b")).sorted().joinToString("|") }
@@ -229,6 +242,10 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
             fs.forEach { f -> destino[f.id]?.let { q -> e.edita(f.id) { put("ax", q.x.roundToInt()); put("ay", q.y.roundToInt()) } } }
         }
     }
+    // El gesto dura más que una composición: lee siempre el mapa de posiciones y las funciones de ahora (si no, al
+    // cambiar algo en Escribir movía una copia vieja y la ficha no seguía al dedo hasta soltarla)
+    val ahora by rememberUpdatedState(Triple(pos, ::nodoEn, ::etqEn))
+    val pulsaAhora by rememberUpdatedState(::pulsa)
     // Lo unido a la ficha elegida (lo demás se apaga un poco)
     val vecinos = remember(elegida, rels) { elegida?.let { id -> (rels.filter { it.s("a") == id || it.s("b") == id }.flatMap { listOf(it.s("a"), it.s("b")) } + id).toSet() } }
 
@@ -257,7 +274,10 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                 // Un dedo: arrastrar una ficha (la mueve y se guarda) o el lienzo; dos: acercar; pulsar sin moverse: abrir
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    val nodo = nodoEn(down.position)?.takeIf { etqEn(down.position) == null }
+                    val nodo = ahora.second(down.position)?.takeIf { ahora.third(down.position) == null }
+                    val inicio = nodo?.let { ahora.first[it.id] } ?: Offset.Zero
+                    var arrastre = Offset.Zero
+                    tocada = nodo?.id
                     var movido = false; var dos = false; var recorrido = 0f
                     while (true) {
                         val ev = awaitPointerEvent()
@@ -272,15 +292,18 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                             val d = activos[0].positionChange()
                             recorrido += d.getDistance()
                             if (!movido && recorrido > slop) movido = true
+                            arrastre += d
                             if (movido) {
-                                if (nodo != null) pos[nodo.id] = (pos[nodo.id] ?: Offset.Zero) + d / (dens * v.k)
+                                // (desde donde empezó + todo lo arrastrado: sigue al dedo aunque el mapa se renueve a mitad)
+                                if (nodo != null) ahora.first[nodo.id] = inicio + arrastre / (dens * v.k)
                                 else { v.x += d.x; v.y += d.y; tick++ }
                             }
                         }
                         ev.changes.forEach { if (it.positionChange() != Offset.Zero) it.consume() }
                     }
-                    if (!movido) pulsa(down.position)
-                    else if (nodo != null && !dos) pos[nodo.id]?.let { p -> e.edita(nodo.id) { put("ax", p.x.roundToInt()); put("ay", p.y.roundToInt()) } }
+                    tocada = null
+                    if (!movido) pulsaAhora(down.position)
+                    else if (nodo != null && !dos) ahora.first[nodo.id]?.let { p -> e.edita(nodo.id) { put("ax", p.x.roundToInt()); put("ay", p.y.roundToInt()) } }
                 }
             }
         ) {
@@ -328,12 +351,10 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                     val base = colorEscrito(f.s("color"))
                     val centro = P(c)
                     val tl = Offset(centro.x - rx * k, centro.y - ry * k); val sz = Size(rx * 2 * k, ry * 2 * k)
-                    drawIntoCanvas { cv ->
-                        val sombra = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((40 * alfa).toInt(), 0, 0, 0)
-                            maskFilter = android.graphics.BlurMaskFilter(4f * k, android.graphics.BlurMaskFilter.Blur.NORMAL)
-                        }
-                        cv.nativeCanvas.drawOval(tl.x, tl.y + 3f * k, tl.x + sz.width, tl.y + sz.height + 3f * k, sombra)
+                    // Sombra suave en capas (un desenfoque de verdad se calcula con el procesador en cada fotograma: muy lento)
+                    for ((ext, a0) in listOf(3.5f to 0.05f, 2f to 0.07f, 0.8f to 0.08f)) {
+                        val e2 = ext * k
+                        drawOval(Color.Black.copy(alpha = a0 * alfa), Offset(tl.x - e2, tl.y + 3f * k - e2 * 0.6f), Size(sz.width + 2 * e2, sz.height + 2 * e2 * 0.8f))
                     }
                     drawOval(androidx.compose.ui.graphics.lerp(base, papel, 0.84f).copy(alpha = alfa), tl, sz)
                     val on = f.id == elegida
@@ -344,13 +365,12 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                             style = Stroke(1f * dens * esc, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(2f * dens, 3f * dens))))
                     }
                     // (el nombre, centrado, en la letra de la revista; el tipo, en versalitas debajo)
-                    val ls2 = ArbolEscribir.lineasNombre(f.s("nombre"), ArbolEscribir.letras(t))
-                    val estilo = TextStyle(fontSize = fz.sp * v.k, fontWeight = FontWeight.Bold, color = tinta.copy(alpha = alfa), fontFamily = Display, lineHeight = (fz * 1.08f).sp * v.k)
-                    val nombre = medidor.measure(ls2.joinToString("\n"), estilo.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center))
-                    val tipo = medidor.measure(singularFicha(f.s("tipo")).uppercase(), TextStyle(fontSize = 8.5.sp * v.k, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp * v.k, color = androidx.compose.ui.graphics.lerp(base, tinta, 0.35f).copy(alpha = alfa)))
+                    val (nombre, tipo) = textosNodo[f.id] ?: return@forEach
                     val alto = nombre.size.height + tipo.size.height
-                    drawText(nombre, topLeft = Offset(centro.x - nombre.size.width / 2f, centro.y - alto / 2f))
-                    drawText(tipo, topLeft = Offset(centro.x - tipo.size.width / 2f, centro.y - alto / 2f + nombre.size.height))
+                    scale(v.k, v.k, pivot = centro) {
+                        drawText(nombre, topLeft = Offset(centro.x - nombre.size.width / 2f, centro.y - alto / 2f), alpha = alfa)
+                        drawText(tipo, topLeft = Offset(centro.x - tipo.size.width / 2f, centro.y - alto / 2f + nombre.size.height), alpha = alfa)
+                    }
                 }
                 // Las palabras, en una píldora, encima de las fichas (que no las tape ninguna)
                 ls.forEach { l ->
@@ -361,9 +381,9 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                     val tl = P(Offset(r.left, r.top)); val sz = Size(r.width * k, r.height * k); val rad = CornerRadius(sz.height / 2)
                     drawRoundRect(papel.copy(alpha = alfa), tl, sz, rad)
                     drawRoundRect(c.copy(alpha = 0.55f * alfa), tl, sz, rad, style = Stroke(1f * dens))
-                    val res = medidor.measure(l.r.s("titulo").ifBlank { "unión" }.uppercase(), estiloEtq.copy(color = c.copy(alpha = alfa), fontSize = estiloEtq.fontSize * v.k, letterSpacing = estiloEtq.letterSpacing * v.k))
+                    val res = etqs[l.r.id] ?: return@forEach
                     val centro = P(l.etq)
-                    drawText(res, topLeft = Offset(centro.x - res.size.width / 2f, centro.y - res.size.height / 2f))
+                    scale(v.k, v.k, pivot = centro) { drawText(res, topLeft = Offset(centro.x - res.size.width / 2f, centro.y - res.size.height / 2f), alpha = alfa) }
                 }
             }
             // Acercar, alejar y verlo todo: sobre el lienzo, abajo a la derecha (como en un mapa)

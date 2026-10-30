@@ -143,8 +143,11 @@ private fun RevistaHome(m: ShellModel) {
         if (buscando) BuscadorGeneral(m) { buscando = false }
         Row(Modifier.fillMaxWidth().padding(top = 10.dp).llega(0), verticalAlignment = Alignment.CenterVertically) {
             EnlaceRevista("Buscar") { buscando = true }
-            Spacer(Modifier.weight(1f))
             if (m.partner != null) RevLink("Pareja", m.partner)
+            Spacer(Modifier.weight(1f))
+            // Tu PC y Ajustes: dos iconos arriba a la derecha (fuera del menú de secciones)
+            m.pc?.let { f -> IconoRevista(androidx.compose.material.icons.Icons.Rounded.Computer, "Tu PC", f) }
+            m.profile?.let { f -> IconoRevista(androidx.compose.material.icons.Icons.Rounded.Settings, "Ajustes", f) }
         }
         // Tableta (OPPO Pad Mini…): con sitio de sobra, cabecera más grande y «En portada» a dos columnas
         val ancho = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp, 1080)
@@ -430,8 +433,7 @@ private fun RevistaEscribiendo(irAEscribir: () -> Unit) {
 @Composable
 private fun RevistaMenu(m: ShellModel) {
     val items = m.kinds.map { k -> k.title to { m.library(k) } } +
-        listOfNotNull("Diario" to m.diary, m.write?.let { "Escribir" to it }, m.discover?.let { d -> "Descubrir" to { d(0) } }, "Cifras" to { m.stats(GAMES) },
-            m.pc?.let { "Tu PC" to it }, m.profile?.let { "Ajustes" to it })
+        listOfNotNull("Diario" to m.diary, m.write?.let { "Escribir" to it }, "Cifras" to { m.stats(GAMES) })
     Column(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Rule(1.dp)
         androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -451,6 +453,10 @@ private fun Rule(h: androidx.compose.ui.unit.Dp, c: Color = Charcoal) = Filete(h
 private fun RevSection(t: String) {
     Antetitulo(t, Modifier.padding(bottom = 10.dp), color = Ink2)
 }
+
+@Composable
+private fun IconoRevista(icono: androidx.compose.ui.graphics.vector.ImageVector, nombre: String, f: () -> Unit) =
+    androidx.compose.material3.Icon(icono, nombre, tint = Ink2, modifier = Modifier.padding(start = 6.dp).press(haptic = false, onClick = f).padding(8.dp).size(22.dp))
 
 @Composable
 private fun RevLink(t: String, f: () -> Unit) = EnlaceRevista(t, Modifier.padding(start = 14.dp), onClick = f)

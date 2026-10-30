@@ -128,6 +128,9 @@
   const refrescarDespacio = RV.debounce(() => pintar({ refresco: true }), 1200);
 
   // ---------------------------------------------------------------- Cabecera de periódico
+  // (los iconos de Tu PC y Ajustes, en trazo, del color del texto)
+  const ICONO_PC = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>';
+  const ICONO_AJUSTES = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
   function cabecera() {
     const cab = document.getElementById('cabecera');
     if (RV.modo === 'juegos' && RV.cabeceraJuegos) { RV.cabeceraJuegos(cab, ruta); return; }
@@ -143,10 +146,13 @@
       D.tipos().map((k) => item(k.title, { v: 'seccion', k: k.id }, kAct === k.id)),
       item('Diario', { v: 'diario' }, v === 'diario'),
       item('Escribir', { v: 'escribir' }, ['escribir', 'obra', 'editor', 'parte', 'capitulo'].includes(v)),
-      item('Descubrir', { v: 'descubrir', dom: 0 }, v === 'descubrir'),
-      item('Cifras', { v: 'cifras' }, v === 'cifras'),
-      RV.soloRevista ? null : item('Tu PC', { v: 'pc' }, v === 'pc'),
-      item('Ajustes', { v: 'ajustes' }, v === 'ajustes'));
+      item('Cifras', { v: 'cifras' }, v === 'cifras'));
+    // Tu PC y Ajustes: dos iconos junto a Buscar (fuera del menú de secciones, como en el móvil)
+    const icono = (svg, nombre, r, activo) => {
+      const b = h('button.cab-icono', { type: 'button', title: nombre, 'aria-label': nombre, 'aria-current': activo ? 'page' : null, onclick: () => RV.ir(r) });
+      b.innerHTML = svg;
+      return b;
+    };
     const folio = h('div.cab-folio',
       RV.soloRevista ? h('button.enlace', { type: 'button', onclick: () => api.toggleFullscreen(), title: 'F11 (en el Mac, también ⌃⌘F)' }, '⤢ Pantalla completa')
         : h('button.enlace.acento', { type: 'button', onclick: () => RV.cambiarModo('juegos'), title: 'Botón Vista del mando (o C)' }, '⧉ Modo Juegos'),
@@ -154,6 +160,8 @@
       pila.length || v !== 'portada' ? h('button.enlace', { type: 'button', onclick: () => RV.volver(), title: 'Esc' }, '← Volver') : null,
       h('span.hueco'),
       h('button.enlace', { type: 'button', onclick: () => atajoBuscar(), title: 'Tecla /' }, 'Buscar /'),
+      RV.soloRevista ? null : icono(ICONO_PC, 'Tu PC', { v: 'pc' }, v === 'pc'),
+      icono(ICONO_AJUSTES, 'Ajustes', { v: 'ajustes' }, v === 'ajustes'),
       // (en el Mac el menú solo repetiría Ajustes, Buscar, Minimizar y Salir, que ya están aquí y en la barra de menús)
       RV.soloRevista ? null : h('button.enlace.apagado', { type: 'button', onclick: () => RV.menu(), title: 'Botón Menú del mando (o S)' }, '☰ Menú'));
     cab.replaceChildren(h('div.hoja', folio, menu, h('div.filete')));

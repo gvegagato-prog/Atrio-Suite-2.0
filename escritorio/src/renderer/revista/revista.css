@@ -249,6 +249,9 @@ img { display: block; max-width: 100%; }
 }
 .cab-folio .versal { white-space: nowrap; }
 .cab-folio .hueco { flex: 1; }
+.cab-icono { display: inline-flex; align-items: center; padding: 3px; color: var(--tinta); background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.cab-icono:hover { color: var(--acento); }
+.cab-icono[aria-current="page"] { border-bottom-color: var(--acento); }
 .cab-folio .enlace { font-size: 10.5px; letter-spacing: 1.6px; padding: 4px 0; }
 .cab-menu {
   display: flex;

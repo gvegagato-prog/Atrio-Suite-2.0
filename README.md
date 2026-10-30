@@ -10,6 +10,16 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Menú más limpio y árbol que sigue al dedo (móvil 6.92 y PC 3.6)
+
+- **El menú de arriba son solo las secciones:** tus categorías, Diario, Escribir y Cifras. Fuera Descubrir, Tu PC y
+  Ajustes: **Tu PC y Ajustes son dos iconos** (un PC y un engranaje) arriba a la derecha; en el móvil, «Pareja» pasa al
+  lado de «Buscar».
+- **Descubrir, dentro de cada categoría** (Videojuegos, Libros, Pelis y series): cada una con el suyo, sin pestañas
+  para saltar a las otras.
+- **Árbol de Escribir (móvil):** los textos se miden una vez y las sombras ya no usan desenfoque (cada fotograma cuesta
+  la mitad), y la ficha bajo el dedo apaga lo que no está unido a ella, como el ratón encima en el PC.
+
 ## Streaming con Steam Link (móvil 6.91 y PC 3.5)
 
 - **Fuera Polaris y Nova; ahora es Steam Link.** «Streaming» abre Steam en el PC (si estaba cerrado) y el juego, y en

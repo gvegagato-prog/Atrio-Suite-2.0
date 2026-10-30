@@ -466,6 +466,8 @@ open class Capturas6Test {
         }
         fun go(t: String) { val n = rule.onAllNodesWithText(t, ignoreCase = true)[0]; runCatching { n.performScrollTo() }; n.performClick(); rule.waitForIdle() }
         fun back() { androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle() }
+        // Tu PC y Ajustes son iconos arriba a la derecha de la portada
+        fun icono(t: String) { rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(t))[0].performClick(); rule.waitForIdle() }
         fun home() { repeat(4) { if (rule.onAllNodesWithText("EN PORTADA", ignoreCase = true).fetchSemanticsNodes().isEmpty()) back() } }
         // Una foto vertical que llena su casilla, al lado de la nota
         rule.runOnUiThread {
@@ -483,15 +485,15 @@ open class Capturas6Test {
         go("Libros"); go("DESCUBRIR\u00A0→"); shoot("p03_descubrir_libro"); home()
         go("Diario"); shoot("p04_diario"); home()
         go("Cifras"); shoot("p05_estadisticas"); home()
-        go("Ajustes"); shoot("p06_perfil")
+        icono("Ajustes"); shoot("p06_perfil")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p06b_perfil")
         go("Servicios y copias"); shoot("p07_ajustes")
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p07b_ajustes"); home()
         go("Videojuegos"); shoot("p08_biblioteca")
         go("+ AÑADIR"); shoot("p09_buscar"); back()
         go("Deadlock"); go("Apuntar\u00A0→"); shoot("p10_apunte"); back(); home()
-        go("Ajustes"); go("Apariencia"); shoot("p11_apariencia"); back(); home()
-        go("Tu PC"); shoot("p12_pc"); home()
+        icono("Ajustes"); go("Apariencia"); shoot("p11_apariencia"); back(); home()
+        icono("Tu PC"); shoot("p12_pc"); home()
         go("Cifras"); go("VER TU ${java.time.LocalDate.now().year}, NÚMERO ESPECIAL\u00A0→"); shoot("p15_especial")
         // El número especial es un diálogo: tiene su propia raíz
         val dlg = { rule.onAllNodes(androidx.compose.ui.test.isRoot()).let { it[it.fetchSemanticsNodes().size - 1] } }
