@@ -63,6 +63,8 @@ function siembra() {
 
 (async () => {
   const srv = http.createServer((q, r) => {
+    // (el Chrome de GitHub pide el icono de la pestaña; el Chromium de Playwright no)
+    if (q.url.startsWith('/favicon.ico')) { r.writeHead(204); return r.end(); }
     const f = path.join(RAIZ, decodeURIComponent(new URL(q.url, 'http://x').pathname));
     if (!f.startsWith(RAIZ) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
     r.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); r.end(fs.readFileSync(f));
@@ -74,7 +76,9 @@ function siembra() {
   const p = await ctx.newPage();
   const errores = [];
   p.on('pageerror', (e) => errores.push(e.message));
-  p.on('console', (m) => { if (m.type() === 'error') errores.push(m.text()); });
+  // (un recurso que falla se apunta con su dirección; el aviso genérico de la consola, sin dirección, no)
+  p.on('console', (m) => { if (m.type() === 'error' && !/^Failed to load resource/.test(m.text())) errores.push(m.text()); });
+  p.on('response', (r) => { if (r.status() >= 400) errores.push(`${r.status()} ${r.url()}`); });
   await p.exposeFunction('__escr', async (op, ...a) => { const r = escr[op](...a); return r === undefined ? null : r; });
   await p.exposeFunction('__todo', async () => ({ docs: escr.todos(), estado: { ...escr.estado(), signed: false } }));
   await p.exposeFunction('__expo', async () => 'ruta');
