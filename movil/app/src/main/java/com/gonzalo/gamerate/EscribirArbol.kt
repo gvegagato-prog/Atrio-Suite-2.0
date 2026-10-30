@@ -129,7 +129,18 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
     val pid = obra.id
     val fs = remember(ver, pid) { e.fichas(pid) }
     val rels = remember(ver, pid) { e.relaciones(pid).filter { e.get(it.s("a")) != null && e.get(it.s("b")) != null } }
-    val pos = remember(ver, pid) { mutableStateMapOf<String, Offset>().also { it.putAll(ArbolEscribir.posiciones(fs)) } }
+    // Las posiciones se rehacen cuando cambia Escribir (otro dispositivo, o el guardado del arrastre anterior). La ficha que
+    // llevas cogida conserva su posición de ahora: si no, durante un fotograma se dibujaba en la guardada (la de antes de
+    // moverla) y daba un parpadeo al empezar a arrastrar.
+    val cogida = remember(pid) { arrayOf<String?>(null) }
+    val ultimo = remember(pid) { arrayOfNulls<Map<String, Offset>>(1) }
+    val pos = remember(ver, pid) {
+        mutableStateMapOf<String, Offset>().also { m ->
+            m.putAll(ArbolEscribir.posiciones(fs))
+            cogida[0]?.let { id -> ultimo[0]?.get(id)?.let { m[id] = it } }
+            ultimo[0] = m
+        }
+    }
     val v = remember(pid) { vistas.getOrPut(pid) { VistaArbol() } }
     var tick by remember { mutableIntStateOf(0) } // repinta al mover el lienzo
     var lienzo by remember { mutableStateOf(IntSize.Zero) }
@@ -144,7 +155,6 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
     val porId = fs.associateBy { it.id }
     // La ficha bajo el dedo (mientras la tocas o la arrastras): como el ratón encima en el PC, apaga lo que no está unido a ella
     var tocada by remember { mutableStateOf<String?>(null) }
-    val elegida = primera ?: tocada ?: foco
 
     // Del mundo (dp, centrado en 0) a la pantalla (px) y al revés
     fun aPantalla(p: Offset) = Offset(v.x + p.x * dens * v.k, v.y + p.y * dens * v.k)
@@ -246,8 +256,9 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
     // cambiar algo en Escribir movía una copia vieja y la ficha no seguía al dedo hasta soltarla)
     val ahora by rememberUpdatedState(Triple(pos, ::nodoEn, ::etqEn))
     val pulsaAhora by rememberUpdatedState(::pulsa)
-    // Lo unido a la ficha elegida (lo demás se apaga un poco)
-    val vecinos = remember(elegida, rels) { elegida?.let { id -> (rels.filter { it.s("a") == id || it.s("b") == id }.flatMap { listOf(it.s("a"), it.s("b")) } + id).toSet() } }
+    // Lo unido a la ficha elegida (lo demás se apaga un poco). Se calcula al dibujar, no al componer: tocar una ficha no
+    // recompone todo el árbol (eso metía un tirón justo al empezar a arrastrarla)
+    fun vecinosDe(id: String?): Set<String>? = id?.let { x -> (rels.filter { it.s("a") == x || it.s("b") == x }.flatMap { listOf(it.s("a"), it.s("b")) } + x).toSet() }
 
     Column(Modifier.fillMaxSize()) {
         @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -277,8 +288,9 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val nodo = ahora.second(down.position)?.takeIf { ahora.third(down.position) == null }
-                    val inicio = nodo?.let { ahora.first[it.id] } ?: Offset.Zero
                     var arrastre = Offset.Zero
+                    var inicio = Offset.Zero
+                    var sujeta = false
                     tocada = nodo?.id
                     var movido = false; var dos = false; var recorrido = 0f
                     while (true) {
@@ -294,11 +306,15 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                             val d = activos[0].positionChange()
                             recorrido += d.getDistance()
                             if (!movido && recorrido > slop) movido = true
-                            arrastre += d
                             if (movido) {
-                                // (desde donde empezó + todo lo arrastrado: sigue al dedo aunque el mapa se renueve a mitad)
-                                if (nodo != null) ahora.first[nodo.id] = inicio + arrastre / (dens * v.k)
-                                else { v.x += d.x; v.y += d.y; tick++ }
+                                // La ficha se coge en el momento en que el dedo pasa el margen del toque: desde ahí, lo que
+                                // arrastres (sin saltar de golpe hacia el dedo). Parte de la posición de ahora, así que sigue
+                                // al dedo aunque el mapa se renueve a mitad.
+                                if (nodo != null) {
+                                    if (!sujeta) { sujeta = true; cogida[0] = nodo.id; inicio = ahora.first[nodo.id] ?: Offset.Zero; arrastre = Offset.Zero }
+                                    else arrastre += d
+                                    ahora.first[nodo.id] = inicio + arrastre / (dens * v.k)
+                                } else { v.x += d.x; v.y += d.y; tick++ }
                             }
                         }
                         ev.changes.forEach { if (it.positionChange() != Offset.Zero) it.consume() }
@@ -306,6 +322,7 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                     tocada = null
                     if (!movido) pulsaAhora(down.position)
                     else if (nodo != null && !dos) ahora.first[nodo.id]?.let { p -> e.edita(nodo.id) { put("ax", p.x.roundToInt()); put("ay", p.y.roundToInt()) } }
+                    cogida[0] = null
                 }
             }
         ) {
@@ -322,6 +339,8 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                     while (x < size.width) { var y = ((v.y % paso) + paso) % paso; while (y < size.height) { puntos += Offset(x, y); y += paso }; x += paso }
                     drawPoints(puntos, androidx.compose.ui.graphics.PointMode.Points, tinta.copy(alpha = 0.16f), strokeWidth = 2.2f * dens * 0.5f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
                 }
+                val elegida = primera ?: tocada ?: foco
+                val vecinos = vecinosDe(elegida)
                 fun apagado(id: String) = vecinos != null && id !in vecinos
                 val ls = lineas()
                 ls.forEach { l ->

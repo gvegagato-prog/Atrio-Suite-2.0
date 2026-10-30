@@ -100,14 +100,19 @@ class ArbolGestosTest {
         rule.waitForIdle()
         val moviendo = foto()
         assertTrue("al arrastrar, Aldara ya no está donde estaba", cambios(pulsada, moviendo, pA) > 200)
-        assertTrue("y está bajo el dedo", cambios(pulsada, moviendo, pA + Offset(0f, 270f)) > 200)
+        // (la ficha se coge al pasar el margen del toque, el primer paso de 30 px: desde ahí sigue lo que arrastras, sin saltar hacia el dedo)
+        assertTrue("y está donde la lleva el dedo", cambios(pulsada, moviendo, pA + Offset(0f, 240f), 80) > 200)
         // A mitad del arrastre cambia otra cosa de Escribir (una sincronización, un guardado): el arrastre no se corta
         rule.runOnUiThread { e.edita(b.id) { put("resumen", "cambiado desde otro dispositivo") }; ver++ }
         rule.waitForIdle()
+        // Justo en ese fotograma (antes de mover más el dedo), la ficha no vuelve a su sitio guardado: se quedaba un fotograma
+        // en la posición de antes de arrastrarla y daba un parpadeo
+        val trasCambio = foto()
+        assertTrue("al cambiar algo a mitad, la ficha no salta a su sitio de antes: ${cambios(moviendo, trasCambio, pA + Offset(0f, 240f), 80)}", cambios(moviendo, trasCambio, pA + Offset(0f, 240f), 80) < 60)
         rule.onNodeWithContentDescription("Árbol de relaciones").performTouchInput { moveBy(Offset(120f, 0f)); moveBy(Offset(120f, 0f)) }
         rule.waitForIdle()
         val siguiendo = foto()
-        assertTrue("tras el cambio, la ficha sigue al dedo", cambios(moviendo, siguiendo, pA + Offset(240f, 270f)) > 200)
+        assertTrue("tras el cambio, la ficha sigue al dedo", cambios(moviendo, siguiendo, pA + Offset(240f, 240f), 80) > 200)
         rule.onNodeWithContentDescription("Árbol de relaciones").performTouchInput { up() }
         rule.waitForIdle()
         // Al soltar se guarda donde quedó y «Solo» deja de estar apagado
