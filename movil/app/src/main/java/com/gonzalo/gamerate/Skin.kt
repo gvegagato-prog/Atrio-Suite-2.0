@@ -403,9 +403,9 @@ object Skin {
     var listCovers by mutableStateOf(false)
     /** Dock con el nombre del destino elegido (si no, solo iconos). */
     var dockLabels by mutableStateOf(true)
-    /** Interfaz: 2 Revista (la de la app); 0 la de Atrio 6.0 con dock, que solo usa la prueba automática. */
+    /** La interfaz: solo hay una, la revista (la antigua, con dock, ya no existe). */
     var shell by mutableStateOf(2)
-    val revista: Boolean get() = shell == 2
+    val revista: Boolean get() = true
 
     /** Cambia de interfaz y le pone su estilo (colores, letra y forma); luego se puede retocar en Estilo. */
     fun applyShell(i: Int, ctx: Context) {
@@ -495,7 +495,7 @@ object Skin {
         listCovers = p.getBoolean("skin_listcovers", false)
         dockLabels = p.getBoolean("skin_docklabels", true)
         // La interfaz Feed (1) ya no existe: pasa a Revista
-        shell = p.getInt("skin_shell", 2).let { if (it == 1 || it == 3) 2 else it }
+        shell = 2
         if (!p.getBoolean("shell_v3", false)) {
             p.edit().putBoolean("shell_v3", true).apply()
             applyShell(shell, ctx)

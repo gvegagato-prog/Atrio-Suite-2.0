@@ -225,7 +225,7 @@
   async function juegos(t, mios, filtros) {
     const N = RV.red;
     const clave = N.rawgClave();
-    if (!clave) throw new Error('Para descubrir juegos hace falta tu clave gratuita de RAWG: ponla en el móvil (Perfil → Ajustes → Servicios) y llegará sola.');
+    if (!clave) throw new Error('Para descubrir juegos hace falta tu clave gratuita de RAWG: ponla en el móvil (Ajustes → Servicios y copias) y llegará sola.');
     const gustan = t.gustan().filter((g) => M.GAME_GENRES[g] || g === 'educational');
     const tagsGustan = t.tagsGustan();
     const malos = Object.entries(t.tags).filter(([, w]) => w <= -2).map(([g]) => g);
@@ -502,8 +502,8 @@
         h('div.filete'),
         h('p.entradilla', `Unas pocas preguntas, de más de trescientas y nunca las mismas, y una lista de ${dom === 0 ? 'juegos' : dom === 1 ? 'libros' : 'películas y series'} hecha a tu medida.`)));
       if (dom === 0) root.append(h('section.desc-bloque', RV.seccion('Antes de empezar, si quieres'), bloqueFiltros(() => RV.refrescar())));
-      if (dom === 0 && !RV.red.rawgClave()) root.append(RV.vacio('Ojo: hace falta tu clave gratuita de RAWG. Ponla en el móvil (Perfil → Ajustes → Servicios) y llegará sola a este equipo.'));
-      if (dom === 2 && !RV.red.tmdbClave()) root.append(RV.vacio('Ojo: hace falta tu clave gratuita de TMDB. Ponla en el móvil (Perfil → Ajustes → Servicios) y llegará sola a este equipo.'));
+      if (dom === 0 && !RV.red.rawgClave()) root.append(RV.vacio('Ojo: hace falta tu clave gratuita de RAWG. Ponla en el móvil (Ajustes → Servicios y copias) y llegará sola a este equipo.'));
+      if (dom === 2 && !RV.red.tmdbClave()) root.append(RV.vacio('Ojo: hace falta tu clave gratuita de TMDB. Ponla en el móvil (Ajustes → Servicios y copias) y llegará sola a este equipo.'));
       root.append(h('section.desc-bloque', RV.seccion('¿Cuántas preguntas?'),
         h('div.desc-n', [[5, 'Rápido'], [7, 'Normal'], [10, 'A fondo']].map(([n, l]) => h(`button${n === 7 ? '.acento' : ''}`, {
           type: 'button', disabled: s.cargando, onclick: () => empezar(dom, n),

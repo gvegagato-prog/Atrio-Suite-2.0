@@ -46,9 +46,9 @@ class NombreTest {
                 } }
             }
         }
-        rule.onNode(hasText("c8oiling") and hasSetTextAction()).performTextReplacement("Coiling Dragon")
+        rule.onNode(hasText("c8oiling", ignoreCase = true) and hasSetTextAction()).performTextReplacement("Coiling Dragon")
         shoot("1_valorado")
-        rule.onAllNodesWithText("Guardar")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Guardar", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         assertEquals("Coiling Dragon", guardado?.name)
         assertEquals("la misma ficha", 77L, guardado?.id)
         assertEquals("lo demás no se toca", 85, guardado?.general)
@@ -64,8 +64,8 @@ class NombreTest {
                 } }
             }
         }
-        rule.onNode(hasText("c8oiling") and hasSetTextAction()).performTextReplacement("   ")
-        rule.onAllNodesWithText("Guardar")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onNode(hasText("c8oiling", ignoreCase = true) and hasSetTextAction()).performTextReplacement("   ")
+        rule.onAllNodesWithText("Guardar", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         assertEquals("vacío: se queda el que tenía", "c8oiling", guardado?.name)
     }
 
@@ -82,10 +82,10 @@ class NombreTest {
                 } }
             }
         }
-        val campo = rule.onNode(hasText("c8oiling") and hasSetTextAction())
+        val campo = rule.onNode(hasText("c8oiling", ignoreCase = true) and hasSetTextAction())
         campo.performTextReplacement("")
         assertEquals("vacío no se guarda", 0, cambios.count { it.name.isBlank() })
-        rule.onNode(hasSetTextAction() and hasText("Nombre")).performTextReplacement("Coiling Dragon")
+        rule.onNode(hasSetTextAction() and hasText("Nombre", ignoreCase = true)).performTextReplacement("Coiling Dragon")
         shoot("2_en_curso")
         assertEquals("Coiling Dragon", cambios.last().name)
         assertEquals(78L, cambios.last().id)

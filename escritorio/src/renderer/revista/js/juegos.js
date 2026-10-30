@@ -81,7 +81,7 @@
     op('Imágenes: portada, fondo, logo…', () => RV.arteJuego(g.key));
     op('Cambiar el nombre', () => RV.renombrarJuego(g.key));
     if (D.conCuenta()) op('Lista negra: que no salga en ningún sitio', () => RV.listaNegra(g.name), '');
-    op('Ocultar de la biblioteca', () => marcar(g, { hidden: true }, `${g.name} oculto (lo puedes recuperar en Ajustes → Juegos ocultos)`));
+    op('Ocultar de la biblioteca', () => marcar(g, { hidden: true }, `${g.name} oculto (lo puedes recuperar en Ajustes → Ocultos)`));
     const d = RV.dialogo({ ante: 'Opciones', titulo: g.name, cuerpo: ul });
   }
   RV.opcionesJuego = opciones;
@@ -460,10 +460,11 @@
   const pista = (b, t) => h('span.pista-boton', h('b', b), t);
   function pintarAyuda() {
     const juegos = RV.modo === 'juegos';
-    ayuda.replaceChildren(pista('A', 'Elegir'), pista('B', 'Volver'), pista('Y', 'Opciones'), pista('X', 'Buscar'),
-      pista('LB · RB', 'Secciones'), RV.soloRevista ? null : pista('⧉', juegos ? 'Revista' : 'Juegos'), pista('☰', 'Menú'));
+    // (en el Mac no hay modo Juegos ni menú: no se anuncian; replaceChildren escribiría «null»)
+    ayuda.replaceChildren(...[pista('A', 'Elegir'), pista('B', 'Volver'), pista('Y', 'Opciones'), pista('X', 'Buscar'),
+      pista('LB · RB', 'Secciones'), RV.soloRevista ? null : pista('⧉', juegos ? 'Revista' : 'Juegos'), RV.soloRevista ? null : pista('☰', 'Menú')].filter(Boolean));
   }
   pintarAyuda();
   document.body.append(ayuda);
-  new window.MutationObserver(pintarAyuda).observe(document.body, { attributes: true, attributeFilter: ['data-modo'] });
+  new window.MutationObserver(pintarAyuda).observe(document.body, { attributes: true, attributeFilter: ['data-modo', 'class'] });
 })(window.RV);

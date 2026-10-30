@@ -159,7 +159,8 @@
   };
 
   // ---------------------------------------------------------------- El PC
-  D.juegosPc = () => (pc.games || []).filter((g) => !g.hidden);
+  // (la edición del Mac no abre juegos: nada de «Jugar en el PC» aunque llegue una lista)
+  D.juegosPc = () => (RV.soloRevista ? [] : (pc.games || []).filter((g) => !g.hidden));
   // El juego instalado que corresponde a una ficha de videojuegos: por el id de SteamGridDB (la cuenta usa ese
   // mismo id) o por el nombre normalizado
   D.pcDe = (kind, item) => {

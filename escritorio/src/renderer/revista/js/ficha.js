@@ -237,7 +237,7 @@
       const hijos = [];
       if (d.emision) hijos.push(h('p.maq-emision', `Se emite en ${d.emision}`));
       const vacio = !(d.suscripcion || []).length && !(d.alquiler || []).length && !(d.compra || []).length && !(d.gratis || []).length;
-      if (vacio) hijos.push(d.sinClave ? h('p.versal', 'Con tu clave de TMDB (se pone en el móvil: Ajustes → Servicios y llega sola), también en qué plataformas está.') : RV.vacio('Ahora mismo no está en ninguna plataforma en España.'));
+      if (vacio) hijos.push(d.sinClave ? h('p.versal', 'Con tu clave de TMDB (se pone en el móvil: Ajustes → Servicios y copias, y llega sola), también en qué plataformas está.') : RV.vacio('Ahora mismo no está en ninguna plataforma en España.'));
       for (const [t, l] of [['En suscripción', d.suscripcion], ['Gratis', d.gratis], ['Alquiler', d.alquiler], ['Compra', d.compra]]) {
         if (!l || !l.length) continue;
         hijos.push(h('div.versal', t), h('div.maq-plats', l.slice(0, 8).map((p) => h('span.maq-plat', p.logo ? h('img', { src: p.logo, alt: '', width: '28', height: '28' }) : null, p.nombre))));
@@ -487,7 +487,8 @@
       if (o) { item = o; t = otro; ruta.t = otro; }
     }
     const root = h('div.hoja.ficha');
-    const top = h('div.ficha-top', h('button.enlace', { type: 'button', onclick: () => RV.volver() }, '← Volver'), h('span.hueco'));
+    // (el «← Volver» está en la cabecera; aquí, como en Escribir, el sitio al que pertenece: su sección)
+    const top = h('div.ficha-top', kind ? h('button.enlace', { type: 'button', onclick: () => RV.ir({ v: 'seccion', k: kind.id }) }, `← ${kind.title}`) : null, h('span.hueco'));
     root.append(top, h('div.filete'));
     if (!kind || !item) {
       root.append(RV.vacio(D.conCuenta() ? 'Esta ficha ya no existe (quizá se ha borrado en otro dispositivo).' : 'Entra con tu cuenta para ver tus fichas.', true));

@@ -177,6 +177,8 @@ fun Gauge(label: String, value: Int, color: Color, diameter: Dp, modifier: Modif
 /** Chip de estado: contorno fino; relleno con su color cuando está elegido. */
 @Composable
 fun Chip(text: String, selected: Boolean, color: Color, onClick: () -> Unit) {
+    // (en la revista, todas las opciones se ven igual: versalitas, la elegida en acento y subrayada, como en el PC)
+    if (Skin.revista) { FiltroRevista(text, selected, onClick = onClick); return }
     Text(chipLabel(text), color = chipInk(selected), fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, softWrap = false,
         modifier = Modifier.pop(onClick)
             .chipLook(selected, color)
@@ -186,6 +188,7 @@ fun Chip(text: String, selected: Boolean, color: Color, onClick: () -> Unit) {
 /** Chip sobrio: contorno fino apagado, tinta cuando está elegido. */
 @Composable
 fun SoftChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onPanel: Boolean = false, onClick: () -> Unit) {
+    if (Skin.revista) { FiltroRevista(text, selected, modifier, onClick); return }
     Text(
         chipLabel(text), color = chipInk(selected), fontWeight = FontWeight.Medium, fontSize = 13.sp,
         maxLines = 1,

@@ -102,6 +102,8 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
       window.__edits = edits;
       window.atrio = {
         state: async () => p, ronron: async () => c, on: (ev, fn) => { (ls[ev] ||= []).push(fn); },
+        // (Escribir, vacío: la revista lo carga al arrancar)
+        escritosTodo: async () => ({ docs: [], estado: { signed: false } }), escritos: async () => null,
         ronronEdit: async (op) => { edits.push(op); return c; }, ronronArt: async () => ({ cover: '', hero: '', logo: '' }),
         patchConfig: async (x) => { Object.assign(p.config, x); return p; }, log: () => {}, launch: async (k) => { (window.__lanzados ||= []).push(k); return {}; },
         netJson: async (url) => {
@@ -319,6 +321,7 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
       const n = async () => {};
       window.atrio = {
         state: async () => p, ronron: async () => c, on: () => {}, ronronEdit: async (op) => { (window.__edits ||= []).push(op); return c; }, log: n,
+        escritosTodo: async () => ({ docs: [], estado: { signed: false } }), escritos: async () => null,
         fotoPhones: async () => [{ dev: 'movil1', name: 'Pixel de prueba' }],
         fotoList: async () => window.__fotos || {},
         fotoFetch: async (dev, name, dest) => { (window.__traidas ||= []).push([dev, name, dest]); window.__fotos = { [name.replace(/\.[^.]+$/, '')]: p.games[1].art.cover }; return { w: 4000, h: 3000, orig: true, msg: 'Foto original (4000×3000)', names: window.__fotos }; },

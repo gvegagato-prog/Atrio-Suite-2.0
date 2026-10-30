@@ -21,6 +21,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
@@ -134,8 +136,8 @@ fun ManuscritoObra(e: Escritos, obra: Doc, ver: Int, abrirParte: (String) -> Uni
             if (meta > 0) Bar((palabras.toFloat() / meta).coerceIn(0f, 1f), colorEscrito(obra.s("color")), height = 4.dp)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 ESTADOS_ESCENA.forEachIndexed { i, n -> Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(9.dp).clip(CircleShape).background(colorEstado(i))); Spacer(Modifier.width(5.dp)); Text("${estados[i] ?: 0} ${n.lowercase()}", color = Muted, fontSize = 12.sp) } }
-                SoftChip("Cuadrados", !lista) { lista = false }
-                SoftChip("Lista", lista) { lista = true }
+                FiltroRevista("Cuadrados", !lista) { lista = false }
+                FiltroRevista("Lista", lista) { lista = true }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 BotonEscribir("Nueva parte") { parteNueva = true }
@@ -247,7 +249,7 @@ fun ParteScreen(e: Escritos, aid: String, onBack: () -> Unit, abrirCapitulo: (St
     var menu by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().wrapContentWidth().widthIn(max = 880.dp).statusBarsPadding().padding(horizontal = if (Skin.revista) 18.dp else 14.dp)) {
         TopBar(obra?.s("titulo").orEmpty().ifBlank { "La obra" }, onBack, p.s("titulo").ifBlank { "Sin título" }) {
-            IconPill(Icons.Rounded.Edit, "Editar la parte") { a.editar = aid }
+            EnlaceRevista("Editar", Modifier.semantics { contentDescription = "Editar la parte" }) { a.editar = aid }
         }
         LazyVerticalGrid(GridCells.Adaptive(158.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(40.dp)), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             cabecera("info") {
@@ -304,7 +306,7 @@ fun CapituloScreen(e: Escritos, cid: String, onBack: () -> Unit, abrir: (String)
     var mover by remember { mutableStateOf<Doc?>(null) }
     Column(Modifier.fillMaxSize().wrapContentWidth().widthIn(max = 880.dp).statusBarsPadding().padding(horizontal = if (Skin.revista) 18.dp else 14.dp)) {
         TopBar(parte?.s("titulo")?.ifBlank { "La parte" } ?: obra?.s("titulo").orEmpty().ifBlank { "La obra" }, onBack, c.s("titulo").ifBlank { "Sin título" }) {
-            IconPill(Icons.Rounded.Edit, "Editar el capítulo") { a.editar = cid }
+            EnlaceRevista("Editar", Modifier.semantics { contentDescription = "Editar el capítulo" }) { a.editar = cid }
         }
         LazyVerticalGrid(GridCells.Adaptive(158.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(40.dp)), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             cabecera("info") {

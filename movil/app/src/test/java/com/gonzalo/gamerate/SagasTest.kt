@@ -189,22 +189,22 @@ open class SagasTest {
         Skin.load(ctx); Mode.dark = false; Mode.themeMode = 1; Skin.applyShell(2, ctx)
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(s, 0L, false, "") {} } } }
         rule.waitForIdle()
-        rule.onAllNodesWithText("Juegos")[0].performScrollTo().performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("Sagas")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Videojuegos", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Sagas", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         shoot("8_juegos")
         assertTrue(rule.onAllNodesWithText("3 JUEGOS · 2 PASADOS · MEDIA 92", substring = true).fetchSemanticsNodes().isNotEmpty())
-        rule.onAllNodesWithText("Mass Effect")[0].performClick(); rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("EN ORDEN").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Mass Effect", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("EN ORDEN", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         assertTrue(rule.onAllNodesWithText("Empezar a jugar", substring = true).fetchSemanticsNodes().isNotEmpty())
-        assertTrue(rule.onAllNodesWithText("2/3").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("2/3", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("9_saga_juegos")
         // La portada: la automática, las de sus juegos, buscarla, de la galería o de un archivo
-        rule.onAllNodesWithText("EDITAR")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("EDITAR", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         shoot("10_portada")
         for (t in listOf("AUTOMÁTICA", "BUSCAR", "GALERÍA", "ARCHIVO")) assertTrue(t, rule.onAllNodesWithText(t).fetchSemanticsNodes().isNotEmpty())
-        rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("LISTO", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         // En la ficha del juego: su saga y su número
-        rule.onAllNodesWithText("Mass Effect 2").onLast().performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Mass Effect 2", ignoreCase = true).onLast().performScrollTo().performClick(); rule.waitForIdle()
         assertTrue(rule.onAllNodesWithText("Saga · Mass Effect", substring = true).fetchSemanticsNodes().isNotEmpty())
         // Cada saga es de su categoría: un libro con el mismo id no está en ella
         assertEquals(77L, SagaHub.of(702, 0)?.id)
@@ -217,15 +217,15 @@ open class SagasTest {
         Skin.load(ctx); Mode.dark = false; Mode.themeMode = 1; Skin.applyShell(2, ctx)
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(s, 0L, false, "") {} } } }
         rule.waitForIdle()
-        rule.onAllNodesWithText("Libros").onLast().performScrollTo().performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("Sagas")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Libros", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Sagas", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         shoot("1_pestana")
         // Crear la de Rothfuss desde la sugerencia (ya viene con su nombre y sus libros en orden)
-        rule.onAllNodesWithText("Crónica del asesino de reyes")[0].performScrollTo()
+        rule.onAllNodesWithText("Crónica del asesino de reyes", ignoreCase = true)[0].performScrollTo()
         // El diálogo y el paso a la saga, fotograma a fotograma: con un campo de texto dentro, Robolectric vuelve a medir
         // el diálogo sin parar (su anchura oscila: ver pulsaEnDialogo) y Compose no queda nunca quieto con el reloj en marcha
         rule.mainClock.autoAdvance = false
-        rule.onAllNodesWithText("Crónica del asesino de reyes")[0].performClick()
+        rule.onAllNodesWithText("Crónica del asesino de reyes", ignoreCase = true)[0].performClick()
         repeat(30) { rule.mainClock.advanceTimeByFrame() }
         com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_2_crear.png")
         pulsaEnDialogo("Crear")
@@ -235,20 +235,20 @@ open class SagasTest {
         rule.waitForIdle()
         com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/${prefijo}saga_3_saga.png")
         assertEquals(listOf(501L, 502L, 503L), Store(ctx).loadSagas().single().items)
-        assertTrue(rule.onAllNodesWithText("AHORA MISMO").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("AHORA MISMO", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         rule.onRoot().performTouchInput { swipeUp() }; shoot("4_saga_abajo")
         // Un libro leído, desde la saga: su ficha; y «volver» lleva a la saga
-        rule.onAllNodesWithText("El nombre del viento").onLast().performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("El nombre del viento", ignoreCase = true).onLast().performScrollTo().performClick(); rule.waitForIdle()
         shoot("5_libro")
         assertTrue(rule.onAllNodesWithText("Saga · Crónica del asesino de reyes", substring = true).fetchSemanticsNodes().isNotEmpty())
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        assertTrue("vuelve a la saga", rule.onAllNodesWithText("EN ORDEN DE LECTURA").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("vuelve a la saga", rule.onAllNodesWithText("EN ORDEN DE LECTURA", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Editar: subir el tercero al segundo puesto
-        rule.onAllNodesWithText("EDITAR")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("EDITAR", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         shoot("6_editar")
-        rule.onAllNodesWithText("↑")[2].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("↑", ignoreCase = true)[2].performScrollTo().performClick(); rule.waitForIdle()
         assertEquals(listOf(501L, 503L, 502L), Store(ctx).loadSagas().single().items)
-        rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("LISTO", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         shoot("7_lista")
     }

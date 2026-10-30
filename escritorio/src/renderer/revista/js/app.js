@@ -154,7 +154,8 @@
       pila.length || v !== 'portada' ? h('button.enlace', { type: 'button', onclick: () => RV.volver(), title: 'Esc' }, '← Volver') : null,
       h('span.hueco'),
       h('button.enlace', { type: 'button', onclick: () => atajoBuscar(), title: 'Tecla /' }, 'Buscar /'),
-      h('button.enlace.apagado', { type: 'button', onclick: () => RV.menu(), title: 'Botón Menú del mando (o S)' }, '☰ Menú'));
+      // (en el Mac el menú solo repetiría Ajustes, Buscar, Minimizar y Salir, que ya están aquí y en la barra de menús)
+      RV.soloRevista ? null : h('button.enlace.apagado', { type: 'button', onclick: () => RV.menu(), title: 'Botón Menú del mando (o S)' }, '☰ Menú'));
     cab.replaceChildren(h('div.hoja', folio, menu, h('div.filete')));
   }
 

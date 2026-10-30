@@ -271,8 +271,7 @@ object LibPrefs {
 }
 
 @Composable
-private fun TextLink(t: String, color: Color = Charcoal, onClick: () -> Unit) =
-    Text(t, color = color, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp, modifier = Modifier.press(onClick = onClick).padding(vertical = 6.dp))
+private fun TextLink(t: String, color: Color = Charcoal, onClick: () -> Unit) = EnlaceRevista(t, acento = color == ColGeneral, onClick = onClick)
 
 /** Revista: una lista de texto como un índice, con portadas pequeñas y la nota en cifras enormes. */
 @Composable

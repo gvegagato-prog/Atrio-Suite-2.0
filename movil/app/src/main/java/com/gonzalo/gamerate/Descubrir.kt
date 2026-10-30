@@ -565,7 +565,7 @@ object Quiz {
 // ---------------------------------------------------------------- Pantalla
 
 @Composable
-fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, onAdd: (QuizItem) -> Unit, onBack: () -> Unit) {
+fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, onAdd: (QuizItem) -> Unit, onBack: () -> Unit, onDomain: ((Int) -> Unit)? = null) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val mineN = remember(mine) { mine.map { normName(it) }.toSet() }
@@ -620,7 +620,7 @@ fun QuizScreen(domain: Int, store: Store, mine: Set<String>, partner: Partner?, 
 
     Box(Modifier.fillMaxSize()) {
         when {
-            length == 0 -> if (Skin.revista) QuizIntroRevista(domain, partner?.name, theirRun, onBack,
+            length == 0 -> if (Skin.revista) QuizIntroRevista(domain, partner?.name, theirRun, onBack, onDomain,
                     filters = if (domain == 0) ({ GameFilters(fYears, fPlats) { y, p -> setFilters(y, p) } }) else null) { start(it) }
                 else QuizIntro(domain, accent, partner?.name, theirRun, onBack) { start(it) }
             taste == null -> {
@@ -856,11 +856,13 @@ private fun YearRange(
 
 /** Revista: portadilla con el titular enorme, la entradilla y el número de preguntas en tres columnas. */
 @Composable
-private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?, onBack: () -> Unit,
+private fun QuizIntroRevista(domain: Int, partnerName: String?, theirs: QuizRun?, onBack: () -> Unit, onDomain: ((Int) -> Unit)?,
     filters: (@Composable () -> Unit)? = null, onStart: (Int) -> Unit) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
         RevistaBack(onBack)
         Box(Modifier.fillMaxWidth().height(3.dp).background(Charcoal))
+        // Qué descubrir (como las pestañas de Descubrir en el PC)
+        if (onDomain != null) PestanasRevista(listOf("Juegos", "Libros", "Pelis y series"), domain.coerceIn(0, 2)) { if (it != domain) onDomain(it) }
         Spacer(Modifier.height(14.dp))
         Text("DESCUBRIR · ${quizWhat(domain).uppercase()}", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.rise(0))
         FitTitle(when (domain) { 0 -> "¿A qué juego ahora?"; 1 -> "¿Qué leo ahora?"; else -> "¿Qué vemos hoy?" },

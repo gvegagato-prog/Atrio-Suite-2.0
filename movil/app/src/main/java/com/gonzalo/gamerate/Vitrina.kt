@@ -202,12 +202,7 @@ fun BackRound(onImage: Boolean = false, onBack: () -> Unit) {
 
 /** «← VOLVER» de la revista. */
 @Composable
-fun RevistaBack(onBack: () -> Unit) {
-    Row(Modifier.press(onClick = onBack).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", tint = Charcoal, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp))
-        Text("VOLVER", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
-    }
-}
+fun RevistaBack(onBack: () -> Unit) = VolverRevista(onBack)
 
 /** Botón grande de acción (relleno de acento o de tinta). */
 @Composable
@@ -229,22 +224,7 @@ fun BigAction(icon: ImageVector?, text: String, modifier: Modifier = Modifier, a
 fun Segmented(options: List<String>, selected: Int, modifier: Modifier = Modifier, counts: List<Int>? = null, onSelect: (Int) -> Unit) {
     val hf = LocalHapticFeedback.current
     if (Skin.revista) {
-        // Si no caben todas (en el móvil, con «Sagas»), la fila se desliza de lado
-        Row(modifier.fillMaxWidth().drawBehind { drawLine(Line, androidx.compose.ui.geometry.Offset(0f, size.height), androidx.compose.ui.geometry.Offset(size.width, size.height), 2f) }
-            .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            options.forEachIndexed { i, o ->
-                val on = i == selected
-                Column(Modifier.width(IntrinsicSize.Max).clickable(remember { MutableInteractionSource() }, null) { if (!on) { hf.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSelect(i) } }) {
-                    Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.Top) {
-                        Text(o, color = if (on) Charcoal else Muted, fontFamily = Display, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, fontSize = 17.sp, maxLines = 1)
-                        val n = counts?.getOrNull(i)
-                        if (n != null && n > 0) Text("$n", color = ColGeneral, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
-                    }
-                    Box(Modifier.fillMaxWidth().height(3.dp).background(if (on) ColGeneral else Color.Transparent))
-                }
-            }
-        }
+        PestanasRevista(options, selected, modifier, counts) { if (it != selected) { hf.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSelect(it) } }
         return
     }
     BoxWithConstraints(modifier.fillMaxWidth().clip(pillShape()).background(Sand).padding(4.dp)) {

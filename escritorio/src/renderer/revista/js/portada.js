@@ -131,7 +131,7 @@
       root.append(h('div.p-fila1', invitacion(), ultimosPc()));
       const escr0 = RV.E && RV.E.bloquePortada ? RV.E.bloquePortada() : null;
       if (escr0) root.append(escr0);
-      root.append(sumario(false));
+      { const s = sumario(false); if (s) root.append(s); }
       return root;
     }
 
@@ -202,23 +202,19 @@
     return root;
   };
 
-  // Sumario: el índice de toda la revista, con puntos guía
+  // «También en Atrio»: lo que no está en el menú de la cabecera (el número especial y Descubrir directo a cada cosa), con
+  // puntos guía. Antes era un sumario que repetía el menú entero.
   function sumario(enFila) {
     const fila = (t, pag, fn) => h('li', h('button', { type: 'button', onclick: fn }, h('span.tit', t), h('span.guia'), h('span.pag', pag)));
     const ul = h('ul.sumario');
     if (D.conCuenta()) {
-      for (const k of D.tipos()) ul.append(fila(k.title, String(D.valorados(k).length + D.fichas(k).length), () => RV.ir({ v: 'seccion', k: k.id })));
-      ul.append(fila('Diario', 'cal.', () => RV.ir({ v: 'diario' })));
-      ul.append(fila('Escribir', RV.E && RV.E.obras ? String(RV.E.obras().length) : '→', () => RV.ir({ v: 'escribir' })));
-      ul.append(fila('Cifras', '→', () => RV.ir({ v: 'cifras' })));
       if (RV.vistas.especial) ul.append(fila(`Tu ${new Date().getFullYear()}, número especial`, '★', () => RV.ir({ v: 'especial' })));
       ul.append(fila('Descubrir un juego', '→', () => RV.ir({ v: 'descubrir', dom: 0 })));
       ul.append(fila('Descubrir un libro', '→', () => RV.ir({ v: 'descubrir', dom: 1 })));
       ul.append(fila('Descubrir una peli o serie', '→', () => RV.ir({ v: 'descubrir', dom: 2 })));
     }
-    if (!RV.soloRevista) ul.append(fila('Tu PC', String(D.juegosPc().length), () => RV.ir({ v: 'pc' })));
-    ul.append(fila('Ajustes', '→', () => RV.ir({ v: 'ajustes' })));
-    const box = h('section', RV.seccion('Sumario'), ul);
+    if (!ul.children.length) return null;
+    const box = h('section', RV.seccion('También en Atrio'), ul);
     if (enFila) return box;
     return h('div.p-fila2', { style: { gridTemplateColumns: 'minmax(0, 1fr)' } }, box);
   }

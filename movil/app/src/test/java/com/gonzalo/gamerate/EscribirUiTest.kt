@@ -95,33 +95,33 @@ open class EscribirUiTest {
         org.junit.Assume.assumeTrue(System.getProperty("roborazzi.test.record") == "true")
         coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
         val e = Escritos.get(ctx)
-        Skin.load(ctx); Skin.shell = 0; Mode.dark = false; Mode.themeMode = 1
+        Skin.load(ctx); Skin.applyShell(2, ctx); Mode.dark = false; Mode.themeMode = 1
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { EscribirScreen() } } }
         shoot("e01_vacio")
         siembra(e)
         rule.waitForIdle()
         shoot("e02_biblioteca")
-        rule.onAllNodesWithText("La torre del cuervo")[0].performClick(); shoot("e03_manuscrito")
-        rule.onAllNodesWithText("Parte I · El valle")[0].performClick(); shoot("e03c_parte")
-        rule.onAllNodesWithText("La subida")[0].performClick(); shoot("e03d_capitulo")
-        rule.onAllNodesWithText("LEERLO ENTERO")[0].performClick(); shoot("e03e_leer")
+        rule.onAllNodesWithText("La torre del cuervo", ignoreCase = true)[0].performClick(); shoot("e03_manuscrito")
+        rule.onAllNodesWithText("Parte I · El valle", ignoreCase = true)[0].performClick(); shoot("e03c_parte")
+        rule.onAllNodesWithText("La subida", ignoreCase = true)[0].performClick(); shoot("e03d_capitulo")
+        rule.onAllNodesWithText("LEERLO ENTERO", ignoreCase = true)[0].performClick(); shoot("e03e_leer")
         rule.onNodeWithContentDescription("Cerrar").performClick(); rule.waitForIdle()
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle(); androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         rule.onAllNodesWithText("Lista", ignoreCase = true)[0].performClick()
-        rule.onAllNodesWithText("Ver resúmenes")[0].performClick(); shoot("e03b_esquema")
-        rule.onAllNodesWithText("Ver el texto")[0].performClick()
-        rule.onAllNodesWithText("Fichas")[0].performClick(); shoot("e04_fichas")
-        rule.onAllNodesWithText("Aldara")[0].performClick(); shoot("e04b_ficha_lectura")
+        rule.onAllNodesWithText("Ver resúmenes", ignoreCase = true)[0].performClick(); shoot("e03b_esquema")
+        rule.onAllNodesWithText("Ver el texto", ignoreCase = true)[0].performClick()
+        rule.onAllNodesWithText("Fichas", ignoreCase = true)[0].performClick(); shoot("e04_fichas")
+        rule.onAllNodesWithText("Aldara", ignoreCase = true)[0].performClick(); shoot("e04b_ficha_lectura")
         rule.onNodeWithContentDescription("Cerrar").performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("Árbol")[0].performClick(); shoot("e04c_arbol")
-        rule.onAllNodesWithText("Notas")[0].performClick(); shoot("e05_notas")
-        rule.onAllNodesWithText("Línea")[0].performClick(); shoot("e06_linea")
-        rule.onAllNodesWithText("Cifras")[0].performClick(); shoot("e07_cifras")
-        rule.onAllNodesWithText("Manuscrito")[0].performClick()
-        rule.onAllNodesWithText("Al pie de la torre")[0].performClick(); shoot("e08_editor")
+        rule.onAllNodesWithText("Árbol", ignoreCase = true)[0].performClick(); shoot("e04c_arbol")
+        rule.onAllNodesWithText("Notas", ignoreCase = true)[0].performClick(); shoot("e05_notas")
+        rule.onAllNodesWithText("Línea", ignoreCase = true)[0].performClick(); shoot("e06_linea")
+        rule.onAllNodesWithText("Cifras", ignoreCase = true)[0].performClick(); shoot("e07_cifras")
+        rule.onAllNodesWithText("Manuscrito", ignoreCase = true)[0].performClick()
+        rule.onAllNodesWithText("Al pie de la torre", ignoreCase = true)[0].performClick(); shoot("e08_editor")
         rule.onNodeWithContentDescription("Panel de la escena").performClick(); shoot("e09_panel_escena")
-        rule.onAllNodesWithText("Fichas")[0].performClick(); shoot("e10_panel_fichas")
-        rule.onAllNodesWithText("Notas")[0].performClick(); shoot("e11_panel_notas")
+        rule.onAllNodesWithText("Fichas", ignoreCase = true)[0].performClick(); shoot("e10_panel_fichas")
+        rule.onAllNodesWithText("Notas", ignoreCase = true)[0].performClick(); shoot("e11_panel_notas")
         assertTrue(e.obras().size == 1)
     }
 
@@ -131,34 +131,34 @@ open class EscribirUiTest {
         coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
         val e = Escritos.get(ctx)
         val o = siembra(e)
-        Skin.load(ctx); Skin.shell = 0; Mode.dark = false; Mode.themeMode = 1
+        Skin.load(ctx); Skin.applyShell(2, ctx); Mode.dark = false; Mode.themeMode = 1
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { EscribirScreen() } } }
         rule.waitForIdle()
-        rule.onAllNodesWithText("La torre del cuervo")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("La torre del cuervo", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         // Las partes de texto pasan a ser partes de verdad, y el capítulo sin parte se queda suelto
         assertTrue(e.partes(o.id).map { it.s("titulo") }.toSet() == setOf("Parte I · El valle", "Parte II · La torre"))
         assertTrue(e.capitulos(o.id).map { it.s("titulo") } == listOf("La subida", "El cuervo", "Lo que dice el espejo"))
-        rule.onAllNodesWithText("Parte I · El valle")[0].performClick(); rule.waitForIdle()
-        assertTrue("la página de la parte", rule.onAllNodesWithText("NUEVO CAPÍTULO").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("La subida").fetchSemanticsNodes().isNotEmpty())
-        rule.onAllNodesWithText("La subida")[0].performClick(); rule.waitForIdle()
-        assertTrue("la página del capítulo", rule.onAllNodesWithText("Al pie de la torre").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("LEERLO ENTERO").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Parte I · El valle", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue("la página de la parte", rule.onAllNodesWithText("NUEVO CAPÍTULO", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("La subida", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("La subida", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue("la página del capítulo", rule.onAllNodesWithText("Al pie de la torre", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("LEERLO ENTERO", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Una nota creada en el capítulo queda vinculada a él
-        rule.onAllNodesWithText("NOTA")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("NOTA", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[0].performTextInput("Ojo con el viento"); rule.waitForIdle()
-        rule.onAllNodesWithText("GUARDAR")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("GUARDAR", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         val c1 = e.capitulos(o.id)[0]
         assertTrue("vinculada", e.notas(o.id).single { it.s("titulo") == "Ojo con el viento" }.lista("vin") == listOf(c1.id))
         // Escena → editor; con el cursor en «Aldara», su vista previa; «Abrir» la enseña en modo lectura con sus uniones
-        rule.onAllNodesWithText("Al pie de la torre")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Al pie de la torre", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         val s = e.escenas(c1.id)[0]
         val i = s.s("texto").indexOf("Aldara") + 2
         rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[1].performTextInputSelection(androidx.compose.ui.text.TextRange(i)); rule.waitForIdle()
-        assertTrue("la vista previa", rule.onAllNodesWithText("Personaje · Joven aprendiz que huye de su pasado.").fetchSemanticsNodes().isNotEmpty())
-        rule.onAllNodesWithText("ABRIR")[0].performClick(); rule.waitForIdle()
-        assertTrue("modo lectura con sus uniones", rule.onAllNodesWithText("EDITAR").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("PACTO").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("la vista previa", rule.onAllNodesWithText("Personaje · Joven aprendiz que huye de su pasado.", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("ABRIR", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue("modo lectura con sus uniones", rule.onAllNodesWithText("EDITAR", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("PACTO", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // La palabra de la unión abre la unión
-        rule.onAllNodesWithText("PACTO")[0].performClick(); rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("Él la guía a cambio de algo que ella aún no sabe.").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("PACTO", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("Él la guía a cambio de algo que ella aún no sabe.", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
     }
 
     /** Desde la portada de la revista (la interfaz que usas): «Escribir» en el menú de secciones lleva a tus obras. */
@@ -173,16 +173,16 @@ open class EscribirUiTest {
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(store, 0L, false, "") {} } } }
         rule.waitForIdle()
         shoot("e20_revista_portada")
-        rule.onAllNodesWithText("Escribir")[0].performClick()
+        rule.onAllNodesWithText("Escribir", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
-        assertTrue("las obras salen al entrar en Escribir", rule.onAllNodesWithText("La torre del cuervo").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("las obras salen al entrar en Escribir", rule.onAllNodesWithText("La torre del cuervo", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("e21_revista_escribir")
-        rule.onAllNodesWithText("La torre del cuervo")[0].performClick()
+        rule.onAllNodesWithText("La torre del cuervo", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
         shoot("e21b_revista_obra")
         rule.onAllNodesWithText("Lista", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
-        rule.onAllNodesWithText("Al pie de la torre")[0].performClick()
+        rule.onAllNodesWithText("Al pie de la torre", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
         assertTrue("el editor se abre y el dock se esconde", EscribirHub.enEditor)
         shoot("e22_revista_editor")
@@ -202,14 +202,14 @@ open class EscribirUiTest {
         Mode.dark = false; Mode.themeMode = 1
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { App(store, 0L, false, "") {} } } }
         rule.waitForIdle()
-        rule.onAllNodesWithText("Escribir")[0].performClick()
+        rule.onAllNodesWithText("Escribir", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
-        rule.onAllNodesWithText("La torre del cuervo")[0].performClick()
+        rule.onAllNodesWithText("La torre del cuervo", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
         val s = e.escenasDe(o.id)[1]
         rule.runOnIdle { aLaPapelera(e, s) }
         rule.waitUntil(5000) { rule.onAllNodesWithText("Deshacer", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
-        assertTrue("el aviso dice qué se ha ido a la papelera", rule.onAllNodesWithText("Escena «La primera puerta» en la papelera").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("el aviso dice qué se ha ido a la papelera", rule.onAllNodesWithText("Escena «La primera puerta» en la papelera", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("e23_deshacer")
         rule.onAllNodesWithText("Deshacer", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
@@ -219,14 +219,14 @@ open class EscribirUiTest {
         rule.runOnIdle { aLaPapelera(e, c) }
         androidx.test.espresso.Espresso.pressBack()
         rule.waitForIdle()
-        rule.onAllNodesWithText("PAPELERA · 1")[0].performClick()
+        rule.onAllNodesWithText("PAPELERA · 1", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("El cuervo").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("El cuervo", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("e24_papelera")
         rule.onAllNodesWithText("Recuperar", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
         assertTrue("vuelve con su escena", e.capitulos(o.id).size == 3 && e.escenasDe(o.id).size == 4)
-        assertTrue(rule.onAllNodesWithText("La papelera está vacía.").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("La papelera está vacía.", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
     }
 
     /** El editor: tipografía automática al teclear, atajos de un teclado físico y sinónimos. */
@@ -237,7 +237,7 @@ open class EscribirUiTest {
         val o = e.nuevo(Escritos.T_OBRA, "") { put("titulo", "Pruebas") }
         val c = e.nuevo(Escritos.T_CAP, o.id) { put("titulo", "Uno") }
         val s = e.nuevo(Escritos.T_ESCENA, o.id) { put("cid", c.id); put("titulo", "Escena"); put("texto", "") }
-        Skin.load(ctx); Skin.shell = 0; Mode.dark = false; Mode.themeMode = 1
+        Skin.load(ctx); Skin.applyShell(2, ctx); Mode.dark = false; Mode.themeMode = 1
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { EscribirEditor(s.id, onBack = {}, abrirEscena = {}) } } }
         rule.waitForIdle()
         val editor = rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[1]
@@ -245,28 +245,28 @@ open class EscribirUiTest {
         "- Hola --dijo-- \"casa\"...".forEach { ch -> editor.performTextInput(ch.toString()) }
         rule.waitForIdle()
         assertTrue("tipografía: ${editor.fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.EditableText)}",
-            rule.onAllNodesWithText("—Hola —dijo— «casa»…").fetchSemanticsNodes().isNotEmpty())
+            rule.onAllNodesWithText("—Hola —dijo— «casa»…", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Deshacer quita solo el último cambio de la tipografía (… vuelve a ser ...)
         editor.performKeyInput { withKeyDown(androidx.compose.ui.input.key.Key.CtrlLeft) { pressKey(androidx.compose.ui.input.key.Key.Z) } }
         rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("—Hola —dijo— «casa»...").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("—Hola —dijo— «casa»...", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         editor.performKeyInput { withKeyDown(androidx.compose.ui.input.key.Key.CtrlLeft) { pressKey(androidx.compose.ui.input.key.Key.Y) } }
         rule.waitForIdle()
-        assertTrue("Ctrl+Y lo rehace", rule.onAllNodesWithText("—Hola —dijo— «casa»…").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("Ctrl+Y lo rehace", rule.onAllNodesWithText("—Hola —dijo— «casa»…", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Sinónimos de la palabra del cursor
         editor.performTextInputSelection(androidx.compose.ui.text.TextRange(15))
         Thread.sleep(300); rule.waitForIdle()
         rule.onNodeWithContentDescription("Sinónimos").performScrollTo().performClick()
-        rule.waitUntil(5000) { rule.onAllNodesWithText("vivienda").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(5000) { rule.onAllNodesWithText("vivienda", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         shoot("e25_sinonimos")
-        rule.onAllNodesWithText("vivienda")[0].performClick()
+        rule.onAllNodesWithText("vivienda", ignoreCase = true)[0].performClick()
         rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("—Hola —dijo— «vivienda»…").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("—Hola —dijo— «vivienda»…", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Ctrl+B pone negrita a lo elegido
         editor.performTextInputSelection(androidx.compose.ui.text.TextRange(1, 5))
         editor.performKeyInput { withKeyDown(androidx.compose.ui.input.key.Key.CtrlLeft) { pressKey(androidx.compose.ui.input.key.Key.B) } }
         rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("—**Hola** —dijo— «vivienda»…").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("—**Hola** —dijo— «vivienda»…", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         rule.waitUntil(3000) { e.get(s.id)?.s("texto") == "—**Hola** —dijo— «vivienda»…" }
     }
 
@@ -278,6 +278,8 @@ open class EscribirUiTest {
         val escenas = e.escenasDe(o.id)
         e.edita(escenas[0].id) { put("etq", org.json.JSONArray().put("flashback")) }
         e.edita(escenas[2].id) { put("etq", org.json.JSONArray().put("flashback").put("Cuervo")) }
+        // (la última escena tocada es la de «Seguir con…»: que no caiga en el mismo milisegundo que las etiquetas)
+        Thread.sleep(5)
         e.escribe(escenas[1].id, escenas[1].s("texto") + "\n\nY la colcha le contó un secreto.")
         val store = Store(ctx)
         store.myName = "Gonzalo"
@@ -297,13 +299,13 @@ open class EscribirUiTest {
         repeat(5) { if (rule.onAllNodesWithText("Manuscrito", ignoreCase = true).fetchSemanticsNodes().isEmpty()) { androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle() } }
         // En la obra, en lista: filtrar por etiqueta
         rule.onAllNodesWithText("Lista", ignoreCase = true)[0].performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("#flashback")[0].performClick(); rule.waitForIdle()
-        assertTrue("solo las escenas con esa etiqueta", rule.onAllNodesWithText("Al pie de la torre").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("La primera puerta").fetchSemanticsNodes().isEmpty())
+        rule.onAllNodesWithText("#flashback", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue("solo las escenas con esa etiqueta", rule.onAllNodesWithText("Al pie de la torre", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("La primera puerta", ignoreCase = true).fetchSemanticsNodes().isEmpty())
         shoot("e27_filtro_etiqueta")
-        rule.onAllNodesWithText("Todas")[0].performClick(); rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("La primera puerta").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Todas", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("La primera puerta", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        assertTrue("la biblioteca: «Sigue escribiendo»", rule.onAllNodesWithText("SIGUE ESCRIBIENDO").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("la biblioteca: «Sigue escribiendo»", rule.onAllNodesWithText("SIGUE ESCRIBIENDO", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("e28_sigue_escribiendo")
     }
 }

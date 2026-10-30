@@ -43,6 +43,10 @@ fun ProfileScreen(
     onNegraQuitar: (Vetado) -> Unit = {},
     goalGames: Int, goalBooks: Int, onGoal: (Int, Int) -> Unit,
     couple: @Composable () -> Unit,
+    /** Las pestañas de Ajustes (General · Servicios y copias), justo bajo el título. */
+    pestanas: @Composable () -> Unit = {},
+    /** Tus categorías propias (discos, viajes…): crearlas y editarlas. */
+    categorias: (@Composable () -> Unit)? = null,
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -50,7 +54,8 @@ fun ProfileScreen(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding()
             .padding(horizontal = 18.dp).padding(bottom = 24.dp)
     ) {
-        if (Skin.revista) TopBar("Atrio", onBack, "Perfil") else BigHeader("Perfil") { BackRound(onBack = onBack) }
+        if (Skin.revista) TopBar("Atrio", onBack, "Ajustes") else BigHeader("Perfil") { BackRound(onBack = onBack) }
+        pestanas()
 
         // Quién eres
         Card6(Modifier.rise(0)) {
@@ -103,6 +108,12 @@ fun ProfileScreen(
                     androidx.compose.material3.Switch(Skin.listCovers, { Skin.listCovers = it; Skin.save(ctx) })
                 }
             }
+            Spacer(Modifier.height(12.dp))
+        }
+
+        // Tus categorías propias
+        if (categorias != null) {
+            Card6(Modifier.rise(1)) { categorias() }
             Spacer(Modifier.height(12.dp))
         }
 
@@ -230,7 +241,7 @@ fun ProfileScreen(
             confirmButton = { androidx.compose.material3.TextButton({ repasar = false }) { Text("Cancelar") } }
         )
 
-        ProfileRow(Icons.Rounded.Tune, "Ajustes", "Claves de servicios, importar de otras apps, Drive y copias", Modifier.rise(5), onSettings)
+        // (las claves, importar, Drive y las copias están en la pestaña «Servicios y copias»)
         Spacer(Modifier.height(20.dp))
         val ver = remember { try { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName } catch (e: Exception) { null } ?: "" }
         Text("Atrio $ver", color = Muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(4.dp))

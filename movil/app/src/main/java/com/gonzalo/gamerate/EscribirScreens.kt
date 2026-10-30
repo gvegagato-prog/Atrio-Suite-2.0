@@ -29,6 +29,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -142,11 +144,13 @@ private fun BibliotecaEscribir(e: Escritos, ver: Int, onBack: () -> Unit, abrirO
     }
     Column(Modifier.fillMaxSize().wrapContentWidth().widthIn(max = 880.dp).statusBarsPadding().padding(horizontal = if (Skin.revista) 18.dp else 14.dp)) {
         // Volver a Inicio
-        Box(Modifier.padding(top = 6.dp)) { if (Skin.revista) RevistaBack(onBack) else BackRound(onBack = onBack) }
-        BigHeader("Escribir", if (palabrasHoy > 0) "Hoy · ${cifraE(palabrasHoy)} palabras" else "Tus obras") {
-            IconPill(Icons.Rounded.FileUpload, "Importar un texto (Word, Markdown o texto)") { importar.launch(arrayOf("text/*", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/octet-stream")) }
-            IconPill(Icons.Rounded.Add, "Nueva obra") { nueva = true }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            VolverRevista(onBack, "Atrio")
+            Spacer(Modifier.weight(1f))
+            EnlaceRevista("Importar", Modifier.semantics { contentDescription = "Importar un texto (Word, Markdown o texto)" }) { importar.launch(arrayOf("text/*", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/octet-stream")) }
+            EnlaceRevista("+ Nueva obra", Modifier.semantics { contentDescription = "Nueva obra" }, acento = true) { nueva = true }
         }
+        BigHeader("Escribir", if (palabrasHoy > 0) "Hoy · ${cifraE(palabrasHoy)} palabras" else "Tus obras")
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(24.dp))) {
             item("hoy") { ResumenHoy(e, palabrasHoy, diaria, racha, total, ver) }
             val ultima = e.ultimaEscena()
@@ -280,19 +284,13 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
     var buscar by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().wrapContentWidth().widthIn(max = 880.dp).statusBarsPadding().padding(horizontal = if (Skin.revista) 18.dp else 14.dp)) {
         TopBar("Escribir", onBack, obra.s("titulo").ifBlank { "Sin título" }) {
-            IconPill(Icons.Rounded.Search, "Buscar en la obra") { buscar = true }
-            IconPill(Icons.Rounded.FileDownload, "Exportar") { exportar = true }
-            IconPill(Icons.Rounded.Settings, "Ajustes de la obra") { ajustes = true }
-        }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(if (Skin.revista) 18.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            PESTANAS_OBRA.forEachIndexed { i, n ->
-                val on = i == pestana
-                if (Skin.revista) Text(n.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
-                    modifier = Modifier.press(haptic = false) { pestana = i }
-                        .drawBehind { if (on) drawRect(ColGeneral, topLeft = Offset(0f, size.height - 2.dp.toPx()), size = Size(size.width, 2.dp.toPx())) }.padding(vertical = 10.dp))
-                else SoftChip(n, on) { pestana = i }
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                EnlaceRevista("Buscar", Modifier.semantics { contentDescription = "Buscar en la obra" }) { buscar = true }
+                EnlaceRevista("Exportar") { exportar = true }
+                EnlaceRevista("Ajustes", Modifier.semantics { contentDescription = "Ajustes de la obra" }) { ajustes = true }
             }
         }
+        PestanasRevista(PESTANAS_OBRA, pestana, Modifier.padding(bottom = 10.dp)) { pestana = it }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (pestana) {
                 0 -> ManuscritoObra(e, obra, ver, abrirParte, abrirCapitulo, abrir, hacerGuia = { accionGuia = it }, verGuia = { pestana = TAB_GUIA })

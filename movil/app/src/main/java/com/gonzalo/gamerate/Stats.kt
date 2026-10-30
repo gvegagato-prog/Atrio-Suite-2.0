@@ -240,20 +240,15 @@ fun StatsScreen(
         Modifier.fillMaxSize().wrapContentWidth().widthIn(max = 760.dp).statusBarsPadding().verticalScroll(rememberScrollState())
             .padding(start = 12.dp, end = 12.dp, bottom = 16.dp)
     ) {
-        TopBar(kind.title, onMenu, "Estadísticas") {
+        TopBar(kind.title, onMenu, "Cifras") {
             if (partner != null) PartnerToggle(showPartner) { withReveal { Mode.calP = !Mode.calP } }
         }
         if (useP) {
-            Overline("Estadísticas de ${partner!!.name}", Modifier.padding(start = 4.dp, bottom = 10.dp))
+            Overline("Cifras de ${partner!!.name}", Modifier.padding(start = 4.dp, bottom = 10.dp))
         }
         // Desde la portada: todas las categorías aquí mismo
-        if (kinds.size > 1) Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            kinds.forEach { k -> SoftChip(k.title, k.id == kind.id) { onKind(k) } }
-        }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            SoftChip("Todo", year == null) { year = null }
-            years.forEach { y -> SoftChip("$y", year == y) { year = y } }
-        }
+        if (kinds.size > 1) PestanasRevista(kinds.map { it.title }, kinds.indexOfFirst { it.id == kind.id }, Modifier.padding(bottom = 4.dp)) { onKind(kinds[it]) }
+        FiltrosRevista(listOf("Todo") + years.map { "$it" }, if (year == null) 0 else years.indexOf(year) + 1, Modifier.padding(bottom = 10.dp)) { year = if (it == 0) null else years[it - 1] }
         // Tu año entero, como número especial de la revista (el año elegido arriba; con «Todo», este)
         if (onSpecial != null) {
             val y = year ?: thisYear

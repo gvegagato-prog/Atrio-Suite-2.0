@@ -90,7 +90,7 @@ class FondosTest {
         }
         fun shoot(n: String) { rule.waitForIdle(); Thread.sleep(300); rule.waitForIdle(); com.github.takahirom.roborazzi.captureScreenRoboImage("build/outputs/roborazzi/fondo_$n.png") }
         shoot("granate_1_inicio")
-        rule.onAllNodesWithText("Diario")[0].performClick(); shoot("granate_2_diario")
+        rule.onAllNodesWithText("Diario", ignoreCase = true)[0].performClick(); shoot("granate_2_diario")
         androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
         for (f in listOf("papelreal", "mostaza", "bosque", "berenjena")) { fondo.value = f; shoot("${f}_1_inicio") }
         Skin.fondoId = ""; Skin.save(ctx)

@@ -54,32 +54,32 @@ class NotasEnMasaTest {
                 }
             }
         }
-        fun tap(t: String) { rule.onAllNodesWithText(t)[0].performClick(); rule.waitForIdle() }
+        fun tap(t: String) { rule.onAllNodesWithText(t, ignoreCase = true)[0].performClick(); rule.waitForIdle() }
         shoot("1_elegir")
         // Libros: «los de estrellas» elige Dune (80) y Fundación (60), no Hyperion (87)
         tap("Libros"); tap("LOS DE ESTRELLAS (20, 40…)")
-        assertTrue(rule.onAllNodesWithText("2 elegidos").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("2 elegidos", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Y un juego, de otra categoría
         tap("Videojuegos"); tap("Hades II")
-        assertTrue(rule.onAllNodesWithText("3 elegidos").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("3 elegidos", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("2_elegidos")
         tap("REPASAR\u00A0→")
-        assertTrue(rule.onAllNodesWithText("1 de 3").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("1 de 3", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("3_repasar")
         // El primero: otra nota general escrita a mano, y guardar
         rule.onAllNodes(hasSetTextAction())[0].performTextReplacement("95"); rule.waitForIdle()
         tap("GUARDAR\u00A0→")
-        assertTrue(rule.onAllNodesWithText("2 de 3").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("2 de 3", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Volver al anterior: ya con su nota nueva
         tap("← ANTERIOR")
-        assertTrue(rule.onAllNodesWithText("Tenía un 95").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("Tenía un 95", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         tap("GUARDAR\u00A0→")   // sin cambios: no cuenta
         tap("SALTAR")
-        assertTrue(rule.onAllNodesWithText("3 de 3").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("3 de 3", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         rule.onAllNodes(hasSetTextAction())[0].performTextReplacement("70"); rule.waitForIdle()
         tap("GUARDAR Y TERMINAR")
         shoot("4_hecho")
-        assertTrue(rule.onAllNodesWithText("Has cambiado 2 notas de 3.").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("Has cambiado 2 notas de 3.", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         val all = (books + games).associate { it.name to it.general }
         // Lo elegido va en el orden en que se eligió: Dune, Fundación (saltado), Hades II
         assertEquals(95, all["Dune"]); assertEquals(60, all["Fundación"]); assertEquals(70, all["Hades II"]); assertEquals(87, all["Hyperion"])

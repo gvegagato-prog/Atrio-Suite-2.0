@@ -494,11 +494,7 @@ fun SuiteScreen(
                 }
                 Spacer(Modifier.height(10.dp))
             }
-            TabRow(tab, containerColor = Color.Transparent, contentColor = Charcoal, divider = { HorizontalDivider(color = Line) }) {
-                listOf("Ahora", "Biblioteca", "Capturas", "Equipo").forEachIndexed { i, t ->
-                    Tab(tab == i, { tab = i }, text = { Text(t, fontWeight = FontWeight.Medium, fontSize = 13.sp, maxLines = 1, softWrap = false) })
-                }
-            }
+            PestanasRevista(listOf("Ahora", "Biblioteca", "Capturas", "Equipo"), tab) { tab = it }
         }
         Box(Modifier.weight(1f)) {
             when (tab) {

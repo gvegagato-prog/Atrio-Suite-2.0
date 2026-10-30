@@ -21,7 +21,7 @@
   // TMDB: la clave v3 va en la dirección; el token de lectura («eyJ…»), en la cabecera
   N.tmdb = (path) => {
     const k = N.tmdbClave();
-    if (!k) throw new Error('Falta tu clave de TMDB: ponla en el móvil (Perfil → Ajustes → Servicios) y llegará sola.');
+    if (!k) throw new Error('Falta tu clave de TMDB: ponla en el móvil (Ajustes → Servicios y copias) y llegará sola.');
     const token = k.startsWith('eyJ');
     const sep = path.includes('?') ? '&' : '?';
     return N.json(`https://api.themoviedb.org/3${path}${token ? '' : `${sep}api_key=${enc(k)}`}`, token ? k : '');

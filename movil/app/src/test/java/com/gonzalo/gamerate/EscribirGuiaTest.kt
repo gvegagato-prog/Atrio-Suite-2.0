@@ -71,50 +71,50 @@ class EscribirGuiaTest {
 
     @Test fun recorridoEnPantalla() {
         val e = Escritos.get(ctx)
-        Skin.load(ctx); Skin.shell = 0; Mode.dark = false; Mode.themeMode = 1
+        Skin.load(ctx); Skin.applyShell(2, ctx); Mode.dark = false; Mode.themeMode = 1
         rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { EscribirScreen() } } }
         rule.waitForIdle()
         // «Nueva obra»: «Guiarme paso a paso» viene marcada y al crearla se abre la pestaña Guía
         rule.onNodeWithContentDescription("Nueva obra").performClick(); rule.waitForIdle()
-        assertTrue("viene marcada", rule.onAllNodesWithText("Guiarme paso a paso ✓").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("viene marcada", rule.onAllNodesWithText("Guiarme paso a paso ✓", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         rule.onAllNodes(hasSetTextAction())[0].performTextInput("Mi primera novela"); rule.waitForIdle()
-        rule.onAllNodesWithText("CREAR")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("CREAR", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         val obra = e.obras().single()
         assertEquals(1, obra.i("gOn"))
-        assertTrue("se abre la guía", rule.onAllNodesWithText("0 de 11 pasos").fetchSemanticsNodes().isNotEmpty())
-        assertTrue("con el paso 1 abierto", rule.onAllNodesWithText("ESCRIBIR MI FRASE").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("se abre la guía", rule.onAllNodesWithText("0 de 11 pasos", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue("con el paso 1 abierto", rule.onAllNodesWithText("ESCRIBIR MI FRASE", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("guia1_nueva")
         // Paso 1: la frase
-        rule.onAllNodesWithText("ESCRIBIR MI FRASE")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("ESCRIBIR MI FRASE", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         rule.onAllNodes(hasSetTextAction())[0].performTextInput("Una aprendiz sube a una torre para salvar a su hermana."); rule.waitForIdle()
-        rule.onAllNodesWithText("GUARDAR")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("GUARDAR", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         assertTrue(e.get(obra.id)!!.s("idea").startsWith("Una aprendiz"))
-        assertTrue("1 de 11 y su frase", rule.onAllNodesWithText("1 de 11 pasos").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("Una aprendiz sube a una torre para salvar a su hermana.").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("1 de 11 y su frase", rule.onAllNodesWithText("1 de 11 pasos", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("Una aprendiz sube a una torre para salvar a su hermana.", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("guia2_frase")
         // Paso 3: los tres actos
-        rule.onAllNodesWithText("Un esquema ligero")[0].performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("CREAR LOS TRES ACTOS")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Un esquema ligero", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("CREAR LOS TRES ACTOS", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         // (el esquema es una nota, fuera del manuscrito: los capítulos no se tocan)
         val esq = e.notas(obra.id).firstOrNull { it.s("titulo") == GuiaNovela.TITULO_ESQUEMA }
         assertTrue("la nota del esquema con sus tres apartados", esq != null && esq.s("texto").contains("Planteamiento:") && esq.s("texto").contains("Nudo:") && esq.s("texto").contains("Desenlace:"))
         assertEquals(listOf("Capítulo 1"), e.capitulos(obra.id).map { it.s("titulo") })
         rule.onNodeWithContentDescription("Cerrar").performClick(); rule.waitForIdle()
         // Y el manuscrito enseña el paso que toca (ahora el 2)
-        rule.onAllNodesWithText("Manuscrito")[0].performClick(); rule.waitForIdle()
-        assertTrue("la tarjeta del manuscrito", rule.onAllNodesWithText("GUÍA · PASO 2 DE 11").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("Manuscrito", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        assertTrue("la tarjeta del manuscrito", rule.onAllNodesWithText("GUÍA · PASO 2 DE 11", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("guia3_tarjeta")
         // Paso 4 a mano
-        rule.onAllNodesWithText("Guía")[0].performScrollTo().performClick(); rule.waitForIdle()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Promesa, progreso y recompensa")); rule.onAllNodesWithText("Promesa, progreso y recompensa")[0].performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("YA LO TENGO")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Guía", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Promesa, progreso y recompensa", ignoreCase = true)); rule.onAllNodesWithText("Promesa, progreso y recompensa", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("YA LO TENGO", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         assertEquals(1, e.get(obra.id)!!.i("g4"))
         // Reposo
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Dejarlo reposar")); rule.onAllNodesWithText("Dejarlo reposar")[0].performClick(); rule.waitForIdle()
-        rule.onAllNodesWithText("EMPEZAR EL REPOSO")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Dejarlo reposar", ignoreCase = true)); rule.onAllNodesWithText("Dejarlo reposar", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("EMPEZAR EL REPOSO", ignoreCase = true)[0].performScrollTo().performClick(); rule.waitForIdle()
         assertTrue(e.get(obra.id)!!.n("g7t") > 0)
-        assertTrue("cuenta días", rule.onAllNodesWithText("REPOSO: 0 DÍAS").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("cuenta días", rule.onAllNodesWithText("REPOSO: 0 DÍAS", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         // Desactivar
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Desactivar")); rule.onAllNodesWithText("Desactivar")[0].performClick(); rule.waitForIdle()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Desactivar", ignoreCase = true)); rule.onAllNodesWithText("Desactivar", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         assertEquals(0, e.get(obra.id)!!.i("gOn"))
     }
 

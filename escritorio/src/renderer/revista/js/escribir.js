@@ -604,7 +604,8 @@
     const obras = E.obras();
     const activas = obras.filter((o) => !o.arch).sort((a, b) => E.escenasDe(b.id).reduce((m, e) => Math.max(m, num(e.u)), num(b.u)) - E.escenasDe(a.id).reduce((m, e) => Math.max(m, num(e.u)), num(a.u)));
     const arch = obras.filter((o) => o.arch);
-    root.append(h('header.cabeza', h('div.ante', h('button.enlace.e-atras', { type: 'button', onclick: () => RV.volver() || RV.ir({ v: 'portada' }) }, '← Volver'), ` · ${E.escritas(RV.hoy()) > 0 ? `Hoy · ${cifra(E.escritas(RV.hoy()))} palabras` : 'Tus obras'}`),
+    // (Escribir es una sección de la cabecera, como Diario o Cifras: sin «← Volver» propio; el de la cabecera vuelve)
+    root.append(h('header.cabeza', h('div.ante', E.escritas(RV.hoy()) > 0 ? `Hoy · ${cifra(E.escritas(RV.hoy()))} palabras` : 'Tus obras'),
       h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, 'Escribir'),
         h('div.herramientas', h('button.enlace', { type: 'button', onclick: importar }, 'Importar un texto'), h('button.boton-tinta', { type: 'button', onclick: () => E.dlgObra(null) }, 'Nueva obra'))),
       h('div.filete')));

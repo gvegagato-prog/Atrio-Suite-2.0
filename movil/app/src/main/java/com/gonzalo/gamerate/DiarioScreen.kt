@@ -30,6 +30,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -100,7 +102,9 @@ fun DiarioScreen(
     pareja: String?, viendoPareja: Boolean, onPareja: (() -> Unit)?,
     /** El nombre de una ficha por su referencia ("categoría:id"), o null si ya no está. */
     nombreDe: (String) -> String?,
-    acc: DiarioAcciones
+    acc: DiarioAcciones,
+    /** Volver a la portada («← ATRIO», como las demás secciones). */
+    onBack: (() -> Unit)? = null
 ) {
     var vista by rememberSaveable { mutableIntStateOf(0) }
     var abierto by remember { mutableStateOf<Long?>(null) }
@@ -111,10 +115,14 @@ fun DiarioScreen(
     val soloLectura = viendoPareja
     // (en la tablet en horizontal, una columna cómoda de leer, centrada)
     Column(Modifier.fillMaxSize().wrapContentWidth().widthIn(max = 880.dp).statusBarsPadding().padding(horizontal = if (Skin.revista) 18.dp else 14.dp)) {
-        BigHeader(if (viendoPareja && pareja != null) "Diario de $pareja" else "Diario", fechaDiario(hoy)) {
-            if (acc.aviso != null && !soloLectura) IconPill(Icons.Rounded.NotificationsNone, "Recordarme escribir", onClick = acc.aviso)
+        // Como las demás secciones: «← ATRIO» y las acciones arriba; debajo, el título
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (onBack != null) VolverRevista(onBack, "Atrio")
+            Spacer(Modifier.weight(1f))
+            if (acc.aviso != null && !soloLectura) EnlaceRevista("Recordarme", Modifier.semantics { contentDescription = "Recordarme escribir" }, onClick = acc.aviso)
             if (onPareja != null) PartnerToggle(viendoPareja, onPareja)
         }
+        BigHeader(if (viendoPareja && pareja != null) "Diario de $pareja" else "Diario", fechaDiario(hoy))
         Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Pestanas(listOf("Días", "Calendario"), vista) { vista = it }
             Spacer(Modifier.weight(1f))
@@ -141,9 +149,10 @@ private fun Pestanas(opciones: List<String>, elegida: Int, onElegir: (Int) -> Un
         opciones.forEachIndexed { i, o ->
             val on = i == elegida
             if (Skin.revista) Text(
-                o.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
-                modifier = Modifier.press(haptic = false) { if (!on) onElegir(i) }.padding(vertical = 10.dp)
-                    .drawBehind { if (on) drawRect(ColGeneral, topLeft = Offset(0f, size.height - 7.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width, 2.dp.toPx())) }
+                o.uppercase(), color = if (on) Charcoal else Muted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
+                modifier = Modifier.press(haptic = false) { if (!on) onElegir(i) }
+                    .drawBehind { if (on) drawRect(ColGeneral, topLeft = Offset(0f, size.height - 3.dp.toPx()), size = androidx.compose.ui.geometry.Size(size.width, 3.dp.toPx())) }
+                    .padding(top = 12.dp, bottom = 10.dp)
             ) else SoftChip(o, on) { if (!on) onElegir(i) }
         }
     }

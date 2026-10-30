@@ -339,6 +339,8 @@ fun SettingsScreen(
     steamKey: String = "", steamUser: String = "", onSteam: (String, String) -> Unit = { _, _ -> },
     /** Tu nube (kDrive): libros, fotos y capturas en todos tus dispositivos. */
     nube: (@Composable () -> Unit)? = null,
+    /** Las pestañas de Ajustes (General · Servicios y copias), justo bajo el título. */
+    pestanas: @Composable () -> Unit = {},
     onBack: () -> Unit
 ) {
     var k by remember { mutableStateOf(key) }
@@ -350,7 +352,7 @@ fun SettingsScreen(
     var tk by remember { mutableStateOf(tmdbKey) }
     var confirm by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().imePadding().wrapContentWidth().widthIn(max = 760.dp).statusBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        if (Skin.revista) TopBar("Perfil", onBack, "Ajustes")
+        if (Skin.revista) { TopBar("Atrio", onBack, "Ajustes"); pestanas() }
         else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BackButton(onBack)
             Column {

@@ -49,9 +49,9 @@ class DuelosPantallaTest {
                 }
             }
         }
-        fun tap(t: String) { rule.onAllNodesWithText(t)[0].performClick(); rule.waitForIdle() }
+        fun tap(t: String) { rule.onAllNodesWithText(t, ignoreCase = true)[0].performClick(); rule.waitForIdle() }
         shoot("1_intro")
-        rule.onAllNodesWithText("14 libros").assertCountEquals1()
+        rule.onAllNodesWithText("14 libros", ignoreCase = true).assertCountEquals1()
         tap("EMPEZAR\u00A0→")
         shoot("2_duelo")
         repeat(9) {

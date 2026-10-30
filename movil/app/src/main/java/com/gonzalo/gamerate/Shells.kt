@@ -59,6 +59,9 @@ import kotlinx.coroutines.launch
  */
 
 /** Un título de la colección, venga de «en curso / en lista» (Play) o de «valorado» (Game). */
+/** Algo que llevas entre manos (jugando, leyendo, viendo), con su categoría. */
+class Ongoing(val kind: Kind, val play: Play)
+
 class ShellEntry(val kind: Kind, val play: Play?, val game: Game?) {
     val id: Long get() = play?.id ?: game!!.id
     val name: String get() = play?.name ?: game!!.name
@@ -92,12 +95,16 @@ class ShellModel(
     val add: ((Kind) -> Unit)?,
     val partner: (() -> Unit)?,
     val stats: (Kind) -> Unit,
-    /** La tarjeta del PC en directo (la misma de siempre). */
-    val live: @Composable () -> Unit,
     /** Elegir la imagen de «En portada» (SteamGridDB, TMDB, TVmaze u Open Library, según lo que sea). */
     val pickImage: ((Ongoing) -> Unit)? = null,
     /** La página del PC (en directo, biblioteca, capturas y equipo). */
-    val pc: (() -> Unit)? = null
+    val pc: (() -> Unit)? = null,
+    /** Lo que te recomienda tu pareja (añadir a tu lista o descartar) y lo último que ha hecho. */
+    val recs: List<Rec> = emptyList(),
+    val onRecAdd: (Rec) -> Unit = {},
+    val onRecDismiss: (Rec) -> Unit = {},
+    val acts: List<Activity> = emptyList(),
+    val onAct: (Activity) -> Unit = {}
 )
 
 /** El orden de siempre: lo que llevas entre manos, lo apuntado y lo terminado (lo último primero). */
@@ -138,7 +145,6 @@ private fun RevistaHome(m: ShellModel) {
             Text("Buscar", color = Ink2, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.press { buscando = true })
             Spacer(Modifier.weight(1f))
             if (m.partner != null) RevLink("Pareja", m.partner)
-            if (m.profile != null) RevLink("Perfil", m.profile)
         }
         // Tableta (OPPO Pad Mini…): con sitio de sobra, cabecera más grande y «En portada» a dos columnas
         val ancho = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp, 1080)
@@ -313,6 +319,9 @@ private fun RevistaHome(m: ShellModel) {
         // Escribiendo: tu novela, lo de hoy y seguir con la última escena
         if (!m.readOnly && m.write != null) RevistaEscribiendo(m.write)
 
+        // Tu pareja: lo que te recomienda y lo último que ha hecho
+        RevistaPareja(m)
+
         // Próximos episodios de las series que ves o tienes en lista (los de las dos próximas semanas)
         Box(Modifier.llega(4)) { RevistaProximos(m) }
 
@@ -347,6 +356,48 @@ private fun RevistaHome(m: ShellModel) {
     }
 }
 
+/** «X te recomienda» (a tu lista o descartar) y «Lo último de X»: lo de tu pareja, en la portada. */
+@Composable
+private fun RevistaPareja(m: ShellModel) {
+    val nombre = m.partnerName ?: return
+    if (m.recs.isNotEmpty() && !m.readOnly) {
+        Spacer(Modifier.height(38.dp))
+        RevSection("$nombre te recomienda")
+        m.recs.take(6).forEach { r ->
+            val k = kindOf(r.kind)
+            Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (Skin.listCovers) { ListCover(r.cover, r.name, 44.dp, 62.dp); Spacer(Modifier.width(12.dp)) }
+                    Column(Modifier.weight(1f)) {
+                        FitTitle(r.name, 22.sp, 25.sp, color = Ink2, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(listOf(kindShort(k), r.creator).filter { it.isNotBlank() }.joinToString(" · "), color = Grey2, fontSize = 13.sp)
+                    }
+                }
+                if (r.note.isNotBlank()) Text("«${r.note}»", fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 16.sp, lineHeight = 21.sp, color = Ink2, modifier = Modifier.padding(top = 6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                    EnlaceRevista("A mi lista →", acento = true) { m.onRecAdd(r) }
+                    EnlaceRevista("Descartar") { m.onRecDismiss(r) }
+                }
+            }
+            Rule(1.dp, Line)
+        }
+    }
+    if (m.acts.isNotEmpty()) {
+        Spacer(Modifier.height(38.dp))
+        RevSection(if (m.readOnly) "Lo último" else "Lo último de $nombre")
+        m.acts.take(6).forEach { a ->
+            Row(Modifier.fillMaxWidth().press(haptic = false) { m.onAct(a) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (Skin.listCovers) { ListCover(a.cover, a.name, 40.dp, 56.dp); Spacer(Modifier.width(12.dp)) }
+                Column(Modifier.weight(1f)) {
+                    FitTitle(a.name, 19.sp, 22.sp, color = Ink2, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(listOf(kindShort(kindOf(a.kind)), a.text).joinToString(" · ").uppercase(), color = Red2, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                }
+            }
+            Rule(1.dp, Line)
+        }
+    }
+}
+
 /** «Escribiendo» en la portada: la obra en la que estás, lo escrito hoy y seguir con la última escena. */
 @Composable
 private fun RevistaEscribiendo(irAEscribir: () -> Unit) {
@@ -371,19 +422,22 @@ private fun RevistaEscribiendo(irAEscribir: () -> Unit) {
     }
 }
 
-/** Las secciones (cada categoría, Diario, Estadísticas y PC): una fila entre filetes, como el menú de una web. */
+/**
+ * Las secciones, como el menú del PC y en el mismo orden: cada categoría (con su nombre), Diario, Escribir, Descubrir,
+ * Cifras, Tu PC y Ajustes. En versalitas y en las líneas que hagan falta (todo a la vista, sin deslizar).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun RevistaMenu(m: ShellModel) {
-    val items = m.kinds.map { k -> kindShort(k) to { m.library(k) } } +
-        listOfNotNull("Diario" to m.diary, m.write?.let { "Escribir" to it }, "Estadísticas" to { m.stats(GAMES) }) +
-        listOfNotNull(m.pc?.let { "PC" to it })
+    val items = m.kinds.map { k -> k.title to { m.library(k) } } +
+        listOfNotNull("Diario" to m.diary, m.write?.let { "Escribir" to it }, m.discover?.let { d -> "Descubrir" to { d(0) } }, "Cifras" to { m.stats(GAMES) },
+            m.pc?.let { "Tu PC" to it }, m.profile?.let { "Ajustes" to it })
     Column(Modifier.fillMaxWidth().padding(top = 18.dp)) {
         Rule(1.dp)
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            items.forEachIndexed { i, (t, f) ->
-                Text(t, color = Ink2, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.press(haptic = false, onClick = f).padding(start = if (i == 0) 0.dp else 9.dp, end = 9.dp, top = 10.dp, bottom = 10.dp))
-                if (i < items.size - 1) Box(Modifier.size(4.dp).background(Red2))
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            items.forEach { (t, f) ->
+                Text(t.uppercase(), color = Ink2, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp, maxLines = 1,
+                    modifier = Modifier.press(haptic = false, onClick = f).padding(vertical = 9.dp))
             }
         }
         Rule(1.dp)

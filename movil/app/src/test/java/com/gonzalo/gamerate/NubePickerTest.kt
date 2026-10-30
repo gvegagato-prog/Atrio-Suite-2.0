@@ -63,15 +63,15 @@ class NubePickerTest {
             }
         }
         // Abre en la carpeta de la ficha y enseña las portadas de dentro
-        espera { rule.onAllNodesWithText("portada.png").fetchSemanticsNodes().isNotEmpty() }
-        assertTrue(rule.onAllNodesWithText("PORTADAS").fetchSemanticsNodes().isNotEmpty())
+        espera { rule.onAllNodesWithText("portada.png", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue(rule.onAllNodesWithText("PORTADAS", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("1_carpeta")
         // Buscar en todo tu kDrive
-        rule.onAllNodesWithText("Buscar imágenes en tu nube")[0].let { rule.onNode(hasSetTextAction()).performTextReplacement("dragon") }
+        rule.onAllNodesWithText("Buscar imágenes en tu nube", ignoreCase = true)[0].let { rule.onNode(hasSetTextAction()).performTextReplacement("dragon") }
         rule.onNodeWithContentDescription("Buscar").performClick()
-        espera { rule.onAllNodesWithText("Atrio/Juegos/Hades").fetchSemanticsNodes().isNotEmpty() }
+        espera { rule.onAllNodesWithText("Atrio/Juegos/Hades", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         shoot("2_buscar")
-        rule.onAllNodesWithText("Atrio/Juegos/Hades")[0].performClick()
+        rule.onAllNodesWithText("Atrio/Juegos/Hades", ignoreCase = true)[0].performClick()
         espera { elegida.isNotEmpty() }
         assertTrue("la elegida queda como foto de este móvil: $elegida", Photos.isLocal(elegida) && Photos.here(ctx, elegida))
     }

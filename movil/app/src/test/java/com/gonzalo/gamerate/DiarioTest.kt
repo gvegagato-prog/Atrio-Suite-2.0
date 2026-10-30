@@ -233,21 +233,21 @@ class DiarioTest {
         }
         shoot("1_dias")
         assertTrue("hoy arriba", rule.onAllNodesWithText("Café y un capítulo", substring = true).fetchSemanticsNodes().isNotEmpty())
-        assertTrue("lo terminado, con su resumen", rule.onAllNodesWithText("Lo terminaste · 2 h 30 min jugando").fetchSemanticsNodes().isNotEmpty())
+        assertTrue("lo terminado, con su resumen", rule.onAllNodesWithText("Lo terminaste · 2 h 30 min jugando", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         rule.onAllNodesWithText("¿Qué tal hoy?", substring = true).fetchSemanticsNodes().let { assertTrue("hay hueco para escribir", it.isEmpty()) }
-        rule.onAllNodesWithText("Añadir algo más")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Añadir algo más", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         assertEquals(hoy.toEpochDay(), escrito?.first)
         rule.onAllNodesWithText("Café y un capítulo", substring = true)[0].performClick(); rule.waitForIdle()
         assertEquals("tocar lo escrito lo abre para cambiarlo", notas[1], escrito?.second)
-        rule.onAllNodesWithText("+ Apunte")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("+ Apunte", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         assertEquals(2L, apunte?.id)
-        rule.onAllNodesWithText("Hades II")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Hades II", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         assertEquals(1L, abierto?.id)
         // El calendario y un día abierto
-        rule.onAllNodesWithText("CALENDARIO")[0].performClick(); shoot("2_calendario")
+        rule.onAllNodesWithText("CALENDARIO", ignoreCase = true)[0].performClick(); shoot("2_calendario")
         val ayer = d(1)
         if (ayer.month == hoy.month) {
-            rule.onAllNodesWithText("${ayer.dayOfMonth}")[0].performClick(); shoot("3_dia")
+            rule.onAllNodesWithText("${ayer.dayOfMonth}", ignoreCase = true)[0].performClick(); shoot("3_dia")
             assertTrue("el día abierto", rule.onAllNodesWithText("Por fin terminé", substring = true).fetchSemanticsNodes().isNotEmpty())
         }
     }
@@ -268,10 +268,10 @@ class DiarioTest {
             }
         }
         rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("Hoy he leído en el parque.")
-        rule.onAllNodesWithText("Deadlock")[0].performClick()
+        rule.onAllNodesWithText("Deadlock", ignoreCase = true)[0].performClick()
         shoot("4_escribir")
         rule.onAllNodesWithText("También Laura".uppercase())[0].performClick()
-        rule.onAllNodesWithText("LISTO")[0].performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("LISTO", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         assertTrue(cerrado)
         val n = guardada!!
         assertEquals("Hoy he leído en el parque.", n.texto)
