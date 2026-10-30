@@ -34,10 +34,9 @@ import java.util.Locale
 // ---------------------------------------------------------------- Fichas
 
 @Composable
-fun FichasObra(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit) {
+fun FichasObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir) {
     val pid = obra.id
     var tipo by remember { mutableStateOf("") }
-    var editar by remember { mutableStateOf<Doc?>(null) }
     var nueva by remember { mutableStateOf(false) }
     val fichas = remember(ver, pid) { e.fichas(pid) }
     val escenas = remember(ver, pid) { e.escenasDe(pid) }
@@ -59,7 +58,7 @@ fun FichasObra(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit) {
         }
         items(lista.size) { i ->
             val f = lista[i]
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(shp(14.dp)).background(Crudo).border(1.dp, Line, shp(14.dp)).press(haptic = false) { editar = f }.padding(14.dp), verticalAlignment = Alignment.Top) {
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(shp(14.dp)).background(Crudo).border(1.dp, Line, shp(14.dp)).press(haptic = false) { a.ver = f.id }.padding(14.dp), verticalAlignment = Alignment.Top) {
                 Box(Modifier.padding(top = 5.dp, end = 12.dp).size(14.dp).clip(CircleShape).background(colorEscrito(f.s("color"), ColGeneral)))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(f.s("nombre"), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 21.sp, color = Charcoal)
@@ -71,24 +70,30 @@ fun FichasObra(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit) {
         item("nueva") { BotonEscribir("Nueva ficha", suave = true, modifier = Modifier.padding(top = 14.dp)) { nueva = true } }
     }
     if (nueva) FichaDialogo(e, pid, null, tipoNuevo = tipo.ifBlank { "personaje" }, onCerrar = { nueva = false })
-    editar?.let { f -> FichaDialogo(e, pid, e.get(f.id), onCerrar = { editar = null }, abrirEscena = { abrir(it.id) }) }
 }
 
 // ---------------------------------------------------------------- Notas (el tablón)
 
 @Composable
-fun NotasObra(e: Escritos, obra: Doc, ver: Int) {
+fun NotasObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir) {
     val pid = obra.id
     var tipo by remember { mutableStateOf("") }
-    var editar by remember { mutableStateOf<Doc?>(null) }
+    var de by remember { mutableStateOf("") }
     var nueva by remember { mutableStateOf(false) }
     val notas = remember(ver, pid) { e.notas(pid) }
-    val lista = notas.filter { tipo.isBlank() || it.s("tipo") == tipo }.sortedWith(compareByDescending<Doc> { it.b("fija") }.thenByDescending { it.u })
+    val partes = remember(ver, pid) { e.partes(pid) }
+    // (de una parte: las vinculadas a ella o a uno de sus capítulos)
+    fun deParte(n: Doc) = de.isEmpty() || n.vin().any { it == de || e.get(it)?.s("aid") == de }
+    val lista = notas.filter { (tipo.isBlank() || it.s("tipo") == tipo) && deParte(it) }.sortedWith(compareByDescending<Doc> { it.b("fija") }.thenByDescending { it.u })
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(40.dp))) {
         item("tipos") {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SoftChip("Todo ${notas.size}", tipo.isBlank()) { tipo = "" }
-                TIPOS_NOTA.forEach { (k, n) -> val c = notas.count { it.s("tipo") == k }; SoftChip("$n $c", tipo == k) { tipo = k } }
+                TIPOS_NOTA.forEach { (k, n) -> val c = notas.count { it.s("tipo") == k }; if (c > 0 || tipo == k) SoftChip("$n $c", tipo == k) { tipo = k } }
+            }
+            if (partes.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SoftChip("De toda la obra", de.isEmpty()) { de = "" }
+                partes.forEach { p -> SoftChip(p.s("titulo").ifBlank { "Parte" }, de == p.id) { de = if (de == p.id) "" else p.id } }
             }
         }
         if (notas.isEmpty()) item("vacio") {
@@ -104,8 +109,9 @@ fun NotasObra(e: Escritos, obra: Doc, ver: Int) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         lista.filterIndexed { i, _ -> i % 2 == col }.forEach { n ->
                             val c = colorEscrito(n.s("color"), ColGeneral)
-                            Column(Modifier.fillMaxWidth().clip(shp(14.dp)).background(c.copy(alpha = 0.16f)).border(1.dp, c.copy(alpha = 0.5f), shp(14.dp)).press(haptic = false) { editar = n }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text((TIPOS_NOTA.find { it.first == n.s("tipo") }?.second?.removeSuffix("s")?.uppercase() ?: "NOTA") + if (n.b("fija")) " · FIJADA" else "", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                            Column(Modifier.fillMaxWidth().clip(shp(14.dp)).background(c.copy(alpha = 0.16f)).border(1.dp, c.copy(alpha = 0.5f), shp(14.dp)).press(haptic = false) { a.ver = n.id }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                val vinc = n.vin().mapNotNull { e.get(it) }.map { x -> if (x.t == Escritos.T_PARTE) x.s("titulo") else "cap. ${numeroCapitulo(e, x)}" }
+                                Text(singularNota(n.s("tipo")).uppercase() + (if (n.b("fija")) " · FIJADA" else "") + if (vinc.isNotEmpty()) " · " + vinc.joinToString(", ").uppercase() else "", color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                                 if (n.s("titulo").isNotBlank()) Text(n.s("titulo"), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 21.sp, color = Charcoal)
                                 if (n.s("texto").isNotBlank()) Text(n.s("texto"), color = Charcoal, fontSize = 13.sp, maxLines = 9, overflow = TextOverflow.Ellipsis, fontStyle = if (n.s("tipo") == "idea") FontStyle.Italic else FontStyle.Normal)
                             }
@@ -116,56 +122,7 @@ fun NotasObra(e: Escritos, obra: Doc, ver: Int) {
         }
         item("nueva") { BotonEscribir("Nueva nota", suave = true, modifier = Modifier.padding(top = 14.dp)) { nueva = true } }
     }
-    if (nueva) NotaDialogo(e, pid, null, tipoNuevo = tipo.ifBlank { "nota" }, onCerrar = { nueva = false })
-    editar?.let { n -> NotaDialogo(e, pid, e.get(n.id), onCerrar = { editar = null }) }
-}
-
-// ---------------------------------------------------------------- Línea temporal
-
-@Composable
-fun LineaObra(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit) {
-    val pid = obra.id
-    var editar by remember { mutableStateOf<Doc?>(null) }
-    var nuevo by remember { mutableStateOf(false) }
-    val hitos = remember(ver, pid) { e.hitos(pid) }
-    val escenas = remember(ver, pid) { e.escenasDe(pid) }
-    val conFecha = escenas.filter { it.s("cuando").isNotBlank() }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(40.dp))) {
-        item("intro") { Text("Los hitos de tu historia en orden (arrástralos con ▲▼) y, debajo, las escenas a las que has puesto «cuándo pasa» en su panel.", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(bottom = 10.dp)) }
-        items(hitos.size) { i ->
-            val h = hitos[i]
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                Column(Modifier.width(28.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.width(2.dp).height(14.dp).background(if (i == 0) Color.Transparent else Charcoal))
-                    Box(Modifier.size(12.dp).clip(CircleShape).background(ColGeneral))
-                    Box(Modifier.width(2.dp).weight(1f).background(if (i == hitos.lastIndex) Color.Transparent else Charcoal))
-                }
-                Column(Modifier.weight(1f).padding(start = 8.dp, bottom = 14.dp).press(haptic = false) { editar = h }) {
-                    if (h.s("cuando").isNotBlank()) Text(h.s("cuando").uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                    Text(h.s("titulo"), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 23.sp, color = Charcoal)
-                    if (h.s("nota").isNotBlank()) Text(h.s("nota"), color = Muted, fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    e.get(h.s("eid"))?.let { s -> Text("→ " + s.s("titulo").ifBlank { "escena" }, color = ColGeneral, fontSize = 13.sp, modifier = Modifier.press(haptic = false) { abrir(s.id) }.padding(vertical = 4.dp)) }
-                }
-                Column {
-                    Text("▲", color = if (i > 0) Charcoal else Line, fontSize = 15.sp, modifier = Modifier.press(haptic = false) { if (i > 0) e.mueve(h.id, hitos.getOrNull(i - 2)?.id, hitos[i - 1].id) }.padding(8.dp))
-                    Text("▼", color = if (i < hitos.lastIndex) Charcoal else Line, fontSize = 15.sp, modifier = Modifier.press(haptic = false) { if (i < hitos.lastIndex) e.mueve(h.id, hitos[i + 1].id, hitos.getOrNull(i + 2)?.id) }.padding(8.dp))
-                }
-            }
-        }
-        item("nuevo") { BotonEscribir("Nuevo hito", suave = true, modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)) { nuevo = true } }
-        if (conFecha.isNotEmpty()) {
-            item("escenasT") { Text("ESCENAS CON FECHA", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp)) }
-            items(conFecha.size) { i ->
-                val s = conFecha[i]
-                Column(Modifier.fillMaxWidth().press(haptic = false) { abrir(s.id) }.padding(vertical = 7.dp)) {
-                    Text(s.s("cuando").uppercase(), color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                    Text(s.s("titulo").ifBlank { "Sin título" }, fontFamily = Display, fontSize = 18.sp, color = Charcoal)
-                }
-            }
-        }
-    }
-    if (nuevo) HitoDialogo(e, pid, null, onCerrar = { nuevo = false })
-    editar?.let { h -> HitoDialogo(e, pid, e.get(h.id), onCerrar = { editar = null }) }
+    if (nueva) NotaDialogo(e, pid, null, tipoNuevo = tipo.ifBlank { "nota" }, onCerrar = { nueva = false }, vinNuevo = if (de.isEmpty()) emptyList() else listOf(de))
 }
 
 // ---------------------------------------------------------------- Cifras

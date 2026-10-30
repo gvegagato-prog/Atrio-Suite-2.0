@@ -45,7 +45,26 @@ val ESTADOS_ESCENA = listOf("Borrador", "Revisión", "Final")
 fun colorEstado(e: Int): Color = when (e) { 0 -> Color(0xFFB8B2A6); 1 -> Color(0xFFD9A441); else -> Color(0xFF5B8C5A) }
 
 val TIPOS_FICHA = listOf("personaje" to "Personajes", "lugar" to "Lugares", "objeto" to "Objetos", "mundo" to "Mundo", "otro" to "Otros")
-val TIPOS_NOTA = listOf("nota" to "Notas", "idea" to "Ideas", "investigacion" to "Investigación", "plantilla" to "Plantillas")
+val TIPOS_NOTA = listOf("nota" to "Notas", "idea" to "Ideas", "resumen" to "Resúmenes", "esquema" to "Esquemas", "investigacion" to "Investigación", "plantilla" to "Plantillas")
+/** El nombre de un tipo de nota en singular («Resumen», «Idea»…). */
+fun singularNota(t: String) = when (t) { "idea" -> "Idea"; "resumen" -> "Resumen"; "esquema" -> "Esquema"; "investigacion" -> "Investigación"; "plantilla" -> "Plantilla"; else -> "Nota" }
+
+/** Elegir varios (vincular a partes y capítulos): chips que se encienden y se apagan. */
+@Composable
+fun VinculosEscribir(e: Escritos, pid: String, elegidos: List<String>, onCambia: (List<String>) -> Unit) {
+    val destinos = remember(e.version, pid) {
+        e.partes(pid).map { it.id to "Parte · ${it.s("titulo").ifBlank { "Sin título" }}" } +
+            e.capitulos(pid).mapIndexed { i, c -> c.id to "Cap. ${i + 1} · ${c.s("titulo").ifBlank { "Sin título" }}" }
+    }
+    if (destinos.isEmpty()) return
+    EtiquetaEscribir("Vinculada a")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        destinos.forEach { (id, n) -> SoftChip(n, id in elegidos) { onCambia(if (id in elegidos) elegidos - id else elegidos + id) } }
+    }
+    Text("Sale también en la página de esa parte o ese capítulo.", color = Muted, fontSize = 12.sp)
+}
+fun Doc.vin(): List<String> = lista("vin")
+fun JSONObject.ponVin(l: List<String>) { put("vin", JSONArray().also { a -> l.forEach { a.put(it) } }) }
 
 /** Una hoja a pantalla completa: cabecera con título y cerrar, y el cuerpo con scroll. */
 @Composable
@@ -183,25 +202,36 @@ object EscribirHub {
     var abrir by mutableStateOf<Pair<String, Long>?>(null)
     /** Una obra recién creada con la guía: se abre en la pestaña Guía (y cuándo se pidió). */
     var guiaAlEntrar: Pair<String, Long>? = null
+    /** «Ver en el árbol» desde una parte o un capítulo: la ficha que enseñar al volver a la obra. */
+    var irArbol by mutableStateOf<String?>(null)
+    /** El manuscrito en lista (y no en cuadrados). */
+    var listaManuscrito by mutableStateOf(false)
     /** Avisar abajo con «Deshacer» (lo pone la app). */
     var deshacer: ((String, () -> Unit) -> Unit)? = null
 }
 
 @Composable
-fun CapituloDialogo(e: Escritos, pid: String, cap: Doc?, onCerrar: () -> Unit) {
+fun CapituloDialogo(e: Escritos, pid: String, cap: Doc?, onCerrar: () -> Unit, aidNuevo: String = "") {
     var titulo by remember { mutableStateOf(cap?.s("titulo").orEmpty()) }
-    var parte by remember { mutableStateOf(cap?.s("parte").orEmpty()) }
+    var aid by remember { mutableStateOf(cap?.s("aid") ?: aidNuevo) }
     var resumen by remember { mutableStateOf(cap?.s("resumen").orEmpty()) }
+    var color by remember { mutableStateOf(cap?.s("color").orEmpty()) }
     var borrar by remember { mutableStateOf(false) }
+    val partes = remember(e.version, pid) { listOf("" to "Ninguna (capítulo suelto)") + e.partes(pid).map { it.id to it.s("titulo").ifBlank { "Sin título" } } }
     HojaEscribir(if (cap == null) "Nuevo capítulo" else "Capítulo", onCerrar) {
         CampoEscribir(titulo, { titulo = it }, "Título")
-        CampoEscribir(parte, { parte = it }, "Parte (opcional: «Parte I», «Libro dos»…)")
+        if (partes.size > 1) SelectorEscribir("Parte", aid, partes, { aid = it }, Modifier.fillMaxWidth())
         CampoEscribir(resumen, { resumen = it }, "Resumen", lineas = 3)
+        EtiquetaEscribir("Color de su cuadrado")
+        ColoresEscribir(color) { color = it }
         BotonEscribir("Guardar") {
             if (cap == null) {
-                val c = e.nuevo(Escritos.T_CAP, pid) { put("titulo", titulo.trim().ifBlank { "Capítulo ${e.capitulos(pid).size + 1}" }); put("parte", parte.trim()); put("resumen", resumen.trim()) }
+                val c = e.nuevo(Escritos.T_CAP, pid) { put("titulo", titulo.trim().ifBlank { "Capítulo ${e.capitulos(pid).size + 1}" }); put("resumen", resumen.trim()); if (color.isNotBlank()) put("color", color); if (aid.isNotBlank()) put("aid", aid) }
                 e.nuevo(Escritos.T_ESCENA, pid) { put("cid", c.id); put("titulo", "Escena 1") }
-            } else e.edita(cap.id) { put("titulo", titulo.trim()); put("parte", parte.trim()); put("resumen", resumen.trim()) }
+            } else {
+                e.edita(cap.id) { put("titulo", titulo.trim()); put("resumen", resumen.trim()); if (color.isNotBlank()) put("color", color) else remove("color") }
+                if (cap.s("aid") != aid) e.mueveCapitulo(cap.id, aid, null, null)
+            }
             onCerrar()
         }
         if (cap != null) {
@@ -218,10 +248,44 @@ fun CapituloDialogo(e: Escritos, pid: String, cap: Doc?, onCerrar: () -> Unit) {
     }
 }
 
+private val NUMEROS_PARTE = listOf("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
+
+/** Una parte (acto, libro…): título, resumen y color. */
+@Composable
+fun ParteDialogo(e: Escritos, pid: String, parte: Doc?, onCerrar: () -> Unit, onBorrada: () -> Unit = {}) {
+    val porDefecto = "Parte " + (NUMEROS_PARTE.getOrNull(e.partes(pid).size) ?: "${e.partes(pid).size + 1}")
+    var titulo by remember { mutableStateOf(parte?.s("titulo").orEmpty()) }
+    var resumen by remember { mutableStateOf(parte?.s("resumen").orEmpty()) }
+    var color by remember { mutableStateOf(parte?.s("color")?.ifBlank { null } ?: COLORES_ESCRITO[0]) }
+    var borrar by remember { mutableStateOf(false) }
+    HojaEscribir(if (parte == null) "Nueva parte" else "Parte", onCerrar) {
+        CampoEscribir(titulo, { titulo = it }, "Título ($porDefecto, Primer acto, Libro dos…)")
+        CampoEscribir(resumen, { resumen = it }, "Qué pasa en esta parte", lineas = 4)
+        EtiquetaEscribir("Color")
+        ColoresEscribir(color) { color = it }
+        BotonEscribir(if (parte == null) "Crear" else "Guardar") {
+            val cambia: JSONObject.() -> Unit = { put("titulo", titulo.trim().ifBlank { porDefecto }); put("resumen", resumen.trim()); put("color", color) }
+            if (parte == null) e.nuevo(Escritos.T_PARTE, pid, cambia) else e.edita(parte.id, cambia)
+            onCerrar()
+        }
+        if (parte != null) {
+            val n = remember(e.version) { e.capitulos(pid).count { it.s("aid") == parte.id } }
+            if (!borrar) BotonEscribir("Borrar la parte", peligro = true, suave = true) { borrar = true }
+            else {
+                Text(if (n > 0) "Irá a la papelera con ${if (n == 1) "su capítulo" else "sus $n capítulos"} (y sus escenas). Podrás recuperarla durante 30 días." else "Irá a la papelera. Podrás recuperarla durante 30 días.", color = ColGeneral, fontSize = 13.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    BotonEscribir("Sí, a la papelera", peligro = true) { aLaPapelera(e, parte); onCerrar(); onBorrada() }
+                    BotonEscribir("No", suave = true) { borrar = false }
+                }
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------- Fichas
 
 @Composable
-fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "personaje", onCerrar: () -> Unit, abrirEscena: (Doc) -> Unit = {}, camposNuevos: List<String>? = null) {
+fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "personaje", onCerrar: () -> Unit, abrirEscena: (Doc) -> Unit = {}, camposNuevos: List<String>? = null, onCreada: (Doc) -> Unit = {}) {
     var nombre by remember { mutableStateOf(ficha?.s("nombre").orEmpty()) }
     var tipo by remember { mutableStateOf(ficha?.s("tipo")?.ifBlank { null } ?: tipoNuevo) }
     var alias by remember { mutableStateOf(ficha?.s("alias").orEmpty()) }
@@ -235,7 +299,8 @@ fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "per
             else if (l.isEmpty() && ficha == null) when (tipo) { "personaje" -> { l.add("Edad" to ""); l.add("Aspecto" to ""); l.add("Quiere" to ""); l.add("Teme" to "") }; "lugar" -> { l.add("Clima" to ""); l.add("Gente" to "") } }
         }
     }
-    val sale = remember(ficha?.id, e.version) { if (ficha == null) emptyList() else e.escenasDe(pid).filter { s -> e.fichasEn(pid, s.s("texto")).any { it.id == ficha.id } } }
+    var vin by remember { mutableStateOf(ficha?.vin().orEmpty()) }
+    var tam by remember { mutableIntStateOf(ficha?.i("tam") ?: 0) }
     HojaEscribir(if (ficha == null) "Nueva ficha" else nombre.ifBlank { "Ficha" }, onCerrar) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScrollSafe()) {
             TIPOS_FICHA.forEach { (k, n) -> SoftChip(singularFicha(k), tipo == k) { tipo = k } }
@@ -255,18 +320,20 @@ fun FichaDialogo(e: Escritos, pid: String, ficha: Doc?, tipoNuevo: String = "per
         CampoEscribir(texto, { texto = it }, "Notas largas (historia, personalidad, detalles…)", lineas = 8)
         EtiquetaEscribir("Color")
         ColoresEscribir(color) { color = it }
-        if (sale.isNotEmpty()) {
-            EtiquetaEscribir("Sale en ${sale.size} ${if (sale.size == 1) "escena" else "escenas"}")
-            sale.take(30).forEach { s -> Text(s.s("titulo").ifBlank { "Sin título" }, color = ColGeneral, fontSize = 15.sp, modifier = Modifier.press(haptic = false) { onCerrar(); abrirEscena(s) }.padding(vertical = 4.dp)) }
+        EtiquetaEscribir("Tamaño en el árbol")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScrollSafe()) {
+            listOf(0 to "Según el tipo", 1 to "Pequeña", 2 to "Mediana", 3 to "Grande").forEach { (k, n) -> SoftChip(n, tam == k) { tam = k } }
         }
+        VinculosEscribir(e, pid, vin) { vin = it }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BotonEscribir("Guardar") {
                 if (nombre.isBlank()) return@BotonEscribir
                 val cambia: JSONObject.() -> Unit = {
                     put("tipo", tipo); put("nombre", nombre.trim()); put("alias", alias.trim()); put("resumen", resumen.trim()); put("texto", texto); put("color", color)
                     put("campos", JSONArray().also { a -> campos.filter { it.first.isNotBlank() || it.second.isNotBlank() }.forEach { a.put(JSONObject().put("k", it.first).put("v", it.second)) } })
+                    ponVin(vin); if (tam > 0) put("tam", tam) else remove("tam")
                 }
-                if (ficha == null) e.nuevo(Escritos.T_FICHA, pid, cambia) else e.edita(ficha.id, cambia)
+                if (ficha == null) onCreada(e.nuevo(Escritos.T_FICHA, pid, cambia)) else e.edita(ficha.id, cambia)
                 onCerrar()
             }
             if (ficha != null) BotonEscribir("Borrar", peligro = true, suave = true) { aLaPapelera(e, ficha); onCerrar() }
@@ -281,12 +348,13 @@ fun Modifier.horizontalScrollSafe(): Modifier = this.horizontalScroll(rememberSc
 // ---------------------------------------------------------------- Notas y línea temporal
 
 @Composable
-fun NotaDialogo(e: Escritos, pid: String, nota: Doc?, tipoNuevo: String = "nota", onCerrar: () -> Unit) {
+fun NotaDialogo(e: Escritos, pid: String, nota: Doc?, tipoNuevo: String = "nota", onCerrar: () -> Unit, vinNuevo: List<String> = emptyList()) {
     var titulo by remember { mutableStateOf(nota?.s("titulo").orEmpty()) }
     var texto by remember { mutableStateOf(nota?.s("texto").orEmpty()) }
     var tipo by remember { mutableStateOf(nota?.s("tipo")?.ifBlank { null } ?: tipoNuevo) }
     var color by remember { mutableStateOf(nota?.s("color")?.ifBlank { null } ?: COLORES_ESCRITO[2]) }
     var fija by remember { mutableStateOf(nota?.b("fija") == true) }
+    var vin by remember { mutableStateOf(nota?.vin() ?: vinNuevo) }
     HojaEscribir(if (nota == null) "Nueva nota" else titulo.ifBlank { "Nota" }, onCerrar) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScrollSafe()) {
             TIPOS_NOTA.forEach { (k, n) -> SoftChip(n, tipo == k) { tipo = k } }
@@ -299,10 +367,11 @@ fun NotaDialogo(e: Escritos, pid: String, nota: Doc?, tipoNuevo: String = "nota"
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             SoftChip(if (fija) "Fijada arriba" else "Fijar arriba", fija) { fija = !fija }
         }
+        VinculosEscribir(e, pid, vin) { vin = it }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BotonEscribir("Guardar") {
                 if (titulo.isBlank() && texto.isBlank()) return@BotonEscribir
-                val cambia: JSONObject.() -> Unit = { put("tipo", tipo); put("titulo", titulo.trim()); put("texto", texto); put("color", color); put("fija", if (fija) 1 else 0) }
+                val cambia: JSONObject.() -> Unit = { put("tipo", tipo); put("titulo", titulo.trim()); put("texto", texto); put("color", color); put("fija", if (fija) 1 else 0); ponVin(vin) }
                 if (nota == null) e.nuevo(Escritos.T_NOTA, pid, cambia) else e.edita(nota.id, cambia)
                 onCerrar()
             }
@@ -311,26 +380,115 @@ fun NotaDialogo(e: Escritos, pid: String, nota: Doc?, tipoNuevo: String = "nota"
     }
 }
 
+/** Un suceso de la línea temporal: qué pasa, cuándo, en qué línea (la principal o una rama), la escena y una nota. */
 @Composable
-fun HitoDialogo(e: Escritos, pid: String, hito: Doc?, onCerrar: () -> Unit) {
+fun HitoDialogo(e: Escritos, pid: String, hito: Doc?, onCerrar: () -> Unit, ramaNueva: String = "", ordenNuevo: Double? = null) {
     var titulo by remember { mutableStateOf(hito?.s("titulo").orEmpty()) }
     var cuando by remember { mutableStateOf(hito?.s("cuando").orEmpty()) }
     var nota by remember { mutableStateOf(hito?.s("nota").orEmpty()) }
     var eid by remember { mutableStateOf(hito?.s("eid").orEmpty()) }
+    var rama by remember { mutableStateOf(hito?.s("rama") ?: ramaNueva) }
+    var color by remember { mutableStateOf(hito?.s("color").orEmpty()) }
     val escenas = remember(e.version) { listOf("" to "Ninguna") + e.escenasDe(pid).map { it.id to it.s("titulo").ifBlank { "Sin título" } } }
-    HojaEscribir(if (hito == null) "Nuevo hito" else "Hito", onCerrar) {
+    val ramas = remember(e.version) { listOf("" to "La línea principal") + e.ramas(pid).map { it.id to "Rama · " + it.s("titulo").ifBlank { "Sin título" } } }
+    HojaEscribir(if (hito == null) "Nuevo suceso" else "Editar el suceso", onCerrar) {
         CampoEscribir(titulo, { titulo = it }, "Qué pasa")
         CampoEscribir(cuando, { cuando = it }, "Cuándo (día 3, primavera del año 12, 1887…)")
-        SelectorEscribir("Escena", eid, escenas, { eid = it }, Modifier.fillMaxWidth())
-        CampoEscribir(nota, { nota = it }, "Nota", lineas = 3)
+        if (ramas.size > 1) SelectorEscribir("En qué línea", rama, ramas, { rama = it }, Modifier.fillMaxWidth())
+        CampoEscribir(nota, { nota = it }, "Qué más", lineas = 5)
+        SelectorEscribir("Se cuenta en la escena", eid, escenas, { eid = it }, Modifier.fillMaxWidth())
+        EtiquetaEscribir("Color")
+        ColoresEscribir(color) { color = it }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BotonEscribir("Guardar") {
                 if (titulo.isBlank()) return@BotonEscribir
-                val cambia: JSONObject.() -> Unit = { put("titulo", titulo.trim()); put("cuando", cuando.trim()); put("nota", nota); if (eid.isBlank()) remove("eid") else put("eid", eid) }
+                val cambia: JSONObject.() -> Unit = {
+                    put("titulo", titulo.trim()); put("cuando", cuando.trim()); put("nota", nota)
+                    if (eid.isBlank()) remove("eid") else put("eid", eid)
+                    if (rama.isBlank()) remove("rama") else put("rama", rama)
+                    if (color.isBlank()) remove("color") else put("color", color)
+                    if (hito == null && ordenNuevo != null) put("orden", ordenNuevo)
+                }
                 if (hito == null) e.nuevo(Escritos.T_HITO, pid, cambia) else e.edita(hito.id, cambia)
                 onCerrar()
             }
             if (hito != null) BotonEscribir("Borrar", peligro = true, suave = true) { aLaPapelera(e, hito); onCerrar() }
+        }
+    }
+}
+
+/** Una rama de la línea: nombre, de qué va, de qué suceso de la principal nace, si vuelve (después de cuál) y su color. */
+@Composable
+fun RamaDialogo(e: Escritos, pid: String, rama: Doc?, onCerrar: () -> Unit, desdeNuevo: Double? = null, onCreada: (Doc) -> Unit = {}) {
+    var titulo by remember { mutableStateOf(rama?.s("titulo").orEmpty()) }
+    var texto by remember { mutableStateOf(rama?.s("texto").orEmpty()) }
+    var color by remember { mutableStateOf(rama?.s("color")?.ifBlank { null } ?: COLORES_ESCRITO[(e.ramas(pid).size + 3) % COLORES_ESCRITO.size]) }
+    val principal = remember(e.version) { e.hitos(pid).filter { it.s("rama").isEmpty() || e.get(it.s("rama")) == null } }
+    fun clave(d: Double) = d.toString()
+    var desde by remember { mutableStateOf(rama?.d("desde")?.let { clave(it) } ?: desdeNuevo?.let { clave(it) } ?: "") }
+    var hasta by remember { mutableStateOf(rama?.o?.opt("hasta")?.toString()?.toDoubleOrNull()?.let { clave(it) } ?: "") }
+    val opciones = principal.map { clave(it.orden) to it.s("titulo").ifBlank { "Sin título" } }
+    var borrar by remember { mutableStateOf(false) }
+    HojaEscribir(if (rama == null) "Nueva rama" else "Editar la rama", onCerrar) {
+        CampoEscribir(titulo, { titulo = it }, "Nombre (la huida de Juan, el pasado de Ana…)")
+        CampoEscribir(texto, { texto = it }, "De qué va", lineas = 3)
+        SelectorEscribir("Nace después de", desde, listOf("" to "Desde el principio") + opciones, { desde = it }, Modifier.fillMaxWidth())
+        SelectorEscribir("Vuelve a la principal después de", hasta, listOf("" to "No vuelve (acaba en su último suceso)") + opciones, { hasta = it }, Modifier.fillMaxWidth())
+        EtiquetaEscribir("Color")
+        ColoresEscribir(color) { color = it }
+        BotonEscribir(if (rama == null) "Crear" else "Guardar") {
+            val d = desde.toDoubleOrNull() ?: ((principal.firstOrNull()?.orden ?: 1000.0) - 1)
+            val cambia: JSONObject.() -> Unit = {
+                put("titulo", titulo.trim().ifBlank { "Rama" }); put("texto", texto); put("color", color); put("desde", d)
+                val hh = hasta.toDoubleOrNull(); if (hh == null) remove("hasta") else put("hasta", hh)
+            }
+            if (rama == null) onCreada(e.nuevo(Escritos.T_RAMA, pid, cambia)) else e.edita(rama.id, cambia)
+            onCerrar()
+        }
+        if (rama != null) {
+            if (!borrar) BotonEscribir("Borrar la rama", peligro = true, suave = true) { borrar = true }
+            else Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Irá a la papelera con sus sucesos.", color = ColGeneral, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                BotonEscribir("Sí, a la papelera", peligro = true) { aLaPapelera(e, rama); onCerrar() }
+            }
+        }
+    }
+}
+
+/** Una unión del árbol entre dos fichas: la palabra de la línea, todo lo que se quiera contar, flecha y color. */
+@Composable
+fun RelacionDialogo(e: Escritos, pid: String, rel: Doc?, onCerrar: () -> Unit, aNueva: String = "", bNueva: String = "") {
+    val fichas = remember(e.version) { e.fichas(pid).map { it.id to it.s("nombre").ifBlank { "Sin nombre" } } }
+    var a by remember { mutableStateOf(rel?.s("a") ?: aNueva) }
+    var b by remember { mutableStateOf(rel?.s("b") ?: bNueva) }
+    var titulo by remember { mutableStateOf(rel?.s("titulo").orEmpty()) }
+    var texto by remember { mutableStateOf(rel?.s("texto").orEmpty()) }
+    var flecha by remember { mutableIntStateOf(rel?.i("flecha") ?: 0) }
+    var color by remember { mutableStateOf(rel?.s("color").orEmpty()) }
+    fun nombre(id: String) = fichas.find { it.first == id }?.second ?: "…"
+    HojaEscribir(if (rel == null) "Nueva unión" else "Editar la unión", onCerrar) {
+        SelectorEscribir("Una", a, fichas, { a = it }, Modifier.fillMaxWidth())
+        SelectorEscribir("Con", b, fichas, { b = it }, Modifier.fillMaxWidth())
+        CampoEscribir(titulo, { titulo = it }, "La palabra de la línea (enemigos, amantes, hogar…)")
+        CampoEscribir(texto, { texto = it }, "Qué son el uno para el otro (opcional)", lineas = 7)
+        EtiquetaEscribir("Flecha")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SoftChip("Sin flecha", flecha == 0) { flecha = 0 }
+            SoftChip("De ${nombre(a)} hacia ${nombre(b)}", flecha == 1) { flecha = 1 }
+            SoftChip("De ${nombre(b)} hacia ${nombre(a)}", flecha == 2) { flecha = 2 }
+        }
+        EtiquetaEscribir("Color de la línea")
+        ColoresEscribir(color) { color = it }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BotonEscribir(if (rel == null) "Unir" else "Guardar") {
+                if (a.isBlank() || b.isBlank() || a == b || titulo.isBlank()) return@BotonEscribir
+                // (la flecha se guarda siempre de «a» hacia «b»)
+                val (x, y) = if (flecha == 2) b to a else a to b
+                val cambia: JSONObject.() -> Unit = { put("a", x); put("b", y); put("flecha", if (flecha > 0) 1 else 0); put("titulo", titulo.trim()); put("texto", texto); if (color.isBlank()) remove("color") else put("color", color) }
+                if (rel == null) e.nuevo(Escritos.T_REL, pid, cambia) else e.edita(rel.id, cambia)
+                onCerrar()
+            }
+            if (rel != null) BotonEscribir("Borrar la unión", peligro = true, suave = true) { aLaPapelera(e, rel); onCerrar() }
         }
     }
 }

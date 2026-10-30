@@ -42,6 +42,7 @@ open class EscribirUiTest {
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
 
     @Before fun limpia() {
+        EscribirHub.listaManuscrito = false
         Escritos.reiniciaParaPruebas()
         File(ctx.filesDir, "escritos").deleteRecursively()
     }
@@ -75,6 +76,13 @@ open class EscribirUiTest {
         e.nuevo(Escritos.T_NOTA, o.id) { put("tipo", "investigacion"); put("titulo", "Torres de vigía medievales"); put("texto", "Escaleras de caracol hacia la derecha: el defensor tenía libre el brazo de la espada."); put("color", "#3E8E9E") }
         e.nuevo(Escritos.T_HITO, o.id) { put("titulo", "Aldara llega al valle"); put("cuando", "Día 1"); put("eid", e1.id); put("nota", "Sale al amanecer.") }
         e.nuevo(Escritos.T_HITO, o.id) { put("titulo", "La primera puerta"); put("cuando", "Día 1, medianoche") }
+        // Una rama de la línea y uniones del árbol
+        val h0 = e.hitos(o.id).first()
+        val r = e.nuevo(Escritos.T_RAMA, o.id) { put("titulo", "El pasado del Cuervo"); put("color", "#4A6FA5"); put("desde", h0.orden) }
+        e.nuevo(Escritos.T_HITO, o.id) { put("titulo", "El Cuervo fue un hombre"); put("cuando", "Hace cien años"); put("rama", r.id); put("orden", h0.orden + 500) }
+        val fs = e.fichas(o.id).associateBy { it.s("nombre") }
+        e.nuevo(Escritos.T_REL, o.id) { put("a", fs.getValue("Aldara").id); put("b", fs.getValue("El Cuervo").id); put("titulo", "pacto"); put("texto", "Él la guía a cambio de algo que ella aún no sabe."); put("flecha", 0) }
+        e.nuevo(Escritos.T_REL, o.id) { put("a", fs.getValue("El Cuervo").id); put("b", fs.getValue("El valle").id); put("titulo", "hogar"); put("flecha", 1) }
         // Palabras de los últimos días
         val hoy = Escritos.hoy()
         listOf(0 to 340, 1 to 720, 2 to 0, 3 to 510, 4 to 880, 5 to 430, 6 to 650, 8 to 300, 9 to 910, 11 to 520).forEach { (k, n) ->
@@ -94,9 +102,18 @@ open class EscribirUiTest {
         rule.waitForIdle()
         shoot("e02_biblioteca")
         rule.onAllNodesWithText("La torre del cuervo")[0].performClick(); shoot("e03_manuscrito")
+        rule.onAllNodesWithText("Parte I · El valle")[0].performClick(); shoot("e03c_parte")
+        rule.onAllNodesWithText("La subida")[0].performClick(); shoot("e03d_capitulo")
+        rule.onAllNodesWithText("LEERLO ENTERO")[0].performClick(); shoot("e03e_leer")
+        rule.onNodeWithContentDescription("Cerrar").performClick(); rule.waitForIdle()
+        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle(); androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
+        rule.onAllNodesWithText("Lista", ignoreCase = true)[0].performClick()
         rule.onAllNodesWithText("Ver resúmenes")[0].performClick(); shoot("e03b_esquema")
         rule.onAllNodesWithText("Ver el texto")[0].performClick()
         rule.onAllNodesWithText("Fichas")[0].performClick(); shoot("e04_fichas")
+        rule.onAllNodesWithText("Aldara")[0].performClick(); shoot("e04b_ficha_lectura")
+        rule.onNodeWithContentDescription("Cerrar").performClick(); rule.waitForIdle()
+        rule.onAllNodesWithText("Árbol")[0].performClick(); shoot("e04c_arbol")
         rule.onAllNodesWithText("Notas")[0].performClick(); shoot("e05_notas")
         rule.onAllNodesWithText("Línea")[0].performClick(); shoot("e06_linea")
         rule.onAllNodesWithText("Cifras")[0].performClick(); shoot("e07_cifras")
@@ -106,6 +123,42 @@ open class EscribirUiTest {
         rule.onAllNodesWithText("Fichas")[0].performClick(); shoot("e10_panel_fichas")
         rule.onAllNodesWithText("Notas")[0].performClick(); shoot("e11_panel_notas")
         assertTrue(e.obras().size == 1)
+    }
+
+    /** Partes de verdad, sus páginas, el modo lectura de una ficha con sus uniones y la vista previa en el editor. */
+    @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
+    @Test fun partesLecturaYVistaPrevia() {
+        coil.Coil.setImageLoader(coil.ImageLoader.Builder(ctx).dispatcher(Dispatchers.Unconfined).allowHardware(false).build())
+        val e = Escritos.get(ctx)
+        val o = siembra(e)
+        Skin.load(ctx); Skin.shell = 0; Mode.dark = false; Mode.themeMode = 1
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) { EscribirScreen() } } }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("La torre del cuervo")[0].performClick(); rule.waitForIdle()
+        // Las partes de texto pasan a ser partes de verdad, y el capítulo sin parte se queda suelto
+        assertTrue(e.partes(o.id).map { it.s("titulo") }.toSet() == setOf("Parte I · El valle", "Parte II · La torre"))
+        assertTrue(e.capitulos(o.id).map { it.s("titulo") } == listOf("La subida", "El cuervo", "Lo que dice el espejo"))
+        rule.onAllNodesWithText("Parte I · El valle")[0].performClick(); rule.waitForIdle()
+        assertTrue("la página de la parte", rule.onAllNodesWithText("NUEVO CAPÍTULO").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("La subida").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("La subida")[0].performClick(); rule.waitForIdle()
+        assertTrue("la página del capítulo", rule.onAllNodesWithText("Al pie de la torre").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("LEERLO ENTERO").fetchSemanticsNodes().isNotEmpty())
+        // Una nota creada en el capítulo queda vinculada a él
+        rule.onAllNodesWithText("NOTA")[0].performScrollTo().performClick(); rule.waitForIdle()
+        rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[0].performTextInput("Ojo con el viento"); rule.waitForIdle()
+        rule.onAllNodesWithText("GUARDAR")[0].performScrollTo().performClick(); rule.waitForIdle()
+        val c1 = e.capitulos(o.id)[0]
+        assertTrue("vinculada", e.notas(o.id).single { it.s("titulo") == "Ojo con el viento" }.lista("vin") == listOf(c1.id))
+        // Escena → editor; con el cursor en «Aldara», su vista previa; «Abrir» la enseña en modo lectura con sus uniones
+        rule.onAllNodesWithText("Al pie de la torre")[0].performClick(); rule.waitForIdle()
+        val s = e.escenas(c1.id)[0]
+        val i = s.s("texto").indexOf("Aldara") + 2
+        rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[1].performTextInputSelection(androidx.compose.ui.text.TextRange(i)); rule.waitForIdle()
+        assertTrue("la vista previa", rule.onAllNodesWithText("Personaje · Joven aprendiz que huye de su pasado.").fetchSemanticsNodes().isNotEmpty())
+        rule.onAllNodesWithText("ABRIR")[0].performClick(); rule.waitForIdle()
+        assertTrue("modo lectura con sus uniones", rule.onAllNodesWithText("EDITAR").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("PACTO").fetchSemanticsNodes().isNotEmpty())
+        // La palabra de la unión abre la unión
+        rule.onAllNodesWithText("PACTO")[0].performClick(); rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("Él la guía a cambio de algo que ella aún no sabe.").fetchSemanticsNodes().isNotEmpty())
     }
 
     /** Desde la portada de la revista (la interfaz que usas): «Escribir» en el menú de secciones lleva a tus obras. */
@@ -127,6 +180,8 @@ open class EscribirUiTest {
         rule.onAllNodesWithText("La torre del cuervo")[0].performClick()
         rule.waitForIdle()
         shoot("e21b_revista_obra")
+        rule.onAllNodesWithText("Lista", ignoreCase = true)[0].performClick()
+        rule.waitForIdle()
         rule.onAllNodesWithText("Al pie de la torre")[0].performClick()
         rule.waitForIdle()
         assertTrue("el editor se abre y el dock se esconde", EscribirHub.enEditor)
@@ -238,8 +293,10 @@ open class EscribirUiTest {
         // (en una máquina cargada el editor tarda unos fotogramas en componerse tras la transición: se espera, no se supone)
         runCatching { rule.waitUntil(8000) { EscribirHub.enEditor && rule.onAllNodesWithText("Y la colcha le contó un secreto.", substring = true).fetchSemanticsNodes().isNotEmpty() } }
         assertTrue("abre el editor de esa escena", EscribirHub.enEditor && rule.onAllNodesWithText("Y la colcha le contó un secreto.", substring = true).fetchSemanticsNodes().isNotEmpty())
-        androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle()
-        // En la obra: filtrar por etiqueta
+        // (del editor se vuelve a su capítulo y de ahí a su parte, como en el PC; luego a la obra)
+        repeat(5) { if (rule.onAllNodesWithText("Manuscrito", ignoreCase = true).fetchSemanticsNodes().isEmpty()) { androidx.test.espresso.Espresso.pressBack(); rule.waitForIdle() } }
+        // En la obra, en lista: filtrar por etiqueta
+        rule.onAllNodesWithText("Lista", ignoreCase = true)[0].performClick(); rule.waitForIdle()
         rule.onAllNodesWithText("#flashback")[0].performClick(); rule.waitForIdle()
         assertTrue("solo las escenas con esa etiqueta", rule.onAllNodesWithText("Al pie de la torre").fetchSemanticsNodes().isNotEmpty() && rule.onAllNodesWithText("La primera puerta").fetchSemanticsNodes().isEmpty())
         shoot("e27_filtro_etiqueta")

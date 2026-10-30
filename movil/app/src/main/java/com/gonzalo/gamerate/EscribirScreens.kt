@@ -67,30 +67,50 @@ fun haceE(t: Long): String {
  * temporal y las cifras. Sin conexión se escribe igual y se sube solo (ver [Escritos]).
  */
 @Composable
-fun EscribirScreen() {
+fun EscribirScreen(onBack: () -> Unit = {}) {
     val ctx = LocalContext.current
     val e = remember { Escritos.get(ctx) }
     var obraId by rememberSaveable { mutableStateOf<String?>(null) }
+    var parteId by rememberSaveable { mutableStateOf<String?>(null) }
+    var capId by rememberSaveable { mutableStateOf<String?>(null) }
     var escenaId by rememberSaveable { mutableStateOf<String?>(null) }
     val ver = e.version
+    fun cierraObra() { obraId = null; parteId = null; capId = null; escenaId = null }
     // Una obra borrada desde dentro: se vuelve a la biblioteca
-    LaunchedEffect(EscribirHub.obraBorrada) { if (EscribirHub.obraBorrada.isNotEmpty() && EscribirHub.obraBorrada == obraId) { obraId = null; escenaId = null } }
-    if (obraId != null && e.get(obraId!!) == null) { obraId = null; escenaId = null }
+    LaunchedEffect(EscribirHub.obraBorrada) { if (EscribirHub.obraBorrada.isNotEmpty() && EscribirHub.obraBorrada == obraId) cierraObra() }
+    if (obraId != null && e.get(obraId!!) == null) cierraObra()
+    /** Abrir una escena: al volver del editor se va a la página de su capítulo (como en el PC). */
+    fun abreEscena(id: String) {
+        val s = e.get(id) ?: return
+        val c = e.get(s.s("cid"))
+        obraId = s.pid; capId = c?.id; parteId = c?.s("aid")?.takeIf { e.get(it) != null }; escenaId = id
+    }
     // Desde la portada: «Seguir con esta escena»
     // (la pantalla puede componerse dos veces durante la transición: cada una la aplica; caduca a los pocos segundos)
     val pide = EscribirHub.abrir
-    LaunchedEffect(pide) { if (pide != null && System.currentTimeMillis() - pide.second < 4000) e.get(pide.first)?.let { obraId = it.pid; escenaId = it.id } }
-    BackHandler(enabled = obraId != null && escenaId == null) { obraId = null }
+    LaunchedEffect(pide) { if (pide != null && System.currentTimeMillis() - pide.second < 4000 && e.get(pide.first) != null) abreEscena(pide.first) }
+    // «Ver en el árbol» desde una parte o un capítulo: a la obra, pestaña Árbol
+    val verArbol: (String) -> Unit = { id -> parteId = null; capId = null; EscribirHub.irArbol = id }
+    BackHandler(enabled = escenaId == null && (obraId != null)) {
+        when {
+            capId != null -> capId = null
+            parteId != null -> parteId = null
+            else -> obraId = null
+        }
+    }
     VigilaSprint(e, ctx)
     when {
-        escenaId != null -> EscribirEditor(escenaId!!, onBack = { escenaId = null }, abrirEscena = { escenaId = it })
-        obraId != null -> ObraScreen(e, obraId!!, onBack = { obraId = null }, abrir = { escenaId = it })
-        else -> BibliotecaEscribir(e, ver, abrirObra = { obraId = it }, abrirEscena = { id -> e.get(id)?.let { obraId = it.pid; escenaId = id } })
+        escenaId != null -> EscribirEditor(escenaId!!, onBack = { escenaId = null }, abrirEscena = { abreEscena(it) })
+        capId != null -> CapituloScreen(e, capId!!, onBack = { capId = null }, abrir = { escenaId = it }, verArbol = verArbol)
+        parteId != null -> ParteScreen(e, parteId!!, onBack = { parteId = null }, abrirCapitulo = { capId = it }, abrir = { abreEscena(it) }, verArbol = verArbol)
+        obraId != null -> ObraScreen(e, obraId!!, onBack = { obraId = null }, abrir = { abreEscena(it) },
+            abrirParte = { parteId = it }, abrirCapitulo = { id -> capId = id; parteId = e.get(id)?.s("aid")?.takeIf { e.get(it) != null } })
+        else -> BibliotecaEscribir(e, ver, onBack, abrirObra = { obraId = it }, abrirEscena = { abreEscena(it) })
     }
 }
 
 @Composable
-private fun BibliotecaEscribir(e: Escritos, ver: Int, abrirObra: (String) -> Unit, abrirEscena: (String) -> Unit) {
+private fun BibliotecaEscribir(e: Escritos, ver: Int, onBack: () -> Unit, abrirObra: (String) -> Unit, abrirEscena: (String) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var nueva by remember { mutableStateOf(false) }
@@ -121,6 +141,8 @@ private fun BibliotecaEscribir(e: Escritos, ver: Int, abrirObra: (String) -> Uni
         }
     }
     Column(Modifier.fillMaxSize().wrapContentWidth().widthIn(max = 880.dp).statusBarsPadding().padding(horizontal = if (Skin.revista) 18.dp else 14.dp)) {
+        // Volver a Inicio
+        Box(Modifier.padding(top = 6.dp)) { if (Skin.revista) RevistaBack(onBack) else BackRound(onBack = onBack) }
         BigHeader("Escribir", if (palabrasHoy > 0) "Hoy · ${cifraE(palabrasHoy)} palabras" else "Tus obras") {
             IconPill(Icons.Rounded.FileUpload, "Importar un texto (Word, Markdown o texto)") { importar.launch(arrayOf("text/*", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/octet-stream")) }
             IconPill(Icons.Rounded.Add, "Nueva obra") { nueva = true }
@@ -243,11 +265,15 @@ private fun TarjetaObra(e: Escritos, o: Doc, ver: Int, onClick: () -> Unit) {
 // ---------------------------------------------------------------- Una obra
 
 @Composable
-private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (String) -> Unit) {
+private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (String) -> Unit, abrirParte: (String) -> Unit, abrirCapitulo: (String) -> Unit) {
     val ver = e.version
     val obra = e.get(id) ?: return
     val nueva = EscribirHub.guiaAlEntrar
-    var pestana by rememberSaveable(id) { mutableIntStateOf(if (nueva != null && nueva.first == id && System.currentTimeMillis() - nueva.second < 4000) 5 else 0) }
+    var pestana by rememberSaveable(id) { mutableIntStateOf(if (nueva != null && nueva.first == id && System.currentTimeMillis() - nueva.second < 4000) TAB_GUIA else 0) }
+    var focoArbol by remember { mutableStateOf<String?>(null) }
+    val irArbol = EscribirHub.irArbol
+    LaunchedEffect(irArbol) { if (irArbol != null) { focoArbol = irArbol; pestana = TAB_ARBOL; EscribirHub.irArbol = null } }
+    val a = remember { AbreEscribir() }
     var accionGuia by remember { mutableStateOf<Int?>(null) }
     var ajustes by remember { mutableStateOf(false) }
     var exportar by remember { mutableStateOf(false) }
@@ -259,7 +285,7 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
             IconPill(Icons.Rounded.Settings, "Ajustes de la obra") { ajustes = true }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(if (Skin.revista) 18.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf("Manuscrito", "Fichas", "Notas", "Línea", "Cifras", "Guía").forEachIndexed { i, n ->
+            PESTANAS_OBRA.forEachIndexed { i, n ->
                 val on = i == pestana
                 if (Skin.revista) Text(n.uppercase(), color = if (on) ColGeneral else Charcoal, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                     modifier = Modifier.press(haptic = false) { pestana = i }
@@ -269,11 +295,12 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (pestana) {
-                0 -> Manuscrito(e, obra, ver, abrir, hacerGuia = { accionGuia = it }, verGuia = { pestana = 5 })
-                1 -> FichasObra(e, obra, ver, abrir)
-                2 -> NotasObra(e, obra, ver)
-                3 -> LineaObra(e, obra, ver, abrir)
-                5 -> GuiaObra(e, obra, ver, hacer = { accionGuia = it })
+                0 -> ManuscritoObra(e, obra, ver, abrirParte, abrirCapitulo, abrir, hacerGuia = { accionGuia = it }, verGuia = { pestana = TAB_GUIA })
+                1 -> FichasObra(e, obra, ver, a)
+                TAB_ARBOL -> ArbolObra(e, obra, ver, a, focoArbol)
+                3 -> NotasObra(e, obra, ver, a)
+                4 -> LineaObra(e, obra, ver, a, abrir)
+                TAB_GUIA -> GuiaObra(e, obra, ver, hacer = { accionGuia = it })
                 else -> CifrasObra(e, obra, ver)
             }
         }
@@ -282,10 +309,17 @@ private fun ObraScreen(e: Escritos, id: String, onBack: () -> Unit, abrir: (Stri
     if (ajustes) ObraDialogo(e, obra, onCerrar = { ajustes = false })
     if (exportar) ExportarDialogo(e, obra, onCerrar = { exportar = false })
     if (buscar) BuscarObraDialogo(e, obra, onCerrar = { buscar = false }, abrir = { buscar = false; abrir(it) })
+    VentanasEscribir(e, obra.id, a, abrir, verArbol = { focoArbol = it; pestana = TAB_ARBOL })
 }
 
+/** Las pestañas de una obra (las mismas que en el PC). */
+val PESTANAS_OBRA = listOf("Manuscrito", "Fichas", "Árbol", "Notas", "Línea", "Cifras", "Guía")
+const val TAB_ARBOL = 2
+const val TAB_GUIA = 6
+
+/** El manuscrito en lista (capítulos y escenas, como antes de los cuadrados). */
 @Composable
-private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit, hacerGuia: (Int) -> Unit = {}, verGuia: () -> Unit = {}) {
+fun ManuscritoLista(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit, abrirCapitulo: (String) -> Unit, hacerGuia: (Int) -> Unit = {}, verGuia: () -> Unit = {}, cabecera: @Composable () -> Unit = {}) {
     val pid = obra.id
     var esquema by rememberSaveable { mutableStateOf(false) }
     var etiqueta by rememberSaveable(pid) { mutableStateOf("") }
@@ -300,13 +334,10 @@ private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit
     fun pasa(s: Doc) = etiqueta.isEmpty() || s.lista("etq").any { it.trim() == etiqueta }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = dockSpace(40.dp))) {
         item("guia") { TarjetaGuia(e, obra, ver, hacerGuia, verGuia) }
+        item("cab") { cabecera() }
         item("resumen") {
             Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(cifraE(palabras) + (if (meta > 0) " de ${cifraE(meta)} palabras" else " palabras") + " · ${caps.size} ${if (caps.size == 1) "capítulo" else "capítulos"}", color = Muted, fontSize = 13.sp)
-                if (meta > 0) Bar((palabras.toFloat() / meta).coerceIn(0f, 1f), colorEscrito(obra.s("color")), height = 4.dp)
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ESTADOS_ESCENA.forEachIndexed { i, n -> Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(9.dp).clip(CircleShape).background(colorEstado(i))); Spacer(Modifier.width(5.dp)); Text("${estados[i] ?: 0} ${n.lowercase()}", color = Muted, fontSize = 12.sp) } }
-                    Spacer(Modifier.weight(1f))
                     SoftChip(if (esquema) "Ver el texto" else "Ver resúmenes", esquema) { esquema = !esquema }
                 }
                 // Filtrar por etiqueta (#flashback, #Aldara…): solo las escenas que la llevan
@@ -320,9 +351,9 @@ private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit
         caps.forEachIndexed { ci, c ->
             val esc = e.escenas(c.id).filter { pasa(it) }
             if (etiqueta.isNotEmpty() && esc.isEmpty()) return@forEachIndexed
-            val p = c.s("parte")
+            val p = c.s("aid").let { e.get(it)?.s("titulo")?.ifBlank { "Sin título" } } ?: c.s("parte")
             if (p.isNotBlank() && p != parte) { parte = p; item("p$ci${c.id}") { Text(p.uppercase(), color = ColGeneral, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp, modifier = Modifier.padding(top = 22.dp, bottom = 2.dp)) } }
-            item("c${c.id}") { CabeceraCapitulo(e, c, ci, caps, onEditar = { capDlg = c }) }
+            item("c${c.id}") { CabeceraCapitulo(e, c, ci, caps, onAbrir = { abrirCapitulo(c.id) }, onEditar = { capDlg = c }) }
             items(esc, key = { it.id }) { s -> FilaEscena(e, s, caps, esquema, onAbrir = { abrir(s.id) }) }
             if (etiqueta.isEmpty()) item("n${c.id}") { Text("+ ESCENA", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                 modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 4.dp).press(haptic = false) { val n = e.nuevo(Escritos.T_ESCENA, pid) { put("cid", c.id); put("titulo", "Escena ${esc.size + 1}") }; abrir(n.id) }.padding(8.dp)) }
@@ -334,11 +365,11 @@ private fun Manuscrito(e: Escritos, obra: Doc, ver: Int, abrir: (String) -> Unit
 }
 
 @Composable
-private fun CabeceraCapitulo(e: Escritos, c: Doc, i: Int, caps: List<Doc>, onEditar: () -> Unit) {
+private fun CabeceraCapitulo(e: Escritos, c: Doc, i: Int, caps: List<Doc>, onAbrir: () -> Unit, onEditar: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val pal = e.palabrasCapitulo(c.id)
     Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f).press(haptic = false, onClick = onEditar)) {
+        Column(Modifier.weight(1f).press(haptic = false, onClick = onAbrir)) {
             Text("CAPÍTULO ${i + 1}", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
             Text(c.s("titulo").ifBlank { "Sin título" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 23.sp, lineHeight = 26.sp, color = Charcoal)
             if (c.s("resumen").isNotBlank()) Text(c.s("resumen"), color = Muted, fontSize = 13.sp, fontStyle = FontStyle.Italic, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -348,8 +379,12 @@ private fun CabeceraCapitulo(e: Escritos, c: Doc, i: Int, caps: List<Doc>, onEdi
             IconPill(Icons.Rounded.MoreVert, "Más") { menu = true }
             DropdownMenu(menu, { menu = false }, containerColor = Paper) {
                 DropdownMenuItem({ Text("Editar") }, { menu = false; onEditar() })
-                if (i > 0) DropdownMenuItem({ Text("Subir") }, { menu = false; e.mueve(c.id, caps.getOrNull(i - 2)?.id, caps[i - 1].id) })
-                if (i < caps.size - 1) DropdownMenuItem({ Text("Bajar") }, { menu = false; e.mueve(c.id, caps[i + 1].id, caps.getOrNull(i + 2)?.id) })
+                DropdownMenuItem({ Text("Abrir su página") }, { menu = false; onAbrir() })
+                // (sube y baja entre los de su misma parte)
+                val hermanos = caps.filter { it.s("aid") == c.s("aid") }
+                val j = hermanos.indexOfFirst { it.id == c.id }
+                if (j > 0) DropdownMenuItem({ Text("Subir") }, { menu = false; e.mueveCapitulo(c.id, c.s("aid"), hermanos.getOrNull(j - 2)?.id, hermanos[j - 1].id) })
+                if (j in 0 until hermanos.size - 1) DropdownMenuItem({ Text("Bajar") }, { menu = false; e.mueveCapitulo(c.id, c.s("aid"), hermanos[j + 1].id, hermanos.getOrNull(j + 2)?.id) })
             }
         }
     }

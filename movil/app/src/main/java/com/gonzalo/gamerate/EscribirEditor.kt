@@ -177,6 +177,17 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
         val ns = fichasObra.flatMap { f -> listOf(f.s("nombre")) + f.s("alias").split(',') }.map { it.trim() }.filter { it.length >= 2 }.distinctBy { it.lowercase() }.sortedByDescending { it.length }
         if (ns.isEmpty()) null else Regex("(?<![\\p{L}\\p{N}])(" + ns.joinToString("|") { Regex.escape(it) } + ")(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE)
     }
+    // La ficha cuyo nombre (o alias) toca el cursor: se busca solo alrededor del cursor, para no recorrer la escena entera
+    val fichaAqui = remember(tf.selection, tf.text, nombres, fichasObra) {
+        val rxN = nombres ?: return@remember null
+        val i = tf.selection.start.coerceIn(0, tf.text.length)
+        val desde = (i - 80).coerceAtLeast(0)
+        val trozo = tf.text.substring(desde, (i + 80).coerceAtMost(tf.text.length))
+        val m = rxN.findAll(trozo).firstOrNull { i - desde >= it.range.first && i - desde <= it.range.last + 1 } ?: return@remember null
+        fichasObra.firstOrNull { f -> (listOf(f.s("nombre")) + f.s("alias").split(',')).any { it.trim().equals(m.value, true) } }
+    }
+    var previaCerrada by remember { mutableStateOf<String?>(null) }
+    val lectura = remember { AbreEscribir() }
     val familia = when (fuente) { 0 -> Display; 1 -> Body; else -> FontFamily.Monospace }
     val aspecto = AspectoTexto(Charcoal, Muted.copy(alpha = 0.6f), ColGeneral, Display, tam)
     val formato = remember(aspecto.tinta, aspecto.tenue, aspecto.acento, tam, nombres, rx) { FormatoMarkdown(aspecto, nombres, rx) }
@@ -304,6 +315,17 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
                     if (foco) Text("SALIR", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp,
                         modifier = Modifier.align(Alignment.TopEnd).padding(14.dp).press(haptic = false) { foco = false }.padding(6.dp))
                 }
+                // La ficha del nombre donde está el cursor (o el que has seleccionado): su vista previa, y «Abrir» la ficha
+                if (!foco && fichaAqui != null && fichaAqui.id != previaCerrada) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(shp(12.dp)).background(Crudo).border(1.dp, colorEscrito(fichaAqui.s("color")).copy(alpha = 0.6f), shp(12.dp)).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(colorEscrito(fichaAqui.s("color"))))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(fichaAqui.s("nombre"), fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Charcoal, maxLines = 1)
+                        Text(singularFicha(fichaAqui.s("tipo")) + fichaAqui.s("resumen").let { if (it.isBlank()) "" else " · $it" }, color = Muted, fontSize = 12.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                    Text("ABRIR", color = ColGeneral, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.3.sp, modifier = Modifier.press(haptic = false) { lectura.ver = fichaAqui.id }.padding(8.dp))
+                    Text("✕", color = Muted, fontSize = 14.sp, modifier = Modifier.press(haptic = false) { previaCerrada = fichaAqui.id }.padding(8.dp))
+                }
                 if (!foco) {
                     // Contadores
                     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -335,6 +357,7 @@ fun EscribirEditor(eid: String, onBack: () -> Unit, abrirEscena: (String) -> Uni
             }
         }
         if (sprint) SprintDialogo(e, pid) { sprint = false }
+        VentanasEscribir(e, pid, lectura, abrirEscena = { e.escribe(eid, tf.text); abrirEscena(it) })
         sinonimos?.let { (r, grupos) ->
             val palabra = tf.text.substring(r.first, (r.last + 1).coerceAtMost(tf.text.length))
             ModalBottomSheet({ sinonimos = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Crudo, shape = shp(28.dp)) {

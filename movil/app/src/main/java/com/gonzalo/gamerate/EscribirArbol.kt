@@ -1,0 +1,313 @@
+package com.gonzalo.gamerate
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+/*
+ * Escribir: el árbol de relaciones. Las fichas en óvalos sobre un lienzo libre, unidas por líneas con la palabra que tú
+ * quieras en medio (enemigos, amantes, hogar, pertenencia…). Pulsar una ficha la abre; pulsar la palabra de una unión
+ * enseña lo que escribiste de ella. Las fichas se colocan arrastrando (la posición viaja con la cuenta: ax, ay) y «Ordenar»
+ * las reparte solas. Igual que el PC (escribir-arbol.js).
+ */
+
+object ArbolEscribir {
+    /** Tamaño de cada ficha (semiejes y letra, en dp): el que elijas o, si no, según el tipo. */
+    val TAM = mapOf(1 to Triple(52f, 26f, 13f), 2 to Triple(70f, 34f, 15f), 3 to Triple(96f, 50f, 19f))
+    fun tam(f: Doc): Int = f.i("tam").takeIf { it in 1..3 } ?: when (f.s("tipo")) { "lugar", "mundo" -> 3; "personaje" -> 2; else -> 1 }
+
+    /** Dónde va cada ficha: la suya o, si aún no tiene, en círculo (sin guardar hasta que la muevas u ordenes). */
+    fun posiciones(fs: List<Doc>): Map<String, Offset> {
+        fun tiene(f: Doc) = f.o.has("ax") && f.o.opt("ax")?.toString()?.toDoubleOrNull() != null
+        val sin = fs.filter { !tiene(it) }
+        val p = LinkedHashMap<String, Offset>()
+        fs.filter { tiene(it) }.forEach { p[it.id] = Offset(it.d("ax").toFloat(), it.d("ay").toFloat()) }
+        val r = 140f + sin.size * 28f
+        sin.forEachIndexed { i, f -> val t = (i.toDouble() / max(1, sin.size)) * PI * 2 - PI / 2; p[f.id] = Offset((r * cos(t)).roundToInt().toFloat(), (r * sin(t) * 0.7).roundToInt().toFloat()) }
+        return p
+    }
+
+    /** «Ordenar»: muelles entre lo unido y repulsión entre todo, centrado en el origen (como el PC). */
+    fun ordena(ids: List<String>, rels: List<Pair<String, String>>, ini: Map<String, Offset>): Map<String, Offset> {
+        val px = DoubleArray(ids.size) { (ini[ids[it]]?.x ?: 0f).toDouble() }
+        val py = DoubleArray(ids.size) { (ini[ids[it]]?.y ?: 0f).toDouble() }
+        val idx = ids.withIndex().associate { it.value to it.index }
+        val k = 270.0
+        for (it in 0 until 400) {
+            val t = 30 * (1 - it / 400.0) + 1
+            val dx = DoubleArray(ids.size); val dy = DoubleArray(ids.size)
+            for (i in ids.indices) for (j in i + 1 until ids.size) {
+                var x = px[i] - px[j]; var y = py[i] - py[j]; var d = hypot(x, y)
+                if (d < 0.01) { x = (i - j) * 0.1 + 0.05; y = 0.07; d = 0.1 }
+                val f = k * k / d
+                dx[i] += x / d * f; dy[i] += y / d * f; dx[j] -= x / d * f; dy[j] -= y / d * f
+            }
+            for ((a, b) in rels) {
+                val i = idx[a] ?: continue; val j = idx[b] ?: continue
+                val x = px[i] - px[j]; val y = py[i] - py[j]; val d = max(0.01, hypot(x, y))
+                val f = d * d / k
+                dx[i] -= x / d * f; dy[i] -= y / d * f; dx[j] += x / d * f; dy[j] += y / d * f
+            }
+            for (i in ids.indices) {
+                dx[i] -= px[i] * 0.02 * k / 10; dy[i] -= py[i] * 0.03 * k / 10
+                val m = max(0.01, hypot(dx[i], dy[i]))
+                px[i] += dx[i] / m * min(m, t * 3); py[i] += dy[i] / m * min(m, t * 3)
+            }
+        }
+        val cx = px.average(); val cy = py.average()
+        return ids.withIndex().associate { (i, id) -> id to Offset((px[i] - cx).roundToInt().toFloat(), (py[i] - cy).roundToInt().toFloat()) }
+    }
+}
+
+/** El desplazamiento y el zoom del lienzo de cada obra, mientras la app está abierta. */
+private class VistaArbol(var x: Float = 0f, var y: Float = 0f, var k: Float = 1f, var puesta: Boolean = false)
+private val vistas = HashMap<String, VistaArbol>()
+
+@Composable
+fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) {
+    val pid = obra.id
+    val fs = remember(ver, pid) { e.fichas(pid) }
+    val rels = remember(ver, pid) { e.relaciones(pid).filter { e.get(it.s("a")) != null && e.get(it.s("b")) != null } }
+    val pos = remember(ver, pid) { mutableStateMapOf<String, Offset>().also { it.putAll(ArbolEscribir.posiciones(fs)) } }
+    val v = remember(pid) { vistas.getOrPut(pid) { VistaArbol() } }
+    var tick by remember { mutableIntStateOf(0) } // repinta al mover el lienzo
+    var lienzo by remember { mutableStateOf(IntSize.Zero) }
+    var uniendo by remember { mutableStateOf(false) }
+    var primera by remember { mutableStateOf<String?>(null) }
+    var union by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var nueva by remember { mutableStateOf(false) }
+    var ordenar by remember { mutableStateOf(false) }
+    val dens = LocalDensity.current.density
+    val medidor = rememberTextMeasurer()
+    val tinta = Charcoal; val papel = Paper; val acento = ColGeneral
+    val porId = fs.associateBy { it.id }
+    val elegida = primera ?: foco
+
+    // Del mundo (dp, centrado en 0) a la pantalla (px) y al revés
+    fun aPantalla(p: Offset) = Offset(v.x + p.x * dens * v.k, v.y + p.y * dens * v.k)
+    fun aMundo(p: Offset) = Offset((p.x - v.x) / (dens * v.k), (p.y - v.y) / (dens * v.k))
+    fun centra(soloId: String? = null) {
+        if (lienzo.width == 0) return
+        val ps = if (soloId != null && pos[soloId] != null) listOf(pos[soloId]!!) else pos.values.toList()
+        if (ps.isEmpty()) { v.x = lienzo.width / 2f; v.y = lienzo.height / 2f; tick++; return }
+        val minX = ps.minOf { it.x } - 110; val maxX = ps.maxOf { it.x } + 110
+        val minY = ps.minOf { it.y } - 70; val maxY = ps.maxOf { it.y } + 70
+        v.k = if (soloId != null) 1.2f else min(1.4f, max(0.3f, min(lienzo.width / dens / (maxX - minX), lienzo.height / dens / (maxY - minY))))
+        v.x = lienzo.width / 2f - (minX + maxX) / 2 * dens * v.k; v.y = lienzo.height / 2f - (minY + maxY) / 2 * dens * v.k
+        tick++
+    }
+    fun zoom(f: Float, c: Offset = Offset(lienzo.width / 2f, lienzo.height / 2f)) {
+        val k = (v.k * f).coerceIn(0.25f, 3f)
+        v.x = c.x - (c.x - v.x) * k / v.k; v.y = c.y - (c.y - v.y) * k / v.k; v.k = k; tick++
+    }
+    // Al entrar (o tras «Ordenar»), que se vea todo; si se viene de «Ver en el árbol», esa ficha
+    var focoUsado by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(lienzo, foco, ver) {
+        if (lienzo.width == 0) return@LaunchedEffect
+        if (foco != null && foco != focoUsado) { focoUsado = foco; v.puesta = true; centra(foco) }
+        else if (!v.puesta) { v.puesta = true; centra() }
+    }
+
+    // Las palabras de las uniones: dónde están (para pulsarlas) y cómo es su curva
+    class Linea(val r: Doc, val a: Offset, val b: Offset, val ctrl: Offset, val etq: Offset)
+    fun lineas(): List<Linea> {
+        val pares = rels.groupBy { listOf(it.s("a"), it.s("b")).sorted().joinToString("|") }
+        return rels.mapNotNull { r ->
+            val A = pos[r.s("a")] ?: return@mapNotNull null; val B = pos[r.s("b")] ?: return@mapNotNull null
+            val g = pares.getValue(listOf(r.s("a"), r.s("b")).sorted().joinToString("|")); val n = g.size; val i = g.indexOf(r)
+            val curva = if (n > 1) (i - (n - 1) / 2f) * 46f * (if (r.s("a") < r.s("b")) 1 else -1) else 0f
+            val dx = B.x - A.x; val dy = B.y - A.y; val len = max(1f, hypot(dx, dy))
+            val m = Offset((A.x + B.x) / 2 - dy / len * curva, (A.y + B.y) / 2 + dx / len * curva)
+            // (las líneas acaban en el borde de cada óvalo, no en el centro)
+            fun borde(f: Doc, d: Offset): Offset { val (rx, ry) = ArbolEscribir.TAM.getValue(ArbolEscribir.tam(f)).let { it.first to it.second }; val l = hypot(d.x / rx, d.y / ry).takeIf { it > 0 } ?: 1f; return Offset(d.x / l, d.y / l) }
+            val fa = porId[r.s("a")] ?: return@mapNotNull null; val fb = porId[r.s("b")] ?: return@mapNotNull null
+            Linea(r, A + borde(fa, m - A), B + borde(fb, m - B), m, Offset((A.x + B.x) / 4 + m.x / 2, (A.y + B.y) / 4 + m.y / 2))
+        }
+    }
+    val estiloEtq = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+    fun rectEtq(l: Linea): Rect {
+        val txt = l.r.s("titulo").ifBlank { "unión" }.uppercase()
+        val w = medidor.measure(txt, estiloEtq).size.width / dens + 14
+        val c = l.etq
+        return Rect(c.x - w / 2, c.y - 10, c.x + w / 2, c.y + 10)
+    }
+    fun nodoEn(p: Offset): Doc? {
+        val m = aMundo(p)
+        return fs.lastOrNull { f -> val c = pos[f.id] ?: return@lastOrNull false; val (rx, ry, _) = ArbolEscribir.TAM.getValue(ArbolEscribir.tam(f)); val dx = (m.x - c.x) / rx; val dy = (m.y - c.y) / ry; dx * dx + dy * dy <= 1f }
+    }
+    fun etqEn(p: Offset): Doc? { val m = aMundo(p); return lineas().lastOrNull { rectEtq(it).inflate(4f).contains(m) }?.r }
+    fun pulsa(p: Offset) {
+        etqEn(p)?.let { a.ver = it.id; return }
+        val f = nodoEn(p) ?: return
+        if (uniendo) {
+            val x = primera
+            when {
+                x == null -> primera = f.id
+                x == f.id -> primera = null
+                else -> { union = x to f.id; primera = null; uniendo = false }
+            }
+        } else a.ver = f.id
+    }
+    val slop = LocalViewConfiguration.current.touchSlop
+
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            BotonEscribir("Nueva ficha") { nueva = true }
+            SoftChip(if (uniendo) "Dejar de unir" else "Unir dos fichas", uniendo) { uniendo = !uniendo; primera = null }
+            SoftChip("Ordenar", false) { ordenar = true }
+            SoftChip("+", false) { zoom(1.25f) }
+            SoftChip("−", false) { zoom(0.8f) }
+            SoftChip("Verlo todo", false) { centra() }
+        }
+        Text(
+            when {
+                uniendo && primera == null -> "Pulsa la primera ficha."
+                uniendo -> "Ahora pulsa la ficha con la que unir a ${porId[primera]?.s("nombre").orEmpty()}."
+                else -> "Arrastra para mover; pellizca para acercar; pulsa una ficha para verla y la palabra de una línea para leer la unión."
+            }, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp)
+        )
+        if (fs.isEmpty()) {
+            Column(Modifier.padding(vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("El árbol de tu historia", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = Charcoal)
+                Text("Crea fichas (personajes, lugares, objetos…) y únelas: «enemigos», «amantes», «hogar», «pertenencia»… Con todo lo que quieras contar de cada unión.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
+            }
+        } else Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = dockSpace(8.dp)).clipToBounds().border(1.dp, Line, shp(14.dp)).onSizeChanged { lienzo = it }
+            .semantics { contentDescription = "Árbol de relaciones" }
+            .pointerInput(fs, rels, uniendo, primera) {
+                // Un dedo: arrastrar una ficha (la mueve y se guarda) o el lienzo; dos: acercar; pulsar sin moverse: abrir
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val nodo = nodoEn(down.position)?.takeIf { etqEn(down.position) == null }
+                    var movido = false; var dos = false; var recorrido = 0f
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val activos = ev.changes.filter { it.pressed }
+                        if (activos.isEmpty()) break
+                        if (activos.size >= 2) {
+                            dos = true; movido = true
+                            val z = ev.calculateZoom(); val c = ev.calculateCentroid(); val pan = ev.calculatePan()
+                            v.x += pan.x; v.y += pan.y
+                            if (z != 1f && c != Offset.Unspecified) zoom(z, c) else tick++
+                        } else if (!dos) {
+                            val d = activos[0].positionChange()
+                            recorrido += d.getDistance()
+                            if (!movido && recorrido > slop) movido = true
+                            if (movido) {
+                                if (nodo != null) pos[nodo.id] = (pos[nodo.id] ?: Offset.Zero) + d / (dens * v.k)
+                                else { v.x += d.x; v.y += d.y; tick++ }
+                            }
+                        }
+                        ev.changes.forEach { if (it.positionChange() != Offset.Zero) it.consume() }
+                    }
+                    if (!movido) pulsa(down.position)
+                    else if (nodo != null && !dos) pos[nodo.id]?.let { p -> e.edita(nodo.id) { put("ax", p.x.roundToInt()); put("ay", p.y.roundToInt()) } }
+                }
+            }
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                tick // (lee el contador: repinta al mover el lienzo)
+                val k = dens * v.k
+                fun P(p: Offset) = Offset(v.x + p.x * k, v.y + p.y * k)
+                val ls = lineas()
+                ls.forEach { l ->
+                    val c = colorEscrito(l.r.s("color"), tinta)
+                    val path = Path().apply { moveTo(P(l.a).x, P(l.a).y); quadraticTo(P(l.ctrl).x, P(l.ctrl).y, P(l.b).x, P(l.b).y) }
+                    drawPath(path, c, style = Stroke(1.6.dp.toPx() * v.k.coerceAtLeast(0.6f)))
+                    if (l.r.i("flecha") == 1) {
+                        // la punta, en la dirección de la curva al llegar a «b»
+                        val ang = atan2(l.b.y - l.ctrl.y, l.b.x - l.ctrl.x)
+                        val t = P(l.b); val s = 9.dp.toPx() * v.k.coerceAtLeast(0.6f)
+                        val pa = Path().apply {
+                            moveTo(t.x, t.y)
+                            lineTo(t.x - s * cos(ang - 0.4f), t.y - s * sin(ang - 0.4f))
+                            lineTo(t.x - s * cos(ang + 0.4f), t.y - s * sin(ang + 0.4f)); close()
+                        }
+                        drawPath(pa, c)
+                    }
+                }
+                fs.forEach { f ->
+                    val c = pos[f.id] ?: return@forEach
+                    val (rx, ry, fz) = ArbolEscribir.TAM.getValue(ArbolEscribir.tam(f))
+                    val centro = P(c)
+                    val tl = Offset(centro.x - rx * k, centro.y - ry * k); val sz = Size(rx * 2 * k, ry * 2 * k)
+                    drawOval(papel, tl, sz)
+                    val on = f.id == elegida
+                    drawOval(if (on) acento else colorEscrito(f.s("color")), tl, sz, style = Stroke((if (on) 3.5f else 2.2f) * dens * v.k.coerceAtLeast(0.6f)))
+                    val nombre = f.s("nombre").ifBlank { "Sin nombre" }.let { if (it.length > 18) it.take(17) + "…" else it }
+                    val res = medidor.measure(nombre, TextStyle(fontSize = (if (nombre.length > 12) fz * 0.8f else fz).sp * v.k, fontWeight = FontWeight.Bold, color = tinta, fontFamily = Display))
+                    drawText(res, topLeft = Offset(centro.x - res.size.width / 2f, centro.y - res.size.height / 2f))
+                }
+                // Las palabras, encima de las fichas (que no las tape ninguna)
+                ls.forEach { l ->
+                    val c = colorEscrito(l.r.s("color"), tinta)
+                    val r = rectEtq(l)
+                    val tl = P(Offset(r.left, r.top))
+                    drawRoundRect(papel, tl, Size(r.width * k, r.height * k), CornerRadius(4.dp.toPx() * v.k))
+                    drawRoundRect(c.copy(alpha = 0.6f), tl, Size(r.width * k, r.height * k), CornerRadius(4.dp.toPx() * v.k), style = Stroke(1.dp.toPx()))
+                    val res = medidor.measure(l.r.s("titulo").ifBlank { "unión" }.uppercase(), estiloEtq.copy(color = c, fontSize = estiloEtq.fontSize * v.k, letterSpacing = estiloEtq.letterSpacing * v.k))
+                    val centro = P(l.etq)
+                    drawText(res, topLeft = Offset(centro.x - res.size.width / 2f, centro.y - res.size.height / 2f))
+                }
+            }
+        }
+    }
+    if (nueva) FichaDialogo(e, pid, null, onCerrar = { nueva = false }, onCreada = { f ->
+        // La ficha nueva, en el centro de lo que se ve
+        val m = aMundo(Offset(lienzo.width / 2f, lienzo.height / 2f))
+        e.edita(f.id) { put("ax", m.x.roundToInt()); put("ay", m.y.roundToInt()) }
+    })
+    union?.let { (x, y) -> RelacionDialogo(e, pid, null, onCerrar = { union = null }, aNueva = x, bNueva = y) }
+    if (ordenar) HojaEscribir("¿Ordenar el árbol?", { ordenar = false }) {
+        Text("Atrio colocará todas las fichas solas (lo unido, cerca). Después puedes moverlas a mano.", color = Muted, fontSize = 14.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BotonEscribir("Ordenar") {
+                val p = ArbolEscribir.ordena(fs.map { it.id }, rels.map { it.s("a") to it.s("b") }, pos)
+                fs.forEach { f -> p[f.id]?.let { q -> e.edita(f.id) { put("ax", q.x.roundToInt()); put("ay", q.y.roundToInt()) } } }
+                v.puesta = false; ordenar = false
+            }
+            BotonEscribir("No", suave = true) { ordenar = false }
+        }
+    }
+}
+

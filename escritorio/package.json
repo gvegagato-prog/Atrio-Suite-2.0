@@ -1,7 +1,7 @@
 {
   "name": "atrio",
   "productName": "Atrio",
-  "version": "3.2.9",
+  "version": "3.3.0",
   "description": "Atrio: tus juegos en el PC (Linux, Windows y macOS), tus obras escritas y el móvil",
   "main": "src/main/main.js",
   "author": "Gonzalo",
