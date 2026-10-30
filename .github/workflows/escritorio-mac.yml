@@ -68,7 +68,8 @@ jobs:
           ln -s /Applications dmg/Aplicaciones
           hdiutil create -volname "Atrio" -srcfolder dmg -ov -format UDZO "salida/Atrio-mac-arm64.dmg"
           # Comprobación: el DMG se monta y trae la app firmada y el acceso a Aplicaciones
-          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" "salida/Atrio-mac-arm64.dmg"
+          # (en los Mac de GitHub, hdiutil a veces responde «Resource temporarily unavailable»: se reintenta)
+          for i in 1 2 3 4 5; do hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" "salida/Atrio-mac-arm64.dmg" && break; [ "$i" = 5 ] && exit 1; sleep $((i * 5)); done
           ls -la "$RUNNER_TEMP/dmg"
           test -L "$RUNNER_TEMP/dmg/Aplicaciones"
           codesign --verify --deep --strict "$RUNNER_TEMP/dmg/Atrio.app"
