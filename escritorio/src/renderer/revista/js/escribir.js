@@ -942,6 +942,8 @@
   const cambia = RV.debounce(() => {
     const r = vista();
     if (r === 'editor') { if (RV.escribirEditorCambio) RV.escribirEditorCambio(); return; }
+    // (con una ficha o el lienzo del árbol cogidos, se repinta al soltar: si no, el arrastre se cortaría a medias)
+    if (E.arrastrando) { E.repintarAlSoltar = true; return; }
     if (['escribir', 'obra', 'parte', 'capitulo'].includes(r)) RV.refrescar();
     if (r === 'portada') { const f = firma(); if (f !== firmaPortada) { firmaPortada = f; RV.refrescar(); } }
   }, 60);

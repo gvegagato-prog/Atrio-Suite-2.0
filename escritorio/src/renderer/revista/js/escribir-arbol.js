@@ -262,14 +262,14 @@
         const mueve = (e) => {
           const dx = (e.clientX - ini.x) / v.k; const dy = (e.clientY - ini.y) / v.k;
           if (!movido && Math.hypot(e.clientX - ini.x, e.clientY - ini.y) < 5) return;
-          movido = true; arrastrando = true; g.classList.add('cogido');
+          movido = true; arrastrando = true; E.arrastrando = true; g.classList.add('cogido');
           P.x = ini.px + dx; P.y = ini.py + dy;
           g.setAttribute('transform', `translate(${P.x} ${P.y})`);
           pintaLineas(); resalta(f.id);
         };
         const suelta = () => {
           g.removeEventListener('pointermove', mueve); g.removeEventListener('pointerup', suelta); g.removeEventListener('pointercancel', suelta);
-          arrastrando = false; g.classList.remove('cogido');
+          arrastrando = false; g.classList.remove('cogido'); sueltaArbol();
           if (movido) { op('edita', f.id, { ax: Math.round(P.x), ay: Math.round(P.y) }).catch(E.err); return; }
           if (uniendo) {
             if (!uniendo.a) { uniendo.a = f.id; pintaModo(); return; }
@@ -287,6 +287,8 @@
       g.addEventListener('blur', () => resalta(null));
     }
     let arrastrando = false;
+    // Al soltar: si mientras tanto llegó un cambio (una sincronización…), ahora se repinta
+    const sueltaArbol = () => { E.arrastrando = false; if (E.repintarAlSoltar) { E.repintarAlSoltar = false; RV.refrescar(); } };
     pintaLineas();
 
     // Mover el lienzo arrastrando el fondo; acercar con la rueda (hacia donde está el ratón)
@@ -296,8 +298,10 @@
       svg.setPointerCapture(ev.pointerId);
       svg.classList.add('moviendo');
       const ini = { x: ev.clientX, y: ev.clientY, vx: v.x, vy: v.y };
+      E.arrastrando = true;
       const mueve = (e) => { v.x = ini.vx + e.clientX - ini.x; v.y = ini.vy + e.clientY - ini.y; aplicaVista(); };
-      const suelta = () => { svg.classList.remove('moviendo'); svg.removeEventListener('pointermove', mueve); svg.removeEventListener('pointerup', suelta); };
+      const suelta = () => { svg.classList.remove('moviendo'); svg.removeEventListener('pointermove', mueve); svg.removeEventListener('pointerup', suelta); svg.removeEventListener('pointercancel', suelta); sueltaArbol(); };
+      svg.addEventListener('pointercancel', suelta);
       svg.addEventListener('pointermove', mueve); svg.addEventListener('pointerup', suelta);
     });
     const zoom = (factor, cx, cy) => {

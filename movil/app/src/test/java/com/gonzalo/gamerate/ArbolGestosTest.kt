@@ -101,10 +101,17 @@ class ArbolGestosTest {
         val moviendo = foto()
         assertTrue("al arrastrar, Aldara ya no está donde estaba", cambios(pulsada, moviendo, pA) > 200)
         assertTrue("y está bajo el dedo", cambios(pulsada, moviendo, pA + Offset(0f, 270f)) > 200)
+        // A mitad del arrastre cambia otra cosa de Escribir (una sincronización, un guardado): el arrastre no se corta
+        rule.runOnUiThread { e.edita(b.id) { put("resumen", "cambiado desde otro dispositivo") }; ver++ }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Árbol de relaciones").performTouchInput { moveBy(Offset(120f, 0f)); moveBy(Offset(120f, 0f)) }
+        rule.waitForIdle()
+        val siguiendo = foto()
+        assertTrue("tras el cambio, la ficha sigue al dedo", cambios(moviendo, siguiendo, pA + Offset(240f, 270f)) > 200)
         rule.onNodeWithContentDescription("Árbol de relaciones").performTouchInput { up() }
         rule.waitForIdle()
         // Al soltar se guarda donde quedó y «Solo» deja de estar apagado
         val guardada = e.get(a.id)!!
-        assertTrue("se guarda donde quedó: ${guardada.i("ay")}", guardada.i("ay") > 50)
+        assertTrue("se guarda donde quedó: ${guardada.i("ax")}, ${guardada.i("ay")}", guardada.i("ay") > 50 && guardada.i("ax") > -150)
     }
 }

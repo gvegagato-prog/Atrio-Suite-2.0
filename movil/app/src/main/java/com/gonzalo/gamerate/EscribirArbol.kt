@@ -270,7 +270,9 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
             }
         } else Box(Modifier.weight(1f).fillMaxWidth().padding(bottom = dockSpace(8.dp)).clipToBounds().background(Crudo).border(1.dp, Line).onSizeChanged { lienzo = it }
             .semantics { contentDescription = "Árbol de relaciones" }
-            .pointerInput(fs, rels, uniendo, primera) {
+            // (una sola vez: si se reiniciara cuando cambian las fichas —una sincronización, un guardado—, cortaría el
+            // arrastre a medias; lo que cambia lo lee de «ahora» y «pulsaAhora»)
+            .pointerInput(Unit) {
                 // Un dedo: arrastrar una ficha (la mueve y se guarda) o el lienzo; dos: acercar; pulsar sin moverse: abrir
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
