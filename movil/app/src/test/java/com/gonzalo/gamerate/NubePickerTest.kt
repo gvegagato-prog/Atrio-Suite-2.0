@@ -30,7 +30,11 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class NubePickerTest {
-    @get:Rule val rule = createComposeRule()
+    // Los efectos (LaunchedEffect, rememberCoroutineScope) en un despachador de pruebas: lo que vuelve de la red de
+    // mentira se reanuda en el hilo de la prueba, como en el móvil (en el principal). Con el de por defecto se reanudaba
+    // a veces en el hilo de la red, y el diálogo se quedaba en «Abriendo…» sin repintarse (fallaba de vez en cuando).
+    @OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
+    @get:Rule val rule = createComposeRule(kotlinx.coroutines.test.StandardTestDispatcher())
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
     private lateinit var k: FakeKDrive
 
@@ -63,32 +67,42 @@ class NubePickerTest {
             }
         }
         // Abre en la carpeta de la ficha y enseña las portadas de dentro
-        espera { rule.onAllNodesWithText("portada.png", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        espera("la carpeta de la ficha") { rule.onAllNodesWithText("portada.png", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         assertTrue(rule.onAllNodesWithText("PORTADAS", ignoreCase = true).fetchSemanticsNodes().isNotEmpty())
         shoot("1_carpeta")
         // Buscar en todo tu kDrive
         rule.onAllNodesWithText("Buscar imágenes en tu nube", ignoreCase = true)[0].let { rule.onNode(hasSetTextAction()).performTextReplacement("dragon") }
         rule.onNodeWithContentDescription("Buscar").performClick()
-        espera { rule.onAllNodesWithText("Atrio/Juegos/Hades", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
+        espera("los resultados de buscar") { rule.onAllNodesWithText("Atrio/Juegos/Hades", ignoreCase = true).fetchSemanticsNodes().isNotEmpty() }
         shoot("2_buscar")
         rule.onAllNodesWithText("Atrio/Juegos/Hades", ignoreCase = true)[0].performClick()
-        espera { elegida.isNotEmpty() }
+        espera("bajar la elegida") { elegida.isNotEmpty() }
         assertTrue("la elegida queda como foto de este móvil: $elegida", Photos.isLocal(elegida) && Photos.here(ctx, elegida))
     }
 
     /**
      * Espera a que se cumpla [c] (hasta 90 s: con todas las pruebas a la vez, la red de mentira va lenta). El diálogo va en su propia ventana: en Robolectric solo se vuelve a maquetar
-     * si avanza el reloj de la app, así que aquí se hace avanzar (y se deja trabajar a la red de mentira).
+     * si avanza el reloj de la app, y los efectos solo corren si avanza el de Compose, así que aquí se hacen avanzar los dos
+     * (y se deja trabajar a la red de mentira). Si no llega, dice en qué paso y qué había en pantalla.
      */
-    private fun espera(c: () -> Boolean) {
+    private fun espera(paso: String, c: () -> Boolean) {
         val fin = System.currentTimeMillis() + 90_000
         while (System.currentTimeMillis() < fin) {
             org.robolectric.shadows.ShadowLooper.idleMainLooper(50, java.util.concurrent.TimeUnit.MILLISECONDS)
+            rule.mainClock.advanceTimeBy(50)
             rule.waitForIdle()
             if (runCatching(c).getOrDefault(false)) return
             Thread.sleep(30)
         }
-        throw AssertionError("no ha llegado a tiempo")
+        // Lo que hay en pantalla (también en el diálogo, que va en su propia ventana), para saber dónde se quedó
+        val textos = mutableListOf<String>()
+        fun lee(n: androidx.compose.ui.semantics.SemanticsNode) {
+            val k = androidx.compose.ui.semantics.SemanticsProperties.Text
+            if (n.config.contains(k)) textos += n.config[k].joinToString { it.text }
+            n.children.forEach { lee(it) }
+        }
+        runCatching { rule.onAllNodes(androidx.compose.ui.test.isRoot()).fetchSemanticsNodes().forEach { lee(it) } }
+        throw AssertionError("no ha llegado a tiempo: $paso (en pantalla: ${textos.joinToString(" | ").take(600)})")
     }
 
     private fun shoot(n: String) {
