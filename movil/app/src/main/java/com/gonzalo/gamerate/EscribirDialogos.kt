@@ -74,7 +74,8 @@ fun HojaEscribir(titulo: String, onCerrar: () -> Unit, acciones: @Composable Row
     Dialog(onDismissRequest = onCerrar, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Column(Modifier.fillMaxSize().background(Paper).statusBarsPadding().navigationBarsPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 10.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(titulo, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 31.sp, color = Charcoal, modifier = Modifier.weight(1f), maxLines = 2)
+                // (FitTitle: la letra baja hasta que cabe la palabra más larga; nunca se parte una palabra por la mitad)
+                FitTitle(titulo, 28.sp, 31.sp, Modifier.weight(1f), color = Charcoal, maxLines = 2, conEdicion = false)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically, content = acciones)
                 // (cerrar con texto, como el resto de la revista y los diálogos del PC)
                 EnlaceRevista("Cerrar", Modifier.padding(start = 12.dp).semantics { contentDescription = "Cerrar" }, onClick = onCerrar)

@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertCountEquals
@@ -154,5 +156,51 @@ class ArbolGestosTest {
         rule.onAllNodesWithText("Ahora pulsa la ficha con la que unir a Aldara", substring = true, ignoreCase = true)[0].assertIsDisplayed()
         toca(en(150f, 0f))
         rule.onAllNodesWithText("Pulsa la primera ficha", substring = true, ignoreCase = true).assertCountEquals(0)
+    }
+
+    /** Crear una ficha desde el propio árbol (diálogo «Nueva ficha») y que después se pueda unir y pulsar fichas y uniones. */
+    @Test fun trasCrearUnaFichaDesdeElArbolTodoSigueFuncionando() {
+        Mode.dark = false
+        val e = Escritos.get(ctx)
+        val o = e.nuevo(Escritos.T_OBRA, "") { put("titulo", "Prueba") }
+        val a = e.nuevo(Escritos.T_FICHA, o.id) { put("tipo", "personaje"); put("nombre", "Aldara"); put("color", "#B0102F"); put("ax", -150); put("ay", 0) }
+        val b = e.nuevo(Escritos.T_FICHA, o.id) { put("tipo", "personaje"); put("nombre", "Cuervo"); put("color", "#4A6FA5"); put("ax", 150); put("ay", 0) }
+        e.nuevo(Escritos.T_REL, o.id) { put("a", a.id); put("b", b.id); put("titulo", "rivales") }
+        var ver by mutableIntStateOf(0)
+        val abre = AbreEscribir()
+        rule.setContent { MaterialTheme(colorScheme = appColors(), typography = AppTypography) { Surface(Modifier.fillMaxSize(), color = Paper) {
+            androidx.compose.foundation.layout.Box { ArbolObra(e, o, e.version, abre, null); VentanasEscribir(e, o.id, abre, {}) } } } }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Nueva ficha", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        // (en Robolectric el texto no llega al campo del diálogo: «Guardar» se hace a mano, con el diálogo abierto, como lo hace él)
+        rule.runOnUiThread { val f = e.nuevo(Escritos.T_FICHA, o.id) { put("tipo", "personaje"); put("nombre", "Nueva"); put("color", "#5B8C5A") }; e.edita(f.id) { put("ax", 0); put("ay", 0) } }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Cerrar", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        repeat(10) { Thread.sleep(50); org.robolectric.shadows.ShadowLooper.idleMainLooper(50, java.util.concurrent.TimeUnit.MILLISECONDS); rule.waitForIdle() }
+        assertTrue("la ficha nueva existe", e.fichas(o.id).any { it.s("nombre") == "Nueva" })
+        val nodo = rule.onNodeWithContentDescription("Árbol de relaciones").fetchSemanticsNode()
+        val w = nodo.size.width.toFloat(); val h = nodo.size.height.toFloat(); val dens = ctx.resources.displayMetrics.density
+        val k = min(1.4f, max(0.3f, min(w / dens / 360f, h / dens / 160f)))
+        fun en(x: Float, y: Float) = Offset(w / 2f + x * dens * k, h / 2f + y * dens * k)
+        val arbol = { rule.onNodeWithContentDescription("Árbol de relaciones") }
+        fun toca(p: Offset) { arbol().performTouchInput { down(p); up() }; rule.waitForIdle() }
+        // Pulsar una ficha abre su lectura (VentanasEscribir pinta el diálogo)
+        toca(en(-150f, 0f))
+        assertTrue("pulsar una ficha la abre tras crear otra", abre.ver == a.id)
+        abre.ver = null; rule.waitForIdle()
+        // Pulsar la palabra de una unión abre la unión
+        val rel = e.relaciones(o.id).first()
+        toca(en(0f, 0f))
+        assertTrue("pulsar la palabra de la unión la abre: ${abre.ver}", abre.ver == rel.id)
+        abre.ver = null; rule.waitForIdle()
+        // La ficha creada después de abrir el árbol se puede pulsar (antes el gesto se quedaba con las fichas de la primera vez)
+        toca(en(0f, 17f))
+        assertTrue("pulsar la ficha recién creada la abre: ${abre.ver}", abre.ver == e.fichas(o.id).first { it.s("nombre") == "Nueva" }.id)
+        abre.ver = null; rule.waitForIdle()
+        // Unir: pulsar el botón y elegir dos fichas
+        rule.onAllNodesWithText("Unir dos fichas", ignoreCase = true)[0].performClick(); rule.waitForIdle()
+        // Con «Unir» activado, una ficha que queda bajo la palabra de una unión («Nueva» está justo debajo de «rivales») se elige igual
+        toca(en(0f, 0f))
+        rule.onAllNodesWithText("Ahora pulsa la ficha con la que unir a Nueva", substring = true, ignoreCase = true)[0].assertIsDisplayed()
     }
 }

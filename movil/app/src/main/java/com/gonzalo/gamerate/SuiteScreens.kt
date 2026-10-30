@@ -180,7 +180,7 @@ fun LiveCard(
             if (logo.isNotBlank()) {
                 AsyncImage(logo, g.name, Modifier.heightIn(max = 54.dp).widthIn(max = 230.dp), contentScale = ContentScale.Fit, alignment = Alignment.CenterStart)
             } else {
-                Text(g.name, color = Color.White, fontFamily = Display, fontSize = 26.sp, lineHeight = 30.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                FitTitle(g.name, 26.sp, 30.sp, color = Color.White, fontWeight = FontWeight.Normal, maxLines = 2, overflow = TextOverflow.Ellipsis, conEdicion = false)
             }
             Spacer(Modifier.height(4.dp))
             Text(

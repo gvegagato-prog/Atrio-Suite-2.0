@@ -235,7 +235,7 @@ fun TarjetaGuia(e: Escritos, obra: Doc, ver: Int, hacer: (Int) -> Unit, verGuia:
     val p = GuiaNovela.PASOS.first { it.id == id }
     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(shp(16.dp)).background(Crudo).border(1.dp, ColGeneral, shp(16.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("GUÍA · PASO $id DE ${GuiaNovela.PASOS.size}", color = ColGeneral, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
-        Text(p.titulo, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 25.sp, color = Charcoal)
+        FitTitle(p.titulo, 22.sp, 25.sp, color = Charcoal, conEdicion = false)
         Text(p.que, fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 15.sp, lineHeight = 21.sp, color = Muted)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
             BotonEscribir(p.accion) { hacer(id) }

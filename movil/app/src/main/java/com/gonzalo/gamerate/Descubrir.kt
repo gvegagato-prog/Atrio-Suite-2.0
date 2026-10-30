@@ -1072,7 +1072,7 @@ private fun QuizItemSheet(it: QuizItem, accent: Color, added: Boolean, rawgKey: 
                     Spacer(Modifier.width(14.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(it.title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 25.sp)
+                    FitTitle(it.title, 22.sp, 25.sp, conEdicion = false)
                     if (it.domain == 0) {
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {

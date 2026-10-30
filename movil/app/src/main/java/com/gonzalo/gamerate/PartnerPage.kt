@@ -87,7 +87,7 @@ fun PartnerPage(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Overline("Ficha de " + side.name, Modifier.padding(bottom = 4.dp))
-            Text(name, fontSize = 28.sp, lineHeight = 32.sp, fontFamily = Display, textAlign = TextAlign.Center)
+            FitTitle(name, 28.sp, 32.sp, fontWeight = FontWeight.Normal, align = TextAlign.Center, conEdicion = false)
             val extra = listOfNotNull(
                 creator.ifBlank { null },
                 platform.ifBlank { null },

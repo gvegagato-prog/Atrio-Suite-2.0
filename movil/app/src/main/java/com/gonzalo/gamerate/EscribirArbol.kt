@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -121,6 +122,9 @@ object ArbolEscribir {
 }
 
 /** El desplazamiento y el zoom del lienzo de cada obra, mientras la app está abierta. */
+/** Lo que el gesto del árbol necesita «de ahora» (se actualiza en cada composición). */
+private class VivoArbol(var pos: MutableMap<String, Offset>, var nodoEn: (Offset) -> Doc?, var etqEn: (Offset) -> Doc?, var pulsa: (Offset) -> Unit)
+
 private class VistaArbol(var x: Float = 0f, var y: Float = 0f, var k: Float = 1f, var puesta: Boolean = false)
 private val vistas = HashMap<String, VistaArbol>()
 
@@ -223,7 +227,8 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
     }
     fun etqEn(p: Offset): Doc? { val m = aMundo(p); return lineas().lastOrNull { rectEtq(it).inflate(4f).contains(m) }?.r }
     fun pulsa(p: Offset) {
-        etqEn(p)?.let { a.ver = it.id; return }
+        // (con «Unir» activado, las palabras de las uniones no se llevan los toques: se eligen fichas)
+        if (!uniendo) etqEn(p)?.let { a.ver = it.id; return }
         val f = nodoEn(p) ?: return
         if (uniendo) {
             val x = primera
@@ -233,6 +238,20 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                 else -> { union = x to f.id; primera = null; uniendo = false }
             }
         } else a.ver = f.id
+    }
+    /** El sitio libre más cercano a [c] para una ficha de ese tamaño: sin pisar otras fichas ni las palabras de las uniones. */
+    fun huecoLibre(c: Offset, tam: Triple<Float, Float, Float>): Offset {
+        val (rx, ry, _) = tam
+        val ls = lineas()
+        fun libre(p: Offset): Boolean =
+            fs.none { f -> val q = pos[f.id] ?: return@none false; val (ax, ay, _) = ArbolEscribir.TAM.getValue(ArbolEscribir.tam(f)); abs(p.x - q.x) < rx + ax + 10 && abs(p.y - q.y) < ry + ay + 10 } &&
+                ls.none { l -> rectEtq(l).inflate(8f).let { r -> p.x + rx > r.left && p.x - rx < r.right && p.y + ry > r.top && p.y - ry < r.bottom } }
+        if (libre(c)) return c
+        for (anillo in 1..14) {
+            val r = anillo * 50f
+            for (i in 0 until 12) { val ang = i * (2 * Math.PI / 12); val p = Offset(c.x + (r * cos(ang)).toFloat(), c.y + (r * sin(ang)).toFloat()); if (libre(p)) return p }
+        }
+        return c
     }
     val slop = LocalViewConfiguration.current.touchSlop
     val scope = rememberCoroutineScope()
@@ -254,8 +273,11 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
     }
     // El gesto dura más que una composición: lee siempre el mapa de posiciones y las funciones de ahora (si no, al
     // cambiar algo en Escribir movía una copia vieja y la ficha no seguía al dedo hasta soltarla)
-    val ahora by rememberUpdatedState(Triple(pos, ::nodoEn, ::etqEn))
-    val pulsaAhora by rememberUpdatedState(::pulsa)
+    // (Un contenedor que se pone al día a mano en cada composición. NO vale rememberUpdatedState(::pulsa): Compose da por
+    // iguales dos referencias a la misma función local aunque lo que captura haya cambiado, y el gesto se quedaba con las
+    // fichas y uniones de la primera vez: lo creado después no se podía pulsar ni arrastrar hasta cambiar de pestaña.)
+    val vivo = remember { VivoArbol(pos, ::nodoEn, ::etqEn, ::pulsa) }
+    SideEffect { vivo.pos = pos; vivo.nodoEn = ::nodoEn; vivo.etqEn = ::etqEn; vivo.pulsa = ::pulsa }
     // Lo unido a la ficha elegida (lo demás se apaga un poco). Se calcula al dibujar, no al componer: tocar una ficha no
     // recompone todo el árbol (eso metía un tirón justo al empezar a arrastrarla)
     fun vecinosDe(id: String?): Set<String>? = id?.let { x -> (rels.filter { it.s("a") == x || it.s("b") == x }.flatMap { listOf(it.s("a"), it.s("b")) } + x).toSet() }
@@ -289,7 +311,7 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                 awaitEachGesture {
                   try {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    val nodo = ahora.second(down.position)?.takeIf { ahora.third(down.position) == null }
+                    val nodo = vivo.nodoEn(down.position)?.takeIf { uniendo || vivo.etqEn(down.position) == null }
                     var arrastre = Offset.Zero
                     var inicio = Offset.Zero
                     var sujeta = false
@@ -313,17 +335,17 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                                 // arrastres (sin saltar de golpe hacia el dedo). Parte de la posición de ahora, así que sigue
                                 // al dedo aunque el mapa se renueve a mitad.
                                 if (nodo != null) {
-                                    if (!sujeta) { sujeta = true; cogida[0] = nodo.id; inicio = ahora.first[nodo.id] ?: Offset.Zero; arrastre = Offset.Zero }
+                                    if (!sujeta) { sujeta = true; cogida[0] = nodo.id; inicio = vivo.pos[nodo.id] ?: Offset.Zero; arrastre = Offset.Zero }
                                     else arrastre += d
-                                    ahora.first[nodo.id] = inicio + arrastre / (dens * v.k)
+                                    vivo.pos[nodo.id] = inicio + arrastre / (dens * v.k)
                                 } else { v.x += d.x; v.y += d.y; tick++ }
                             }
                         }
                         ev.changes.forEach { if (it.positionChange() != Offset.Zero) it.consume() }
                     }
                     tocada = null
-                    if (!movido) pulsaAhora(down.position)
-                    else if (nodo != null && !dos) ahora.first[nodo.id]?.let { p -> e.edita(nodo.id) { put("ax", p.x.roundToInt()); put("ay", p.y.roundToInt()) } }
+                    if (!movido) vivo.pulsa(down.position)
+                    else if (nodo != null && !dos) vivo.pos[nodo.id]?.let { p -> e.edita(nodo.id) { put("ax", p.x.roundToInt()); put("ay", p.y.roundToInt()) } }
                     cogida[0] = null
                   } catch (x: kotlinx.coroutines.CancellationException) { tocada = null; cogida[0] = null; throw x
                   } catch (x: Exception) { tocada = null; cogida[0] = null }
@@ -414,8 +436,9 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
         }
     }
     if (nueva) FichaDialogo(e, pid, null, onCerrar = { nueva = false }, onCreada = { f ->
-        // La ficha nueva, en el centro de lo que se ve
-        val m = aMundo(Offset(lienzo.width / 2f, lienzo.height / 2f))
+        // La ficha nueva, en el centro de lo que se ve; si ahí ya hay una ficha o la palabra de una unión (que se llevaría
+        // los toques), en el hueco libre más cercano
+        val m = huecoLibre(aMundo(Offset(lienzo.width / 2f, lienzo.height / 2f)), ArbolEscribir.TAM.getValue(ArbolEscribir.tam(f)))
         e.edita(f.id) { put("ax", m.x.roundToInt()); put("ay", m.y.roundToInt()) }
     })
     union?.let { (x, y) -> RelacionDialogo(e, pid, null, onCerrar = { union = null }, aNueva = x, bNueva = y) }

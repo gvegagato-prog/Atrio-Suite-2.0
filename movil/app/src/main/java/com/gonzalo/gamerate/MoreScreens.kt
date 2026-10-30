@@ -390,7 +390,7 @@ fun NoteScreen(
             if (Skin.revista) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().card(24).padding(18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (!Skin.revista) Text(play.name, fontSize = 28.sp, lineHeight = 32.sp, fontFamily = Display, textAlign = TextAlign.Center)
+            if (!Skin.revista) FitTitle(play.name, 28.sp, 32.sp, fontWeight = FontWeight.Normal, align = TextAlign.Center, conEdicion = false)
             Text(if (Skin.revista) fmt(e.time).uppercase() else fmt(e.time), color = UiSoft, fontSize = if (Skin.revista) 11.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
                 fontWeight = if (Skin.revista) FontWeight.Black else null, letterSpacing = if (Skin.revista) 1.6.sp else androidx.compose.ui.unit.TextUnit.Unspecified)
             if (kind.isBook) Text("Capítulo ${e.chapter}", color = UiSoft)

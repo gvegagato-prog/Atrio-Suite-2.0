@@ -148,7 +148,7 @@ fun BigHeader(title: String, overline: String? = null, modifier: Modifier = Modi
     Row(modifier.fillMaxWidth().padding(top = 14.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
             if (overline != null) Text(overline.uppercase(), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp)
-            Text(title, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 38.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            FitTitle(title, 34.sp, 38.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, conEdicion = false)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
     }

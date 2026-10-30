@@ -178,9 +178,9 @@ fun VerRelacion(e: Escritos, r: Doc, a: AbreEscribir, onCerrar: () -> Unit, onEd
         AnteLectura("Unión")
         FranjaLectura(colorEscrito(r.s("color"), Charcoal))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(fa.s("nombre").ifBlank { "Sin nombre" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Charcoal, modifier = Modifier.press(haptic = false) { a.ver = fa.id })
+            FitTitle(fa.s("nombre").ifBlank { "Sin nombre" }, 22.sp, 25.sp, Modifier.press(haptic = false) { a.ver = fa.id }, color = Charcoal, conEdicion = false)
             Text(if (r.i("flecha") == 1) "→" else "—", color = Muted, fontSize = 18.sp)
-            Text(fb.s("nombre").ifBlank { "Sin nombre" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Charcoal, modifier = Modifier.press(haptic = false) { a.ver = fb.id })
+            FitTitle(fb.s("nombre").ifBlank { "Sin nombre" }, 22.sp, 25.sp, Modifier.press(haptic = false) { a.ver = fb.id }, color = Charcoal, conEdicion = false)
         }
         if (r.s("texto").isNotBlank()) ParrafosEscribir(r.s("texto")) else Text("Solo la palabra; no has escrito nada más de esta unión.", color = Muted, fontSize = 14.sp)
     }

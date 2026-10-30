@@ -190,7 +190,7 @@ fun SigueEscribiendo(e: Escritos, s: Doc, abrir: () -> Unit) {
     val linea = s.s("texto").lineSequence().map { it.trim() }.lastOrNull { it.isNotBlank() && !it.startsWith("#") && it != "***" }.orEmpty()
     Column(Modifier.fillMaxWidth().padding(vertical = 10.dp).press(haptic = false, onClick = abrir).clip(shp(16.dp)).background(Crudo).border(1.dp, Line, shp(16.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("SIGUE ESCRIBIENDO", color = ColGeneral, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
-        Text(s.s("titulo").ifBlank { "Sin título" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 25.sp, color = Charcoal, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        FitTitle(s.s("titulo").ifBlank { "Sin título" }, 22.sp, 25.sp, color = Charcoal, maxLines = 2, overflow = TextOverflow.Ellipsis, conEdicion = false)
         if (linea.isNotEmpty()) Text("…" + linea.takeLast(140), fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 15.sp, lineHeight = 21.sp, color = Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(listOfNotNull(obra?.s("titulo")?.ifBlank { null }, "${cifraE(s.i("palabras"))} palabras", "editada ${haceE(s.u)}").joinToString(" · ") + "  ·  Abrir →", color = Muted, fontSize = 12.sp)
     }
@@ -256,7 +256,7 @@ private fun TarjetaObra(e: Escritos, o: Doc, ver: Int, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).press(haptic = false, onClick = onClick).clip(shp(16.dp)).background(Crudo).border(1.dp, Line, shp(16.dp)).height(IntrinsicSize.Min)) {
         Box(Modifier.width(8.dp).fillMaxHeight().background(color))
         Column(Modifier.weight(1f).padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(o.s("titulo").ifBlank { "Sin título" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 29.sp, color = Charcoal, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            FitTitle(o.s("titulo").ifBlank { "Sin título" }, 26.sp, 29.sp, color = Charcoal, maxLines = 2, overflow = TextOverflow.Ellipsis, conEdicion = false)
             Text(listOf(o.s("autor"), o.s("genero")).filter { it.isNotBlank() }.joinToString(" · "), color = Muted, fontSize = 13.sp, maxLines = 1)
             if (o.s("sinopsis").isNotBlank()) Text(o.s("sinopsis"), color = Charcoal, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, fontStyle = FontStyle.Italic, fontFamily = Display)
             if (meta > 0) Bar((palabras.toFloat() / meta).coerceIn(0f, 1f), color, height = 4.dp)
@@ -369,7 +369,7 @@ private fun CabeceraCapitulo(e: Escritos, c: Doc, i: Int, caps: List<Doc>, onAbr
     Row(Modifier.fillMaxWidth().padding(top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).press(haptic = false, onClick = onAbrir)) {
             Text("CAPÍTULO ${i + 1}", color = Muted, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp)
-            Text(c.s("titulo").ifBlank { "Sin título" }, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 23.sp, lineHeight = 26.sp, color = Charcoal)
+            FitTitle(c.s("titulo").ifBlank { "Sin título" }, 23.sp, 26.sp, color = Charcoal, conEdicion = false)
             if (c.s("resumen").isNotBlank()) Text(c.s("resumen"), color = Muted, fontSize = 13.sp, fontStyle = FontStyle.Italic, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Text(cifraE(pal), color = Muted, fontSize = 12.sp)
