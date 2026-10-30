@@ -82,6 +82,7 @@ class SteamLinkTest {
         }
         rule.onAllNodesWithText("Steam Link no está instalado").assertCountEquals1()
         rule.onAllNodesWithText("En este móvil, con Steam Link", ignoreCase = true).assertCountEquals1()
+        assertTrue("ya no hay enchufe de Tuya", rule.onAllNodesWithText("Enchufe", substring = true, ignoreCase = true).fetchSemanticsNodes().isEmpty())
         shoot("1_panel")
         rule.onAllNodesWithText("Streaming →")[0].performClick()
         rule.waitForIdle()

@@ -16,7 +16,8 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
   el móvil abre Steam Link. Atrio del PC ya no instala ni arranca ningún servidor, ni guarda usuario ni contraseña: lo
   que había guardado de Polaris se borra al abrir esta versión. También se va Tailscale (solo servía para Nova).
 - Emparejar es lo de Steam Link (una vez): eliges el PC y escribes en Steam del PC el PIN que te enseña.
-- Encender el PC desde el móvil (Wake-on-LAN y enchufe de Tuya) sigue igual.
+- **Fuera también el enchufe de Tuya** (y sus claves guardadas en el móvil se borran). Encender el PC desde el móvil
+  queda por red (Wake-on-LAN, en la wifi de casa).
 
 ## Una sola Atrio, coherente (móvil 6.90 y PC 3.4)
 
@@ -366,10 +367,6 @@ capturas, calendario, modo pareja, sincronización).
 64. **Camaleón** (Estilo → Fondo, encendido por defecto): al abrir una ficha, la app se tiñe con el color de su
     portada (fondo, tarjetas y el color de la nota general) y el cambio se abre en círculo desde donde tocaste.
     Al salir vuelve tu paleta.
-66. **Encender el PC con un enchufe de Tuya** (móvil → PC → Streaming → «Enchufe del PC»): con la BIOS en «Restore on
-    AC power loss → Power On», Atrio corta la corriente unos segundos y la vuelve a dar, y el PC arranca. Va por la API
-    en la nube de Tuya (proyecto gratuito en iot.tuya.com con tu cuenta de Smart Life enlazada), así que funciona
-    también con datos. Al tocar «Streaming» con el PC apagado se ofrece (y Wake-on-LAN si estás en casa).
 67. **Streaming sin que Atrio robe el foco**: al jugar en streaming desde el móvil, Atrio se minimiza y no vuelve a
     ponerse delante al cerrar el juego; con un juego abierto, las órdenes del móvil no le quitan el foco; y al cerrar
     un juego, Atrio espera 15 s por si vuelve (Deadlock y los que se reinician o pasan por un lanzador).

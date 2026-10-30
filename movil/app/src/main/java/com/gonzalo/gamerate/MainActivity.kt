@@ -102,6 +102,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // El enchufe de Tuya ya no existe: sus claves (Access ID y Secret) no se dejan guardadas en el móvil
+        deleteSharedPreferences("tuya")
         // Desde el icono con Atrio ya abierto (por ejemplo con una guía delante): se vuelve a lo que había, sin otra pantalla encima
         if (!isTaskRoot && intent?.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER)) { finish(); return }
         if (savedInstanceState == null) read(intent)
