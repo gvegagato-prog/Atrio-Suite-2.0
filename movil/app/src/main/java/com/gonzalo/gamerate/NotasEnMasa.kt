@@ -77,7 +77,7 @@ private fun MassChoose(
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp)) {
             item {
-                TopBar("Perfil", onBack, "Notas en masa")
+                TopBar("Ajustes", onBack, "Notas en masa")
                 Text("Elige lo que quieras repasar, de una o de varias categorías. Luego irán saliendo uno detrás de otro para que les cambies la nota.",
                     color = Muted, fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp))
                 Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

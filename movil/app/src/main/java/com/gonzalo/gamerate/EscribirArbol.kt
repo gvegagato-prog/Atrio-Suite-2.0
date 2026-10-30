@@ -234,7 +234,7 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
 
     Column(Modifier.fillMaxSize()) {
         @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-        FlowRow(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+        FlowRow(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BotonEscribir("Nueva ficha") { nueva = true }
             if (fs.size >= 2) BotonEscribir(if (uniendo) "Dejar de unir" else "Unir dos fichas", suave = !uniendo) { uniendo = !uniendo; primera = null }
             if (fs.size >= 2) EnlaceRevista("Ordenar") { ordenar = true }
@@ -347,7 +347,7 @@ fun ArbolObra(e: Escritos, obra: Doc, ver: Int, a: AbreEscribir, foco: String?) 
                     val ls2 = ArbolEscribir.lineasNombre(f.s("nombre"), ArbolEscribir.letras(t))
                     val estilo = TextStyle(fontSize = fz.sp * v.k, fontWeight = FontWeight.Bold, color = tinta.copy(alpha = alfa), fontFamily = Display, lineHeight = (fz * 1.08f).sp * v.k)
                     val nombre = medidor.measure(ls2.joinToString("\n"), estilo.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center))
-                    val tipo = medidor.measure(singularFicha(f.s("tipo")).uppercase(), TextStyle(fontSize = 8.5.sp * v.k, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp * v.k, color = androidx.compose.ui.graphics.lerp(base, Color.Black, 0.25f).copy(alpha = alfa)))
+                    val tipo = medidor.measure(singularFicha(f.s("tipo")).uppercase(), TextStyle(fontSize = 8.5.sp * v.k, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp * v.k, color = androidx.compose.ui.graphics.lerp(base, tinta, 0.35f).copy(alpha = alfa)))
                     val alto = nombre.size.height + tipo.size.height
                     drawText(nombre, topLeft = Offset(centro.x - nombre.size.width / 2f, centro.y - alto / 2f))
                     drawText(tipo, topLeft = Offset(centro.x - tipo.size.width / 2f, centro.y - alto / 2f + nombre.size.height))

@@ -208,7 +208,7 @@ object Quiz {
     }
 
     suspend fun screen(t: Taste, key: String, mine: Set<String>): List<QuizItem> = withContext(Dispatchers.IO) {
-        if (key.isBlank()) throw IllegalStateException("Para descubrir pelis y series hace falta tu clave gratuita de TMDB (Perfil → Ajustes → Servicios).")
+        if (key.isBlank()) throw IllegalStateException("Para descubrir pelis y series hace falta tu clave gratuita de TMDB (Ajustes → Servicios y copias).")
         val type = t.pick("type")
         val kinds = when (type) { "movie" -> listOf(false); "tv" -> listOf(true); else -> listOf(false, true) }
         val liked = t.liked()
@@ -317,7 +317,7 @@ object Quiz {
 
     /** [years] y [plats]: los filtros que pones tú (mandan sobre lo que digan las respuestas y se aplican a todas las búsquedas). */
     suspend fun games(ctx: Context, t: Taste, key: String, mine: Set<String>, years: IntRange? = null, plats: Set<String> = emptySet()): List<QuizItem> = withContext(Dispatchers.IO) {
-        if (key.isBlank()) throw IllegalStateException("Para descubrir juegos hace falta tu clave gratuita de RAWG (Perfil → Ajustes → Servicios).")
+        if (key.isBlank()) throw IllegalStateException("Para descubrir juegos hace falta tu clave gratuita de RAWG (Ajustes → Servicios y copias).")
         val liked = t.liked().filter { g -> GameGenres.any { it.first == g } || g in setOf("educational") }
         val likedTags = t.likedTags()
         val badTags = t.tags.filter { it.value <= -2 }.keys
@@ -394,7 +394,7 @@ object Quiz {
         }
         val e = err
         if (seen.isEmpty() && e != null)
-            throw IllegalStateException(if (e is IllegalArgumentException) "La clave de RAWG no es válida (revísala en Perfil → Ajustes → Servicios)." else "RAWG: ${e.message}")
+            throw IllegalStateException(if (e is IllegalArgumentException) "La clave de RAWG no es válida (revísala en Ajustes → Servicios y copias)." else "RAWG: ${e.message}")
         val list = seen.values.sortedByDescending { it.match }
         val top = list.firstOrNull()?.match?.coerceAtLeast(1) ?: 1
         list.map { QuizItem(0, false, it.id, it.title, it.original, it.year, it.cover, it.creator, it.overview, it.rating, (55 + 44 * it.match / top).coerceIn(40, 99)) }

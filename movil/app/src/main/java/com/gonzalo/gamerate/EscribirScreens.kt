@@ -202,7 +202,7 @@ private fun EstadoNube(e: Escritos, ver: Int) {
     val st = remember { Store(ctx) }
     val pend = remember(ver) { e.pendientes().size }
     val txt = when {
-        !st.paired -> "Se guarda en este dispositivo. Entra en tu cuenta (Perfil) para tenerlo en todos."
+        !st.paired -> "Se guarda en este dispositivo. Entra en tu cuenta (Ajustes) para tenerlo en todos."
         e.error.isNotEmpty() && pend > 0 -> "Sin conexión: $pend ${if (pend == 1) "cambio" else "cambios"} por subir. Se subirán solos cuando haya red."
         e.error.isNotEmpty() -> "Sin conexión con tu cuenta (se reintenta solo)."
         pend > 0 -> "Subiendo $pend ${if (pend == 1) "cambio" else "cambios"}…"

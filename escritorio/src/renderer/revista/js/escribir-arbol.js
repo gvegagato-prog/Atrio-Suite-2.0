@@ -123,7 +123,7 @@
   const mezcla = (a, b, t) => `rgb(${a.map((x, i) => Math.round(x * (1 - t) + b[i] * t)).join(',')})`;
   const tonos = () => {
     const cs = getComputedStyle(document.body);
-    return { papel: rgb(cs.getPropertyValue('--papel')) || [242, 237, 228], acento: rgb(cs.getPropertyValue('--acento')) || [176, 16, 47] };
+    return { papel: rgb(cs.getPropertyValue('--papel')) || [242, 237, 228], tinta: rgb(cs.getPropertyValue('--tinta')) || [24, 20, 16], acento: rgb(cs.getPropertyValue('--acento')) || [176, 16, 47] };
   };
   /** El nombre en una o dos líneas (cortando por palabras) para que quepa en el óvalo. */
   const lineas = (nombre, max) => {
@@ -247,7 +247,7 @@
         sv('ellipse', { class: 'e-nodo-fondo', rx, ry, fill: mezcla(base, T.papel, 0.84), stroke: col }),
         t === 3 ? sv('ellipse', { class: 'e-nodo-aro', rx: rx - 6, ry: ry - 6, stroke: col }) : null,
         sv('text', { class: 'e-nodo-nombre', 'text-anchor': 'middle', 'font-size': fz }, ls.map((l, i) => sv('tspan', { x: 0, y: y0 + i * fz * 1.08 }, l))),
-        tipo ? sv('text', { class: 'e-nodo-tipo', 'text-anchor': 'middle', y: y0 + (ls.length - 1) * fz * 1.08 + 15, fill: mezcla(base, [0, 0, 0], 0.25) }, tipo.toUpperCase()) : null);
+        tipo ? sv('text', { class: 'e-nodo-tipo', 'text-anchor': 'middle', y: y0 + (ls.length - 1) * fz * 1.08 + 15, fill: mezcla(base, T.tinta, 0.35) }, tipo.toUpperCase()) : null);
       nodos.set(f.id, g);
       capaNodos.append(g);
       g.addEventListener('pointerenter', () => { if (!arrastrando) resalta(f.id); });

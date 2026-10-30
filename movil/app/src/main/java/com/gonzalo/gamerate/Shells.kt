@@ -142,7 +142,7 @@ private fun RevistaHome(m: ShellModel) {
         var buscando by remember { mutableStateOf(false) }
         if (buscando) BuscadorGeneral(m) { buscando = false }
         Row(Modifier.fillMaxWidth().padding(top = 10.dp).llega(0), verticalAlignment = Alignment.CenterVertically) {
-            Text("Buscar", color = Ink2, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.press { buscando = true })
+            EnlaceRevista("Buscar") { buscando = true }
             Spacer(Modifier.weight(1f))
             if (m.partner != null) RevLink("Pareja", m.partner)
         }
@@ -453,8 +453,7 @@ private fun RevSection(t: String) {
 }
 
 @Composable
-private fun RevLink(t: String, f: () -> Unit) =
-    Text(t, color = Ink2, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 14.dp).press(onClick = f))
+private fun RevLink(t: String, f: () -> Unit) = EnlaceRevista(t, Modifier.padding(start = 14.dp), onClick = f)
 
 /**
  * Buscar en todo lo tuyo desde la portada: juegos, libros, pelis, series y tus categorías a la vez (sin fijarse en

@@ -130,7 +130,7 @@ private fun DuelosIntro(
     n: Int, hechos: Int, enCurso: Boolean, hayCopia: Boolean, aplicados: Int, onBack: () -> Unit, onEmpezar: (deCero: Boolean) -> Unit, onDeshacer: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp)) {
-        TopBar("Perfil", onBack, "Duelos de libros")
+        TopBar("Ajustes", onBack, "Duelos de libros")
         Text(
             "Para libros con nota de estrellas (muchos 100, 90, 80…). Te enseño dos libros y tocas el que más te gustó; con las respuestas se ordenan " +
                 "y después eliges cómo repartir las notas. Sin empates, y puedes dejarlo cuando quieras: se guarda solo.",

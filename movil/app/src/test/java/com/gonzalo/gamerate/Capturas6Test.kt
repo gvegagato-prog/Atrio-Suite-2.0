@@ -489,7 +489,7 @@ open class Capturas6Test {
         rule.onRoot().performTouchInput { swipeUp() }; shoot("p07b_ajustes"); home()
         go("Videojuegos"); shoot("p08_biblioteca")
         go("+ AÑADIR"); shoot("p09_buscar"); back()
-        go("Deadlock"); go("Apuntar notas\u00A0→"); shoot("p10_apunte"); back(); home()
+        go("Deadlock"); go("Apuntar\u00A0→"); shoot("p10_apunte"); back(); home()
         go("Ajustes"); go("Apariencia"); shoot("p11_apariencia"); back(); home()
         go("Tu PC"); shoot("p12_pc"); home()
         go("Cifras"); go("VER TU ${java.time.LocalDate.now().year}, NÚMERO ESPECIAL\u00A0→"); shoot("p15_especial")

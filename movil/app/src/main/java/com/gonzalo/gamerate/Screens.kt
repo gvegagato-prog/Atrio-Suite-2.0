@@ -446,19 +446,8 @@ fun SettingsScreen(
             OutlinedButton({ onSteam(sk, su) }, shape = pillShape(), enabled = sk.isNotBlank() && su.isNotBlank()) { Text("Traer horas de Steam") }
             if (importMsg.isNotEmpty() && "Steam" in importMsg) ImportNote(importMsg)
             Spacer(Modifier.height(14.dp))
-            Text("Cambiar notas en masa", fontWeight = FontWeight.SemiBold)
-            Plegado(
-                "Para después de importar: elige libros, juegos o lo que sea (de una o de varias categorías) y te irán saliendo uno detrás de otro para cambiarles la nota. " +
-                    "«Los de estrellas» elige de golpe los que tienen notas de estrellas (20, 40, 60, 80 o 100), que es como llegan de Goodreads y Bookmory."
-            )
-            OutlinedButton(onMassScores, shape = pillShape()) { Text("Cambiar notas en masa") }
-            Spacer(Modifier.height(14.dp))
-            Text("Duelos de libros", fontWeight = FontWeight.SemiBold)
-            Plegado(
-                "Para libros con nota de estrellas (muchos 100, 90, 80…): te enseña dos libros y tocas el que más te gustó. Con las respuestas ordena todos tus libros y reparte las notas sin empates. " +
-                    "Se hace a ratos y se guarda solo; al terminar puedes deshacerlo."
-            )
-            OutlinedButton(onDuelos, shape = pillShape()) { Text("Duelos de libros") }
+            // (cambiar notas en masa y los duelos de libros están una sola vez: en la pestaña General, «Repasar notas»)
+            Text("Después de importar, repasa las notas en la pestaña General → Repasar notas (en masa o con duelos de libros).", color = Muted, fontSize = 13.sp, lineHeight = 18.sp)
         }
 
         if (nube != null) SettingsSection("Tu nube (kDrive)", 395) { nube() }

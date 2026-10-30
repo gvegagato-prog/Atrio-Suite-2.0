@@ -136,8 +136,8 @@ fun PlayDetailScreen(
                         else -> upd(p.copy(status = 2, end = if (p.end == 0L) today() else p.end))
                     }
                 }
-                MagLink("Apuntar notas", if (b != null) "media de ${p.entries.size} apuntes" else null, accent = due) { onNote(p, null) }
-                MagLink(if (b != null) "Pasar a valorados" else "Terminado: valorar") { onFinish(p) }
+                MagLink("Apuntar", if (b != null) "media de ${p.entries.size} apuntes" else null, accent = due) { onNote(p, null) }
+                MagLink(if (b != null) "Pasar a valorados" else "Terminar y valorar") { onFinish(p) }
             }
             val hasPc = remember(p.id, p.name, Suite.libs) { Guides.pcGameFor(p.id, p.name) != null }
             if (kind.isGame && hasPc) defs["jugar"] = MagDef("Jugar") { FichaPlayButtons(p.id, p.name) }
@@ -297,7 +297,7 @@ fun PlayDetailScreen(
             Button({ onNote(p, null) }, shape = pillShape(),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = if (due) ColGeneral else Charcoal)) {
-                Text("Apuntar notas", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("Apuntar", fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
 
             if (b != null) {
@@ -314,7 +314,7 @@ fun PlayDetailScreen(
             }
             Spacer(Modifier.height(12.dp))
             OutlinedButton({ onFinish(p) }, shape = pillShape()) {
-                Text(if (b != null) "Pasar a valorados" else "Terminado: valorar ahora")
+                Text(if (b != null) "Pasar a valorados" else "Terminar y valorar")
             }
 
             if (p.entries.isNotEmpty()) {

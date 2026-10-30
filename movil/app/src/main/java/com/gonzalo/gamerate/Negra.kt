@@ -80,7 +80,7 @@ fun BotonListaNegra(nombre: String) {
     if (pregunta) AlertDialog(
         onDismissRequest = { pregunta = false },
         title = { Text("¿A la lista negra?", fontFamily = Display) },
-        text = { Text("«$nombre» dejará de salir en ningún sitio, en todos tus dispositivos, y su ficha (notas, apuntes) se borrará. Puedes quitarlo después en Perfil → Lista negra, pero la ficha no se recupera.") },
+        text = { Text("«$nombre» dejará de salir en ningún sitio, en todos tus dispositivos, y su ficha (notas, apuntes) se borrará. Puedes quitarlo después en Ajustes → Lista negra de juegos, pero la ficha no se recupera.") },
         confirmButton = { TextButton({ pregunta = false; Negra.alAnadir?.invoke(nombre) }) { Text("Ocultar y borrar", color = ColGeneral) } },
         dismissButton = { TextButton({ pregunta = false }) { Text("Cancelar") } },
         containerColor = Paper, shape = shp(if (Skin.revista) 4.dp else 24.dp)

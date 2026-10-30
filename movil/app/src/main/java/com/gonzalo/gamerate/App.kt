@@ -817,7 +817,7 @@ private fun AppContenido(
         when {
             g != null -> scope.launch {
                 val err = Stream.play(ctx, g.key)
-                if (err == "NOVA") say("Instala Nova para jugar en streaming (Perfil → Tu PC)") else if (err != null) say(err)
+                if (err == "NOVA") say("Instala Nova para jugar en streaming (Tu PC, en el menú de la portada)") else if (err != null) say(err)
             }
             o.kind.isBook && BookFiles.get(ctx, o.play.id) != null -> ReaderActivity.open(ctx, o.play.id, o.play.name)
             else -> nav(Screen.Note(o.play, null))

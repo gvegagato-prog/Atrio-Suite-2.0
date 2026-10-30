@@ -10,6 +10,21 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Una sola Atrio, coherente (móvil 6.90 y PC 3.4)
+
+- **Una sola interfaz en el móvil: la revista.** La antigua (con dock abajo) ya no existe. Lo que solo estaba allí pasa a
+  la revista: lo que te recomienda tu pareja (a tu lista o descartar), lo último de tu pareja y crear o editar tus
+  categorías propias (en Ajustes).
+- **El mismo menú en el móvil y en el PC**, con los mismos nombres y en el mismo orden: tus categorías, Diario, Escribir,
+  Descubrir, Cifras, Tu PC y Ajustes. En el móvil va en varias líneas, todo a la vista.
+- **Ajustes en una sola pantalla** en el móvil (antes Perfil → Ajustes), con dos pestañas: General · Servicios y copias.
+- **Las mismas piezas en todas las pantallas:** «← Volver» de texto, pestañas en versalitas con el número en acento,
+  filtros en versalitas subrayados y enlaces de acción en versalitas. «Estadísticas» se llama «Cifras», como en el PC.
+- **El árbol de Escribir, nuevo:** óvalos con el color de cada ficha, su tipo, sombra; uniones con la palabra en una
+  píldora; al pasar por una ficha (o elegirla) se apaga lo que no está unido a ella; «Ordenar» con animación.
+- **PC y Mac:** un solo «← Volver» (el de la cabecera); la ficha enseña su sección; en el Mac fuera el «☰ Menú» (repetía
+  cosas) y «Jugar en el PC»; la portada ya no repite el menú en el sumario («También en Atrio»).
+
 ## Escribir (desde el móvil 6.80 y el PC 3.0; a fondo en 6.82 y 3.1; guía de la novela en 6.83 y 3.2)
 
 Un apartado para escribir novelas, en el móvil, en el PC y en el Mac, con la misma cuenta y **sin conexión incluida**:
@@ -214,7 +229,7 @@ La app del móvil se ha rehecho por fuera: otra estética, otra navegación y ot
 conserva todo (valoraciones, opiniones, guías, estudios, duración media, abrir/cerrar/stremear juegos del PC,
 capturas, calendario, modo pareja, sincronización).
 
-- **Navegación nueva:** dock abajo con Inicio, Juegos, Libros, Cine y Diario. Perfil y ajustes, arriba a la derecha.
+- **Navegación nueva:** dock abajo con Inicio, Juegos, Libros, Cine y Diario (ya no existe desde la 6.90: ahora todo es la revista).
 - **Inicio:** «Sigue donde lo dejaste» (juegos, libros con % leído, series), el PC en directo, «¿Qué empiezo?»,
   objetivos del año, colecciones y lo que te recomienda tu pareja.
 - **Fichas con portada grande** (la portada vuela desde la lista), datos en chips y la acción principal a mano:
