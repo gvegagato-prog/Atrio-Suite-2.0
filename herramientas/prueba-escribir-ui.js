@@ -119,10 +119,18 @@ function siembra() {
   console.log('La obra');
   await p.locator('.e-obra').click();
   await sleep(400);
-  ok(await p.locator('.e-escena').count() === 4 && await p.locator('.e-cap').count() === 3, 'manuscrito con 3 capítulos y 4 escenas');
+  // Las partes antiguas (un texto en cada capítulo) pasan solas a partes de verdad: el manuscrito, en cuadrados
+  await sleep(600); await p.evaluate(() => window.RV.refrescar()); await sleep(400);
+  ok(escr.partes(o.id).map((x) => x.titulo).join(' | ') === 'Parte I · El valle | Parte II · La torre', `las partes antiguas pasan a ser partes de verdad (${escr.partes(o.id).map((x) => x.titulo).join(' | ')})`);
+  ok(await p.locator('.e-cuadro-parte').count() === 2 && await p.locator('.e-cuadros > .e-cuadro-cap').count() === 1, 'manuscrito en cuadrados: dos partes y un capítulo suelto');
+  ok(escr.capitulos(o.id).map((c) => c.titulo).join() === 'La subida,El cuervo,Lo que dice el espejo', 'el libro sigue en el mismo orden');
   await p.screenshot({ path: path.join(OUT, 'pc-e03-manuscrito.png') });
   { const b = await barrasSueltas(p); ok(!b.length, `manuscrito sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
-  for (const [i, n] of [[1, 'fichas'], [2, 'notas'], [3, 'linea'], [4, 'cifras']]) {
+  await p.locator('.e-chip', { hasText: 'Lista' }).click(); await sleep(300);
+  ok(await p.locator('.e-escena').count() === 4 && await p.locator('.e-cap').count() === 3, 'la vista de lista: 3 capítulos y 4 escenas');
+  await p.screenshot({ path: path.join(OUT, 'pc-e03b-lista.png') });
+  await p.locator('.e-chip', { hasText: 'Cuadrados' }).click(); await sleep(300);
+  for (const [i, n] of [[1, 'fichas'], [2, 'arbol'], [3, 'notas'], [4, 'linea'], [5, 'cifras']]) {
     await p.locator('.e-tabs button').nth(i).click(); await sleep(350);
     await p.screenshot({ path: path.join(OUT, `pc-e0${3 + i}-${n}.png`) });
     { const b = await barrasSueltas(p); ok(!b.length, `${n}: sin barras de desplazamiento sobrantes ${b.join(', ')}`); }
@@ -131,7 +139,13 @@ function siembra() {
   await p.locator('.e-tabs button').nth(0).click(); await sleep(300);
 
   console.log('El editor');
-  await p.locator('.e-escena-cuerpo').first().click();
+  // De la parte al capítulo y del capítulo a la escena, por los cuadrados
+  await p.locator('.e-cuadro-parte', { hasText: 'El valle' }).click(); await sleep(500);
+  ok((await p.evaluate(() => window.RV.ruta().v)) === 'parte' && await p.locator('.e-cuadro-cap').count() === 1, 'la parte se abre en su página, con su capítulo');
+  await p.locator('.e-cuadro-cap').first().click(); await sleep(500);
+  ok((await p.evaluate(() => window.RV.ruta().v)) === 'capitulo' && await p.locator('.e-cuadro-esc').count() === 2, 'el capítulo se abre en su página, con sus dos escenas en cuadrados');
+  await p.screenshot({ path: path.join(OUT, 'pc-e07b-capitulo.png') });
+  await p.locator('.e-cuadro-esc').first().click();
   await sleep(700);
   ok(await p.locator('.ed-texto').count() === 1, 'se abre el editor');
   ok(await p.locator('.ed-texto .e-neg').count() >= 1 && await p.locator('.ed-texto .e-cur').count() >= 1 && await p.locator('.ed-texto .e-ficha').count() >= 2, 'negrita, cursiva y fichas subrayadas');
@@ -271,7 +285,12 @@ function siembra() {
 
   console.log('Salir y volver');
   await p.locator('.ed-cab button').first().click(); await sleep(400);
-  ok((await p.evaluate(() => window.RV.ruta().v)) === 'obra', 'volver a la obra');
+  ok((await p.evaluate(() => window.RV.ruta().v)) === 'capitulo', 'volver (←) lleva al capítulo');
+  console.log('   [depuración] encima del botón:', await p.locator('.cabeza .e-atras').first().evaluate((b) => { const r = b.getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return `${r.left},${r.top},${r.width}x${r.height} → ${e ? e.tagName + '.' + e.className : 'nada'}`; }));
+  await p.locator('.cabeza .e-atras').first().click(); await sleep(400);
+  ok((await p.evaluate(() => window.RV.ruta().v)) === 'parte', 'y de ahí a su parte');
+  await p.locator('.cabeza .e-atras').first().click(); await sleep(400);
+  ok((await p.evaluate(() => window.RV.ruta().v)) === 'obra', 'y de ahí a la obra');
 
   console.log('Seguir escribiendo, portada y etiquetas');
   const [ea, eb] = escr.escenasDe(o.id);
@@ -288,12 +307,14 @@ function siembra() {
   await p.locator('.p-escribiendo button', { hasText: 'Seguir con' }).click(); await sleep(600);
   ok((await p.evaluate(() => window.RV.ruta())).id === eb.id, '«Seguir con…» abre esa escena en el editor');
   await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 0 }), o.id); await sleep(500);
+  await p.locator('.e-chip', { hasText: 'Lista' }).click(); await sleep(300);
   const todas = await p.locator('.e-escena').count();
   await p.locator('.e-filtro .e-chip', { hasText: '#Cuervo' }).click(); await sleep(400);
   ok(await p.locator('.e-escena').count() === 1 && todas === 4, `filtrar por etiqueta deja solo esas escenas (${await p.locator('.e-escena').count()} de ${todas})`);
   await p.screenshot({ path: path.join(OUT, 'pc-e19-filtro.png') });
   await p.locator('.e-filtro .e-chip', { hasText: 'Todas' }).click(); await sleep(300);
   ok(await p.locator('.e-escena').count() === todas, 'y «Todas» las vuelve a enseñar');
+  await p.locator('.e-chip', { hasText: 'Cuadrados' }).click(); await sleep(300);
 
   console.log('Colores de la obra');
   await p.evaluate((id) => window.RV.E.dlgObra(window.RV.E.get(id)), o.id); await sleep(400);
@@ -303,6 +324,8 @@ function siembra() {
   ok(escr.get(o.id).color === '#3E8E9E', `y se guarda (${escr.get(o.id).color})`);
 
   console.log('Papelera');
+  await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 0 }), o.id); await sleep(400);
+  await p.locator('.e-chip', { hasText: 'Lista' }).click(); await sleep(300);
   const s2 = escr.escenasDe(o.id)[1];
   await p.evaluate((id) => window.RV.E.aPapelera(window.RV.E.get(id)), s2.id); await sleep(500);
   ok(!escr.get(s2.id) && await p.locator('.e-escena').count() === 3, 'borrar una escena la quita del manuscrito');
@@ -310,6 +333,7 @@ function siembra() {
   await p.screenshot({ path: path.join(OUT, 'pc-e15-deshacer.png') });
   await p.locator('#aviso .aviso-accion').click(); await sleep(500);
   ok(!!escr.get(s2.id) && await p.locator('.e-escena').count() === 4, '«Deshacer» la trae de vuelta');
+  await p.locator('.e-chip', { hasText: 'Cuadrados' }).click(); await sleep(300);
   const c2 = escr.capitulos(o.id)[1];
   await p.evaluate((id) => window.RV.E.aPapelera(window.RV.E.get(id)), c2.id); await sleep(300);
   await p.evaluate(() => window.RV.ir({ v: 'escribir' })); await sleep(500);
@@ -349,7 +373,7 @@ function siembra() {
   await p.locator('.dialogo button', { hasText: 'Guardar' }).click(); await sleep(600);
   ok(RV_hecho3(escr, g.id), 'con los tres apartados escritos, el paso 3 queda hecho');
   // Un paso a mano: marcar, saltar y quitar la marca
-  await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 5 }), g.id); await sleep(400);
+  await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 6 }), g.id); await sleep(400);
   await p.locator('.e-paso-cab', { hasText: 'Promesa, progreso y recompensa' }).click(); await sleep(300);
   await p.locator('.e-paso-cuerpo button', { hasText: 'Ya lo tengo' }).click(); await sleep(500);
   ok(num4(escr.get(g.id).g4) === 1 && await p.locator('.e-paso.hecho').count() === 3, '«Ya lo tengo» marca un paso a mano');
@@ -372,6 +396,130 @@ function siembra() {
   await p.locator('.dialogo button', { hasText: 'Crear' }).click(); await sleep(700);
   ok(await p.locator('.e-guia').count() === 1 && await p.locator('.e-paso.ahora').count() === 1, 'al crearla se abre la guía, con el paso 1 por delante');
   await p.screenshot({ path: path.join(OUT, 'pc-e22-guia-nueva.png') });
+
+  console.log('Partes: nueva, meter un capítulo arrastrando, notas y fichas vinculadas');
+  {
+    const cid = (t) => escr.capitulos(o.id).find((c) => c.titulo === t).id;
+    await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 0 }), o.id); await sleep(500);
+    await p.locator('.e-nuevos button', { hasText: 'Nueva parte' }).click(); await sleep(300);
+    await p.locator('.dialogo input[data-autofocus]').fill('Parte III · El descenso');
+    await p.locator('.dialogo button', { hasText: 'Crear' }).click(); await sleep(600);
+    const p3 = escr.partes(o.id).find((x) => x.titulo === 'Parte III · El descenso');
+    ok(!!p3 && await p.locator('.e-cuadro-parte').count() === 3, 'nueva parte: un cuadrado más');
+    await p.locator('.e-cuadros > .e-cuadro-cap', { hasText: 'El cuervo' }).dragTo(p.locator('.e-cuadro-parte', { hasText: 'El descenso' })); await sleep(700);
+    ok(escr.get(cid('El cuervo')).aid === p3.id, 'arrastrar un capítulo sobre una parte lo mete en ella');
+    ok(escr.capitulos(o.id).map((c) => c.titulo).join() === 'La subida,Lo que dice el espejo,El cuervo', `y el libro lo pone al final de esa parte (${escr.capitulos(o.id).map((c) => c.titulo).join()})`);
+    await p.locator('.e-cuadro-parte', { hasText: 'El descenso' }).click(); await sleep(500);
+    await p.locator('.e-cuadro-nuevo', { hasText: 'Resumen' }).click(); await sleep(300);
+    await p.locator('.dialogo input[data-autofocus]').fill('Qué pasa en el descenso');
+    await p.locator('.dialogo textarea').first().fill('Aldara baja la torre sabiendo quién es.');
+    await p.locator('.dialogo button', { hasText: 'Guardar' }).click(); await sleep(600);
+    const nr = escr.notas(o.id).find((n) => n.titulo === 'Qué pasa en el descenso');
+    ok(!!nr && nr.tipo === 'resumen' && (nr.vin || []).includes(p3.id), 'un resumen creado en la parte queda vinculado a ella');
+    ok(await p.locator('.e-cuadros-notas .e-cuadro', { hasText: 'Qué pasa en el descenso' }).count() === 1, 'y sale en la página de la parte');
+    await p.locator('.seccion button', { hasText: 'Vincular' }).first().click(); await sleep(400);
+    await p.locator('.dialogo .e-vinc', { hasText: 'El Cuervo' }).locator('input').check();
+    await p.locator('.dialogo button', { hasText: 'Guardar' }).click(); await sleep(600);
+    ok((escr.fichas(o.id).find((f) => f.nombre === 'El Cuervo').vin || []).includes(p3.id) && await p.locator('.e-cuadros-notas .e-cuadro', { hasText: 'El Cuervo' }).count() === 1, 'vincular una ficha que ya existe: sale en la parte');
+    await p.screenshot({ path: path.join(OUT, 'pc-e30-parte.png') });
+    { const b = await barrasSueltas(p); ok(!b.length, `la página de la parte, sin barras sobrantes ${b.join(', ')}`); }
+    await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 3 }), o.id); await sleep(500);
+    ok(/Resumen · Parte III · El descenso/i.test(await p.locator('.e-tablon').innerText()), 'en Notas sale con su parte');
+    await p.locator('.e-filtro .e-chip', { hasText: 'El descenso' }).click(); await sleep(300);
+    ok(await p.locator('.e-tablon .e-nota').count() === 1, 'y se puede ver solo lo de esa parte');
+    // Un capítulo: leerlo entero
+    await p.evaluate((id) => window.RV.ir({ v: 'capitulo', id }), cid('La subida')); await sleep(500);
+    await p.locator('.cabeza button', { hasText: 'Leerlo entero' }).click(); await sleep(400);
+    ok(/Aldara subió la torre/.test(await p.locator('.dialogo.e-leer').innerText()) && await p.locator('.dialogo.e-leer b').count() >= 1, 'leer el capítulo entero, con su formato');
+    await p.screenshot({ path: path.join(OUT, 'pc-e31-leer.png') });
+    await p.keyboard.press('Escape'); await sleep(200);
+  }
+
+  console.log('Modo lectura: lo que ya existe se abre para leerlo');
+  {
+    await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 1 }), o.id); await sleep(500);
+    await p.locator('.e-ficha-tarj', { hasText: 'Aldara' }).click(); await sleep(400);
+    ok(await p.locator('.dialogo.e-lee').count() === 1 && await p.locator('.dialogo input, .dialogo textarea').count() === 0, 'una ficha se abre en lectura (sin campos para escribir)');
+    ok(/Parecerse a su maestra/.test(await p.locator('.dialogo').innerText()), 'con sus datos');
+    await p.locator('.dialogo button', { hasText: 'Editar' }).click(); await sleep(400);
+    ok(await p.locator('.dialogo input').count() > 0, '«Editar» la abre para cambiarla');
+    await p.keyboard.press('Escape'); await sleep(200);
+  }
+
+  console.log('El árbol');
+  {
+    await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 2 }), o.id); await sleep(700);
+    ok(await p.locator('.e-arbol-lienzo .e-nodo').count() === 3, 'las tres fichas en el lienzo');
+    await p.locator('.e-arbol-barra button', { hasText: 'Unir dos fichas' }).click(); await sleep(200);
+    await p.locator('.e-nodo[aria-label="Aldara"]').click(); await sleep(200);
+    await p.locator('.e-nodo[aria-label="El Cuervo"]').click(); await sleep(400);
+    await p.locator('.dialogo input[data-autofocus]').fill('Enemigos');
+    await p.locator('.dialogo textarea').first().fill('Desde que el Cuervo le negó la entrada a su maestra.');
+    await p.locator('.dialogo button', { hasText: 'Unir' }).click(); await sleep(700);
+    const rel = escr.relaciones(o.id)[0];
+    ok(!!rel && rel.titulo === 'Enemigos', 'unir dos fichas con la palabra que quieras');
+    ok(await p.locator('.e-rel-etq', { hasText: 'ENEMIGOS' }).count() === 1, 'la palabra sale en medio de la línea');
+    console.log('   [depuración] encima de la palabra:', await p.locator('.e-rel-etq', { hasText: 'ENEMIGOS' }).evaluate((b) => { const r = b.getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)}x${Math.round(r.height)} → ${e ? e.tagName + '.' + (e.className.baseVal ?? e.className) + ' / ' + (e.parentNode && (e.parentNode.className.baseVal ?? e.parentNode.className)) : 'nada'}`; }));
+    await p.locator('.e-rel-etq', { hasText: 'ENEMIGOS' }).click(); await sleep(400);
+    ok(/le negó la entrada/.test(await p.locator('.dialogo.e-lee').innerText()), 'pulsar la palabra enseña lo que escribiste de la unión');
+    await p.keyboard.press('Escape'); await sleep(200);
+    // Una unión sin texto: solo la palabra
+    escr.nuevo('v', o.id, { a: escr.fichas(o.id).find((f) => f.nombre === 'Aldara').id, b: escr.fichas(o.id).find((f) => f.nombre === 'El valle').id, titulo: 'Hogar', flecha: 1 });
+    await sleep(500);
+    ok(await p.locator('.e-rel-etq', { hasText: 'HOGAR' }).count() === 1 && await p.locator('path.e-linea-rel[marker-end]').count() === 1, 'otra unión, con flecha');
+    // Mover una ficha arrastrando (se guarda su sitio)
+    const nodo = await p.locator('.e-nodo[aria-label="El valle"]').boundingBox();
+    await p.mouse.move(nodo.x + nodo.width / 2, nodo.y + nodo.height / 2); await p.mouse.down();
+    await p.mouse.move(nodo.x + nodo.width / 2 + 90, nodo.y + nodo.height / 2 + 40, { steps: 8 }); await p.mouse.up(); await sleep(600);
+    ok(Number.isFinite(Number(escr.fichas(o.id).find((f) => f.nombre === 'El valle').ax)), 'arrastrar una ficha guarda su sitio');
+    await p.screenshot({ path: path.join(OUT, 'pc-e32-arbol.png') });
+    await p.locator('.e-arbol-barra button', { hasText: 'Ordenar' }).click(); await sleep(300);
+    await p.locator('.dialogo button', { hasText: 'Ordenar' }).click(); await sleep(900);
+    ok(escr.fichas(o.id).every((f) => Number.isFinite(Number(f.ax)) && Number.isFinite(Number(f.ay))), '«Ordenar» coloca todas las fichas');
+    await p.screenshot({ path: path.join(OUT, 'pc-e33-arbol-ordenado.png') });
+    // La ficha en lectura enseña sus uniones y lleva a la otra ficha
+    await p.locator('.e-nodo[aria-label="Aldara"]').click(); await sleep(400);
+    const fl = await p.locator('.dialogo').innerText();
+    ok(/ENEMIGOS/.test(fl) && /HOGAR/.test(fl) && /El Cuervo/.test(fl), 'la ficha enseña abajo sus uniones');
+    await p.locator('.dialogo .e-union button.enlace-serif', { hasText: 'El Cuervo' }).click(); await sleep(400);
+    ok(/El Cuervo/.test(await p.locator('.dialogo h2').innerText()), 'y pulsar una lleva a la otra ficha');
+    await p.screenshot({ path: path.join(OUT, 'pc-e34-ficha-lectura.png') });
+    await p.keyboard.press('Escape'); await sleep(200);
+  }
+
+  console.log('La línea temporal con ramas');
+  {
+    await p.evaluate((id) => window.RV.ir({ v: 'obra', id, tab: 4 }), o.id); await sleep(600);
+    ok(await p.locator('.e-ln-fila.hito').count() === 2, 'los dos sucesos en la línea');
+    await p.locator('.e-ln-fila.hito').first().locator('button', { hasText: 'Rama desde aquí' }).click(); await sleep(300);
+    await p.locator('.dialogo input[data-autofocus]').fill('El pasado de Aldara');
+    await p.locator('.dialogo button', { hasText: 'Crear' }).click(); await sleep(600);
+    await p.locator('.dialogo input[data-autofocus]').fill('Recuerda a su maestra');
+    await p.locator('.dialogo button', { hasText: 'Guardar' }).click(); await sleep(700);
+    const ra = escr.ramas(o.id)[0];
+    const hr = escr.hitos(o.id).find((x) => x.titulo === 'Recuerda a su maestra');
+    ok(!!ra && !!hr && hr.rama === ra.id, 'una rama nace de un suceso, con su primer suceso');
+    ok(await p.locator('.e-ln-fila.inicio').count() === 1 && await p.locator('.e-ln-fila.hito').count() === 3, 'la rama sale en la línea');
+    const filas = await p.locator('.e-ln-fila').evaluateAll((l) => l.map((x) => x.className.replace('e-ln-fila ', '') + ':' + x.innerText.split('\n').slice(-3).join(' ').slice(0, 30)));
+    ok(/hito/.test(filas[0]) && /inicio/.test(filas[1]) && /Recuerda/.test(filas[2]), `en su sitio: nace después del primer suceso (${filas.join(' / ')})`);
+    await p.screenshot({ path: path.join(OUT, 'pc-e35-linea.png') });
+    await p.locator('.e-ln-cuerpo', { hasText: 'Recuerda a su maestra' }).click(); await sleep(400);
+    ok(await p.locator('.dialogo.e-lee').count() === 1 && /El pasado de Aldara/i.test(await p.locator('.dialogo').innerText()), 'un suceso se abre en lectura, con su rama');
+    await p.keyboard.press('Escape'); await sleep(200);
+  }
+
+  console.log('Vista previa de una ficha al escribir');
+  {
+    await p.evaluate((id) => window.RV.ir({ v: 'editor', id }), e1.id); await sleep(800);
+    await p.locator('.ed-texto .e-ficha', { hasText: 'Aldara' }).first().hover(); await sleep(800);
+    ok(await p.locator('.ed-previa').count() === 1 && /Aldara/.test(await p.locator('.ed-previa').innerText()) && /ENEMIGOS/.test(await p.locator('.ed-previa').innerText()), 'el ratón encima de un nombre enseña su ficha (con sus uniones)');
+    await p.screenshot({ path: path.join(OUT, 'pc-e36-previa.png') });
+    await p.locator('.ed-texto .e-ficha', { hasText: 'Aldara' }).first().dblclick(); await sleep(500);
+    ok(await p.locator('.dialogo.e-lee').count() === 1 && /Aldara/.test(await p.locator('.dialogo h2').innerText()), 'y doble clic la abre');
+    await p.keyboard.press('Escape'); await sleep(200);
+    ok(escr.get(e1.id).texto === texto0(), 'el texto no se ha tocado');
+  }
+
   ok(errores.length === 0, `sin errores en la página ${errores.slice(0, 3).join(' | ')}`);
   await b.close(); srv.close();
   console.log(fallos ? `FALLAN ${fallos}` : 'Todo bien');

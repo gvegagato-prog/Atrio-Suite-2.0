@@ -55,6 +55,8 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
     companion object {
         const val T_OBRA = "p"; const val T_CAP = "c"; const val T_ESCENA = "e"; const val T_FICHA = "f"
         const val T_NOTA = "n"; const val T_BORRADOR = "b"; const val T_HITO = "h"; const val T_LOG = "l"
+        /** Una parte del manuscrito; una rama de la línea temporal; una unión del árbol entre dos fichas (ver docs/escribir.md). */
+        const val T_PARTE = "a"; const val T_RAMA = "r"; const val T_REL = "v"
         private const val LIMPIEZA = 180L * 86_400_000L
         /** Lo borrado se queda en la papelera 30 días; luego solo queda la marca de borrado (para tus otros dispositivos). */
         const val PAPELERA = 30L * 86_400_000L
@@ -216,7 +218,11 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         docs.values.filter { it.t == t && !it.borrado && (pid == null || it.pid == pid) }.sortedWith(compareBy({ it.orden }, { it.u }))
 
     fun obras(): List<Doc> = deTipo(T_OBRA)
-    fun capitulos(pid: String): List<Doc> = deTipo(T_CAP, pid)
+    /** Los capítulos en el orden del libro (los sueltos y los de cada parte, ver [EscribirEstructura]). */
+    fun capitulos(pid: String): List<Doc> = EscribirEstructura.estructura(deTipo(T_CAP, pid), deTipo(T_PARTE, pid)).libro
+    fun partes(pid: String): List<Doc> = deTipo(T_PARTE, pid)
+    fun ramas(pid: String): List<Doc> = deTipo(T_RAMA, pid)
+    fun relaciones(pid: String): List<Doc> = deTipo(T_REL, pid)
     fun escenas(cid: String): List<Doc> = docs.values.filter { it.t == T_ESCENA && !it.borrado && it.s("cid") == cid }.sortedWith(compareBy({ it.orden }, { it.u }))
     fun escenasDe(pid: String): List<Doc> = capitulos(pid).flatMap { escenas(it.id) }
     fun fichas(pid: String): List<Doc> = deTipo(T_FICHA, pid)
@@ -259,7 +265,18 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         val o = JSONObject().put("id", id).put("t", t).put("pid", if (t == T_OBRA) id else pid)
         o.campos()
         if (!o.has("orden")) {
-            val ult = docs.values.filter { it.t == t && it.pid == pid && !it.borrado && (t != T_ESCENA || it.s("cid") == o.optString("cid")) }.maxOfOrNull { it.orden }
+            // Al final de sus hermanos: las escenas de su capítulo; los capítulos de su parte; arriba del manuscrito, las partes y
+            // los capítulos sueltos juntos; lo demás, los de su tipo
+            fun arriba(x: Doc) = x.t == T_PARTE || (x.t == T_CAP && get(x.s("aid")) == null)
+            val aid = o.optString("aid")
+            val ult = docs.values.filter { x ->
+                x.pid == pid && !x.borrado && when {
+                    t == T_ESCENA -> x.t == t && x.s("cid") == o.optString("cid")
+                    t == T_CAP && aid.isNotEmpty() -> x.t == t && x.s("aid") == aid
+                    t == T_CAP || t == T_PARTE -> arriba(x)
+                    else -> x.t == t
+                }
+            }.maxOfOrNull { it.orden }
             o.put("orden", (ult ?: 0.0) + 1000.0)
         }
         if (t == T_OBRA && !o.has("creado")) o.put("creado", System.currentTimeMillis())
@@ -300,6 +317,10 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
             T_OBRA -> listOf(id) + vivos.filter { it.pid == id && it.id != id && it.t != T_LOG }.map { it.id }
             T_CAP -> listOf(id) + vivos.filter { it.t == T_ESCENA && it.s("cid") == id }.flatMap { conBorradores(it) }
             T_ESCENA -> conBorradores(d)
+            // Una parte, con sus capítulos (y sus escenas); una rama, con sus sucesos; una ficha, con sus uniones del árbol
+            T_PARTE -> listOf(id) + vivos.filter { it.t == T_CAP && it.s("aid") == id }.flatMap { c -> listOf(c.id) + vivos.filter { it.t == T_ESCENA && it.s("cid") == c.id }.flatMap { conBorradores(it) } }
+            T_RAMA -> listOf(id) + vivos.filter { it.t == T_HITO && it.s("rama") == id }.map { it.id }
+            T_FICHA -> listOf(id) + vivos.filter { it.t == T_REL && (it.s("a") == id || it.s("b") == id) }.map { it.id }
             else -> listOf(id)
         }
         val ahora = System.currentTimeMillis()
@@ -341,6 +362,9 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
             T_OBRA -> emptyList()
             T_ESCENA -> listOf(x.s("cid"), x.pid)
             T_BORRADOR -> listOf(x.s("eid"), x.pid)
+            T_CAP -> listOfNotNull(x.s("aid").ifEmpty { null }, x.pid)
+            T_HITO -> listOfNotNull(x.s("rama").ifEmpty { null }, x.pid)
+            T_REL -> listOfNotNull(x.s("a").ifEmpty { null }, x.s("b").ifEmpty { null }, x.pid)
             else -> listOf(x.pid)
         }
         fun padres(x: Doc) { dentroDe(x).forEach { pid -> docs[pid]?.takeIf { enPapelera(it) && it.id !in ids }?.let { p -> con(p); padres(p) } } }
@@ -386,6 +410,34 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
         val a = antes?.let { docs[it]?.orden }
         val b = despues?.let { docs[it]?.orden }
         edita(id) { put("orden", ordenEntre(a, b)) }
+    }
+
+    /**
+     * Pasa la «parte» antigua de los capítulos (un texto) a partes de verdad, con el mismo id en todos los dispositivos (si
+     * otro lo hizo a la vez, salen las mismas partes y no se duplican). Devuelve cuántos capítulos ha movido.
+     */
+    fun migraPartes(pid: String): Int {
+        val plan = EscribirEstructura.planMigracion(pid, deTipo(T_CAP, pid), docs.values.filter { it.t == T_PARTE && it.pid == pid })
+        if (plan.asigna.isEmpty()) return 0
+        synchronized(lock) {
+            plan.partes.forEach { p -> ponSin(JSONObject().put("id", p.id).put("t", T_PARTE).put("pid", pid).put("titulo", p.titulo).put("orden", p.orden)) }
+            plan.asigna.forEach { (cid, aid) -> docs[cid]?.let { c -> ponSin(JSONObject(c.o.toString()).put("aid", aid).put("parte", "")) } }
+        }
+        avisa()
+        alCambiar?.invoke()
+        return plan.asigna.size
+    }
+
+    /** Un capítulo a otra parte ([aid] vacío: suelto), entre dos (o al final si no se dice). */
+    fun mueveCapitulo(id: String, aid: String, antes: String?, despues: String?) {
+        val c = get(id) ?: return
+        val a = antes?.let { docs[it]?.orden }
+        val b = despues?.let { docs[it]?.orden }
+        val orden = if (a == null && b == null) {
+            fun arriba(x: Doc) = x.t == T_PARTE || (x.t == T_CAP && get(x.s("aid")) == null)
+            (todos().filter { x -> x.id != id && x.pid == c.pid && (if (aid.isNotEmpty()) x.t == T_CAP && x.s("aid") == aid else arriba(x)) }.maxOfOrNull { it.orden } ?: 0.0) + 1000.0
+        } else ordenEntre(a, b)
+        edita(id) { if (aid.isEmpty()) remove("aid") else put("aid", aid); put("orden", orden) }
     }
 
     /** Mueve una escena a otro capítulo, entre dos escenas. */

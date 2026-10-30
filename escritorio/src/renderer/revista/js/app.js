@@ -142,7 +142,7 @@
       item('Portada', { v: 'portada' }, v === 'portada'),
       D.tipos().map((k) => item(k.title, { v: 'seccion', k: k.id }, kAct === k.id)),
       item('Diario', { v: 'diario' }, v === 'diario'),
-      item('Escribir', { v: 'escribir' }, v === 'escribir' || v === 'obra' || v === 'editor'),
+      item('Escribir', { v: 'escribir' }, ['escribir', 'obra', 'editor', 'parte', 'capitulo'].includes(v)),
       item('Descubrir', { v: 'descubrir', dom: 0 }, v === 'descubrir'),
       item('Cifras', { v: 'cifras' }, v === 'cifras'),
       RV.soloRevista ? null : item('Tu PC', { v: 'pc' }, v === 'pc'),

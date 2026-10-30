@@ -76,9 +76,12 @@ const leeEscena = (id) => { try { return JSON.parse(fs.readFileSync(path.join(HO
     ok(obras.length === 2 && obras.some((t) => /Novela de prueba \(copia del/.test(t)), `sacada como obra nueva (${obras.join(' | ')})`);
     await sleep(500);
     await p.evaluate((id) => window.RV.ir({ v: 'obra', id }), o.id);
-    await hasta(() => p.evaluate(() => document.querySelectorAll('.e-escena').length > 0), 15000, 300);
+    // (la obra en cuadrados: se entra al capítulo y de ahí a la escena)
+    await hasta(() => p.evaluate(() => document.querySelectorAll('.e-cuadro-cap').length > 0), 15000, 300);
     await p.screenshot({ path: path.join(OUT, 'obra.png') });
-    await p.locator('.e-escena').first().click();
+    await p.locator('.e-cuadro-cap').first().click();
+    await hasta(() => p.evaluate(() => document.querySelectorAll('.e-cuadro-esc').length > 0), 15000, 300);
+    await p.locator('.e-cuadro-esc').first().click();
     await p.locator('.ed-texto').waitFor({ timeout: 15000 });
     await p.locator('.ed-texto').click();
     await p.keyboard.press('Control+End');

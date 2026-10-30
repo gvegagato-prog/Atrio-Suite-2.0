@@ -23,6 +23,7 @@ jobs:
           node herramientas/prueba-rt.js
           node herramientas/prueba-lector.js
           node herramientas/prueba-diccionario.js
+          node herramientas/prueba-escribir-estructura.js
       - name: Tu nube (kDrive de mentira)
         run: node herramientas/prueba-nube.js
       - name: Prueba PC + móvil (Firebase de mentira + Atrio de verdad + móvil simulado)

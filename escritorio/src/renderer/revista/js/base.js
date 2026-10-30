@@ -261,7 +261,7 @@ window.RV = window.RV || {};
     const cuerpo = h('div.cuerpo-dialogo');
     if (o.cuerpo) cuerpo.append(...[].concat(o.cuerpo).filter(Boolean));
     const pie = h('div.pie-dialogo');
-    const caja = h(`div.dialogo${o.ancho ? '.ancho' : ''}`, { role: 'dialog', 'aria-modal': 'true', 'aria-label': o.titulo || '' },
+    const caja = h(`div.dialogo${o.ancho ? '.ancho' : ''}${o.clase ? `.${o.clase}` : ''}`, { role: 'dialog', 'aria-modal': 'true', 'aria-label': o.titulo || '' },
       o.ante ? h('div.ante', o.ante) : null,
       o.titulo ? h('h2.ajusta', { 'data-min': '20' }, o.titulo) : null,
       h('div.filete'),

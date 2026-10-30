@@ -137,6 +137,44 @@
     // ---- Cambios del texto
     const cambio = (txt, a, b) => { texto = txt; hist.apunta({ text: txt, a, b }); pinta(); ponSel(a, b); pie(); aviso(); centra(); };
     const aplica = (fn) => { const o = offsets() || { a: texto.length, b: texto.length }; const r = fn({ text: texto, a: o.a, b: o.b }); cambio(r.text, r.a, r.b); pagina.focus({ preventScroll: true }); };
+    // ---- Vista previa de una ficha: con el ratón encima de un nombre (o un alias) subrayado se ve su ficha; doble clic, se abre
+    const normaF = (x) => String(x || '').normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().trim();
+    const fichaDe = (texto) => { const n = normaF(texto); return E.fichas(pid).find((f) => [f.nombre, ...String(f.alias || '').split(',')].some((x) => normaF(x) === n)) || null; };
+    let previa = null; let timerPrevia = null;
+    const quitaPrevia = () => { clearTimeout(timerPrevia); if (previa) { previa.remove(); previa = null; } };
+    const ponPrevia = (sp) => {
+      const f = fichaDe(sp.textContent);
+      if (!f) return;
+      quitaPrevia();
+      const tipo = (E.TIPOS_FICHA.find((t) => t[0] === f.tipo) || [])[2] || 'Ficha';
+      const datos = (Array.isArray(f.campos) ? f.campos : []).filter((c) => String(c.k || '').trim() && String(c.v || '').trim()).slice(0, 4);
+      const rels = E.relacionesDe(f.id).slice(0, 4).map((r) => ({ r, otra: E.get(r.a === f.id ? r.b : r.a) })).filter((x) => x.otra);
+      previa = h('div.ed-previa', { style: { '--c': E.colorDe(f.color) } },
+        h('span.versal', tipo), h('b.ed-previa-nombre', f.nombre || ''), f.resumen ? h('span.ed-previa-res', f.resumen) : null,
+        datos.length ? h('ul.datos', datos.map((c) => RV.dato(c.k, c.v))) : null,
+        rels.length ? h('span.ed-previa-rels', rels.map(({ r, otra }) => `${(r.titulo || '').toUpperCase()} · ${otra.nombre}`).join('   ')) : null,
+        h('span.apagado', 'Doble clic para abrir la ficha'));
+      document.body.append(previa);
+      const r = sp.getBoundingClientRect(); const pr = previa.getBoundingClientRect();
+      const arriba = r.bottom + pr.height + 12 > window.innerHeight;
+      previa.style.left = `${Math.max(8, Math.min(window.innerWidth - pr.width - 8, r.left))}px`;
+      previa.style.top = `${arriba ? r.top - pr.height - 8 : r.bottom + 8}px`;
+    };
+    pagina.addEventListener('mouseover', (e) => {
+      const sp = e.target.closest && e.target.closest('.e-ficha');
+      clearTimeout(timerPrevia);
+      if (!sp) { timerPrevia = setTimeout(quitaPrevia, 150); return; }
+      timerPrevia = setTimeout(() => ponPrevia(sp), 380);
+    });
+    pagina.addEventListener('mouseleave', () => { clearTimeout(timerPrevia); timerPrevia = setTimeout(quitaPrevia, 150); });
+    pagina.addEventListener('keydown', () => quitaPrevia(), true);
+    pagina.addEventListener('dblclick', (e) => {
+      const sp = e.target.closest && e.target.closest('.e-ficha');
+      const f = sp ? fichaDe(sp.textContent) : null;
+      if (!f) return;
+      e.preventDefault(); quitaPrevia();
+      E.verFicha(pid, f);
+    });
     pagina.addEventListener('compositionstart', () => { componiendo = true; });
     pagina.addEventListener('compositionend', () => { componiendo = false; pagina.dispatchEvent(new Event('input')); });
     pagina.addEventListener('input', (e) => {
@@ -294,7 +332,9 @@
     }
 
     // ---- La página
-    const volver = h('button.enlace', { type: 'button', onclick: () => { RV.ir({ v: 'obra', id: pid, tab: 0 }); } }, `← ${(E.get(pid) || {}).titulo || 'Obra'}`);
+    // Volver: al capítulo de la escena (y desde allí, a su parte y a la obra)
+    const capV = E.get(escena0.cid);
+    const volver = h('button.enlace', { type: 'button', onclick: () => { RV.ir(capV ? { v: 'capitulo', id: capV.id } : { v: 'obra', id: pid, tab: 0 }); } }, `← ${capV ? `Capítulo ${E.numeroCapitulo(capV)} · ${capV.titulo || ''}` : (E.get(pid) || {}).titulo || 'Obra'}`);
     const salirFoco = h('button.ed-salir', { type: 'button', onclick: () => ponFoco(false) }, 'Salir');
     const nodo = h('div.ed.hoja', { 'data-fuente': ['serif', 'sans', 'mono'][p.fuente], style: { '--tam': `${p.tam}px` } },
       h('div.ed-cab', volver, titulo, h('span.ed-obra', (E.get(pid) || {}).titulo || '')),
@@ -317,6 +357,7 @@
       cerrar() {
         clearTimeout(timerGuarda); clearTimeout(timerPinta); clearInterval(timerSnap); clearInterval(timerSprint);
         document.removeEventListener('selectionchange', selCambia);
+        quitaPrevia();
         window.removeEventListener('resize', ajustaAlto);
         if (texto !== guardado) { apuntaPropio(texto); api.escritos('escribe', id, texto).catch(() => {}); guardado = texto; }
         api.escritos('instantanea', id, texto, {}).catch(() => {});

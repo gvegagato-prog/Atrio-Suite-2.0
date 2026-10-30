@@ -1,0 +1,357 @@
+{
+ "nota": "Casos de la estructura de Escribir (escribir-estructura.js y EscribirEstructura.kt): ids de parte, el paso de la parte de texto a partes de verdad, el orden del libro y la línea temporal. Se comprueban igual en el PC y en el móvil.",
+ "ids": [
+  {
+   "pid": "p_1",
+   "nombre": "Parte I",
+   "esperado": "a_54376fa864ce"
+  },
+  {
+   "pid": "p_1",
+   "nombre": "  parte   i ",
+   "esperado": "a_54376fa864ce"
+  },
+  {
+   "pid": "p_1",
+   "nombre": "Parte II",
+   "esperado": "a_5444ecd389f5"
+  },
+  {
+   "pid": "p_1",
+   "nombre": "Ñandú",
+   "esperado": "a_2e189fcda98d"
+  },
+  {
+   "pid": "p_9",
+   "nombre": "Parte I",
+   "esperado": "a_5bb95780d802"
+  }
+ ],
+ "migracion": [
+  {
+   "nombre": "dos partes de texto; un capítulo suelto y uno que ya tiene parte no se tocan",
+   "pid": "p_1",
+   "caps": [
+    {
+     "id": "c1",
+     "orden": 1000,
+     "parte": ""
+    },
+    {
+     "id": "c2",
+     "orden": 2000,
+     "parte": "Parte I"
+    },
+    {
+     "id": "c3",
+     "orden": 3000,
+     "parte": "Parte I"
+    },
+    {
+     "id": "c4",
+     "orden": 4000,
+     "parte": "Parte II"
+    },
+    {
+     "id": "c5",
+     "orden": 5000,
+     "parte": "Parte II",
+     "aid": "a_x"
+    }
+   ],
+   "partes": [],
+   "esperado": {
+    "partes": [
+     {
+      "id": "a_54376fa864ce",
+      "titulo": "Parte I",
+      "orden": 2000
+     },
+     {
+      "id": "a_5444ecd389f5",
+      "titulo": "Parte II",
+      "orden": 4000
+     }
+    ],
+    "asigna": [
+     {
+      "cid": "c2",
+      "aid": "a_54376fa864ce"
+     },
+     {
+      "cid": "c3",
+      "aid": "a_54376fa864ce"
+     },
+     {
+      "cid": "c4",
+      "aid": "a_5444ecd389f5"
+     }
+    ]
+   }
+  },
+  {
+   "nombre": "la parte ya existe (la creó otro dispositivo): solo se asignan los capítulos",
+   "pid": "p_1",
+   "caps": [
+    {
+     "id": "c1",
+     "orden": 1000,
+     "parte": ""
+    },
+    {
+     "id": "c2",
+     "orden": 2000,
+     "parte": "Parte I"
+    },
+    {
+     "id": "c3",
+     "orden": 3000,
+     "parte": "Parte I"
+    }
+   ],
+   "partes": [
+    {
+     "id": "a_54376fa864ce"
+    }
+   ],
+   "esperado": {
+    "partes": [],
+    "asigna": [
+     {
+      "cid": "c2",
+      "aid": "a_54376fa864ce"
+     },
+     {
+      "cid": "c3",
+      "aid": "a_54376fa864ce"
+     }
+    ]
+   }
+  }
+ ],
+ "estructura": [
+  {
+   "nombre": "partes y capítulos sueltos mezclados por su orden; un capítulo con una parte que no existe va suelto; una parte vacía también sale",
+   "caps": [
+    {
+     "id": "c1",
+     "orden": 1000
+    },
+    {
+     "id": "c2",
+     "orden": 100,
+     "aid": "a1"
+    },
+    {
+     "id": "c3",
+     "orden": 50,
+     "aid": "a1"
+    },
+    {
+     "id": "c4",
+     "orden": 3000
+    },
+    {
+     "id": "c5",
+     "orden": 10,
+     "aid": "zz"
+    }
+   ],
+   "partes": [
+    {
+     "id": "a1",
+     "orden": 2000,
+     "titulo": "I"
+    },
+    {
+     "id": "a2",
+     "orden": 2500,
+     "titulo": "II"
+    }
+   ],
+   "esperado": {
+    "items": [
+     {
+      "cap": "c5"
+     },
+     {
+      "cap": "c1"
+     },
+     {
+      "parte": "a1",
+      "caps": [
+       "c3",
+       "c2"
+      ]
+     },
+     {
+      "parte": "a2",
+      "caps": []
+     },
+     {
+      "cap": "c4"
+     }
+    ],
+    "libro": [
+     "c5",
+     "c1",
+     "c3",
+     "c2",
+     "c4"
+    ]
+   }
+  }
+ ],
+ "linea": [
+  {
+   "nombre": "dos ramas que se pisan: cada una en su columna; la primera vuelve a la principal y la segunda acaba en su último suceso",
+   "hitos": [
+    {
+     "id": "h1",
+     "orden": 1000
+    },
+    {
+     "id": "h2",
+     "orden": 2000
+    },
+    {
+     "id": "h3",
+     "orden": 2500,
+     "rama": "r1"
+    },
+    {
+     "id": "h4",
+     "orden": 3000
+    },
+    {
+     "id": "h5",
+     "orden": 3500,
+     "rama": "r2"
+    },
+    {
+     "id": "h6",
+     "orden": 4000
+    }
+   ],
+   "ramas": [
+    {
+     "id": "r1",
+     "desde": 2000,
+     "hasta": 3200
+    },
+    {
+     "id": "r2",
+     "desde": 3100
+    }
+   ],
+   "esperado": [
+    "hito:h1@0[0]",
+    "hito:h2@0[0]",
+    "inicio:r1@1[0,1]",
+    "hito:h3@1[0,1]",
+    "hito:h4@0[0,1]",
+    "inicio:r2@2[0,1,2]",
+    "fin:r1@1[0,1,2]",
+    "hito:h5@2[0,2]",
+    "hito:h6@0[0]"
+   ],
+   "columnas": 3
+  },
+  {
+   "nombre": "dos ramas que no se pisan comparten columna",
+   "hitos": [
+    {
+     "id": "h1",
+     "orden": 1000
+    },
+    {
+     "id": "h2",
+     "orden": 2000,
+     "rama": "r1"
+    },
+    {
+     "id": "h3",
+     "orden": 3000
+    },
+    {
+     "id": "h4",
+     "orden": 4000,
+     "rama": "r2"
+    }
+   ],
+   "ramas": [
+    {
+     "id": "r1",
+     "desde": 1000,
+     "hasta": 2500
+    },
+    {
+     "id": "r2",
+     "desde": 3000
+    }
+   ],
+   "esperado": [
+    "hito:h1@0[0]",
+    "inicio:r1@1[0,1]",
+    "hito:h2@1[0,1]",
+    "fin:r1@1[0,1]",
+    "hito:h3@0[0]",
+    "inicio:r2@1[0,1]",
+    "hito:h4@1[0,1]"
+   ],
+   "columnas": 2
+  },
+  {
+   "nombre": "un suceso antes del principio de su rama la alarga hacia arriba; uno de una rama que no existe va a la principal",
+   "hitos": [
+    {
+     "id": "h1",
+     "orden": 1000
+    },
+    {
+     "id": "h2",
+     "orden": 500,
+     "rama": "r1"
+    },
+    {
+     "id": "h9",
+     "orden": 1500,
+     "rama": "nada"
+    }
+   ],
+   "ramas": [
+    {
+     "id": "r1",
+     "desde": 1200
+    }
+   ],
+   "esperado": [
+    "inicio:r1@1[0,1]",
+    "hito:h2@1[0,1]",
+    "hito:h1@0[0]",
+    "hito:h9@0[0]"
+   ],
+   "columnas": 2
+  },
+  {
+   "nombre": "una rama que nace del último suceso y aún no tiene nada",
+   "hitos": [
+    {
+     "id": "h1",
+     "orden": 1000
+    }
+   ],
+   "ramas": [
+    {
+     "id": "r1",
+     "desde": 1000
+    }
+   ],
+   "esperado": [
+    "hito:h1@0[0]",
+    "inicio:r1@1[0,1]"
+   ],
+   "columnas": 2
+  }
+ ]
+}

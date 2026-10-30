@@ -26,13 +26,23 @@ directamente la marca sola. Los registros del día no se borran con la obra.
 | t | qué | campos propios |
 |---|-----|----------------|
 | `p` | obra | titulo, autor, genero, sinopsis, color (#rrggbb), meta (palabras de la obra), diaria (palabras al día), fin (fecha tope, día), orden, arch (1 = archivada), creado; de la guía de la novela: idea (la frase), gOn (1 = guía activada), g1…g11 (1 = paso hecho a mano, 2 = saltado) y g7t (ms en que empezó el reposo) |
-| `c` | capítulo | titulo, orden (decimal), parte (texto), resumen |
+| `a` | parte (acto, libro…) | titulo, orden (en el manuscrito, junto a los capítulos sueltos), color, resumen |
+| `c` | capítulo | titulo, orden (decimal; dentro de su parte o, si va suelto, en el manuscrito), aid (id de su parte; vacío = suelto), color (el de su cuadrado), resumen; parte (texto: las partes de antes, ver abajo) |
 | `e` | escena | cid, titulo, orden, texto (Markdown ligero), resumen, estado (0 borrador, 1 revisión, 2 final), pov (id de ficha), lugar (id de ficha), cuando (texto), etq (lista), palabras, meta |
-| `f` | ficha | tipo (`personaje` `lugar` `objeto` `mundo` `otro`), nombre, alias (texto, separado por comas), resumen, texto, campos ([{k,v}]), color, orden |
-| `n` | nota | tipo (`nota` `idea` `investigacion` `plantilla`), titulo, texto, color, fija (1), orden |
+| `f` | ficha | tipo (`personaje` `lugar` `objeto` `mundo` `otro`), nombre, alias (texto, separado por comas), resumen, texto, campos ([{k,v}]), color, orden, vin (ids de partes o capítulos a los que está vinculada), tam (tamaño en el árbol: 1 pequeña, 2 mediana, 3 grande; sin él, según el tipo), ax, ay (su sitio en el árbol) |
+| `n` | nota | tipo (`nota` `idea` `resumen` `esquema` `investigacion` `plantilla`), titulo, texto, color, fija (1), orden, vin (ids de partes o capítulos) |
+| `v` | unión del árbol | a, b (ids de las dos fichas), titulo (la palabra de la línea), texto (todo lo que se quiera contar), flecha (1: de a hacia b), color |
+| `r` | rama de la línea temporal | titulo, texto, color, desde (el orden de la línea en que nace), hasta (en el que vuelve a la principal; sin él, acaba en su último suceso) |
 | `b` | borrador | eid (escena), nombre, texto, conflicto (1 = lo guardó una mezcla) |
-| `h` | hito (línea temporal) | titulo, cuando (texto), orden, eid (escena enlazada), nota |
+| `h` | suceso (línea temporal) | titulo, cuando (texto), orden (el de la historia, no el del libro), eid (escena enlazada), nota, rama (id de su rama; vacío = la principal), color |
 | `l` | registro del día | dia (días desde 1970), dev: {dispositivo: palabras escritas} |
+
+**Partes** (6.89 / PC 3.3): antes la parte era un texto en cada capítulo. Al abrir una obra, cada texto distinto pasa a ser una
+parte de verdad, con un id que sale igual en todos los dispositivos (`a_` + FNV-1a de `pid|nombre en minúsculas`, ver
+`escribir-estructura.js` / `EscribirEstructura.kt`): si dos dispositivos lo hacen a la vez salen las mismas partes, no el doble.
+El orden del libro: lo de arriba (partes y capítulos sueltos) por su orden y, dentro de cada parte, sus capítulos. Borrar una
+parte se lleva sus capítulos (y sus escenas); una rama, sus sucesos; una ficha, sus uniones. Casos compartidos:
+`herramientas/casos/estructura.json`.
 
 Texto: **Markdown ligero** — `# `, `## ` títulos, `> ` cita, `*cursiva*`, `**negrita**`, `***` línea sola = salto de escena.
 El historial de versiones **no viaja**: se guarda en cada dispositivo (cada escena guarda hasta 40 instantáneas).

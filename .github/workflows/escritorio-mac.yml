@@ -36,6 +36,7 @@ jobs:
           node herramientas/prueba-rt.js
           node herramientas/prueba-lector.js
           node herramientas/prueba-diccionario.js
+          node herramientas/prueba-escribir-estructura.js
       - name: Atrio.app (Apple Silicon)
         run: npx electron-builder --mac dir --arm64 --publish never
       - name: Firma ad-hoc y comprobación

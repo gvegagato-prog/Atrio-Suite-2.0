@@ -32,6 +32,7 @@ jobs:
           node herramientas/prueba-rt.js
           node herramientas/prueba-lector.js
           node herramientas/prueba-diccionario.js
+          node herramientas/prueba-escribir-estructura.js
       - name: Prueba de Atrio de verdad, en la edición solo revista (Electron bajo Xvfb)
         # Abre Atrio con una cuenta en un Firebase de mentira y comprueba, además de Escribir, que no hay lanzador: ni «Modo
         # Juegos», ni «Tu PC», ni abrir juegos, ni apagar el equipo, y que el equipo no se registra como controlable.

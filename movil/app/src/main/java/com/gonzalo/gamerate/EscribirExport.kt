@@ -78,7 +78,10 @@ object EscribirExport {
         for (c in e.capitulos(pid)) {
             val esc = e.escenas(c.id).filter { it.i("estado") >= op.soloEstadoMinimo }
             if (esc.isEmpty()) continue
-            if (c.s("parte").isNotBlank() && c.s("parte") != parte) { parte = c.s("parte"); out += Bloque(Bloque.Tipo.PARTE, parte) }
+            // (la parte de cada capítulo: la de verdad o, en una obra que aún no se ha pasado a partes, el texto antiguo)
+            val a = e.get(c.s("aid"))?.takeIf { it.t == Escritos.T_PARTE }
+            val np = if (a != null) "\u0000${a.id}\u0000${a.s("titulo").ifBlank { "Parte" }}" else c.s("parte")
+            if (np.isNotBlank() && np != parte) { parte = np; out += Bloque(Bloque.Tipo.PARTE, np.substringAfterLast('\u0000')) }
             if (op.titulosDeCapitulo) out += Bloque(Bloque.Tipo.CAPITULO, c.s("titulo"))
             esc.forEachIndexed { i, s ->
                 if (i > 0 && op.saltoEntreEscenas) out += Bloque(Bloque.Tipo.SALTO, "")

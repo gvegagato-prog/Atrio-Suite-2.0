@@ -45,10 +45,13 @@ function manuscrito(e, pid, op = {}) {
   const out = [{ tipo: B.TITULO, texto: obra.titulo || 'Sin título' }];
   if (obra.autor) out.push({ tipo: B.PARRAFO, texto: obra.autor });
   let parte = '';
+  // (la parte de cada capítulo: la de verdad o, en una obra que aún no se ha pasado a partes, el texto antiguo)
+  const nombreParte = (c) => { const a = c.aid ? e.get(c.aid) : null; return a && a.t === 'a' ? `\u0000${a.id}\u0000${a.titulo || 'Parte'}` : String(c.parte || ''); };
   for (const c of e.capitulos(pid)) {
     const esc = e.escenas(c.id).filter((s) => (Number(s.estado) || 0) >= o.soloEstadoMinimo);
     if (!esc.length) continue;
-    if (c.parte && c.parte !== parte) { parte = c.parte; out.push({ tipo: B.PARTE, texto: parte }); }
+    const np = nombreParte(c);
+    if (np && np !== parte) { parte = np; out.push({ tipo: B.PARTE, texto: np.split('\u0000').pop() }); }
     if (o.titulosDeCapitulo) out.push({ tipo: B.CAPITULO, texto: c.titulo || '' });
     esc.forEach((s, i) => {
       if (i > 0 && o.saltoEntreEscenas) out.push({ tipo: B.SALTO, texto: '' });

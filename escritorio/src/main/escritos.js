@@ -9,8 +9,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const M = require('./escritos-mezcla');
+const EST = require('../renderer/revista/js/escribir-estructura.js');
 
-const T = { OBRA: 'p', CAP: 'c', ESCENA: 'e', FICHA: 'f', NOTA: 'n', BORRADOR: 'b', HITO: 'h', LOG: 'l' };
+const T = { OBRA: 'p', CAP: 'c', ESCENA: 'e', FICHA: 'f', NOTA: 'n', BORRADOR: 'b', HITO: 'h', LOG: 'l', PARTE: 'a', RAMA: 'r', REL: 'v' };
 const LIMPIEZA = 180 * 86400000;
 // Lo borrado se queda en la papelera 30 días; luego solo queda la marca de borrado (para tus otros dispositivos)
 const PAPELERA = 30 * 86400000;
@@ -83,7 +84,11 @@ function crear({ dir, dev, net, log = () => {} }) {
     get: (id) => { const o = docs.get(id); return o && !borrado(o) ? o : null; },
     tipo: (t, pid) => vivos().filter((o) => o.t === t && (pid == null || o.pid === pid)).sort(porOrden),
     obras: () => api.tipo(T.OBRA),
-    capitulos: (pid) => api.tipo(T.CAP, pid),
+    // Los capítulos en el orden del libro (los sueltos y los de cada parte, ver escribir-estructura.js)
+    capitulos: (pid) => EST.estructura(api.tipo(T.CAP, pid), api.tipo(T.PARTE, pid)).libro,
+    partes: (pid) => api.tipo(T.PARTE, pid),
+    ramas: (pid) => api.tipo(T.RAMA, pid),
+    relaciones: (pid) => api.tipo(T.REL, pid),
     escenas: (cid) => vivos().filter((o) => o.t === T.ESCENA && o.cid === cid).sort(porOrden),
     escenasDe: (pid) => api.capitulos(pid).flatMap((c) => api.escenas(c.id)),
     fichas: (pid) => api.tipo(T.FICHA, pid),
@@ -103,7 +108,13 @@ function crear({ dir, dev, net, log = () => {} }) {
       const id = nuevoId(t);
       const o = { id, t, pid: t === T.OBRA ? id : pid, ...campos };
       if (o.orden == null) {
-        const ult = vivos().filter((x) => x.t === t && x.pid === pid && (t !== T.ESCENA || x.cid === o.cid)).reduce((m, x) => Math.max(m, num(x.orden)), 0);
+        // Al final de sus hermanos: las escenas de su capítulo; los capítulos de su parte; arriba del manuscrito, las partes y
+        // los capítulos sueltos juntos; lo demás, los de su tipo
+        const arriba = (x) => (x.t === T.PARTE || (x.t === T.CAP && !(x.aid && docs.get(x.aid) && !borrado(docs.get(x.aid)))));
+        const hermano = (x) => x.pid === pid && (t === T.ESCENA ? x.t === t && x.cid === o.cid
+          : t === T.CAP && o.aid ? x.t === t && x.aid === o.aid
+            : t === T.CAP || t === T.PARTE ? arriba(x) : x.t === t);
+        const ult = vivos().filter(hermano).reduce((m, x) => Math.max(m, num(x.orden)), 0);
         o.orden = ult + 1000;
       }
       if (t === T.OBRA && !o.creado) o.creado = Date.now();
@@ -139,6 +150,10 @@ function crear({ dir, dev, net, log = () => {} }) {
       let ids;
       if (d.t === T.OBRA) ids = [id, ...v.filter((o) => o.pid === id && o.id !== id && o.t !== T.LOG).map((o) => o.id)];
       else if (d.t === T.CAP) ids = [id, ...v.filter((o) => o.t === T.ESCENA && o.cid === id).flatMap(conBorradores)];
+      // Una parte, con sus capítulos (y sus escenas); una rama, con sus sucesos; una ficha, con sus uniones del árbol
+      else if (d.t === T.PARTE) ids = [id, ...v.filter((o) => o.t === T.CAP && o.aid === id).flatMap((c) => [c.id, ...v.filter((o) => o.t === T.ESCENA && o.cid === c.id).flatMap(conBorradores)])];
+      else if (d.t === T.RAMA) ids = [id, ...v.filter((o) => o.t === T.HITO && o.rama === id).map((o) => o.id)];
+      else if (d.t === T.FICHA) ids = [id, ...v.filter((o) => o.t === T.REL && (o.a === id || o.b === id)).map((o) => o.id)];
       else if (d.t === T.ESCENA) ids = conBorradores(d);
       else ids = [id];
       const ahora = Date.now();
@@ -170,7 +185,8 @@ function crear({ dir, dev, net, log = () => {} }) {
       if (!enPapelera(d)) return;
       const ids = new Set();
       const con = (x) => { if (ids.has(x.id)) return; ids.add(x.id); for (const y of api.conElBorrado(x.id)) con(y); };
-      const dentroDe = (x) => (x.t === T.OBRA ? [] : x.t === T.ESCENA ? [x.cid, x.pid] : x.t === T.BORRADOR ? [x.eid, x.pid] : [x.pid]);
+      const dentroDe = (x) => (x.t === T.OBRA ? [] : x.t === T.ESCENA ? [x.cid, x.pid] : x.t === T.BORRADOR ? [x.eid, x.pid]
+        : x.t === T.CAP && x.aid ? [x.aid, x.pid] : x.t === T.HITO && x.rama ? [x.rama, x.pid] : x.t === T.REL ? [x.a, x.b, x.pid].filter(Boolean) : [x.pid]);
       const padres = (x) => { for (const pid of dentroDe(x)) { const p = docs.get(pid); if (enPapelera(p) && !ids.has(p.id)) { con(p); padres(p); } } };
       con(d); padres(d);
       for (const i of ids) {
@@ -205,6 +221,28 @@ function crear({ dir, dev, net, log = () => {} }) {
       const a = antes && docs.get(antes) ? num(docs.get(antes).orden) : null;
       const b = despues && docs.get(despues) ? num(docs.get(despues).orden) : null;
       return api.edita(id, { cid, orden: ordenEntre(a, b) });
+    },
+    // Pasa la «parte» antigua de los capítulos (un texto) a partes de verdad, con el mismo id en todos los dispositivos (si
+    // otro lo hizo a la vez, salen las mismas partes y no se duplican). Devuelve cuántos capítulos ha movido.
+    migraPartes(pid) {
+      const plan = EST.planMigracion(pid, api.tipo(T.CAP, pid), [...docs.values()].filter((o) => o.t === T.PARTE && o.pid === pid));
+      if (!plan.asigna.length) return 0;
+      for (const p of plan.partes) ponSin({ id: p.id, t: T.PARTE, pid, titulo: p.titulo, orden: p.orden });
+      for (const x of plan.asigna) { const c = docs.get(x.cid); if (c) ponSin({ ...c, aid: x.aid, parte: '' }); }
+      avisa(); pronto(0.7);
+      return plan.asigna.length;
+    },
+    // Un capítulo a otra parte (o suelto, con aid vacío), al final o entre dos
+    mueveCapitulo(id, aid, antes, despues) {
+      const a = antes && docs.get(antes) ? num(docs.get(antes).orden) : null;
+      const b = despues && docs.get(despues) ? num(docs.get(despues).orden) : null;
+      let orden = ordenEntre(a, b);
+      if (a == null && b == null) {
+        const arriba = (x) => (x.t === T.PARTE || (x.t === T.CAP && !(x.aid && api.get(x.aid))));
+        const hs = vivos().filter((x) => x.id !== id && x.pid === (api.get(id) || {}).pid && (aid ? x.t === T.CAP && x.aid === aid : arriba(x)));
+        orden = hs.reduce((m, x) => Math.max(m, num(x.orden)), 0) + 1000;
+      }
+      return api.edita(id, { aid: aid || null, orden });
     },
     duplicaEscena(id) {
       const d = api.get(id);

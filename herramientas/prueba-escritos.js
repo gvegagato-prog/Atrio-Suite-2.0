@@ -271,6 +271,55 @@ function dispositivo(c, nombre, urlBase = base) {
       ok(b.escritas(b.hoy(), o.id) === 800, 'más palabras no pisan las del otro');
       a.parar(); b.parar();
     }
+    console.log('Partes de verdad (las antiguas, de texto, se pasan solas)');
+    {
+      const c = await cuenta();
+      const A = dispositivo(c, 'pa').e; const B = dispositivo(c, 'pb').e;
+      const o = A.nuevo('p', '', { titulo: 'Con partes' });
+      const c0 = A.nuevo('c', o.id, { titulo: 'Prólogo' });
+      const c1 = A.nuevo('c', o.id, { titulo: 'Uno', parte: 'Parte I' });
+      const c2 = A.nuevo('c', o.id, { titulo: 'Dos', parte: 'Parte I' });
+      const c3 = A.nuevo('c', o.id, { titulo: 'Tres', parte: 'Parte II' });
+      for (const x of [c0, c1, c2, c3]) A.nuevo('e', o.id, { cid: x.id, titulo: 'E', texto: `Texto de ${x.titulo}.` });
+      await A.sincroniza(); await B.sincroniza();
+      // Los dos dispositivos las pasan a la vez, sin verse
+      ok(A.migraPartes(o.id) === 3 && B.migraPartes(o.id) === 3, 'cada dispositivo pasa los tres capítulos con parte');
+      await A.sincroniza(); await B.sincroniza(); await A.sincroniza();
+      ok(A.partes(o.id).length === 2 && B.partes(o.id).length === 2, 'y salen dos partes, no cuatro (mismo id en los dos)');
+      ok(A.partes(o.id).map((x) => x.titulo).join() === 'Parte I,Parte II', 'con su nombre');
+      ok(A.capitulos(o.id).map((x) => x.titulo).join() === 'Prólogo,Uno,Dos,Tres' && B.capitulos(o.id).map((x) => x.titulo).join() === 'Prólogo,Uno,Dos,Tres', 'el libro sigue en el mismo orden en los dos');
+      ok(A.get(c1.id).aid === A.partes(o.id)[0].id && !A.get(c1.id).parte, 'el capítulo queda dentro de su parte');
+      ok(A.migraPartes(o.id) === 0, 'una segunda vez no hace nada');
+      // Un capítulo nuevo dentro de la parte II va al final de esa parte; uno suelto, al final del manuscrito
+      const p2 = A.partes(o.id)[1];
+      const c4 = A.nuevo('c', o.id, { titulo: 'Cuatro', aid: p2.id });
+      const c5 = A.nuevo('c', o.id, { titulo: 'Epílogo' });
+      ok(A.capitulos(o.id).map((x) => x.titulo).join() === 'Prólogo,Uno,Dos,Tres,Cuatro,Epílogo', 'capítulos nuevos: al final de su parte, o sueltos al final');
+      A.mueveCapitulo(c4.id, A.partes(o.id)[0].id, null, null);
+      ok(A.capitulos(o.id).map((x) => x.titulo).join() === 'Prólogo,Uno,Dos,Cuatro,Tres,Epílogo', 'mover un capítulo a otra parte');
+      // Exportar: los títulos de parte salen de las partes
+      const X = require('../escritorio/src/main/escritos-export');
+      const bl = X.manuscrito(A, o.id);
+      ok(bl.filter((b) => b.tipo === 'parte').map((b) => b.texto).join() === 'Parte I,Parte II', 'al exportar salen «Parte I» y «Parte II»');
+      // Borrar una parte se lleva sus capítulos y sus escenas; recuperarla los devuelve
+      A.borra(p2.id);
+      ok(!A.get(c3.id) && A.escenas(c3.id).length === 0 && A.capitulos(o.id).length === 5, 'borrar la parte II se lleva su capítulo');
+      A.restaura(p2.id);
+      ok(A.get(c3.id) && A.escenas(c3.id).length === 1 && A.capitulos(o.id).length === 6, 'y recuperarla lo devuelve con su escena');
+      // Restaurar un capítulo de una parte borrada devuelve también la parte
+      A.borra(p2.id); A.restaura(c3.id);
+      ok(A.get(p2.id) && A.get(c3.id), 'recuperar un capítulo trae también su parte');
+      await A.sincroniza(); await B.sincroniza();
+      ok(B.capitulos(o.id).map((x) => x.titulo).join() === A.capitulos(o.id).map((x) => x.titulo).join(), 'el otro dispositivo lo ve igual');
+      // Fichas y sus uniones del árbol: borrar la ficha se lleva sus uniones
+      const f1 = A.nuevo('f', o.id, { nombre: 'Ana', tipo: 'personaje' }); const f2 = A.nuevo('f', o.id, { nombre: 'Juan', tipo: 'personaje' });
+      const v = A.nuevo('v', o.id, { a: f1.id, b: f2.id, titulo: 'Enemigos', texto: 'Desde la guerra.' });
+      A.borra(f2.id);
+      ok(!A.get(v.id), 'borrar una ficha se lleva sus uniones');
+      A.restaura(v.id);
+      ok(A.get(v.id) && A.get(f2.id), 'y recuperar la unión trae la ficha');
+      A.parar(); B.parar();
+    }
     console.log('Otra cuenta');
     {
       const c1 = await cuenta(); const c2 = await cuenta();

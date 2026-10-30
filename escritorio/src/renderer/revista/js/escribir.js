@@ -23,7 +23,16 @@
   E.get = (id) => docs.get(id) || null;
   E.tipo = (t, pid) => vivos().filter((o) => o.t === t && (pid == null || o.pid === pid)).sort(orden);
   E.obras = () => E.tipo('p');
-  E.capitulos = (pid) => E.tipo('c', pid);
+  // Los capítulos en el orden del libro (los sueltos y los de cada parte: escribir-estructura.js)
+  E.capitulos = (pid) => RV.EST.estructura(E.tipo('c', pid), E.tipo('a', pid)).libro;
+  E.estructura = (pid) => RV.EST.estructura(E.tipo('c', pid), E.tipo('a', pid));
+  E.partes = (pid) => E.tipo('a', pid);
+  E.ramas = (pid) => E.tipo('r', pid);
+  E.relaciones = (pid) => E.tipo('v', pid);
+  E.relacionesDe = (fid) => vivos().filter((o) => o.t === 'v' && (o.a === fid || o.b === fid));
+  // Las notas y fichas vinculadas a una parte o un capítulo
+  E.vinculados = (id, pid) => RV.EST.vinculados(id, [...E.notas(pid), ...E.fichas(pid)]);
+  E.numeroCapitulo = (c) => E.capitulos(c.pid).findIndex((x) => x.id === c.id) + 1;
   E.escenas = (cid) => vivos().filter((o) => o.t === 'e' && o.cid === cid).sort(orden);
   E.escenasDe = (pid) => E.capitulos(pid).flatMap((c) => E.escenas(c.id));
   E.fichas = (pid) => E.tipo('f', pid);
@@ -76,8 +85,9 @@
   const op = (nombre, ...args) => api.escritos(nombre, ...args);
   E.op = op;
   E.err = (e) => RV.aviso(RV.limpiaError(e), 'error');
-  const TIPO = { p: 'Obra', c: 'Capítulo', e: 'Escena', f: 'Ficha', n: 'Nota', h: 'Hito', b: 'Borrador' };
+  const TIPO = { p: 'Obra', c: 'Capítulo', e: 'Escena', f: 'Ficha', n: 'Nota', h: 'Suceso', b: 'Borrador', a: 'Parte', r: 'Rama', v: 'Unión' };
   const tituloDe = (d) => (d.t === 'f' ? d.nombre : d.titulo || d.nombre) || 'Sin título';
+  E.tituloDe = tituloDe;
   // A la papelera, con «Deshacer» en el aviso
   E.aPapelera = async (d) => {
     try {
@@ -90,7 +100,7 @@
   const ESTADOS = ['Borrador', 'Revisión', 'Final'];
   const COL_ESTADO = ['#B8B2A6', '#D9A441', '#5B8C5A'];
   const TIPOS_FICHA = [['personaje', 'Personajes', 'Personaje'], ['lugar', 'Lugares', 'Lugar'], ['objeto', 'Objetos', 'Objeto'], ['mundo', 'Mundo', 'Mundo'], ['otro', 'Otros', 'Otro']];
-  const TIPOS_NOTA = [['nota', 'Notas', 'Nota'], ['idea', 'Ideas', 'Idea'], ['investigacion', 'Investigación', 'Investigación'], ['plantilla', 'Plantillas', 'Plantilla']];
+  const TIPOS_NOTA = [['nota', 'Notas', 'Nota'], ['idea', 'Ideas', 'Idea'], ['resumen', 'Resúmenes', 'Resumen'], ['esquema', 'Esquemas', 'Esquema'], ['investigacion', 'Investigación', 'Investigación'], ['plantilla', 'Plantillas', 'Plantilla']];
   E.ESTADOS = ESTADOS; E.COL_ESTADO = COL_ESTADO; E.TIPOS_FICHA = TIPOS_FICHA; E.TIPOS_NOTA = TIPOS_NOTA;
   const cifra = (n) => new Intl.NumberFormat('es-ES').format(n);
   E.cifra = cifra;
@@ -147,6 +157,18 @@
     const s = h('select.entrada', { onchange: () => alCambiar(s.value) }, opciones.map(([k, n]) => h('option', { value: k, selected: k === valor ? '' : null }, n)));
     return s;
   };
+  // Elegir varios (vincular a partes y capítulos): botones que se encienden y se apagan
+  const varios = (opciones, elegidos, alCambiar) => {
+    const sel = new Set(elegidos || []);
+    const botones = opciones.map(([k, n]) => h('button.e-chip', { type: 'button', onclick: () => { if (sel.has(k)) sel.delete(k); else sel.add(k); alCambiar([...sel]); marca(); } }, n));
+    const marca = () => botones.forEach((b, i) => b.setAttribute('aria-pressed', sel.has(opciones[i][0]) ? 'true' : 'false'));
+    marca();
+    return h('div.e-chips', botones);
+  };
+  // Lo que se puede vincular en una obra: sus partes y sus capítulos
+  const destinosVinculo = (pid) => [...E.partes(pid).map((a) => [a.id, `Parte · ${a.titulo || 'Sin título'}`]), ...E.capitulos(pid).map((c) => [c.id, `Cap. ${E.numeroCapitulo(c)} · ${c.titulo || 'Sin título'}`])];
+  E.colores = (v, f) => colores(v, f); E.chips = (o, a, f) => chips(o, a, f); E.selector = (v, o, f) => selector(v, o, f); E.varios = (o, e, f) => varios(o, e, f);
+  E.barra = (f, c) => barra(f, c); E.reemplaza = (...a) => reemplaza(...a);
 
   // ---------------------------------------------------------------- Sprints de escritura
   // Escribir sin parar durante un rato (10, 25, 45 min…), con una meta si quieres. Cuentan las palabras nuevas de la obra
@@ -259,19 +281,51 @@
     });
   };
 
-  E.dlgCapitulo = (pid, cap) => {
+  // Capítulo: título, parte (o suelto), resumen y color de su cuadrado. aidNuevo: la parte donde se crea.
+  E.dlgCapitulo = (pid, cap, aidNuevo = '', alCrear = null) => {
     const t = RV.entrada(cap ? cap.titulo : '', { 'data-autofocus': true });
-    const pa = RV.entrada(cap ? cap.parte : '', { placeholder: 'Parte I, Libro dos… (opcional)' });
     const re = RV.areaTexto(cap ? cap.resumen : '', { rows: '3' });
+    let aid = cap ? cap.aid || '' : aidNuevo || '';
+    let color = cap ? cap.color || '' : '';
+    const pa = selector(aid, [['', 'Ninguna (capítulo suelto)'], ...E.partes(pid).map((x) => [x.id, x.titulo || 'Sin título'])], (v) => { aid = v; });
+    const esc = cap ? E.escenas(cap.id).length : 0;
     RV.dialogo({
       ante: cap ? 'Capítulo' : 'Nuevo capítulo', titulo: cap ? cap.titulo || 'Capítulo' : 'Otro capítulo', ancho: true,
-      cuerpo: [RV.campo('Título', t), RV.campo('Parte', pa), RV.campo('Resumen', re)],
-      acciones: [cap ? { texto: 'Borrar el capítulo', peligro: true, fn: (d) => RV.confirmar('¿Borrar el capítulo?', `Irá a la papelera con ${E.escenas(cap.id).length === 1 ? 'su escena' : `sus ${E.escenas(cap.id).length} escenas`}. Podrás recuperarlo durante 30 días.`, 'A la papelera', async () => { d.cerrar(); await E.aPapelera(cap); }) } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
+      cuerpo: [RV.campo('Título', t), RV.campo('Parte', pa), RV.campo('Resumen', re), RV.campo('Color de su cuadrado', colores(color, (c) => { color = c; }))],
+      acciones: [cap ? { texto: 'Borrar el capítulo', peligro: true, fn: (d) => RV.confirmar('¿Borrar el capítulo?', `Irá a la papelera con ${esc === 1 ? 'su escena' : `sus ${esc} escenas`}. Podrás recuperarlo durante 30 días.`, 'A la papelera', async () => { d.cerrar(); await E.aPapelera(cap); }) } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
         { texto: 'Guardar', principal: true, fn: async (d) => {
           try {
-            const c = { titulo: t.value.trim() || `Capítulo ${E.capitulos(pid).length + 1}`, parte: pa.value.trim(), resumen: re.value.trim() };
-            if (cap) await op('edita', cap.id, c);
-            else { const n = await op('nuevo', 'c', pid, c); await op('nuevo', 'e', pid, { cid: n.id, titulo: 'Escena 1' }); }
+            const c = { titulo: t.value.trim() || `Capítulo ${E.capitulos(pid).length + 1}`, resumen: re.value.trim(), color: color || null };
+            if (cap) {
+              await op('edita', cap.id, c);
+              if ((cap.aid || '') !== aid) await op('mueveCapitulo', cap.id, aid, null, null);
+            } else {
+              const n = await op('nuevo', 'c', pid, { ...c, ...(aid ? { aid } : {}) });
+              await op('nuevo', 'e', pid, { cid: n.id, titulo: 'Escena 1' });
+              if (alCrear) alCrear(n);
+            }
+            d.cerrar();
+          } catch (e) { E.err(e); }
+        } }],
+    });
+  };
+
+  // Parte (acto, libro…): título, resumen y color
+  E.dlgParte = (pid, parte, alCrear = null) => {
+    const t = RV.entrada(parte ? parte.titulo : '', { 'data-autofocus': true, placeholder: `Parte ${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][E.partes(pid).length] || E.partes(pid).length + 1}` });
+    const re = RV.areaTexto(parte ? parte.resumen : '', { rows: '4', placeholder: 'Qué pasa en esta parte' });
+    let color = parte ? parte.color || RV.COLORES[0] : RV.COLORES[0];
+    const caps = parte ? E.capitulos(pid).filter((c) => c.aid === parte.id).length : 0;
+    RV.dialogo({
+      ante: parte ? 'Parte' : 'Nueva parte', titulo: parte ? parte.titulo || 'Parte' : 'Una parte del libro', ancho: true,
+      cuerpo: [RV.campo('Título', t, 'Parte I, Primer acto, Libro dos…'), RV.campo('Resumen', re), RV.campo('Color', colores(color, (c) => { color = c; }))],
+      acciones: [parte ? { texto: 'Borrar la parte', peligro: true, fn: (d) => RV.confirmar('¿Borrar la parte?', caps ? `Irá a la papelera con ${caps === 1 ? 'su capítulo' : `sus ${caps} capítulos`} (y sus escenas). Podrás recuperarla durante 30 días.` : 'Irá a la papelera. Podrás recuperarla durante 30 días.', 'A la papelera', async () => { d.cerrar(); await E.aPapelera(parte); RV.ir({ v: 'obra', id: pid, tab: 0 }, { reemplazar: true }); }) } : null,
+        'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
+        { texto: parte ? 'Guardar' : 'Crear', principal: true, fn: async (d) => {
+          try {
+            const c = { titulo: t.value.trim() || t.placeholder, resumen: re.value.trim(), color };
+            if (parte) await op('edita', parte.id, c);
+            else { const n = await op('nuevo', 'a', pid, c); if (alCrear) alCrear(n); }
             d.cerrar();
           } catch (e) { E.err(e); }
         } }],
@@ -294,60 +348,95 @@
       h('button.enlace.apagado', { type: 'button', onclick: () => { campos.splice(i, 1); pintaCampos(); } }, '✕'))),
     h('button.enlace', { type: 'button', onclick: () => { campos.push({ k: '', v: '' }); pintaCampos(); } }, '+ Añadir dato'));
     pintaCampos();
-    const sale = ficha ? E.escenasDe(pid).filter((s) => E.fichasEn(pid, s.texto).some((f) => f.id === ficha.id)) : [];
+    let vin = ficha && Array.isArray(ficha.vin) ? [...ficha.vin] : [];
+    let tam = ficha ? num(ficha.tam) : 0;
+    const destinos = destinosVinculo(pid);
     RV.dialogo({
-      ante: ficha ? 'Ficha' : 'Nueva ficha', titulo: ficha ? ficha.nombre : 'Una ficha del mundo', ancho: true, alCerrar,
+      ante: ficha ? 'Editar la ficha' : 'Nueva ficha', titulo: ficha ? ficha.nombre : 'Una ficha del mundo', ancho: true, alCerrar,
       cuerpo: [chips(TIPOS_FICHA.map(([k, , s]) => [k, s]), tipo, (k) => { tipo = k; }), RV.campo('Nombre', nom),
         RV.campo('Otros nombres', ali, 'Separados por comas: así se reconoce en tus escenas (queda subrayado al escribirlo).'), RV.campo('Resumen', res),
         RV.campo('Datos', filas), RV.campo('Notas largas', tex), RV.campo('Color', colores(color, (c) => { color = c; })),
-        sale.length ? h('div', h('div.versal', `Sale en ${RV.plural(sale.length, 'escena', 'escenas')}`), ...sale.slice(0, 30).map((s) => h('button.enlace.acento', { type: 'button', style: { display: 'block' }, onclick: () => { RV.cerrarDialogo(); RV.ir({ v: 'editor', id: s.id }); } }, s.titulo || 'Sin título'))) : null],
+        h('div.campo', h('span', 'Tamaño en el árbol'), chips([[0, 'Según el tipo'], [1, 'Pequeña'], [2, 'Mediana'], [3, 'Grande']], tam, (k) => { tam = k; })),
+        destinos.length ? h('div.campo', h('span', 'Vinculada a'), varios(destinos, vin, (l) => { vin = l; }), h('small', 'Sale también en la página de esa parte o ese capítulo.')) : null],
       acciones: [ficha ? { texto: 'Borrar', peligro: true, fn: (d) => { d.cerrar(); E.aPapelera(ficha); } } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
         { texto: 'Guardar', principal: true, fn: async (d) => {
           if (!nom.value.trim()) { RV.aviso('Ponle un nombre.', 'error'); return; }
           try {
-            const c = { tipo, nombre: nom.value.trim(), alias: ali.value.trim(), resumen: res.value.trim(), texto: tex.value, color, campos: campos.filter((x) => x.k.trim() || x.v.trim()) };
-            if (ficha) await op('edita', ficha.id, c); else await op('nuevo', 'f', pid, c);
+            const c = { tipo, nombre: nom.value.trim(), alias: ali.value.trim(), resumen: res.value.trim(), texto: tex.value, color, campos: campos.filter((x) => x.k.trim() || x.v.trim()), vin, tam: tam || null };
+            let f = ficha;
+            if (ficha) await op('edita', ficha.id, c); else f = await op('nuevo', 'f', pid, c);
             d.cerrar();
+            if (!ficha && E.alCrearFicha) { const fn = E.alCrearFicha; E.alCrearFicha = null; fn(f); }
           } catch (e) { E.err(e); }
         } }],
     });
   };
 
-  E.dlgNota = (pid, nota, tipoNuevo = 'nota') => {
+  E.dlgNota = (pid, nota, tipoNuevo = 'nota', vinNuevo = null) => {
     let tipo = nota ? nota.tipo || 'nota' : tipoNuevo;
     let color = nota ? nota.color || RV.COLORES[2] : RV.COLORES[2];
     let fija = !!(nota && nota.fija);
     const ti = RV.entrada(nota ? nota.titulo : '', { 'data-autofocus': true });
     const tx = RV.areaTexto(nota ? nota.texto : '', { rows: '10' });
     const fj = h('input', { type: 'checkbox', checked: fija ? '' : null, onchange: (e) => { fija = e.target.checked; } });
+    let vin = nota && Array.isArray(nota.vin) ? [...nota.vin] : [...(vinNuevo || [])];
+    const destinos = destinosVinculo(pid);
     RV.dialogo({
-      ante: nota ? 'Nota' : 'Nueva nota', titulo: nota ? nota.titulo || 'Nota' : 'Al tablón', ancho: true,
+      ante: nota ? 'Editar la nota' : 'Nueva nota', titulo: nota ? nota.titulo || 'Nota' : 'Al tablón', ancho: true,
       cuerpo: [chips(TIPOS_NOTA.map(([k, , s]) => [k, s]), tipo, (k) => { tipo = k; }), RV.campo('Título', ti), RV.campo('Texto', tx, 'Una plantilla es un texto que puedes tener al lado mientras escribes o insertar en una escena.'),
-        RV.campo('Color', colores(color, (c) => { color = c; })), h('label.e-check', fj, ' Fijada arriba')],
+        RV.campo('Color', colores(color, (c) => { color = c; })), h('label.e-check', fj, ' Fijada arriba'),
+        destinos.length ? h('div.campo', h('span', 'Vinculada a'), varios(destinos, vin, (l) => { vin = l; }), h('small', 'Sale también en la página de esa parte o ese capítulo (y aquí, en Notas).')) : null],
       acciones: [nota ? { texto: 'Borrar', peligro: true, fn: (d) => { d.cerrar(); E.aPapelera(nota); } } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
         { texto: 'Guardar', principal: true, fn: async (d) => {
           if (!ti.value.trim() && !tx.value.trim()) { d.cerrar(); return; }
-          try { const c = { tipo, titulo: ti.value.trim(), texto: tx.value, color, fija: fija ? 1 : 0 }; if (nota) await op('edita', nota.id, c); else await op('nuevo', 'n', pid, c); d.cerrar(); } catch (e) { E.err(e); }
+          try { const c = { tipo, titulo: ti.value.trim(), texto: tx.value, color, fija: fija ? 1 : 0, vin }; if (nota) await op('edita', nota.id, c); else await op('nuevo', 'n', pid, c); d.cerrar(); } catch (e) { E.err(e); }
         } }],
     });
   };
 
-  E.dlgHito = (pid, hito) => {
-    const ti = RV.entrada(hito ? hito.titulo : '', { 'data-autofocus': true });
-    const cu = RV.entrada(hito ? hito.cuando : '', { placeholder: 'Día 3, primavera del año 12, 1887…' });
-    const no = RV.areaTexto(hito ? hito.nota : '', { rows: '3' });
-    let eid = hito && hito.eid ? hito.eid : '';
-    const es = selector(eid, [['', 'Ninguna'], ...E.escenasDe(pid).map((e) => [e.id, e.titulo || 'Sin título'])], (v) => { eid = v; });
+  // ---------------------------------------------------------------- Modo lectura
+  // Lo que ya existe se abre para leerlo; para cambiarlo, «Editar». Lo nuevo se abre ya para rellenarlo.
+  const parrafos = (t) => String(t || '').split(/\n{2,}|\n/).map((x) => x.trim()).filter(Boolean).map((x) => h('p.texto', x));
+  const vinculosDe = (d) => (Array.isArray(d.vin) ? d.vin : []).map((id) => E.get(id)).filter(Boolean);
+  const irA = (x) => { RV.cerrarDialogo(); RV.ir(x.t === 'a' ? { v: 'parte', id: x.id } : { v: 'capitulo', id: x.id }); };
+  const enlacesVinculos = (d) => {
+    const l = vinculosDe(d);
+    return l.length ? h('div.e-lee-sec', h('div.versal', 'Vinculada a'), h('div.e-chips', l.map((x) => h('button.e-chip', { type: 'button', onclick: () => irA(x) }, x.t === 'a' ? `Parte · ${x.titulo || ''}` : `Cap. ${E.numeroCapitulo(x)} · ${x.titulo || ''}`)))) : null;
+  };
+  E.verFicha = (pid, f) => {
+    if (!f) { E.dlgFicha(pid, null); return; }
+    const tipo = (TIPOS_FICHA.find((t) => t[0] === f.tipo) || [])[2] || 'Ficha';
+    const sale = E.escenasDe(pid).filter((s) => E.fichasEn(pid, s.texto).some((x) => x.id === f.id));
+    const rels = E.relacionesDe(f.id).map((r) => ({ r, otra: E.get(r.a === f.id ? r.b : r.a) })).filter((x) => x.otra);
+    const datos = (Array.isArray(f.campos) ? f.campos : []).filter((c) => String(c.k || '').trim() || String(c.v || '').trim());
     RV.dialogo({
-      ante: hito ? 'Hito' : 'Nuevo hito', titulo: hito ? hito.titulo : 'Un momento de la historia', ancho: true,
-      cuerpo: [RV.campo('Qué pasa', ti), RV.campo('Cuándo', cu), RV.campo('Escena', es), RV.campo('Nota', no)],
-      acciones: [hito ? { texto: 'Borrar', peligro: true, fn: (d) => { d.cerrar(); E.aPapelera(hito); } } : null, 'hueco', { texto: 'Cancelar', fn: (d) => d.cerrar() },
-        { texto: 'Guardar', principal: true, fn: async (d) => {
-          if (!ti.value.trim()) { RV.aviso('Cuenta qué pasa.', 'error'); return; }
-          try { const c = { titulo: ti.value.trim(), cuando: cu.value.trim(), nota: no.value, eid: eid || null }; if (hito) await op('edita', hito.id, c); else await op('nuevo', 'h', pid, c); d.cerrar(); } catch (e) { E.err(e); }
-        } }],
+      ante: `${tipo}${f.alias ? ` · también «${f.alias}»` : ''}`, titulo: f.nombre || 'Sin nombre', ancho: true, clase: 'e-lee',
+      cuerpo: [
+        h('span.e-lee-color', { style: { background: colorDe(f.color) } }),
+        f.resumen ? h('p.e-lee-entradilla', f.resumen) : null,
+        datos.length ? h('ul.datos', datos.map((c) => RV.dato(c.k || '—', c.v || '—'))) : null,
+        f.texto ? h('div.e-lee-sec', ...parrafos(f.texto)) : null,
+        enlacesVinculos(f),
+        h('div.e-lee-sec', h('div.versal', rels.length ? `Uniones · ${rels.length}` : 'Uniones'),
+          rels.length ? h('div.e-uniones', rels.map(({ r, otra }) => h('div.e-union',
+            h('button.e-union-tit', { type: 'button', title: 'Ver la unión', onclick: () => { RV.cerrarDialogo(); E.verRelacion(pid, r); } }, `${r.flecha && r.b === f.id ? '← ' : ''}${(r.titulo || 'Unión').toUpperCase()}${r.flecha && r.a === f.id ? ' →' : ''}`),
+            h('button.enlace-serif', { type: 'button', onclick: () => { RV.cerrarDialogo(); E.verFicha(pid, otra); } }, otra.nombre || 'Sin nombre'),
+            r.texto ? h('span.cursiva', String(r.texto).split('\n')[0].slice(0, 140)) : null)))
+            : h('p.apagado', 'Todavía no está unida a nada. Únela en la pestaña Árbol.')),
+        sale.length ? h('div.e-lee-sec', h('div.versal', `Sale en ${RV.plural(sale.length, 'escena', 'escenas')}`), h('div.e-chips', sale.slice(0, 40).map((x) => h('button.e-chip', { type: 'button', onclick: () => { RV.cerrarDialogo(); RV.ir({ v: 'editor', id: x.id }); } }, x.titulo || 'Sin título')))) : null],
+      acciones: [{ texto: 'Ver en el árbol', fn: (d) => { d.cerrar(); RV.ir({ v: 'obra', id: pid, tab: TAB_ARBOL, foco: f.id }); } }, 'hueco', { texto: 'Cerrar', fn: (d) => d.cerrar() }, { texto: 'Editar', principal: true, fn: (d) => { d.cerrar(); E.dlgFicha(pid, f); } }],
     });
   };
+  E.verNota = (pid, n) => {
+    if (!n) { E.dlgNota(pid, null); return; }
+    const tipo = (TIPOS_NOTA.find((t) => t[0] === n.tipo) || [])[2] || 'Nota';
+    RV.dialogo({
+      ante: `${tipo}${n.fija ? ' · fijada' : ''}`, titulo: n.titulo || tipo, ancho: true, clase: 'e-lee',
+      cuerpo: [h('span.e-lee-color', { style: { background: colorDe(n.color) } }), n.texto ? h('div.e-lee-sec', ...parrafos(n.texto)) : h('p.apagado', 'Sin texto.'), enlacesVinculos(n)],
+      acciones: ['hueco', { texto: 'Cerrar', fn: (d) => d.cerrar() }, { texto: 'Editar', principal: true, fn: (d) => { d.cerrar(); E.dlgNota(pid, n); } }],
+    });
+  };
+  E.parrafos = parrafos;
 
   // La papelera: lo borrado de los últimos 30 días, para recuperarlo (vuelve a su sitio) o borrarlo para siempre
   const PLURAL = { c: ['capítulo', 'capítulos'], e: ['escena', 'escenas'], f: ['ficha', 'fichas'], n: ['nota', 'notas'], h: ['hito', 'hitos'], b: ['borrador', 'borradores'] };
@@ -515,7 +604,7 @@
     const obras = E.obras();
     const activas = obras.filter((o) => !o.arch).sort((a, b) => E.escenasDe(b.id).reduce((m, e) => Math.max(m, num(e.u)), num(b.u)) - E.escenasDe(a.id).reduce((m, e) => Math.max(m, num(e.u)), num(a.u)));
     const arch = obras.filter((o) => o.arch);
-    root.append(h('header.cabeza', h('div.ante', E.escritas(RV.hoy()) > 0 ? `Hoy · ${cifra(E.escritas(RV.hoy()))} palabras` : 'Tus obras'),
+    root.append(h('header.cabeza', h('div.ante', h('button.enlace.e-atras', { type: 'button', onclick: () => RV.volver() || RV.ir({ v: 'portada' }) }, '← Volver'), ` · ${E.escritas(RV.hoy()) > 0 ? `Hoy · ${cifra(E.escritas(RV.hoy()))} palabras` : 'Tus obras'}`),
       h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, 'Escribir'),
         h('div.herramientas', h('button.enlace', { type: 'button', onclick: importar }, 'Importar un texto'), h('button.boton-tinta', { type: 'button', onclick: () => E.dlgObra(null) }, 'Nueva obra'))),
       h('div.filete')));
@@ -545,31 +634,37 @@
   }
 
   // ---------------------------------------------------------------- Una obra
-  const TABS = ['Manuscrito', 'Fichas', 'Notas', 'Línea', 'Cifras', 'Guía'];
-  const TAB_GUIA = 5;
+  const TABS = ['Manuscrito', 'Fichas', 'Árbol', 'Notas', 'Línea', 'Cifras', 'Guía'];
+  const TAB_ARBOL = 2;
+  const TAB_GUIA = 6;
+  E.TAB_ARBOL = TAB_ARBOL; E.TAB_GUIA = TAB_GUIA;
   RV.vistas.obra = (ruta) => {
     const obra = E.get(ruta.id);
     if (!obra) { RV.volver() || RV.ir({ v: 'escribir' }); return h('div.hoja'); }
     const tab = num(ruta.tab);
     const root = h('div.hoja.escribir');
-    root.append(h('header.cabeza', h('div.ante', obra.genero || 'Obra'),
+    root.append(h('header.cabeza', h('div.ante', h('button.enlace.e-atras', { type: 'button', onclick: () => RV.ir({ v: 'escribir' }) }, '← Tus obras'), ` · ${obra.genero || 'Obra'}`),
       h('div.cabeza-fila', h('h1.titular.ajusta', { 'data-min': '36' }, obra.titulo || 'Sin título'),
         h('div.herramientas', h('button.enlace', { type: 'button', onclick: () => buscarObra(obra) }, 'Buscar'), h('button.enlace', { type: 'button', onclick: () => exportar(obra) }, 'Exportar'), h('button.enlace', { type: 'button', onclick: () => E.dlgObra(obra) }, 'Ajustes'))),
       obra.autor ? h('p.entradilla', obra.autor) : null, h('div.filete')));
     root.append(h('nav.e-tabs', TABS.map((n, i) => h('button', { type: 'button', 'aria-current': i === tab ? 'page' : null, onclick: () => RV.ir({ v: 'obra', id: obra.id, tab: i }, { reemplazar: true }) }, n))));
-    root.append([manuscrito, fichas, notas, linea, cifras, guiaNovela][tab] ? [manuscrito, fichas, notas, linea, cifras, guiaNovela][tab](obra) : manuscrito(obra));
+    const vistas = [(o) => E.manuscrito(o), fichas, (o) => E.arbol(o, ruta), notas, (o) => E.linea(o), cifras, guiaNovela];
+    root.append((vistas[tab] || vistas[0])(obra));
     return root;
   };
 
   let esquema = false;
   let etiqueta = { pid: '', t: '' };
-  function manuscrito(obra) {
+  // La vista de lista del manuscrito: todos los capítulos con sus escenas (los cuadrados están en escribir-partes.js)
+  E.manuscritoLista = (obra, raizMadre) => manuscrito(obra, raizMadre);
+  E.tarjetaGuia = (obra) => tarjetaGuia(obra);
+  E.menuEscena = (s, caps) => menuEscena(s, caps);
+  function manuscrito(obra, raizMadre) {
     const pid = obra.id; const caps = E.capitulos(pid); const pal = E.palabrasObra(pid); const meta = num(obra.meta);
     const ests = [0, 0, 0]; for (const e of E.escenasDe(pid)) ests[Math.min(2, num(e.estado))]++;
-    const raiz = h('div.e-manu');
-    const sig = tarjetaGuia(obra);
-    if (sig) raiz.append(sig);
-    raiz.append(h('div.e-resumen', h('span', `${cifra(pal)}${meta ? ` de ${cifra(meta)} palabras` : ' palabras'} · ${RV.plural(caps.length, 'capítulo', 'capítulos')}`),
+    const raiz = raizMadre || h('div.e-manu');
+    if (!raizMadre) { const sig = tarjetaGuia(obra); if (sig) raiz.append(sig); }
+    if (!raizMadre) raiz.append(h('div.e-resumen', h('span', `${cifra(pal)}${meta ? ` de ${cifra(meta)} palabras` : ' palabras'} · ${RV.plural(caps.length, 'capítulo', 'capítulos')}`),
       meta ? barra(pal / meta, colorDe(obra.color)) : null,
       h('div.e-estados', ESTADOS.map((n, i) => h('span', h('i', { style: { background: COL_ESTADO[i] } }), `${ests[i]} ${n.toLowerCase()}`)),
         h('button.e-chip', { type: 'button', 'aria-pressed': esquema ? 'true' : 'false', title: 'Enseña el resumen de cada escena (el del panel de la escena) en vez del principio del texto', onclick: () => { esquema = !esquema; RV.refrescar(); } }, esquema ? 'Ver el texto' : 'Ver resúmenes'))));
@@ -586,16 +681,15 @@
     caps.forEach((c, ci) => {
       const esc = E.escenas(c.id).filter(pasa);
       if (etiqueta.t && !esc.length) return;
-      if (c.parte && c.parte !== parte) { parte = c.parte; raiz.append(h('div.e-parte', c.parte)); }
-      const cab = h('div.e-cap', { draggable: 'true', ondragstart: (ev) => { arrastrando = { cap: c.id }; ev.dataTransfer.effectAllowed = 'move'; },
-        ondragover: (ev) => { if (arrastrando) { ev.preventDefault(); cab.classList.add('sobre'); } }, ondragleave: () => cab.classList.remove('sobre'),
-        ondrop: (ev) => { ev.preventDefault(); cab.classList.remove('sobre'); const a = arrastrando; arrastrando = null; if (!a) return;
-          if (a.cap && a.cap !== c.id) suelta(() => op('mueve', a.cap, caps[ci - 1] && caps[ci - 1].id !== a.cap ? caps[ci - 1].id : null, c.id));
-          else if (a.esc) suelta(() => op('mueveEscena', a.esc, c.id, null, esc[0] && esc[0].id !== a.esc ? esc[0].id : null)); } },
-      h('div', h('span.versal', `Capítulo ${ci + 1}`), h('button.e-cap-titulo', { type: 'button', onclick: () => E.dlgCapitulo(pid, c) }, c.titulo || 'Sin título'), c.resumen ? h('span.cursiva', c.resumen) : null),
+      const pa = c.aid ? E.get(c.aid) : null;
+      const np = pa ? pa.id : String(c.parte || '');
+      if (np && np !== parte) { parte = np; raiz.append(h('button.e-parte', { type: 'button', onclick: () => (pa ? RV.ir({ v: 'parte', id: pa.id }) : null) }, pa ? pa.titulo || 'Parte' : c.parte)); }
+      const cab = h('div.e-cap', {
+        ondragover: (ev) => { if (arrastrando && arrastrando.esc) { ev.preventDefault(); cab.classList.add('sobre'); } }, ondragleave: () => cab.classList.remove('sobre'),
+        ondrop: (ev) => { ev.preventDefault(); cab.classList.remove('sobre'); const a = arrastrando; arrastrando = null; if (a && a.esc) suelta(() => op('mueveEscena', a.esc, c.id, null, esc[0] && esc[0].id !== a.esc ? esc[0].id : null)); } },
+      h('div', h('span.versal', `Capítulo ${ci + 1}`), h('button.e-cap-titulo', { type: 'button', onclick: () => RV.ir({ v: 'capitulo', id: c.id }) }, c.titulo || 'Sin título'), c.resumen ? h('span.cursiva', c.resumen) : null),
       h('span.versal', cifra(E.palabrasCapitulo(c.id))),
-      h('button.enlace.apagado', { type: 'button', title: 'Subir', disabled: ci === 0 ? '' : null, onclick: () => suelta(() => op('mueve', c.id, caps[ci - 2] ? caps[ci - 2].id : null, caps[ci - 1].id)) }, '▲'),
-      h('button.enlace.apagado', { type: 'button', title: 'Bajar', disabled: ci === caps.length - 1 ? '' : null, onclick: () => suelta(() => op('mueve', c.id, caps[ci + 1].id, caps[ci + 2] ? caps[ci + 2].id : null)) }, '▼'));
+      h('button.enlace.apagado', { type: 'button', title: 'Editar el capítulo', onclick: () => E.dlgCapitulo(pid, c) }, '⋯'));
       raiz.append(cab);
       esc.forEach((s, si) => {
         const prev = esc[si - 1];
@@ -614,7 +708,7 @@
       });
       if (!etiqueta.t) raiz.append(h('button.enlace.acento.e-mas', { type: 'button', onclick: async () => { try { const n = await op('nuevo', 'e', pid, { cid: c.id, titulo: `Escena ${esc.length + 1}` }); RV.ir({ v: 'editor', id: n.id }); } catch (e) { E.err(e); } } }, '+ Escena'));
     });
-    raiz.append(h('div.fila-botones', h('button.boton-borde', { type: 'button', onclick: () => E.dlgCapitulo(pid, null) }, 'Nuevo capítulo')));
+    if (!raizMadre) raiz.append(h('div.fila-botones', h('button.boton-borde', { type: 'button', onclick: () => E.dlgCapitulo(pid, null) }, 'Nuevo capítulo')));
     return raiz;
   }
 
@@ -650,7 +744,7 @@
         h('div.e-chips', h('button.e-chip', { type: 'button', 'aria-pressed': tipo === '' ? 'true' : 'false', onclick: () => { tipo = ''; pinta(); } }, `Todas ${fs.length}`),
           ...TIPOS_FICHA.map(([k, n]) => { const c = fs.filter((f) => f.tipo === k).length; return c || tipo === k ? h('button.e-chip', { type: 'button', 'aria-pressed': tipo === k ? 'true' : 'false', onclick: () => { tipo = k; pinta(); } }, `${n} ${c}`) : null; })),
         !fs.length ? h('div.e-vacio', h('h2.titular', 'El mundo de tu historia'), h('p', 'Personajes, lugares, objetos y reglas del mundo en fichas. Cuando escribas su nombre (o un alias) en una escena, quedará subrayado y lo tendrás en el panel, con sus datos, sin salir del texto.')) : null,
-        h('div.e-rejilla', fs.filter((f) => !tipo || f.tipo === tipo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')).map((f) => h('button.e-ficha-tarj', { type: 'button', style: { '--c': colorDe(f.color) }, onclick: () => E.dlgFicha(pid, f) },
+        h('div.e-rejilla', fs.filter((f) => !tipo || f.tipo === tipo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es')).map((f) => h('button.e-ficha-tarj', { type: 'button', style: { '--c': colorDe(f.color) }, onclick: () => E.verFicha(pid, f) },
           h('span.punto'), h('span.titulo', f.nombre), h('span.versal', `${(TIPOS_FICHA.find((t) => t[0] === f.tipo) || [])[2] || 'Ficha'} · ${sale.get(f.id) ? `sale en ${RV.plural(sale.get(f.id), 'escena', 'escenas')}` : 'aún no sale'}`), f.resumen ? h('span.e-res', f.resumen) : null))),
         h('div.fila-botones', h('button.boton-borde', { type: 'button', onclick: () => E.dlgFicha(pid, null, tipo || 'personaje') }, 'Nueva ficha')));
     };
@@ -659,39 +753,23 @@
   }
 
   function notas(obra) {
-    const pid = obra.id; let tipo = '';
+    const pid = obra.id; let tipo = ''; let de = '';
     const raiz = h('div.e-notas');
     const ns = E.notas(pid);
+    const partes = E.partes(pid);
     const pinta = () => {
-      const lista = ns.filter((n) => !tipo || n.tipo === tipo).sort((a, b) => num(b.fija) - num(a.fija) || b.u - a.u);
+      const lista = ns.filter((n) => (!tipo || n.tipo === tipo) && (!de || (Array.isArray(n.vin) && (n.vin.includes(de) || n.vin.some((v) => (E.get(v) || {}).aid === de))))).sort((a, b) => num(b.fija) - num(a.fija) || b.u - a.u);
       reemplaza(raiz,
         h('div.e-chips', h('button.e-chip', { type: 'button', 'aria-pressed': tipo === '' ? 'true' : 'false', onclick: () => { tipo = ''; pinta(); } }, `Todo ${ns.length}`),
-          ...TIPOS_NOTA.map(([k, n]) => h('button.e-chip', { type: 'button', 'aria-pressed': tipo === k ? 'true' : 'false', onclick: () => { tipo = k; pinta(); } }, `${n} ${ns.filter((x) => x.tipo === k).length}`))),
+          ...TIPOS_NOTA.map(([k, n]) => { const c = ns.filter((x) => x.tipo === k).length; return c || tipo === k ? h('button.e-chip', { type: 'button', 'aria-pressed': tipo === k ? 'true' : 'false', onclick: () => { tipo = k; pinta(); } }, `${n} ${c}`) : null; })),
+        partes.length ? h('div.e-chips.e-filtro', h('button.e-chip', { type: 'button', 'aria-pressed': de === '' ? 'true' : 'false', onclick: () => { de = ''; pinta(); } }, 'De toda la obra'),
+          ...partes.map((a) => h('button.e-chip', { type: 'button', 'aria-pressed': de === a.id ? 'true' : 'false', onclick: () => { de = de === a.id ? '' : a.id; pinta(); } }, a.titulo || 'Parte'))) : null,
         !ns.length ? h('div.e-vacio', h('h2.titular', 'El tablón'), h('p', 'Ideas sueltas, investigación, cosas por arreglar y plantillas (como una ficha de escena) que puedes tener junto al texto mientras escribes.')) : null,
-        h('div.e-tablon', lista.map((n) => h('button.e-nota', { type: 'button', style: { '--c': colorDe(n.color) }, onclick: () => E.dlgNota(pid, n) },
-          h('span.versal', `${(TIPOS_NOTA.find((t) => t[0] === n.tipo) || [])[2] || 'Nota'}${n.fija ? ' · fijada' : ''}`), n.titulo ? h('span.titulo', n.titulo) : null, n.texto ? h('span.cuerpo' + (n.tipo === 'idea' ? '.cursiva' : ''), n.texto) : null))),
+        h('div.e-tablon', lista.map((n) => h('button.e-nota', { type: 'button', style: { '--c': colorDe(n.color) }, onclick: () => E.verNota(pid, n) },
+          h('span.versal', `${(TIPOS_NOTA.find((t) => t[0] === n.tipo) || [])[2] || 'Nota'}${n.fija ? ' · fijada' : ''}${vinculosDe(n).length ? ` · ${vinculosDe(n).map((x) => (x.t === 'a' ? x.titulo : `cap. ${E.numeroCapitulo(x)}`)).join(', ')}` : ''}`), n.titulo ? h('span.titulo', n.titulo) : null, n.texto ? h('span.cuerpo' + (n.tipo === 'idea' ? '.cursiva' : ''), n.texto) : null))),
         h('div.fila-botones', h('button.boton-borde', { type: 'button', onclick: () => E.dlgNota(pid, null, tipo || 'nota') }, 'Nueva nota')));
     };
     pinta();
-    return raiz;
-  }
-
-  function linea(obra) {
-    const pid = obra.id; const hs = E.hitos(pid); const conFecha = E.escenasDe(pid).filter((e) => e.cuando);
-    const raiz = h('div.e-linea', h('p.cursiva', 'Los hitos de tu historia en orden (cambia el orden con ▲▼) y, debajo, las escenas a las que has puesto «cuándo pasa» en su panel.'));
-    hs.forEach((x, i) => {
-      const e = x.eid ? E.get(x.eid) : null;
-      raiz.append(h('div.e-hito', h('span.hilo', h('i')), h('div.cuerpo',
-        x.cuando ? h('span.versal.acento', x.cuando) : null, h('button.e-hito-titulo', { type: 'button', onclick: () => E.dlgHito(pid, x) }, x.titulo), x.nota ? h('span.cursiva', x.nota) : null,
-        e ? h('button.enlace.acento', { type: 'button', onclick: () => RV.ir({ v: 'editor', id: e.id }) }, `→ ${e.titulo || 'escena'}`) : null),
-      h('div.mover', h('button.enlace.apagado', { type: 'button', disabled: i === 0 ? '' : null, onclick: () => op('mueve', x.id, hs[i - 2] ? hs[i - 2].id : null, hs[i - 1].id).catch(E.err) }, '▲'),
-        h('button.enlace.apagado', { type: 'button', disabled: i === hs.length - 1 ? '' : null, onclick: () => op('mueve', x.id, hs[i + 1].id, hs[i + 2] ? hs[i + 2].id : null).catch(E.err) }, '▼'))));
-    });
-    raiz.append(h('div.fila-botones', h('button.boton-borde', { type: 'button', onclick: () => E.dlgHito(pid, null) }, 'Nuevo hito')));
-    if (conFecha.length) {
-      raiz.append(RV.seccion('Escenas con fecha'));
-      for (const e of conFecha) raiz.append(h('button.e-fecha', { type: 'button', onclick: () => RV.ir({ v: 'editor', id: e.id }) }, h('span.versal.acento', e.cuando), h('span.titulo', e.titulo || 'Sin título')));
-    }
     return raiz;
   }
 
@@ -863,9 +941,9 @@
   const cambia = RV.debounce(() => {
     const r = vista();
     if (r === 'editor') { if (RV.escribirEditorCambio) RV.escribirEditorCambio(); return; }
-    if (r === 'escribir' || r === 'obra') RV.refrescar();
+    if (['escribir', 'obra', 'parte', 'capitulo'].includes(r)) RV.refrescar();
     if (r === 'portada') { const f = firma(); if (f !== firmaPortada) { firmaPortada = f; RV.refrescar(); } }
   }, 60);
   api.on('escritos', (x) => { E.set(x.docs, x.estado); cambia(); });
-  api.escritosTodo().then((x) => { E.set(x.docs, x.estado); if (['escribir', 'obra', 'editor'].includes(vista())) RV.refrescar(); }).catch(() => { cargado = true; });
+  api.escritosTodo().then((x) => { E.set(x.docs, x.estado); if (['escribir', 'obra', 'editor', 'parte', 'capitulo'].includes(vista())) RV.refrescar(); }).catch(() => { cargado = true; });
 })(window.RV);

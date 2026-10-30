@@ -102,7 +102,9 @@ const fake = () => spawn(process.execPath, [path.join(__dirname, 'fakefirebase.j
     await p.evaluate(() => { window.RV.cambiarModo('revista'); window.RV.ir({ v: 'obra', id: arguments[0] }); }).catch(() => {});
     await p.evaluate((id) => window.RV.ir({ v: 'obra', id }), o.id);
     await sleep(800);
-    ok(await p.locator('.e-escena').count() === 2, 'el manuscrito enseña las dos escenas (la del PC y la del móvil)');
+    ok(await p.locator('.e-cuadro-cap').count() === 1, 'el manuscrito enseña el capítulo en su cuadrado');
+    await p.locator('.e-cuadro-cap').first().click(); await sleep(600);
+    ok(await p.locator('.e-cuadro-esc').count() === 2, 'y el capítulo, las dos escenas (la del PC y la del móvil)');
     await p.screenshot({ path: path.join(OUT, 'atrio-escribir-obra.png') });
     // La edición «solo revista» (la del Mac; en Linux, con ATRIO_SOLO_REVISTA=1): nada del lanzador ni de abrir juegos
     if (process.platform === 'darwin' || process.env.ATRIO_SOLO_REVISTA === '1') {
