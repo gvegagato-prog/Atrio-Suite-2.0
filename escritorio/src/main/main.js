@@ -599,6 +599,9 @@ async function doPower(action) {
       : `No se ha podido: ${all.slice(0, 200) || 'ninguna vía ha funcionado'}`);
 }
 
+// La pantalla completa pedida y aún sin terminar de ponerse o quitarse (macOS la anima); null: ninguna pendiente
+let pantallaPedida = null;
+
 // ---------- IPC ----------
 function setupIpc() {
   ipcMain.handle('state', () => state());
@@ -614,7 +617,7 @@ function setupIpc() {
     }
     if (needRescan) return rescan();
     if ('behavior' in partial && 'fullscreen' in (partial.behavior || {}) && win && !process.env.ATRIO_SHOTS) {
-      win.setFullScreen(!!next.behavior.fullscreen);
+      pantallaPedida = !!next.behavior.fullscreen; win.setFullScreen(pantallaPedida);
     }
     return state();
   });
@@ -739,9 +742,11 @@ function setupIpc() {
 
   ipcMain.handle('win:fullscreen', () => {
     if (!win) return false;
-    const quiere = !win.isFullScreen();
+    // En macOS la transición es asíncrona: mientras dura, isFullScreen() aún dice lo de antes. Si se pulsa dos veces
+    // seguidas, la segunda tiene que partir de lo pedido la primera (si no, pide lo mismo otra vez y no hace nada)
+    const quiere = !(pantallaPedida ?? win.isFullScreen());
+    pantallaPedida = quiere;
     win.setFullScreen(quiere);
-    // (en macOS la transición es asíncrona: se devuelve lo pedido, no el estado de ahora mismo)
     return quiere;
   });
   ipcMain.handle('win:minimize', () => win && win.minimize());
@@ -1004,6 +1009,9 @@ function createWindow() {
     if (ui === 'revista' && !process.argv.includes('--ventana')) win.maximize();
     if (wantFull) setTimeout(() => { if (win) win.setFullScreen(true); }, 250);
   });
+  // (terminada la transición, manda otra vez el estado de verdad)
+  win.on('enter-full-screen', () => { pantallaPedida = null; });
+  win.on('leave-full-screen', () => { pantallaPedida = null; });
   win.on('show', () => { if (wantFull && !SOLO_REVISTA && win && !win.isFullScreen()) setTimeout(() => { if (win) win.setFullScreen(true); }, 250); });
 
   // Diagnóstico y recuperación si la parte gráfica se cae

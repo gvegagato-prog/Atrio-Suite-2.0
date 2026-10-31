@@ -15,6 +15,8 @@ Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** 
 - **Arreglada la vista previa de una ficha en Escribir** (al pasar el ratón por un nombre): los datos largos y las
   uniones se salían de la tarjeta. Ahora todo se parte dentro, los datos largos se cortan a dos líneas y cada unión va
   en su línea.
+- **Pantalla completa (Mac)**: pulsar F11/⌃⌘F dos veces seguidas ya no se queda sin hacer nada (macOS anima la
+  transición y la segunda pulsación leía el estado viejo).
 
 ## Atrio 1.0.4 (móvil)
 
