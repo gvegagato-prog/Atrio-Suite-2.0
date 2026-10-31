@@ -10,6 +10,13 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio 1.0.5 (móvil)
+
+- **La portada ya no tintinea al pasar de una a otra.** El carrusel crea copias de la misma portada; cada copia nueva
+  salía un fotograma con el titular sin ajustar y la portada que tenías delante se recolocaba (la imagen crecía o
+  encogía y el título saltaba 18 px). Ahora el titular recuerda su ancho y sale bien desde el primer fotograma. Hay una
+  prueba que lo mide fotograma a fotograma.
+
 ## Atrio 1.0.2 (PC/Mac)
 
 - **Arreglada la vista previa de una ficha en Escribir** (al pasar el ratón por un nombre): los datos largos y las

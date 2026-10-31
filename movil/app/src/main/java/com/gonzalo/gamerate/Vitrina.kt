@@ -518,32 +518,43 @@ fun FitTitle(
     conEdicion: Boolean = true
 ) {
     @Suppress("NAME_SHADOWING") val text = if (Skin.revista && conEdicion) Ediciones.titular(text) else text
-    // El ancho que hay se lee al colocarlo (sin BoxWithConstraints, que no vale dentro de filas de alto intrínseco)
-    var maxPx by remember { mutableStateOf(0) }
+    // El ancho que hay se lee al colocarlo (sin BoxWithConstraints, que no vale dentro de filas de alto intrínseco).
+    // Se recuerda el último ancho de cada título: al volver a componerse (una página nueva del carrusel de la portada)
+    // ya sale a su tamaño desde el primer fotograma
+    val claveAncho = "$text|${fontSize.value}"
+    var maxPx by remember { mutableStateOf(anchosFit[claveAncho] ?: 0) }
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
-    val size = remember(text, fontSize, maxPx, family, fontWeight, letterSpacing, unaLinea) {
-        if (maxPx <= 0 || maxPx == Constraints.Infinity) return@remember fontSize.value
+    fun estilo(s: Float) = androidx.compose.ui.text.TextStyle(fontFamily = family, fontWeight = fontWeight, fontSize = s.sp, letterSpacing = letterSpacing, fontStyle = fontStyle)
+    fun ajusta(ancho: Int): Float {
+        if (ancho <= 0 || ancho == Constraints.Infinity) return fontSize.value
         val words = if (unaLinea) listOf(text) else text.split(Regex("\\s+")).filter { it.isNotEmpty() }
-        if (words.isEmpty()) return@remember fontSize.value
+        if (words.isEmpty()) return fontSize.value
         var s = fontSize.value
         while (s > minSize) {
-            val style = androidx.compose.ui.text.TextStyle(fontFamily = family, fontWeight = fontWeight, fontSize = s.sp, letterSpacing = letterSpacing, fontStyle = fontStyle)
             // Un poco de margen por si la letra de verdad es algo más ancha que la que se mide
-            val widest = words.maxOf { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
-            if (widest <= maxPx * 0.97f) break
+            val widest = words.maxOf { measurer.measure(it, estilo(s), softWrap = false, maxLines = 1).size.width }
+            if (widest <= ancho * 0.97f) break
             s -= 1f
         }
-        s
+        return s
     }
-    val k = size / fontSize.value
+    val size = remember(text, fontSize, maxPx, family, fontWeight, letterSpacing, unaLinea) { ajusta(maxPx) }
+    fun alto(s: Float) = if (lineHeight.isSp) (lineHeight.value * s / fontSize.value).sp else lineHeight
     Text(
         text, color = color, fontFamily = family, fontWeight = fontWeight, fontStyle = fontStyle, fontSize = size.sp,
-        lineHeight = if (lineHeight.isSp) (lineHeight.value * k).sp else lineHeight,
+        lineHeight = alto(size),
         letterSpacing = letterSpacing, maxLines = maxLines, overflow = overflow, textAlign = align,
         modifier = modifier.layout { measurable, constraints ->
-            if (constraints.maxWidth != maxPx) maxPx = constraints.maxWidth
+            val w = constraints.maxWidth
+            if (w != maxPx) {
+                maxPx = w
+                if (w > 0 && w != Constraints.Infinity) anchosFit[claveAncho] = w
+            }
             val pl = measurable.measure(constraints)
             layout(pl.width, pl.height) { pl.place(0, 0) }
         }
     )
 }
+
+/** El último ancho en el que se ha puesto cada título, por título y tamaño (ver FitTitle). */
+private val anchosFit = java.util.concurrent.ConcurrentHashMap<String, Int>()
