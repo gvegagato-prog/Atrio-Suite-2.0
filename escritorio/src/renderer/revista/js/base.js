@@ -155,12 +155,46 @@ window.RV = window.RV || {};
     // Con un fondo de color: su modo claro u oscuro manda, y el acento «rojo» pasa a ser el del propio fondo
     if (fondo) { raiz.dataset.fondo = fondo[0]; raiz.dataset.tema = fondo[4] ? 'oscuro' : 'claro'; raiz.dataset.acento = acento === 'rojo' ? 'fondo' : acento; }
     else { delete raiz.dataset.fondo; raiz.dataset.tema = tema; raiz.dataset.acento = acento; }
+    // A tu manera: el fondo, el texto y el acento a mano (las líneas, los grises y el crudo salen de mezclar texto y fondo)
+    // y las letras (una instalada en el equipo; si no está, siguen las de Atrio)
+    const propio = RV.temaPropio(rev);
+    for (const k of RV.VARS_PROPIAS) raiz.style.removeProperty(k);
+    if (propio.oscuro != null) raiz.dataset.tema = propio.oscuro ? 'oscuro' : 'claro';
+    if (propio.fondo || propio.tinta) {
+      const cs = getComputedStyle(raiz);
+      Object.assign(propio.vars, RV.mezclas(propio.fondo || cs.getPropertyValue('--papel').trim(), propio.tinta || (propio.fondo ? (RV.luz(propio.fondo) < 0.4 ? '#F1EBE0' : '#15120F') : cs.getPropertyValue('--tinta').trim())));
+    }
+    for (const [k, v] of Object.entries(propio.vars)) raiz.style.setProperty(k, v);
     // Sin animaciones si lo pides (Ajustes → Comportamiento) o si el sistema pide menos movimiento
     let menos = false;
     try { menos = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { /* */ }
     if (document.body) document.body.classList.toggle('quieto', !!(rev && rev.quieto) || menos);
     // Copia local solo para el arranque (tema-inicial.js); la de verdad está en la configuración de Atrio
-    try { localStorage.setItem('revista:tema', JSON.stringify({ tema, acento, fondo: fondo ? fondo[0] : '' })); } catch { /* */ }
+    try { localStorage.setItem('revista:tema', JSON.stringify({ tema, acento, fondo: fondo ? fondo[0] : '', vars: propio.vars, oscuro: propio.oscuro })); } catch { /* */ }
+  };
+  RV.VARS_PROPIAS = ['--papel', '--crudo', '--tinta', '--gris', '--linea', '--arena', '--acento', '--serif', '--sans'];
+  RV.hexValido = (v) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v.trim()) ? v.trim().toUpperCase() : '');
+  // Luminancia relativa (sRGB), como luminance() del móvil
+  RV.luz = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((x) => { const v = x / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  RV.mezclas = (papel, tinta) => {
+    const mx = (p) => `color-mix(in srgb, ${tinta} ${p}%, ${papel})`;
+    return { '--papel': papel, '--tinta': tinta, '--crudo': mx(4), '--arena': mx(9), '--linea': mx(20), '--gris': mx(55) };
+  };
+  const nombreLetra = (v) => (typeof v === 'string' ? v.replace(/["'\\;{}<>]/g, '').trim().slice(0, 60) : '');
+  /** Lo que se puede calcular sin leer estilos: el acento, las letras y si el fondo propio es oscuro. */
+  RV.temaPropio = (rev) => {
+    const r = rev || {};
+    const fondo = RV.hexValido(r.fondoPropio), tinta = RV.hexValido(r.tintaPropia), acento = RV.hexValido(r.acentoPropio);
+    const vars = {};
+    if (acento) vars['--acento'] = acento;
+    const lt = nombreLetra(r.letraTitulos), lx = nombreLetra(r.letraTexto);
+    if (lt) vars['--serif'] = `"${lt}", 'Titular', 'Fraunces', Georgia, serif`;
+    if (lx) vars['--sans'] = `"${lx}", 'Texto', 'Inter', system-ui, sans-serif`;
+    return { fondo, tinta, vars, oscuro: fondo ? RV.luz(fondo) < 0.4 : null };
   };
   RV.oscuro = () => {
     const t = document.documentElement.dataset.tema;

@@ -140,25 +140,34 @@ class Hoja(val ctx: Context, val w: Float, val h: Float, val noche: Boolean, s: 
     // El papel de la revista: el de la edición elegida (Ediciones.kt)
     val edicion = Ediciones.guardada(ctx)
     // Con un fondo de color elegido en Apariencia, los widgets lo llevan también (igual de día que de noche)
-    private val tonos = Widgets.fondo(ctx)?.tones ?: if (noche) edicion.paleta.dark else edicion.paleta.light
+    // …y los colores elegidos a mano (Apariencia → A tu manera) por encima de todo
+    private val propios = ctx.getSharedPreferences("gamerate", Context.MODE_PRIVATE).let { p ->
+        Triple(p.getLong("skin_fondo_propio", 0L), p.getLong("skin_tinta_propia", 0L), p.getLong("skin_acento_propio", 0L)) }
+    private val tonos = Skin.conPropios(Widgets.fondo(ctx)?.tones ?: if (noche) edicion.paleta.dark else edicion.paleta.light,
+        propios.first, propios.second, 0L)
     val papel = tonos.cPaper.toArgb()
     val crudo = tonos.cCrudo.toArgb()
     val tinta = tonos.cInk.toArgb()
     val gris = tonos.cMuted.toArgb()
     val linea = tonos.cLine.toArgb()
     val arena = tonos.cSand.toArgb()
-    val acento = Widgets.acento(ctx, noche)
+    val acento = if (propios.third != 0L) propios.third.toInt() else Widgets.acento(ctx, noche)
     /** El acento sobre una foto oscura (el claro se lee mejor). */
-    val acentoFoto = Widgets.acento(ctx, true)
+    val acentoFoto = if (propios.third != 0L) propios.third.toInt() else Widgets.acento(ctx, true)
     val radio = 22f
+    /** El color del reborde (por defecto, el del texto; sobre una foto a sangre, blanco). */
+    var reborde: Int? = null
 
     val fTitular: Typeface get() = Widgets.fuente(ctx, edicion.widget.titular)
     val fCursiva: Typeface get() = Widgets.fuente(ctx, edicion.widget.cursiva)
     val fNegrita: Typeface get() = Widgets.fuente(ctx, edicion.widget.negrita)
     val fTexto: Typeface get() = Widgets.fuente(ctx, edicion.widget.texto)
 
-    /** Recorta las esquinas (suaves, con antialias). */
+    /** Recorta las esquinas (suaves, con antialias) y traza el reborde: una línea fina del color del texto, metida hacia dentro. */
     fun terminar() {
+        val m = 6f
+        c.drawRoundRect(RectF(m, m, w - m, h - m), radio - m, radio - m, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = 1.1f; color = reborde ?: tinta })
         val p = Path().apply { addRoundRect(RectF(0f, 0f, w, h), radio, radio, Path.Direction.CW); fillType = Path.FillType.INVERSE_WINDING }
         c.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) })
     }
@@ -515,7 +524,7 @@ object Widgets {
             when {
                 compacto -> {
                     // La portada a sangre y el título encima
-                    portada(img, RectF(0f, 0f, w, h), e.name, 0f, false)
+                    portada(img, RectF(0f, 0f, w, h), e.name, 0f, false); reborde = 0xCCFFFFFF.toInt()
                     velo(h * 0.2f, h, 0x00000000, 0xF0000000.toInt(), 0x88000000.toInt())
                     velo(0f, 52f, 0xB0000000.toInt(), 0x00000000)
                     seccion("Leyendo", pad, pad, w - 2 * pad, 0xFFFFFFFF.toInt(), acentoFoto)
@@ -781,7 +790,7 @@ object Widgets {
             val pad = 16f
             val blanco = 0xFFFFFFFF.toInt()
             if (img != null) {
-                portada(img, RectF(0f, 0f, w, h), e.name, 0f, false)
+                portada(img, RectF(0f, 0f, w, h), e.name, 0f, false); reborde = 0xCCFFFFFF.toInt()
                 velo(0f, min(96f, h * 0.42f), 0xC8000000.toInt(), 0x00000000, 0x70000000)
                 velo(h * 0.18f, h, 0x00000000, 0xF2000000.toInt(), 0x99000000.toInt())
             } else { fondo(0xFF15120F.toInt()) }
@@ -1046,7 +1055,7 @@ object Widgets {
         val empezar = when { e.kind.isBook -> "Empezar a leer"; e.kind.isGame -> "Empezar a jugar"; e.kind.isMovie || e.kind.isTv -> "Ver ahora"; else -> "Empezar" }
         return Pagina(zonas) {
             if (compacto) {
-                portada(img, RectF(0f, 0f, w, h), e.name, 0f, false)
+                portada(img, RectF(0f, 0f, w, h), e.name, 0f, false); reborde = 0xCCFFFFFF.toInt()
                 velo(h * 0.15f, h, 0x00000000, 0xF0000000.toInt(), 0x99000000.toInt())
                 velo(0f, 46f, 0xA0000000.toInt(), 0x00000000)
                 seccion("¿Y ahora qué?", pad, pad, w - 2 * pad, 0xFFFFFFFF.toInt(), acentoFoto)

@@ -511,7 +511,8 @@ class Store(ctx: Context) {
         r.optJSONObject("skin")?.let { sk ->
             for (k in sk.keys()) if (k in AJUSTES_SKIN) when (val v = sk.get(k)) {
                 is Boolean -> ed.putBoolean(k, v)
-                is Int -> if (k == "skin_accent") ed.putLong(k, v.toLong()) else ed.putInt(k, v)
+                // (los colores se guardan como Long: un 0, «sin elegir», llega como Int)
+                is Int -> if (k == "skin_accent" || k.endsWith("_propio") || k.endsWith("_propia")) ed.putLong(k, v.toLong()) else ed.putInt(k, v)
                 is Long -> ed.putLong(k, v)
                 is Number -> ed.putLong(k, v.toLong())
                 is String -> ed.putString(k, v)
@@ -1443,7 +1444,7 @@ class Store(ctx: Context) {
 }
 
 /** Las preferencias de apariencia que viajan con tu cuenta (las de esta pantalla, como el tamaño de letra, no). */
-internal val AJUSTES_SKIN = setOf("skin_fondo", "meta_lectura", "skin_escala", "theme31", "skin_accent", "skin_accent_id", "skin_edicion", "skin_listcovers", "skin_motion", "skin_shell", "skin_covers", "skin_docklabels")
+internal val AJUSTES_SKIN = setOf("skin_fondo", "skin_fondo_propio", "skin_tinta_propia", "skin_acento_propio", "skin_letra_titulos", "skin_letra_texto", "meta_lectura", "skin_escala", "theme31", "skin_accent", "skin_accent_id", "skin_edicion", "skin_listcovers", "skin_motion", "skin_shell", "skin_covers", "skin_docklabels")
 
 /** Cambió un ajuste que viaja con tu cuenta: se apunta la hora y queda pendiente de subir. */
 fun ajustesCambiados(ctx: Context) {

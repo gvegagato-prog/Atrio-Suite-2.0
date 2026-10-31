@@ -96,10 +96,10 @@ val AtrioBody = FontFamily(
 )
 
 /** Letra de títulos: la de la edición de la revista (Ediciones.kt). */
-val Display: FontFamily get() = if (Skin.revista) Ediciones.actual.titulos else Skin.family(Skin.display) ?: AtrioDisplay
+val Display: FontFamily get() = if (Skin.revista) (Skin.letraTitulos.takeIf { it.isNotEmpty() }?.let { Skin.family(it) } ?: Ediciones.actual.titulos) else Skin.family(Skin.display) ?: AtrioDisplay
 
 /** Letra del texto: la de la edición. */
-val Body: FontFamily get() = if (Skin.revista) Ediciones.actual.texto else Skin.family(Skin.body) ?: AtrioBody
+val Body: FontFamily get() = if (Skin.revista) (Skin.letraTexto.takeIf { it.isNotEmpty() }?.let { Skin.family(it) } ?: Ediciones.actual.texto) else Skin.family(Skin.body) ?: AtrioBody
 
 private val base = Typography()
 

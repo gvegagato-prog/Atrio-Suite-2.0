@@ -190,13 +190,72 @@
         }, n)))),
       bloque('Fondo', 'Colores hondos y sobrios para toda la revista, los mismos que en el móvil. «Papel» vuelve al tema de arriba.',
         h('div.muestras', [['', 'Papel', RV.oscuro() ? '#141210' : '#F3EEE4', RV.oscuro() ? '#F1EBE0' : '#15120F'], ...RV.FONDOS.map(([id, n, papel, tinta]) => [id, n, papel, tinta])].map(([id, n, papel, tinta]) => h('button.muestra', {
-          type: 'button', 'aria-pressed': String((rev.fondo || '') === id), onclick: () => guardarRevista({ fondo: id }), 'aria-label': `Fondo ${n}`,
+          type: 'button', 'aria-pressed': String(!RV.hexValido(rev.fondoPropio) && (rev.fondo || '') === id), onclick: () => guardarRevista({ fondo: id, fondoPropio: '' }), 'aria-label': `Fondo ${n}`,
         }, h('span.color', { style: { background: papel, color: tinta, border: '1px solid var(--linea)', display: 'grid', placeItems: 'center', fontFamily: 'var(--serif)', fontWeight: '700' } }, 'Aa'), h('span.nombre', n))))),
       bloque('Acento', 'El color de imprenta: antetítulos, capitulares, enlaces y lo que está elegido.',
         h('div.muestras', RV.ACENTOS.map(([id, n, claro, oscuro]) => h('button.muestra', {
-          type: 'button', 'aria-pressed': String(rev.acento === id), onclick: () => guardarRevista({ acento: id }), 'aria-label': `Acento ${n}`,
+          type: 'button', 'aria-pressed': String(!RV.hexValido(rev.acentoPropio) && rev.acento === id), onclick: () => guardarRevista({ acento: id, acentoPropio: '' }), 'aria-label': `Acento ${n}`,
         }, h('span.color', { style: { background: RV.oscuro() ? oscuro : claro } }), h('span.nombre', n))))),
+      bloque('A tu manera', 'El color que quieras para el fondo, el texto y el acento, y las letras de los títulos y del texto. Las letras tienen que estar instaladas en este equipo; si no, siguen las de Atrio.',
+        h('div.a-tu-manera',
+          colorPropio('Fondo', 'fondoPropio', rev, '--papel'),
+          colorPropio('Texto', 'tintaPropia', rev, '--tinta'),
+          colorPropio('Acento', 'acentoPropio', rev, '--acento'),
+          letraPropia('Letra de los títulos', 'letraTitulos', rev, 'var(--serif)'),
+          letraPropia('Letra del texto', 'letraTexto', rev, 'var(--sans)'))),
     ];
+  }
+
+  // El color que se ve ahora (el del tema si aún no hay uno elegido), en #RRGGBB para el selector
+  function hexActual(variable) {
+    const c = document.createElement('canvas').getContext('2d');
+    c.fillStyle = '#000'; c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(variable).trim() || '#000';
+    c.fillRect(0, 0, 1, 1);
+    const [r, g, b] = c.getImageData(0, 0, 1, 1).data;
+    return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+
+  function colorPropio(nombre, clave, rev, variable) {
+    const valor = RV.hexValido(rev[clave]);
+    const inicial = valor || hexActual(variable);
+    // Mientras se arrastra, se ve al momento; al soltar (o al escribir un código entero), se guarda
+    const prueba = (v) => RV.aplicarTema({ ...rev, [clave]: v });
+    const codigo = h('input.codigo', { type: 'text', value: inicial, maxlength: '7', spellcheck: 'false', 'aria-label': `Código del ${nombre.toLowerCase()}`,
+      onchange: () => { const v = RV.hexValido(codigo.value.startsWith('#') ? codigo.value : '#' + codigo.value); if (v) guardarRevista({ [clave]: v }); else codigo.value = inicial; } });
+    const selector = h('input.selector-color', { type: 'color', value: inicial.toLowerCase(), 'aria-label': nombre,
+      oninput: () => { codigo.value = selector.value.toUpperCase(); prueba(selector.value.toUpperCase()); },
+      onchange: () => guardarRevista({ [clave]: selector.value.toUpperCase() }) });
+    return h('div.propio', h('span.versal', nombre), selector, codigo,
+      h('span.estado', valor ? '' : 'Automático'),
+      valor ? h('button.enlace', { type: 'button', onclick: () => guardarRevista({ [clave]: '' }) }, 'Quitar') : null);
+  }
+
+  // Letras comunes en Windows, macOS y Linux (y las de la app del móvil, por si las tienes instaladas)
+  const LETRAS = ['Georgia', 'Times New Roman', 'Palatino Linotype', 'Book Antiqua', 'Garamond', 'Baskerville', 'Didot', 'Hoefler Text', 'Iowan Old Style',
+    'Charter', 'Cambria', 'Constantia', 'Liberation Serif', 'DejaVu Serif', 'Noto Serif', 'Arial', 'Helvetica', 'Helvetica Neue', 'Verdana', 'Tahoma',
+    'Trebuchet MS', 'Segoe UI', 'Calibri', 'Candara', 'Avenir', 'Avenir Next', 'Futura', 'Gill Sans', 'Optima', 'SF Pro Text', 'Ubuntu', 'Cantarell',
+    'Liberation Sans', 'DejaVu Sans', 'Noto Sans', 'Courier New', 'Menlo', 'Consolas', 'Fraunces', 'Inter', 'Playfair Display', 'Lora', 'Merriweather',
+    'EB Garamond', 'Libre Baskerville', 'Cormorant Garamond', 'DM Serif Display', 'Roboto', 'Open Sans', 'Source Sans 3', 'Work Sans', 'IBM Plex Sans'];
+  let letrasEquipo = null;
+  async function letrasInstaladas() {
+    if (letrasEquipo) return letrasEquipo;
+    let nombres = [];
+    // (las que de verdad hay en el equipo, si el sistema deja leerlas; si no, la lista de arriba)
+    try { if (window.queryLocalFonts) nombres = [...new Set((await window.queryLocalFonts()).map((f) => f.family))]; } catch { /* sin permiso */ }
+    letrasEquipo = (nombres.length ? nombres : LETRAS).sort((a, b) => a.localeCompare(b, 'es'));
+    return letrasEquipo;
+  }
+
+  function letraPropia(nombre, clave, rev, actual) {
+    const valor = typeof rev[clave] === 'string' ? rev[clave] : '';
+    const id = `letras-${clave}`;
+    const lista = h('datalist', { id }, LETRAS.map((n) => h('option', { value: n })));
+    const campo = h('input.letra', { type: 'text', value: valor, list: id, placeholder: 'La de Atrio', spellcheck: 'false', 'aria-label': nombre,
+      style: { fontFamily: valor ? `"${valor}", ${actual}` : actual },
+      onfocus: async () => { const n = await letrasInstaladas(); lista.replaceChildren(...n.map((x) => h('option', { value: x }))); },
+      onchange: () => guardarRevista({ [clave]: campo.value.trim() }) });
+    return h('div.propio', h('span.versal', nombre), campo, lista,
+      valor ? h('button.enlace', { type: 'button', onclick: () => guardarRevista({ [clave]: '' }) }, 'Quitar') : null);
   }
 
   RV.vistas.ajustes = (ruta) => {

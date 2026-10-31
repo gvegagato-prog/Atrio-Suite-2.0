@@ -963,7 +963,9 @@ private fun AppContenido(
     // (En el Diario, y entre Películas y Series, cambiar de categoría no rehace la pantalla entera: eso la hacía
     // parpadear con un fundido de toda la página; lo que cambia se funde dentro)
     val sectionKey = when { dest == 4 -> "diario"; dest == 5 -> "escribir"; kind.isMovie || kind.isTv -> "cine"; else -> "$section" }
-    val shown: Any = if (screen is Screen.Home) "top:$dest:$sectionKey:$pv" else screen
+    // (la clave lleva también si se ve la portada o la biblioteca: cada capa de la transición pinta su página, no la nueva
+    // las dos; antes la que salía se volvía la nueva al instante y luego se fundía consigo misma: un parpadeo)
+    val shown: Any = if (screen is Screen.Home) "top:$dest:$sectionKey:$pv:${if (shellLib) "lib" else "portada"}" else screen
     val topLevel = screen is Screen.Home
     // Al volver de una ficha abierta desde Feed, Revista o Escritorio, se vuelve a esa pantalla (no a la biblioteca)
     LaunchedEffect(screen is Screen.Home) {
@@ -1034,6 +1036,10 @@ private fun AppContenido(
             },
             label = "pantallas"
         ) { s ->
+            // Lo que pinta ESTA capa (portada o biblioteca, y de qué categoría), sacado de su clave y no del estado de ahora
+            val capa = (s as? String)?.split(':')
+            val capaLib = capa?.getOrNull(4) == "lib"
+            val capaKind = capa?.getOrNull(2)?.toIntOrNull()?.let { id -> (if (pv) partner!!.allKinds else myKinds).find { it.id == id } } ?: kind
             CompositionLocalProvider(LocalShared provides sharedScope, LocalAnim provides this) {
             // Cuando llegan fotos tuyas de otro dispositivo, las imágenes se vuelven a pintar (antes salía el hueco)
             androidx.compose.runtime.key(Photos.version) {
@@ -1051,8 +1057,9 @@ private fun AppContenido(
                 @Composable
                 fun Library(k: Kind, onBack: (() -> Unit)?) {
                     val cine = k.isMovie || k.isTv
+                    // (las fichas de ESTA categoría, no las de la elegida ahora: en la transición, la capa que sale sigue con la suya)
                     LibraryScreen(
-                        k, myGames, myPlays, side, pv, segment, { segment = it },
+                        k, if (pv) partner!!.games(k) else gamesOf(k), if (pv) partner!!.plays(k) else playsOf(k), side, pv, segment, { segment = it },
                         onOpenPlay = { openPlay(k, it) },
                         onOpenGame = { screen = if (pv) Screen.PartnerItem(k.id, it.id) else Screen.Edit(it, false) },
                         onAdd = if (pv) null else ({ forPlay -> screen = Screen.Search(forPlay) }),
@@ -1155,7 +1162,7 @@ private fun AppContenido(
                     }
                     dest in 1..3 && section >= 0 -> Library(kind, null)
                     dest == 3 -> Box(Modifier.fillMaxSize().statusBarsPadding().padding(20.dp)) { Text("Aún no hay categoría de películas o series.", color = Muted) }
-                    section >= 0 && shellLib -> Library(kind) { section = -1; shellLib = false }
+                    capaLib -> Library(capaKind) { section = -1; shellLib = false }
                     else -> {
                         val ongoing = sectionKinds.flatMap { k -> ps(k).filter { it.status == 1 }.map { Ongoing(k, it) } }
                             .sortedByDescending { it.play.activity }

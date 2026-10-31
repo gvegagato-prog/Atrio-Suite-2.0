@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
             val own = when (Mode.themeMode) { 1 -> false; 2 -> true; else -> sys }
             // Lo de tu pareja va con el tema contrario al tuyo.
             // (un fondo de color fija el modo: casi todos son oscuros; en lo de tu pareja no hay fondo de color)
-            val target = Skin.fondoActual?.oscuro ?: if (Mode.partnerShown) !own else own
+            val target = Skin.fondoPropioOscuro ?: Skin.fondoActual?.oscuro ?: if (Mode.partnerShown) !own else own
             remember { Mode.dark = target; true }
             var overlay by remember { mutableStateOf<ImageBitmap?>(null) }
             var center by remember { mutableStateOf(Offset.Zero) }

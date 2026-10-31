@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -391,6 +392,15 @@ object Skin {
     val fondoActual: Fondo? get() = if (revista && !Mode.partnerShown) FONDOS.firstOrNull { it.id == fondoId } else null
     /** Edición de la revista (Ediciones.kt): su papel, sus letras, su cabecera… */
     var edicion by mutableStateOf("atrio")
+    /** Colores a mano (Apariencia → A tu manera), 0 = sin elegir: mandan sobre el tema, el fondo y el acento. */
+    var fondoPropio by mutableStateOf(0L)
+    var tintaPropia by mutableStateOf(0L)
+    var acentoPropio by mutableStateOf(0L)
+    /** Letras a mano (de Google Fonts), "" = las de la edición. */
+    var letraTitulos by mutableStateOf("")
+    var letraTexto by mutableStateOf("")
+    /** ¿El fondo propio es oscuro? (fija el modo, como los fondos de color); null sin fondo propio o en lo de tu pareja. */
+    val fondoPropioOscuro: Boolean? get() = if (revista && !Mode.partnerShown && fondoPropio != 0L) Color(fondoPropio).luminance() < 0.4f else null
 
     /** Pone el papel de la edición (las letras las da Theme.kt según la edición). */
     fun ponEdicion() {
@@ -422,11 +432,31 @@ object Skin {
     var open by mutableStateOf(false)
 
     /** Tonos que se ven ahora (según el modo claro u oscuro). */
-    val tones: Tones get() = override ?: base.let { b ->
+    val tones: Tones get() = override ?: propios(conAcento)
+    private val conAcento: Tones get() = base.let { b ->
         // Con un fondo de color, el acento por defecto («edición» o el rojo de siempre) es el suyo; los demás, los tuyos
         if (revista && fondoActual != null && (accentId == "edicion" || accentId == "rojo")) b
         else if (revista) ACCENT_COLORS.firstOrNull { it.id == accentId }?.let { a -> b.copy(general = if (Mode.dark) a.dark else a.light) } ?: b
         else if (accent != 0L) b.copy(general = accent) else b
+    }
+    /** Los colores a mano por encima de todo: el fondo (las tarjetas, líneas y grises salen de él y del texto), el texto y el acento. */
+    private fun propios(t: Tones): Tones =
+        if (!revista || Mode.partnerShown) t else conPropios(t, fondoPropio, tintaPropia, acentoPropio)
+    /** (también para los widgets, que leen lo guardado) */
+    fun conPropios(t: Tones, fondo: Long, tintaP: Long, acentoP: Long): Tones {
+        var r = t
+        if (fondo != 0L || tintaP != 0L) {
+            val papel = if (fondo != 0L) fondo else r.paper
+            val tinta = when {
+                tintaP != 0L -> tintaP
+                fondo != 0L -> if (Color(papel).luminance() < 0.4f) 0xFFF1EBE0 else 0xFF15120F
+                else -> r.ink
+            }
+            val crudo = lerp(Color(papel), Color(tinta), 0.04f).toArgb().toLong() and 0xFFFFFFFFL
+            r = r.copy(paper = papel, crudo = crudo, ink = tinta, gfx = tinta, sand = 0, line = 0, edge = 0, muted = 0)
+        }
+        if (acentoP != 0L) r = r.copy(general = acentoP)
+        return r
     }
     /** Tonos de la paleta elegida, sin camaleón. */
     val base: Tones get() = fondoActual?.tones ?: if (Mode.dark) palette.dark else palette.light
@@ -491,6 +521,8 @@ object Skin {
         fondoId = p.getString("skin_fondo", "")?.takeIf { id -> FONDOS.any { it.id == id } } ?: ""
         accentId = p.getString("skin_accent_id", "edicion")?.takeIf { id -> id == "edicion" || ACCENT_COLORS.any { it.id == id } } ?: "edicion"
         edicion = Ediciones.porId(p.getString("skin_edicion", "atrio")).id
+        fondoPropio = p.getLong("skin_fondo_propio", 0L); tintaPropia = p.getLong("skin_tinta_propia", 0L); acentoPropio = p.getLong("skin_acento_propio", 0L)
+        letraTitulos = p.getString("skin_letra_titulos", "").orEmpty(); letraTexto = p.getString("skin_letra_texto", "").orEmpty()
         covers = p.getInt("skin_covers", 0)
         listCovers = p.getBoolean("skin_listcovers", false)
         dockLabels = p.getBoolean("skin_docklabels", true)
@@ -518,7 +550,9 @@ object Skin {
         prefs(ctx).edit().putString("skin_palette", palette.id).putString("skin_display", display)
             .putString("skin_body", body).putFloat("skin_scale", textScale).putString("skin_form", form.id)
             .putString("skin_gauge", gauge?.name ?: "").putBoolean("skin_chameleon", chameleon).putInt("skin_motion", motion)
-            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putString("skin_fondo", fondoId).putString("skin_edicion", edicion).putInt("skin_covers", covers).putBoolean("skin_listcovers", listCovers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
+            .putLong("skin_accent", accent).putString("skin_accent_id", accentId).putString("skin_fondo", fondoId).putString("skin_edicion", edicion)
+            .putLong("skin_fondo_propio", fondoPropio).putLong("skin_tinta_propia", tintaPropia).putLong("skin_acento_propio", acentoPropio)
+            .putString("skin_letra_titulos", letraTitulos).putString("skin_letra_texto", letraTexto).putInt("skin_covers", covers).putBoolean("skin_listcovers", listCovers).putBoolean("skin_docklabels", dockLabels).putInt("skin_shell", shell).apply()
         ajustesCambiados(ctx)
         Widgets.pedir(ctx)
     }

@@ -16,6 +16,11 @@
         document.documentElement.dataset.tema = osc ? 'oscuro' : 'claro';
         if ((t.acento || 'rojo') === 'rojo') document.documentElement.dataset.acento = 'fondo';
       }
+      // (y los colores y letras elegidos a mano, ya calculados por base.js)
+      if (typeof t.oscuro === 'boolean') document.documentElement.dataset.tema = t.oscuro ? 'oscuro' : 'claro';
+      if (t.vars && typeof t.vars === 'object') {
+        for (const [k, v] of Object.entries(t.vars)) if (/^--[a-z]+$/.test(k) && typeof v === 'string') document.documentElement.style.setProperty(k, v);
+      }
     }
   } catch { /* sin almacenamiento local: se aplica al leer la configuración */ }
 })();

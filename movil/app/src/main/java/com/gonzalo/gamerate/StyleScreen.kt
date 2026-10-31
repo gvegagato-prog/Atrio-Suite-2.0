@@ -116,7 +116,7 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
                 row.forEach { f ->
                     val on = Skin.fondoId == (f?.id ?: "")
                     Column(
-                        Modifier.weight(1f).clickable { if (!on) withReveal { Skin.fondoId = f?.id ?: ""; Skin.save(ctx) } },
+                        Modifier.weight(1f).clickable { if (!on) withReveal { Skin.fondoId = f?.id ?: ""; Skin.fondoPropio = 0L; Skin.save(ctx) } },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val papel = f?.tones?.cPaper ?: Color(if (Mode.themeMode == 1) 0xFFF3EEE4 else 0xFF141210)
@@ -164,7 +164,7 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
                     val c = Color(if (Mode.dark) a.dark else a.light)
                     Column(
                         // Se guarda dentro del cambio: withReveal lo hace más tarde (tras la foto de la pantalla)
-                        Modifier.weight(1f).clickable { if (!on) withReveal { Skin.accentId = a.id; Skin.save(ctx) } },
+                        Modifier.weight(1f).clickable { if (!on) withReveal { Skin.accentId = a.id; Skin.acentoPropio = 0L; Skin.save(ctx) } },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
@@ -182,6 +182,21 @@ fun StyleScreen(themeMode: Int, onTheme: (Int) -> Unit, @Suppress("UNUSED_PARAME
                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
+
+        // A tu manera: cualquier color para el fondo, el texto y el acento, y las letras
+        SectionTitle("A tu manera")
+        Text("El color que quieras para el fondo, el texto y el acento, y la letra de los títulos y del texto. Mandan sobre lo de arriba; «Quitar» vuelve a ello.", color = Muted, fontSize = 13.sp)
+        SelectorColor("Fondo", Skin.fondoPropio, Paper, { Skin.fondoPropio = it }) { Skin.save(ctx) }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+        SelectorColor("Texto", Skin.tintaPropia, Charcoal, { Skin.tintaPropia = it }) { Skin.save(ctx) }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+        SelectorColor("Acento", Skin.acentoPropio, ColGeneral, { Skin.acentoPropio = it }) { Skin.save(ctx) }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+        val letras = remember { (DISPLAY_FONTS + BODY_FONTS).map { it.name }.distinct() }
+        SelectorLetra("Letra de los títulos", Skin.letraTitulos, letras) { Skin.letraTitulos = it; Skin.save(ctx) }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Line))
+        SelectorLetra("Letra del texto", Skin.letraTexto, remember { (BODY_FONTS + DISPLAY_FONTS).map { it.name }.distinct() }) { Skin.letraTexto = it; Skin.save(ctx) }
         Box(Modifier.fillMaxWidth().height(2.dp).background(Charcoal))
 
         // Muestra: así se ve una ficha con lo elegido

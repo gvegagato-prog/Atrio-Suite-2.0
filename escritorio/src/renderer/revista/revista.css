@@ -715,6 +715,14 @@ button.item:hover .item-tit { color: var(--acento); }
 .mensaje.bien { color: var(--gris); }
 
 /* ---------------------------------------------------------------- Campos */
+.a-tu-manera { display: grid; gap: 0; border-top: 1px solid var(--linea); }
+.propio { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--linea); flex-wrap: wrap; }
+.propio > .versal { width: 180px; }
+.propio .selector-color { width: 44px; height: 32px; padding: 0; border: 1px solid var(--tinta); background: none; cursor: pointer; }
+.propio .codigo { width: 96px; font: 500 14px var(--sans); letter-spacing: 1px; }
+.propio .letra { flex: 1; min-width: 200px; max-width: 360px; font-size: 18px; }
+.propio .codigo, .propio .letra { padding: 6px 8px; background: transparent; color: var(--tinta); border: 0; border-bottom: 1px solid var(--tinta); }
+.propio .estado { color: var(--gris); font-size: 12.5px; }
 .campo { display: grid; gap: 6px; }
 .campo > span { font-size: 11px; font-weight: 900; letter-spacing: 1.6px; text-transform: uppercase; }
 .campo small { font-size: 12.5px; color: var(--gris); line-height: 1.45; }

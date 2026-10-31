@@ -10,6 +10,15 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio 1.0.3 (móvil) y 1.0.1 (PC/Mac)
+
+- **A tu manera** (móvil: Apariencia; PC/Mac: Ajustes → La revista): el color que quieras para el fondo, el texto y el
+  acento (tono, saturación y brillo o su código #RRGGBB) y las letras de los títulos y del texto. En el móvil, las letras
+  de Google Fonts; en el PC/Mac, cualquiera instalada en el equipo (si no está, siguen las de Atrio). «Quitar» vuelve a
+  lo de antes. Los widgets llevan también los colores elegidos.
+- **Widgets con reborde**: una línea fina del color del texto, metida hacia dentro (blanca sobre las portadas a sangre).
+- **Sin parpadeo al cambiar de página** en el móvil (la página que se va ya no se pinta con el contenido de la nueva).
+
 ## Atrio 1.0
 
 - **Es la versión 1.0** (móvil y PC/Mac: antes móvil 6.93 y PC 3.6). La numeración empieza de nuevo. Las instalaciones

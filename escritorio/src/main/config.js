@@ -15,6 +15,8 @@ const DEFAULTS = {
     tema: 'auto',
     acento: 'rojo',
     fondo: '',            // un fondo de color (granate, bosque, marino, petroleo, berenjena, chocolate, pizarra, mostaza) o '' (papel)
+    // A tu manera: colores elegidos a mano (#RRGGBB, '' = el del tema) y letras (el nombre de una instalada, '' = las de Atrio)
+    fondoPropio: '', tintaPropia: '', acentoPropio: '', letraTitulos: '', letraTexto: '',
   },
   theme: {
     layout: 'horizonte',   // horizonte | consola | rejilla | lista | carrusel | estante

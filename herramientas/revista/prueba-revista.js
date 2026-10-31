@@ -244,6 +244,21 @@ const RAWG_JUEGOS = Array.from({ length: 30 }, (_, i) => ({
     ok(await page.evaluate(() => document.documentElement.dataset.tema === 'claro' && getComputedStyle(document.body).backgroundColor === 'rgb(217, 165, 58)'), `${tema}: mostaza (claro) y el tema lo manda el fondo`);
     await page.click('.ajustes-cuerpo button[aria-label="Fondo Papel"]'); await page.waitForTimeout(300);
     ok(await page.evaluate(() => !document.documentElement.dataset.fondo), `${tema}: «Papel» vuelve al tema`);
+    // A tu manera: fondo, texto y acento a mano (con su código), las letras, y «Quitar»
+    const pon = async (n, v) => { const el = page.locator(`.ajustes-cuerpo .propio:has(input[aria-label="Código del ${n}"]) input.codigo`); await el.fill(v); await el.press('Tab'); await page.waitForTimeout(300); };
+    await pon('fondo', '#204060');
+    let p = await page.evaluate(() => ({ papel: getComputedStyle(document.body).backgroundColor, tinta: getComputedStyle(document.body).color, tema: document.documentElement.dataset.tema }));
+    ok(p.papel === 'rgb(32, 64, 96)' && p.tema === 'oscuro' && p.tinta === 'rgb(241, 235, 224)', `${tema}: fondo a mano (oscuro: texto claro solo) ${JSON.stringify(p)}`);
+    await pon('texto', '#FFD0A0'); await pon('acento', '#00AA55');
+    p = await page.evaluate(() => ({ tinta: getComputedStyle(document.body).color, acento: getComputedStyle(document.documentElement).getPropertyValue('--acento').trim(), guardado: localStorage.getItem('revista:tema') }));
+    ok(p.tinta === 'rgb(255, 208, 160)' && p.acento === '#00AA55' && /#204060/.test(p.guardado), `${tema}: texto y acento a mano (y la copia para el arranque) ${p.tinta} ${p.acento}`);
+    await shot('09-a-tu-manera');
+    const letra = page.locator('.ajustes-cuerpo input[aria-label="Letra de los títulos"]');
+    await letra.fill('Georgia'); await letra.press('Tab'); await page.waitForTimeout(300);
+    ok(await page.evaluate(() => /^"?Georgia/.test(getComputedStyle(document.querySelector('h1')).fontFamily)), `${tema}: letra de los títulos a mano`);
+    for (let i = 0; i < 4; i++) { const q = page.locator('.ajustes-cuerpo .propio button:has-text("Quitar")').first(); if (await q.count()) { await q.click(); await page.waitForTimeout(250); } }
+    p = await page.evaluate(() => ({ estilo: document.documentElement.getAttribute('style') || '', h1: getComputedStyle(document.querySelector('h1')).fontFamily, quedan: document.querySelectorAll('.propio button').length + ':' + JSON.stringify(localStorage.getItem('revista:tema')) }));
+    ok(!p.estilo.includes("--") && /^"?Titular/.test(p.h1), `${tema}: «Quitar» vuelve a lo de antes (${p.estilo} · ${p.h1} · ${p.quedan})`);
     // Lista negra: en Ajustes → Ocultos se añade un juego (se pide confirmación) y se manda a la cuenta
     await ir({ v: 'ajustes', sec: 'ocultos' }); await page.waitForTimeout(250);
     ok(/Lista negra/.test(await texto()), `${tema}: Ajustes → Ocultos tiene la lista negra`);
