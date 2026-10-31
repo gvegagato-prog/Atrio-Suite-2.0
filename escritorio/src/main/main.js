@@ -1154,6 +1154,8 @@ app.whenReady().then(async () => {
   });
   // Escribir (obras, capítulos, escenas, fichas y notas de tu cuenta)
   try { escribir = require('./escritos-cuenta').iniciar({ ronron, ipcMain, send, log, fetchImpl: (...a) => net.fetch(...a), dialog, ventana: () => win }); } catch (e) { log('escribir', e.message); }
+  // Escribir con tu pareja: leer y anotar lo que te comparte, y ver lo que te anota (escritos-pareja.js)
+  try { require('./escritos-pareja').iniciar({ ronron, ipcMain }); } catch (e) { log('pareja', e.message); }
   nube.start({
     config: () => config.get(), data: () => ronron.data(), edit: (op) => ronron.edit(op), log, fotosDir: FOTOS,
     onFotos: () => send('fotos', fotoNames()),

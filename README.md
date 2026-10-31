@@ -10,6 +10,19 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio 1.0.6 (móvil) y 1.0.3 (PC/Mac): escribir con tu pareja
+
+- **Terminado y compartido**: en la página de cada capítulo y de cada parte, «Marcar como terminado» y «Compartir con
+  <tu pareja>». Compartir una parte comparte todos sus capítulos. Los cuadros del capítulo lo dicen («Terminado ·
+  Compartido»).
+- **Tu pareja lo lee en su Atrio** (móvil o PC/Mac): en Escribir le sale «Te comparte …»; abre el capítulo, lo lee y
+  anota cualquier párrafo (tocándolo o con un clic). Solo le llega lo compartido; si dejas de compartirlo, desaparece
+  también de su dispositivo.
+- **Tú ves lo que te anota**: en la página del capítulo, «Lo que te anota …», con el párrafo citado; tocarlo abre la
+  escena.
+- Hace falta tener las cuentas enlazadas como pareja (lo de siempre). Las reglas de Firebase no cambian: cada uno lee la
+  cuenta del otro y solo escribe en la suya (las notas se guardan en la cuenta de quien las escribe).
+
 ## Atrio 1.0.5 (móvil)
 
 - **La portada ya no tintinea al pasar de una a otra.** El carrusel crea copias de la misma portada; cada copia nueva

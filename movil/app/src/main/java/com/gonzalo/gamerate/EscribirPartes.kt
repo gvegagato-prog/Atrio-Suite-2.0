@@ -78,7 +78,9 @@ private fun MiniEstados(escenas: List<Doc>) {
 @Composable
 fun CuadroCapitulo(e: Escritos, c: Doc, onClick: () -> Unit, onLong: (() -> Unit)? = null) {
     val esc = e.escenas(c.id)
-    CuadroEscribir(colorEscrito(c.s("color"), Charcoal), "Capítulo ${numeroCapitulo(e, c)}", c.s("titulo").ifBlank { "Sin título" },
+    // (terminado y compartido, en el antetítulo: se ve de un vistazo en los cuadrados)
+    val marcas = listOfNotNull("Capítulo ${numeroCapitulo(e, c)}", "Terminado".takeIf { Compartir.hecho(e, c) }, "Compartido".takeIf { Compartir.compartido(e, c) }).joinToString(" · ")
+    CuadroEscribir(colorEscrito(c.s("color"), Charcoal), marcas, c.s("titulo").ifBlank { "Sin título" },
         c.s("resumen").ifBlank { primeraLinea(esc.firstOrNull()?.s("texto").orEmpty()) }.ifBlank { "Sin escribir todavía." },
         "${esc.size} ${if (esc.size == 1) "escena" else "escenas"} · ${cifraE(e.palabrasCapitulo(c.id))} palabras", onClick, onLong) { MiniEstados(esc) }
 }
@@ -257,6 +259,7 @@ fun ParteScreen(e: Escritos, aid: String, onBack: () -> Unit, abrirCapitulo: (St
                     Text("Parte ${NUMS.getOrNull(numero) ?: "${numero + 1}"} · ${caps.size} ${if (caps.size == 1) "capítulo" else "capítulos"} · ${cifraE(caps.sumOf { e.palabrasCapitulo(it.id) })} palabras", color = Muted, fontSize = 13.sp)
                     Box(Modifier.width(56.dp).height(5.dp).background(colorEscrito(p.s("color"))))
                     if (p.s("resumen").isNotBlank()) Text(p.s("resumen"), fontFamily = Display, fontStyle = FontStyle.Italic, fontSize = 17.sp, lineHeight = 23.sp, color = Charcoal)
+                    MarcasCompartir(e, p)
                 }
             }
             cabecera("capsT") { Seccion("Capítulos") }
@@ -321,8 +324,10 @@ fun CapituloScreen(e: Escritos, cid: String, onBack: () -> Unit, abrir: (String)
                         }
                         BotonEscribir("Leerlo entero", suave = true) { leer = true }
                     }
+                    MarcasCompartir(e, c)
                 }
             }
+            cabecera("pareja") { NotasDeTuPareja(e, cid, abrir) }
             cabecera("escT") { Seccion("Escenas") }
             esc.forEachIndexed { i, s ->
                 item(s.id) {

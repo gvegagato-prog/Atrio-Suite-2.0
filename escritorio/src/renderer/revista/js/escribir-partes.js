@@ -35,7 +35,8 @@
       ondrop: (ev) => { ev.preventDefault(); el.classList.remove('sobre'); const a = arrastra; arrastra = null; if (a && a.id !== c.id && alSoltar) alSoltar(a); },
     },
     h('span.e-cuadro-franja'),
-    h('span.versal', `Capítulo ${E.numeroCapitulo(c)}`),
+    // (terminado y compartido, en el antetítulo: se ve de un vistazo; ver escribir-pareja.js)
+    h('span.versal', [`Capítulo ${E.numeroCapitulo(c)}`, E.hecho && E.hecho(c) ? 'Terminado' : null, E.compartido && E.compartido(c) ? 'Compartido' : null].filter(Boolean).join(' · ')),
     h('span.e-cuadro-titulo', c.titulo || 'Sin título'),
     h('span.e-cuadro-texto', c.resumen || primeraLinea((esc[0] || {}).texto) || 'Sin escribir todavía.'),
     h('span.e-cuadro-pie', h('span.e-mini-estados', ests.map((n, i) => (n ? h('i', { style: { background: E.COL_ESTADO[i], flex: String(n) } }) : null))),

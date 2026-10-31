@@ -210,6 +210,19 @@ class Escritos(private val dir: File, private val dev: () -> String = { "local" 
 
     private fun avisa() { version = version + 1 }
 
+    /**
+     * Pone de golpe los documentos de otra persona (lo que te comparte tu pareja), solo para leerlos: no se suben nunca
+     * (este Escritos no tiene cuenta) y se guardan en su carpeta para leerlos sin conexión. Lo que ya no está, se quita.
+     */
+    fun ponDeOtro(lista: List<JSONObject>) {
+        val nuevos = lista.mapNotNull { o -> runCatching { Doc(o).also { it.id } }.getOrNull() }.associateBy { it.id }
+        synchronized(lock) {
+            docs.keys.filter { it !in nuevos }.forEach { id -> docs.remove(id); val f = archivo(id); disco.execute { f.delete() } }
+            nuevos.forEach { (id, d) -> if (docs[id]?.o?.toString() != d.o.toString()) { docs[id] = d; guarda(d) } }
+        }
+        avisa()
+    }
+
     // ------------------------------------------------------------------ Lectura
 
     fun get(id: String): Doc? = docs[id]?.takeIf { !it.borrado }

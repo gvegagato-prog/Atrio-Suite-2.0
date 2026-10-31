@@ -60,6 +60,13 @@ contextBridge.exposeInMainWorld('atrio', {
   escritos: (op, ...a) => invoke('escritos:op', op, ...a),
   escritosExportar: (pid, formato, opciones) => invoke('escritos:exportar', pid, formato, opciones),
   escritosImportar: () => invoke('escritos:importar'),
+  // Escribir con tu pareja (escritos-pareja.js)
+  parejaInfo: () => invoke('pareja:info'),
+  parejaCompartido: () => invoke('pareja:compartido'),
+  parejaMisNotas: () => invoke('pareja:misNotas'),
+  parejaNotasDeMiPareja: () => invoke('pareja:notasDeMiPareja'),
+  parejaAnota: (nota) => invoke('pareja:anota', nota),
+  parejaBorraNota: (id) => invoke('pareja:borraNota', id),
   pruebaCierre: (como) => invoke('prueba:cierre', como),
   escritosCopias: () => invoke('escritos:copias'),
   escritosCopiaAhora: () => invoke('escritos:copiaAhora'),

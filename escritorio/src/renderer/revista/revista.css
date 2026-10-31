@@ -1640,3 +1640,20 @@ button.e-parte { background: none; border: 0; text-align: left; cursor: pointer;
 .ed-previa .dato .v { min-width: 0; white-space: normal; overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ed-previa-rels { display: grid; gap: 2px; }
+
+/* ---------------------------------------------------------------- Escribir con tu pareja (escribir-pareja.js) */
+.e-marcas { display: grid; gap: 6px; margin: 14px 0 6px; }
+.e-marcas .nota { color: var(--gris); font-size: 13px; }
+.e-te-comparte { display: grid; gap: 4px; width: 100%; text-align: left; margin: 18px 0; padding: 16px 18px; border: 1.5px solid var(--tinta); background: none; color: var(--tinta); cursor: pointer; }
+.e-te-comparte .titular { font-size: 26px; }
+.e-te-comparte:hover, .e-te-comparte:focus-visible { border-color: var(--acento); }
+.e-pareja-obra { margin-top: 26px; font-size: 32px; }
+.e-leer-pareja .e-anotable { cursor: pointer; border-radius: 0; transition: background-color .15s; }
+.e-leer-pareja .e-anotable:hover { background: color-mix(in srgb, var(--acento) 8%, transparent); }
+.e-mi-nota { display: grid; gap: 2px; width: calc(100% - 14px); margin: 4px 0 10px 14px; padding: 10px 12px; text-align: left; border: 0; border-left: 3px solid var(--acento);
+  background: color-mix(in srgb, var(--acento) 8%, transparent); color: var(--tinta); font: inherit; font-size: 15px; cursor: pointer; }
+.e-notas-pareja { margin-top: 10px; }
+.e-nota-pareja { display: grid; gap: 4px; width: 100%; text-align: left; margin: 0 0 10px; padding: 12px 14px; border: 1px solid var(--linea); background: none; color: var(--tinta); font: inherit; cursor: pointer; }
+.e-nota-pareja .e-cita { font-family: var(--serif); font-style: italic; color: var(--gris); }
+.e-nota-pareja .e-nota-texto { font-size: 15px; line-height: 1.45; }
+.e-anotar textarea { width: 100%; min-height: 120px; font: inherit; font-size: 15px; padding: 10px; background: transparent; color: var(--tinta); border: 1px solid var(--linea); }

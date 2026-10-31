@@ -47,6 +47,19 @@ parte se lleva sus capítulos (y sus escenas); una rama, sus sucesos; una ficha,
 Texto: **Markdown ligero** — `# `, `## ` títulos, `> ` cita, `*cursiva*`, `**negrita**`, `***` línea sola = salto de escena.
 El historial de versiones **no viaja**: se guarda en cada dispositivo (cada escena guarda hasta 40 instantáneas).
 
+## Compartir con tu pareja (móvil 1.0.6 y PC/Mac 1.0.3)
+
+- En el capítulo (`c`) y la parte (`a`): `hecho` (1 = terminado) y `comp` (1 = compartido con tu pareja). Compartir una
+  parte comparte todos sus capítulos (también los que se añadan); igual con terminado.
+- Tu pareja lee `/users/<tú>/escritos` (las reglas de siempre dejan a cada uno leer la cuenta de su pareja) y se queda
+  **solo** con lo compartido: las obras con algo compartido (título, autor, género, sinopsis, color), sus partes, los
+  capítulos compartidos y sus escenas (título y texto). Notas, fichas, metas y lo demás no salen de tu cuenta.
+- Lo que anota va a **su** cuenta: `/users/<ella>/notasLectura/<tú>/<id>` = `{id, cid, eid, p, cita, texto, u}` (`p`: el
+  número del párrafo en la escena contando solo los párrafos con texto y sin `***`; `cita`: su principio sin formato, hasta
+  160 letras). Tú lo lees de ahí. Nadie escribe en la cuenta del otro.
+- Código: `EscribirPareja.kt` y `EscribirParejaUi.kt` (móvil); `escritos-pareja.js` y `revista/js/escribir-pareja.js`
+  (PC/Mac). Pruebas: `CompartirParejaTest`, `CompartirUiTest` y `herramientas/prueba-escribir-pareja.js`.
+
 ## Mezcla (igual en todos los dispositivos)
 
 Cada dispositivo apunta, de cada documento, la última hora que vio en el servidor (`acked[id]`).

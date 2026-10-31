@@ -76,6 +76,8 @@ fun EscribirScreen(onBack: () -> Unit = {}) {
     var parteId by rememberSaveable { mutableStateOf<String?>(null) }
     var capId by rememberSaveable { mutableStateOf<String?>(null) }
     var escenaId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Lo que te comparte tu pareja (para leerlo y anotarlo)
+    var dePareja by rememberSaveable { mutableStateOf(false) }
     val ver = e.version
     fun cierraObra() { obraId = null; parteId = null; capId = null; escenaId = null }
     // Una obra borrada desde dentro: se vuelve a la biblioteca
@@ -102,17 +104,18 @@ fun EscribirScreen(onBack: () -> Unit = {}) {
     }
     VigilaSprint(e, ctx)
     when {
+        dePareja -> LecturaPareja(onBack = { dePareja = false })
         escenaId != null -> EscribirEditor(escenaId!!, onBack = { escenaId = null }, abrirEscena = { abreEscena(it) })
         capId != null -> CapituloScreen(e, capId!!, onBack = { capId = null }, abrir = { escenaId = it }, verArbol = verArbol)
         parteId != null -> ParteScreen(e, parteId!!, onBack = { parteId = null }, abrirCapitulo = { capId = it }, abrir = { abreEscena(it) }, verArbol = verArbol)
         obraId != null -> ObraScreen(e, obraId!!, onBack = { obraId = null }, abrir = { abreEscena(it) },
             abrirParte = { parteId = it }, abrirCapitulo = { id -> capId = id; parteId = e.get(id)?.s("aid")?.takeIf { e.get(it) != null } })
-        else -> BibliotecaEscribir(e, ver, onBack, abrirObra = { obraId = it }, abrirEscena = { abreEscena(it) })
+        else -> BibliotecaEscribir(e, ver, onBack, abrirObra = { obraId = it }, abrirEscena = { abreEscena(it) }, abrirPareja = { dePareja = true })
     }
 }
 
 @Composable
-private fun BibliotecaEscribir(e: Escritos, ver: Int, onBack: () -> Unit, abrirObra: (String) -> Unit, abrirEscena: (String) -> Unit) {
+private fun BibliotecaEscribir(e: Escritos, ver: Int, onBack: () -> Unit, abrirObra: (String) -> Unit, abrirEscena: (String) -> Unit, abrirPareja: () -> Unit = {}) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var nueva by remember { mutableStateOf(false) }
@@ -157,6 +160,7 @@ private fun BibliotecaEscribir(e: Escritos, ver: Int, onBack: () -> Unit, abrirO
             if (ultima != null) item("seguir") { SigueEscribiendo(e, ultima) { abrirEscena(ultima.id) } }
             if (aviso.isNotEmpty()) item("aviso") { Text(aviso, color = Muted, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp)) }
             item("sync") { EstadoNube(e, ver) }
+            item("pareja") { TeComparte(abrirPareja) }
             if (activas.isEmpty()) item("vacio") {
                 Column(Modifier.fillMaxWidth().padding(vertical = 30.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Aquí empieza tu novela.", fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 26.sp, color = Charcoal)
