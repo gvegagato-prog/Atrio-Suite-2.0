@@ -965,7 +965,7 @@ private fun AppContenido(
     val sectionKey = when { dest == 4 -> "diario"; dest == 5 -> "escribir"; kind.isMovie || kind.isTv -> "cine"; else -> "$section" }
     // (la clave lleva también si se ve la portada o la biblioteca: cada capa de la transición pinta su página, no la nueva
     // las dos; antes la que salía se volvía la nueva al instante y luego se fundía consigo misma: un parpadeo)
-    val shown: Any = if (screen is Screen.Home) "top:$dest:$sectionKey:$pv:${if (shellLib) "lib" else "portada"}" else screen
+    val shown: Any = if (screen is Screen.Home) "top:$dest:$sectionKey:$pv:${if (shellLib && section >= 0) "lib" else "portada"}:${kind.id}" else screen
     val topLevel = screen is Screen.Home
     // Al volver de una ficha abierta desde Feed, Revista o Escritorio, se vuelve a esa pantalla (no a la biblioteca)
     LaunchedEffect(screen is Screen.Home) {
@@ -1039,7 +1039,7 @@ private fun AppContenido(
             // Lo que pinta ESTA capa (portada o biblioteca, y de qué categoría), sacado de su clave y no del estado de ahora
             val capa = (s as? String)?.split(':')
             val capaLib = capa?.getOrNull(4) == "lib"
-            val capaKind = capa?.getOrNull(2)?.toIntOrNull()?.let { id -> (if (pv) partner!!.allKinds else myKinds).find { it.id == id } } ?: kind
+            val capaKind = capa?.getOrNull(5)?.toIntOrNull()?.let { id -> (if (pv) partner!!.allKinds else myKinds).find { it.id == id } } ?: kind
             CompositionLocalProvider(LocalShared provides sharedScope, LocalAnim provides this) {
             // Cuando llegan fotos tuyas de otro dispositivo, las imágenes se vuelven a pintar (antes salía el hueco)
             androidx.compose.runtime.key(Photos.version) {

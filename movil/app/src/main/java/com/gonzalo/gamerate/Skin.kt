@@ -470,7 +470,8 @@ object Skin {
 
     /** La familia de letra de Google Fonts por su nombre (con sus gruesos reales), o null si es la de la app. */
     fun family(name: String): FontFamily? {
-        if (name == "Atrio") return null
+        // (sin nombre no hay letra: Google Fonts no acepta un nombre vacío y cerraría la app)
+        if (name.isBlank() || name == "Atrio") return null
         if (name == "Vitrina") return VitrinaDisplay
         return cache.getOrPut(name) {
             val c = (DISPLAY_FONTS + BODY_FONTS).firstOrNull { it.name == name }

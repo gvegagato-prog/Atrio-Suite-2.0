@@ -174,7 +174,8 @@ open class Capturas6Test {
         rule.onAllNodesWithText("⇔", ignoreCase = true)[0].performTouchInput { swipeRight() }; shoot("r8b_linea_movida")
         rule.onAllNodesWithText("Ninguna todavía.", ignoreCase = true)[0].performClick(); shoot("r8c_elegir")
         // Elegir «Opinión» para la casilla de las guías
-        rule.onAllNodesWithText("Opinión", ignoreCase = true)[0].performClick(); shoot("r8d_elegida")
+        // (la de la lista del diálogo: la última; la primera puede ser la etiqueta de una casilla de detrás)
+        rule.onAllNodesWithText("Opinión", ignoreCase = true).let { it[it.fetchSemanticsNodes().size - 1] }.performClick(); shoot("r8d_elegida")
         // (Los diálogos con campos de texto no se quedan quietos en Robolectric: el texto libre se mete directamente)
         rule.runOnUiThread {
             MagLayouts.save(ctx, "v:0:102", listOf(

@@ -10,6 +10,12 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio 1.0.4 (móvil)
+
+- **Arreglado: Apariencia cerraba la app** (1.0.3). Sin letra elegida, «A tu manera» pedía a Google Fonts una letra sin
+  nombre. Ahora hay pruebas de Apariencia que se ejecutan siempre (antes solo al hacer capturas).
+- **Arreglado: al volver a una biblioteca** la transición podía pintar otra categoría (1.0.3).
+
 ## Atrio 1.0.3 (móvil) y 1.0.1 (PC/Mac)
 
 - **A tu manera** (móvil: Apariencia; PC/Mac: Ajustes → La revista): el color que quieras para el fondo, el texto y el

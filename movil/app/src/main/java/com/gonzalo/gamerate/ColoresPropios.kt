@@ -87,7 +87,7 @@ private fun Barra(nombre: String, valor: Float, fondo: Brush, onCambia: (Float) 
 fun SelectorLetra(nombre: String, valor: String, opciones: List<String>, onCambia: (String) -> Unit) {
     var abierto by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().clickable { abierto = true }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Aa", fontFamily = Skin.family(valor) ?: Display, fontSize = 28.sp, color = Charcoal, modifier = Modifier.width(50.dp))
+        Text("Aa", fontFamily = valor.takeIf { it.isNotBlank() }?.let { Skin.family(it) } ?: Display, fontSize = 28.sp, color = Charcoal, modifier = Modifier.width(50.dp))
         Column(Modifier.weight(1f)) {
             Text(nombre, fontFamily = Display, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Charcoal)
             Text(valor.ifEmpty { "La de la edición" }, color = Muted, fontSize = 12.sp)
