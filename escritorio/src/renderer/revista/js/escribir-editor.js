@@ -152,7 +152,7 @@
       previa = h('div.ed-previa', { style: { '--c': E.colorDe(f.color) } },
         h('span.versal', tipo), h('b.ed-previa-nombre', f.nombre || ''), f.resumen ? h('span.ed-previa-res', f.resumen) : null,
         datos.length ? h('ul.datos', datos.map((c) => RV.dato(c.k, c.v))) : null,
-        rels.length ? h('span.ed-previa-rels', rels.map(({ r, otra }) => `${(r.titulo || '').toUpperCase()} · ${otra.nombre}`).join('   ')) : null,
+        rels.length ? h('span.ed-previa-rels', rels.map(({ r, otra }) => h('span', r.titulo ? `${r.titulo.toUpperCase()} · ${otra.nombre}` : otra.nombre))) : null,
         h('span.apagado', 'Doble clic para abrir la ficha'));
       document.body.append(previa);
       const r = sp.getBoundingClientRect(); const pr = previa.getBoundingClientRect();

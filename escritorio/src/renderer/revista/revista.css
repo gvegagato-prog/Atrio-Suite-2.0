@@ -1631,3 +1631,12 @@ button.e-parte { background: none; border: 0; text-align: left; cursor: pointer;
 .ed-previa-res { font-style: italic; }
 .ed-previa-rels { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; color: var(--acento); }
 .ed-previa .datos { margin: 4px 0; }
+/* Todo dentro de la tarjeta: el texto se parte (antes los datos y las relaciones se salían por la derecha) */
+.ed-previa { width: 360px; max-width: calc(100vw - 16px); grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+.ed-previa > * { min-width: 0; overflow-wrap: anywhere; }
+.ed-previa-res { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ed-previa .dato { min-width: 0; font-size: 13.5px; }
+.ed-previa .dato .k { flex: none; max-width: 40%; }
+.ed-previa .dato .v { min-width: 0; white-space: normal; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ed-previa-rels { display: grid; gap: 2px; }

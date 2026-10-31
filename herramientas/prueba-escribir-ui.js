@@ -48,7 +48,7 @@ function siembra() {
   escr.nuevo('e', o.id, { cid: c1.id, titulo: 'La primera puerta', estado: 1, texto: 'La habitación olía a su infancia. Aldara tocó la colcha y la colcha le devolvió el gesto.\n\n> Todo lo que subes, lo bajas.\n\nNo era una amenaza. Era una instrucción.', resumen: 'Encuentra una habitación idéntica a la suya.', cuando: 'Día 1, medianoche' });
   escr.nuevo('e', o.id, { cid: c2.id, titulo: 'Un pacto en la barandilla', estado: 0, texto: 'El Cuervo no mentía, pero tampoco decía toda la verdad. Esa era su forma de ser honesto.', resumen: 'El Cuervo ofrece un trato.', cuando: 'Día 2' });
   escr.nuevo('e', o.id, { cid: c3.id, titulo: 'El espejo', estado: 0, texto: '', resumen: 'El clímax: Aldara se ve a sí misma.' });
-  escr.nuevo('f', o.id, { tipo: 'personaje', nombre: 'Aldara', alias: 'la hechicera, Ald', resumen: 'Joven aprendiz que huye de su pasado.', color: '#B0102F', campos: [{ k: 'Edad', v: '23' }, { k: 'Teme', v: 'Parecerse a su maestra' }] });
+  escr.nuevo('f', o.id, { tipo: 'personaje', nombre: 'Aldara', alias: 'la hechicera, Ald', resumen: 'Joven aprendiz que huye de su pasado.', color: '#B0102F', campos: [{ k: 'Edad', v: '23' }, { k: 'Aspecto', v: 'Mujer delgada, antigua aprendiz de la torre, pelo largo y blanco, cicatriz en la cara que le atraviesa el ojo derecho' }, { k: 'Teme', v: 'Parecerse a su maestra' }] });
   escr.nuevo('f', o.id, { tipo: 'personaje', nombre: 'El Cuervo', resumen: 'Guardián de la torre. Dice la verdad a medias.', color: '#4A6FA5' });
   escr.nuevo('f', o.id, { tipo: 'lugar', nombre: 'El valle', resumen: 'Tierra de nieblas al pie de la torre.', color: '#5B8C5A' });
   escr.nuevo('n', o.id, { tipo: 'idea', titulo: '¿Y si el espejo miente?', texto: 'Que lo que Aldara ve no sea ella, sino lo que la torre quiere que sea.', color: '#C9A227', fija: 1 });
@@ -514,6 +514,9 @@ function siembra() {
     await p.locator('.ed-texto .e-ficha', { hasText: 'Aldara' }).first().hover(); await sleep(800);
     ok(await p.locator('.ed-previa').count() === 1 && /Aldara/.test(await p.locator('.ed-previa').innerText()) && /ENEMIGOS/.test(await p.locator('.ed-previa').innerText()), 'el ratón encima de un nombre enseña su ficha (con sus uniones)');
     await p.screenshot({ path: path.join(OUT, 'pc-e36-previa.png') });
+    // Nada se sale de la tarjeta, aunque un dato sea muy largo
+    const fuera = await p.evaluate(() => { const c = document.querySelector('.ed-previa').getBoundingClientRect(); return [...document.querySelectorAll('.ed-previa *')].filter((el) => el.getBoundingClientRect().right > c.right + 0.5).map((el) => el.className || el.tagName); });
+    ok(fuera.length === 0, `la vista previa no se sale de su tarjeta (${fuera.join(', ') || 'nada fuera'})`);
     await p.locator('.ed-texto .e-ficha', { hasText: 'Aldara' }).first().dblclick(); await sleep(500);
     ok(await p.locator('.dialogo.e-lee').count() === 1 && /Aldara/.test(await p.locator('.dialogo h2').innerText()), 'y doble clic la abre');
     await p.keyboard.press('Escape'); await sleep(200);

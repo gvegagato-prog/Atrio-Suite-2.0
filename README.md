@@ -10,6 +10,12 @@ Una sola app en dos sitios:
 
 Las dos usan la misma cuenta de Atrio (Firebase) y se hablan en **tiempo real** (streaming de Firebase).
 
+## Atrio 1.0.2 (PC/Mac)
+
+- **Arreglada la vista previa de una ficha en Escribir** (al pasar el ratón por un nombre): los datos largos y las
+  uniones se salían de la tarjeta. Ahora todo se parte dentro, los datos largos se cortan a dos líneas y cada unión va
+  en su línea.
+
 ## Atrio 1.0.4 (móvil)
 
 - **Arreglado: Apariencia cerraba la app** (1.0.3). Sin letra elegida, «A tu manera» pedía a Google Fonts una letra sin
